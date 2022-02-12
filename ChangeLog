@@ -1,0 +1,135 @@
+ChangeLog
+=========
+
+Release: 1.2.1
+===============================================================================
+2022-02-09 Fixes the border drawing.
+           Fixes the button hang if the mouse moves during a mouse press.
+
+Release: 1.2.0
+===============================================================================
+2022-02-06 Fixes the drawing of a bargraph with a button slider.
+           Add the documentation for end users.
+
+2022-02-01 Adds a slider button out of the system slider images.
+
+Release: 1.1.3
+===============================================================================
+2022-01-22 Adds a new callback function to set a button visible or to hide it.
+
+Release: 1.1.2
+===============================================================================
+2022-01-21 Adds the commands ^RFR, ^RAF.
+           Improved the command ^BBR to immediately refreshing the button.
+           Fixes the remote loading of images over a REST interface.
+           Implements an image cache to speed up remote loading.
+
+Release: 1.1.1
+===============================================================================
+2022-01-18 Fixes a bug when retriving images from a HTTP server.
+
+2022-01-13 Fixes the restart after changing connection credentials or receiving
+           a new surface.
+
+Release: 1.1.0
+===============================================================================
+2022-01-02 Removes the dependency to asio and implements a new socket class
+           instead.
+
+2021-10-17 Adds new commands @SOU, ?BMP, ?BCT, ?BCB and ?BCF.
+
+Release: <= 1.0.0
+===============================================================================
+2021-07-21 Replaces the old XML parser for reading pages and subpages with
+           Expat.
+
+2021-07-14 Adds the class to read the system graphics index.
+
+2021-07-13 Adds support for playing sounds.
+           Adds button sounds if system ressources are installed.
+           Adds support for system button to enable/disable button sounds.
+
+2021-07-07 Adds support for symbol fonts like wingding.
+
+2021-06-14 Adds the commands SETUP and SHUTDOWN.
+
+2021-06-09 Adds all of the keyboard/keypad commands. Implements private
+           keyboard/keypad.
+
+2021-06-07 Adds a keyboard and a keypad. Adds also the aproppriate commands to
+           use them.
+
+2021-06-05 Adds an activity to get the phone state.
+           Extracts the logging API in Java and puts it into an extra class.
+           Implements a new queue to store all drawing events during the app is
+           suspended.
+
+2021-06-02 Fixes the range of buttons detected.
+           Adds the commands BAU, BCF, BCT, BDO, BFB, BOR, BRD, GLH and GLL.
+
+2021-05-28 Adds fade in/out to subpages.
+
+2021-05-24 Fixes multiline printing: Breaks a string in pieces and makes it
+           multiline, if the button allows it.
+           Adds methods to grab a pinch event to start the settings.
+
+2021-05-23 Adds/completes the timer function for a subpage.
+           Adds optional text on the background image.
+           Adds text as a background image.
+
+2021-05-18 Adds a timeout function to subpages.
+
+2021-05-10 Adds a basic function to draw and handle an input line.
+
+2021-05-09 Implements the touch function to bargraphs.
+
+2021-05-06 Adds a vritual page to show progress bars on file upload from
+           TPDesign.
+           Adds directory structure for system files. Reads system fonts if
+           they exist.
+
+2021-05-01 Sliding effects for subpages.
+
+2021-04-29 Removes top bar on Android.
+           Moved start point of page manager to signal active.
+           Implents scaling at UI and disables scaling with Skia.
+
+2021-04-24 Adds functions for getting the wifi connection strength in android.
+
+2021-04-18 Reads external.xma to make the external buttons function.
+
+2021-04-17 Finish and fixes scale mode.
+           Removes menu and adds a toolbar on the right side instead.
+
+2021-04-12 Implements scaling for background pages and subpages.
+           Adds button management for pages.
+
+2021-04-10 Implemets basic functions needed for scaling in future.
+           Adds a splash screen on Android and brings a new logo.
+
+2021-04-08 Adds battery state on Android devices.
+
+2021-04-03 Implements basic settings dialog.
+
+2021-03-14 Adds support for Android.
+
+2021-01-09 Adds handling of system buttons connection status and date/time.
+
+2021-01-01 Adds a Z-Order to subpages
+
+2020-12-20 Adds network communication with controller and adds the first
+           commands to control pages.
+
+2020-12-17 Adds mouse press events. Fixes the position of text.
+
+2020-12-16 Takes the overall opacity and sets it to the filling and chameleon
+           images.
+
+2020-12-13 Adds fonts with Skia library.
+
+2020-12-10 Implements basic subpages and buttons.
+           Draws the background and simple graphics.
+
+2020-12-08 Display a background image in the main window.
+
+2020-11-29 Added interpreter for buttons and pages.

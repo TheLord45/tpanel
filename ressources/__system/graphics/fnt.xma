@@ -1,0 +1,253 @@
+<?xml version="1.0"?>
+<root>
+    <fontList>
+        <font number="1">
+            <file>cour.ttf</file>
+            <name>Courier New</name>
+            <subFamily>Regular</subFamily>
+            <fullName>Courier New</fullName>
+            <size>9</size>
+            <usageCount>4012</usageCount>
+        </font>
+        <font number="2">
+            <file>cour.ttf</file>
+            <name>Courier New</name>
+            <subFamily>Regular</subFamily>
+            <fullName>Courier New</fullName>
+            <size>12</size>
+            <usageCount>4001</usageCount>
+        </font>
+        <font number="3">
+            <file>cour.ttf</file>
+            <name>Courier New</name>
+            <subFamily>Regular</subFamily>
+            <fullName>Courier New</fullName>
+            <size>18</size>
+            <usageCount>4001</usageCount>
+        </font>
+        <font number="4">
+            <file>cour.ttf</file>
+            <name>Courier New</name>
+            <subFamily>Regular</subFamily>
+            <fullName>Courier New</fullName>
+            <size>26</size>
+            <usageCount>4001</usageCount>
+        </font>
+        <font number="5">
+            <file>cour.ttf</file>
+            <subFamily>Regular</subFamily>
+            <fullName>Courier New</fullName>
+            <name>Courier New</name>
+            <size>32</size>
+            <usageCount>4001</usageCount>
+        </font>
+        <font number="6">
+            <file>cour.ttf</file>
+            <name>Courier New</name>
+            <subFamily>Regular</subFamily>
+            <fullName>Courier New</fullName>
+            <size>18</size>
+            <usageCount>6186</usageCount>
+        </font>
+        <font number="7">
+            <file>cour.ttf</file>
+            <name>Courier New</name>
+            <subFamily>Regular</subFamily>
+            <fullName>Courier New</fullName>
+            <size>26</size>
+            <usageCount>2012</usageCount>
+        </font>
+        <font number="8">
+            <file>cour.ttf</file>
+            <name>Courier New</name>
+            <subFamily>Regular</subFamily>
+            <fullName>Courier New</fullName>
+            <size>34</size>
+            <usageCount>2029</usageCount>
+        </font>
+        <font number="9">
+            <file>amxbold_.ttf</file>
+            <name>AMX bold</name>
+            <subFamily>Regular</subFamily>
+            <fullName>AMX Bold</fullName>
+            <size>14</size>
+            <usageCount>2003</usageCount>
+        </font>
+        <font number="10">
+            <file>amxbold_.ttf</file>
+            <name>AMX bold</name>
+            <subFamily>Regular</subFamily>
+            <fullName>AMX Bold</fullName>
+            <size>20</size>
+            <usageCount>2003</usageCount>
+        </font>
+        <font number="11">
+            <file>amxbold_.ttf</file>
+            <name>AMX bold</name>
+            <subFamily>Regular</subFamily>
+            <fullName>AMX Bold</fullName>
+            <size>36</size>
+            <usageCount>2003</usageCount>
+        </font>
+        <font number="12">
+            <file>arialbd.ttf</file>
+            <name>Arial</name>
+            <subFamily>Bold</subFamily>
+            <fullName>Arial Bold</fullName>
+            <size>9</size>
+            <usageCount>2003</usageCount>
+        </font>
+        <font number="13">
+            <file>arialbd.ttf</file>
+            <name>Arial</name>
+            <subFamily>Bold</subFamily>
+            <fullName>Arial Bold</fullName>
+            <size>12</size>
+            <usageCount>2003</usageCount>
+        </font>
+        <font number="14">
+            <file>arialbd.ttf</file>
+            <name>Arial</name>
+            <subFamily>Bold</subFamily>
+            <fullName>Arial Bold</fullName>
+            <size>14</size>
+            <usageCount>2003</usageCount>
+        </font>
+        <font number="15">
+            <file>arialbd.ttf</file>
+            <name>Arial</name>
+            <subFamily>Bold</subFamily>
+            <fullName>Arial Bold</fullName>
+            <size>16</size>
+            <usageCount>2003</usageCount>
+        </font>
+        <font number="16">
+            <file>arialbd.ttf</file>
+            <name>Arial</name>
+            <subFamily>Bold</subFamily>
+            <fullName>Arial Bold</fullName>
+            <size>18</size>
+            <usageCount>2003</usageCount>
+        </font>
+        <font number="17">
+            <file>arialbd.ttf</file>
+            <name>Arial</name>
+            <subFamily>Bold</subFamily>
+            <fullName>Arial Bold</fullName>
+            <size>20</size>
+            <usageCount>2003</usageCount>
+        </font>
+        <font number="18">
+            <file>arial.ttf</file>
+            <name>Arial</name>
+            <subFamily>Regular</subFamily>
+            <fullName>Arial</fullName>
+            <size>8</size>
+            <usageCount>2003</usageCount>
+        </font>
+        <font number="19">
+            <file>arial.ttf</file>
+            <name>Arial</name>
+            <subFamily>Regular</subFamily>
+            <fullName>Arial</fullName>
+            <size>9</size>
+            <usageCount>2003</usageCount>
+        </font>
+        <font number="20">
+            <file>arial.ttf</file>
+            <name>Arial</name>
+            <subFamily>Regular</subFamily>
+            <fullName>Arial</fullName>
+            <size>10</size>
+            <usageCount>2003</usageCount>
+        </font>
+        <font number="21">
+            <file>arial.ttf</file>
+            <name>Arial</name>
+            <subFamily>Regular</subFamily>
+            <fullName>Arial</fullName>
+            <size>12</size>
+            <usageCount>2003</usageCount>
+        </font>
+        <font number="22">
+            <file>arial.ttf</file>
+            <name>Arial</name>
+            <subFamily>Regular</subFamily>
+            <fullName>Arial</fullName>
+            <size>14</size>
+            <usageCount>2003</usageCount>
+        </font>
+        <font number="23">
+            <file>arial.ttf</file>
+            <name>Arial</name>
+            <subFamily>Regular</subFamily>
+            <fullName>Arial</fullName>
+            <size>16</size>
+            <usageCount>2003</usageCount>
+        </font>
+        <font number="24">
+            <file>arial.ttf</file>
+            <name>Arial</name>
+            <subFamily>Regular</subFamily>
+            <fullName>Arial</fullName>
+            <size>18</size>
+            <usageCount>2003</usageCount>
+        </font>
+        <font number="25">
+            <file>arial.ttf</file>
+            <name>Arial</name>
+            <subFamily>Regular</subFamily>
+            <fullName>Arial</fullName>
+            <size>20</size>
+            <usageCount>2003</usageCount>
+        </font>
+        <font number="26">
+            <file>arial.ttf</file>
+            <name>Arial</name>
+            <subFamily>Regular</subFamily>
+            <fullName>Arial</fullName>
+            <size>24</size>
+            <usageCount>2003</usageCount>
+        </font>
+        <font number="27">
+            <file>arial.ttf</file>
+            <name>Arial</name>
+            <subFamily>Regular</subFamily>
+            <fullName>Arial</fullName>
+            <size>36</size>
+            <usageCount>2003</usageCount>
+        </font>
+        <font number="28">
+            <file>arialbd.ttf</file>
+            <name>Arial</name>
+            <subFamily>Bold</subFamily>
+            <fullName>Arial Bold</fullName>
+            <size>10</size>
+            <usageCount>2003</usageCount>
+        </font>
+        <font number="29">
+            <file>arialbd.ttf</file>
+            <name>Arial</name>
+            <subFamily>Bold</subFamily>
+            <fullName>Arial Bold</fullName>
+            <size>8</size>
+            <usageCount>2003</usageCount>
+        </font>
+        <font number="30">
+            <file>amxbold_.ttf</file>
+            <name>AMX bold</name>
+            <subFamily>Regular</subFamily>
+            <fullName>AMX Bold</fullName>
+            <size>8</size>
+            <usageCount>2003</usageCount>
+        </font>
+        <font number="31">
+            <file>arial.ttf</file>
+            <name>Arial</name>
+            <subFamily>Regular</subFamily>
+            <fullName>Arial</fullName>
+            <size>5</size>
+            <usageCount>2003</usageCount>
+        </font>
+   </fontList>
+</root>

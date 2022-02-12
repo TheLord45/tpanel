@@ -1,0 +1,130 @@
+/*
+ * Copyright (C) 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
+ */
+#ifndef __TCONFIG_H__
+#define __TCONFIG_H__
+
+#include <string>
+#include <vector>
+#include <algorithm>
+#include "terror.h"
+
+#define V_MAJOR     1
+#define V_MINOR     2
+#define V_PATCH     1
+
+/**
+ * @def TPANEL_VERSION
+ * Defines the version of this application.
+ */
+#define TPANEL_VERSION      ((V_MAJOR * 0x10000) + (V_MINOR * 0x100) + V_PATCH)
+
+#define VERSION_STRING() _GET_X_VERSION(V_MAJOR, V_MINOR, V_PATCH)
+#define _GET_X_VERSION(a, b, c) _GET_VERSION(a, b, c)
+#define _GET_VERSION(a, b, c) ( #a "." #b "." #c)
+
+/**
+ * @brief The TConfig class manages the configurations.
+ *
+ * The class contains methods to read a config file, parse it's content and
+ * hold the configuration options in the class. All public methods are static.
+ */
+class TConfig
+{
+    public:
+        TConfig(const std::string& path);
+        bool reReadConfig();
+
+        typedef enum SYSTEMRESOURCE_t
+        {
+            BASE,
+            BORDERS,
+            FONTS,
+            IMAGES,
+            SLIDERS,
+            SOUNDS
+        }SYSTEMRESOURCE_t;
+
+        static void setProgName(const std::string& pname);
+        static std::string& getProgName();
+        static std::string& getConfigPath();
+        static std::string& getConfigFileName();
+        static std::string& getProjectPath();
+        static std::string getSystemPath(SYSTEMRESOURCE_t sres);
+        static std::string& getLogFile();
+        static std::string& getLogLevel();
+        static uint getLogLevelBits();
+        static bool isLongFormat();
+        static bool showBanner();
+        static bool getScale();
+        static bool getProfiling();
+        static std::string& getPassword1();
+        static std::string& getPassword2();
+        static std::string& getPassword3();
+        static std::string& getPassword4();
+        static std::string& getSystemSound();
+        static bool getSystemSoundState();
+        static std::string& getSingleBeepSound();
+        static std::string& getDoubleBeepSound();
+
+        static std::string& getController();
+        static int getSystem();
+        static int getPort();
+        static int getChannel();
+        static std::string& getPanelType();
+        static std::string& getFirmVersion();
+        static bool certCheck();
+
+        static bool saveProjectPath(const std::string& path);
+        static bool saveLogFile(const std::string& file);
+        static bool saveLogLevel(const std::string& level);
+        static bool saveLogLevel(uint level);
+        static bool saveController(const std::string& cnt);
+        static bool savePort(int port);
+        static bool saveChannel(int channel);
+        static bool savePanelType(const std::string& pt);
+        static bool saveSettings();
+        static void saveFormat(bool format);
+        static void saveScale(bool scale);
+        static void saveProfiling(bool prof);
+        static void savePassword1(const std::string& pw);
+        static void savePassword2(const std::string& pw);
+        static void savePassword3(const std::string& pw);
+        static void savePassword4(const std::string& pw);
+        static void saveSystemSoundFile(const std::string& snd);
+        static void saveSystemSoundState(bool state);
+
+    protected:
+        static bool isTrue(const std::string& boolean);
+
+    private:
+        static uint logLevelStrToBits(const std::string& level);
+        static std::string logLevelBitsToString(uint level);
+        bool findConfig();
+        bool readConfig();
+        std::vector<std::string> split(const std::string& str, const std::string& seps, const bool trimEmpty);
+        static int caseCompare(const std::string& str1, const std::string& str2);
+
+        std::string mPath;
+        std::string mCFile;
+        std::vector<std::string> mCfgPaths;
+#ifdef __ANDROID__
+        std::string mRoot;
+#endif
+};
+
+#endif

@@ -1,0 +1,25 @@
+Bargraphs
+=========
+* A bargraph with a slider button can't be moved free as long as a mouse press
+  on the bargraph is active. This must be implemented.
+
+Buttons
+=======
+* Add marquee function
+* ^RAF, ^RMF - Embedded codes
+
+Subpages
+========
+
+Other things
+============
+* Add more commands
+* Implement TP5 commands where possible.
+* Implement SIP phone.
+* Crack the encryption of TP5 internal file.
+* Crack the encryption of passwords in resources.
+* Implement panel to panel audio communication.
+
+Documentation
+=============
+* Add documentation for configuration files
