@@ -39,7 +39,10 @@ For Android we need the [Android SDK](https://developer.android.com/). In case y
 - Qt 5.15
 - openssl
 
-You can download a ready package with all the necessary libraries and header files from my [server](https://www.theosys.at/download/android_dist.tar.bz2) (2.5Gb!). After you've downloaded this hugh file, unpack it into any directory.
+You can download a ready package with all the necessary libraries and header files from my [server](https://www.theosys.at/download/android_dist.tar.bz2) (2.5Gb!). After you've downloaded this hugh file, unpack it into any directory. The file details are:
+
+- [`android_dist.tar.bz2`](https://www.theosys.at/download/android_dist.tar.bz2)
+- SHA256: `f9f604d93b4b66995fdbd25f3648dc1ef365eff66538b9288c19c21f33db7281`
 
 I developped **TPanel** with [QTCreator](https://www.qt.io/product/development-tools). Therefor I would recoment to use this tool to compile **TPanel**. All the following descriptions are for this tool.
 
