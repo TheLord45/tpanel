@@ -49,7 +49,7 @@ Start `QTCreator` and load the project file `tpanel.pro`. You must set some thin
 - `EXT_LIB_PATH=</path/to/the/distribution>`
 - `EXTRA_PATH=</path/to/android/sdk/extras>`
 
-To make clear what this means I give you an example. We assume that the Android SDK was installed into the directory `/usr/share/android-sdk-linux`. The distribution from my server (the file containing all nexeccary binaries for Android) was unpacked into `/home/user/distribution`. Then the line **Additional arguments** must look like:
+To make clear what this means I give you an example. We assume that the Android SDK was installed into the directory `/usr/share/android-sdk-linux`. The distribution from my server (the file containing all necessary binaries for Android) was unpacked into `/home/user/distribution`. Then the line **Additional arguments** must look like:
 
     SDK_PATH=/usr/share/android-sdk-linux EXT_LIB_PATH=/home/user/distribution EXTRA_PATH=/usr/share/android-sdk-linux/extras
 
