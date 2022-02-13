@@ -410,6 +410,19 @@ namespace Button
              */
             bool setBitmap(const std::string& file, int instance);
             /**
+             * @brief setCameleon Sets a new cameleon bitmap to the button
+             * If there was already a cameleon bitmap on this button and if this
+             * cameleon bitmap is different from the one in \p file, then it is
+             * erased. The new cameleon bitmap file name is set and it will be
+             * loaded and created.
+             *
+             * @param file      File name of a cameleon bitmap file.
+             * @param instance  The instance where to put the new bitmap. If
+             *                  this is 0, the bitmap is set on all instances.
+             * @return TRUE if no errors occures, otherwise FALSE.
+             */
+            bool setCameleon(const std::string& file, int instance);
+            /**
              * @brief setOpacity Sets the opacity of this button
              *
              * @param op        The opacity in a reange of 0 to 255.
@@ -424,6 +437,9 @@ namespace Button
             void setLeft(int left);
             void setLeftTop(int left, int top);
             void setResourceName(const std::string& name, int instance);
+            void setBitmapJusification(int j, int x, int y, int instance);
+            void setIconJustification(int j, int x, int y, int instance);
+            void setTextJustification(int j, int x, int y, int instance);
             bool startAnimation(int start, int end, int time);
             /**
              * @brief registerSystemButton registers the button as a system button.

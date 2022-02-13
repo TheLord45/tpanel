@@ -84,7 +84,11 @@ string cmdList[] =
     "@SOU-", "@TKP-", "TPAGEON", "TPAGEOFF", "@VKB", "WAKE", "^CAL", "^KPS-",
     "^VKS-", "@PWD-", "^PWD-", "^BBR-", "^RAF-", "^RFR-", "^RMF-", "^RSR-",
     "^MODEL?", "^ICS-", "^ICE-", "^ICM-", "^PHN-", "?PHN-", "LEVON", "RXON",
-    "BLINK", "\0"
+    "BLINK",
+    // G5 commands
+    "^ABP", "^ADB", "^SOU", "^STP", "^TKP", "^PGE", "^PPA", "^PPF", "^PPG",
+    "^PPK", "^PPM", "^PPN", "^PPT", "^PPX", "^UTF",
+    "\0"
 };
 
 #define NUMBER_CMDS     144
@@ -1462,19 +1466,16 @@ void TAmxNet::handleFTransfer(ANET_SEND &s, ANET_FILETRANSFER &ft)
             {
                 newPath = prjPath + "/images";
                 dir.createAllPath(newPath);
-//                mkdir(string(TConfig::getProjectPath() + "/images").c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
             }
             else if (f.find("/sounds") > 0)
             {
                 newPath = prjPath + "/sounds";
                 dir.createAllPath(newPath);
-//                mkdir(string(TConfig::getProjectPath() + "/sounds").c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
             }
             else if (f.find("/fonts") > 0)
             {
                 newPath = prjPath + "/fonts";
                 dir.createAllPath(newPath);
-//                mkdir(string(TConfig::getProjectPath() + "/fonts").c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
             }
         }
         else if (f.compare(0, 8, "__system") == 0)

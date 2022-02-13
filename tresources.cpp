@@ -930,3 +930,18 @@ char *strnstr(const char* haystack, const char* needle, size_t len)
 
     return nullptr;
 }
+
+string getCommand(const string& fullCmd)
+{
+    DECL_TRACER("getCommand(const string& fullCmd)");
+
+    size_t pos = fullCmd.find_first_of("-");
+    string cmd;
+
+    if (pos != string::npos)
+        cmd = fullCmd.substr(0, pos);
+    else
+        cmd = fullCmd;
+
+    return cmd;
+}

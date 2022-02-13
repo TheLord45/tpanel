@@ -77,6 +77,14 @@ struct SETTINGS
     bool systemSoundState{false};   //!< TRUE = play systemsound on every touch
     string systemSingleBeep;    //!< name of the system sound file to play a single beep.
     string systemDoubleBeep;    //!< name of the system sound file to play a double beep.
+    // SIP settings
+    string sip_proxy;           //!< The address of the SIP proxy
+    int sip_port{5060};         //!< Initializes the port of the SIP proxy to 5060
+    string sip_stun;            //!< STUN address
+    string sip_domain;          //!< Local domain
+    string sip_user;            //!< The SIP user to connect.
+    string sip_password;        //!< The SIP password to connect. Note: This password is saved in plain text!
+    bool sip_enabled{false};    //!< By default SIP is disabled
 };
 
 typedef struct SETTINGS settings_t;
@@ -448,6 +456,76 @@ void TConfig::saveSystemSoundState(bool state)
     localSettings.systemSoundState = state;
 }
 
+std::string& TConfig::getSIPproxy()
+{
+    return localSettings.sip_proxy;
+}
+
+void TConfig::setSIPproxy(const std::string& address)
+{
+    localSettings.sip_proxy = address;
+}
+
+int TConfig::getSIPport()
+{
+    return localSettings.sip_port;
+}
+
+void TConfig::setSIPport(int port)
+{
+    localSettings.sip_port = port;
+}
+
+std::string& TConfig::getSIPstun()
+{
+    return localSettings.sip_stun;
+}
+
+void TConfig::setSIPstun(const std::string& address)
+{
+    localSettings.sip_stun = address;
+}
+
+std::string& TConfig::getSIPdomain()
+{
+    return localSettings.sip_domain;
+}
+
+void TConfig::setSIPdomain(const std::string& domain)
+{
+    localSettings.sip_domain = domain;
+}
+
+std::string& TConfig::getSIPuser()
+{
+    return localSettings.sip_user;
+}
+
+void TConfig::setSIPuser(const std::string& user)
+{
+    localSettings.sip_user = user;
+}
+
+std::string& TConfig::getSIPpassword()
+{
+    return localSettings.sip_password;
+}
+
+void TConfig::setSIPpassword(const std::string& pw)
+{
+    localSettings.sip_password = pw;
+}
+
+bool TConfig::getSIPstatus()
+{
+    return localSettings.sip_enabled;
+}
+
+void TConfig::setSIPstatus(bool state)
+{
+    localSettings.sip_enabled = state;
+}
+
 bool TConfig::saveSettings()
 {
     DECL_TRACER("TConfig::saveSettings()");
@@ -478,6 +556,14 @@ bool TConfig::saveSettings()
         lines += string("SystemSoundState=") + (localSettings.systemSoundState ? "ON" : "OFF") + "\n";
         lines += string("SystemSingleBeep=") + localSettings.systemSingleBeep + "\n";
         lines += string("SystemDoubleBeep=") + localSettings.systemDoubleBeep + "\n";
+        // SIP settings
+        lines += string("SIP_DOMAIN") + localSettings.sip_domain + "\n";
+        lines += string("SIP_PROXY") + localSettings.sip_password + "\n";
+        lines += string("SIP_PORT") + std::to_string(localSettings.sip_port) + "\n";
+        lines += string("SIP_STUN") + localSettings.sip_stun + "\n";
+        lines += string("SIP_USER") + localSettings.sip_user + "\n";
+        lines += string("SIP_PASSWORD") + localSettings.sip_password + "\n";
+        lines += string("SIP_ENABLED") + (localSettings.sip_enabled ? "true" : "false") + "\n";
         file.write(lines.c_str(), lines.size());
         file.close();
         MSG_INFO("Actual log level: " << localSettings.logLevel);
@@ -991,6 +1077,20 @@ bool TConfig::readConfig()
                 localSettings.systemSingleBeep = right;
             else if (caseCompare(left, "SystemDoubleBeep") == 0 && !right.empty())
                 localSettings.systemDoubleBeep = right;
+            else if (caseCompare(left, "SIP_PROXY") == 0 && !right.empty())     // SIP settings starting here
+                localSettings.sip_proxy = right;
+            else if (caseCompare(left, "SIP_PORT") == 0 && !right.empty())
+                localSettings.sip_port = atoi(right.c_str());
+            else if (caseCompare(left, "SIP_STUN") == 0 && !right.empty())
+                localSettings.sip_stun = right;
+            else if (caseCompare(left, "SIP_DOMAIN") == 0 && !right.empty())
+                localSettings.sip_domain = right;
+            else if (caseCompare(left, "SIP_USER") == 0 && !right.empty())
+                localSettings.sip_user = right;
+            else if (caseCompare(left, "SIP_PASSWORD") == 0 && !right.empty())
+                localSettings.sip_password = right;
+            else if (caseCompare(left, "SIP_ENABLED") == 0 && !right.empty())
+                localSettings.sip_enabled = isTrue(right);
         }
     }
 

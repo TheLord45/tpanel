@@ -20,6 +20,11 @@ Other things
 * Crack the encryption of passwords in resources.
 * Implement panel to panel audio communication.
 
+Known errors
+============
+* Fix lines containing a komma. They must not end at the comma.
+
+
 Documentation
 =============
 * Add documentation for configuration files

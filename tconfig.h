@@ -108,6 +108,22 @@ class TConfig
         static void saveSystemSoundFile(const std::string& snd);
         static void saveSystemSoundState(bool state);
 
+        // SIP management
+        static std::string& getSIPproxy();
+        static void setSIPproxy(const std::string& address);
+        static int getSIPport();
+        static void setSIPport(int port);
+        static std::string& getSIPstun();
+        static void setSIPstun(const std::string& address);
+        static std::string& getSIPdomain();
+        static void setSIPdomain(const std::string& domain);
+        static std::string& getSIPuser();
+        static void setSIPuser(const std::string& user);
+        static std::string& getSIPpassword();
+        static void setSIPpassword(const std::string& pw);
+        static bool getSIPstatus();
+        static void setSIPstatus(bool state);
+
     protected:
         static bool isTrue(const std::string& boolean);
 

@@ -385,6 +385,8 @@ class TPageManager : public TAmxCommands
         void doICO(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doSHO(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doTXT(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doUNI(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doUTF(int port, std::vector<int>& channels, std::vector<std::string>& pars);
 
         void doBBR(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doRAF(int port, std::vector<int>& channels, std::vector<std::string>& pars);

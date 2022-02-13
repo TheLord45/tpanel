@@ -78,6 +78,7 @@ bool startsWith (const std::string &src, const std::string &start);
 std::string dirName (const std::string &path);
 std::string baseName (const std::string &path);
 char *strnstr(const char *haystack, const char *needle, size_t len);
+std::string getCommand(const std::string& fullCmd);
 
 static inline std::string &ltrim(std::string &s)
 {

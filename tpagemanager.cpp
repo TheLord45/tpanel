@@ -235,20 +235,29 @@ TPageManager::TPageManager()
     REG_CMD(doPHP, "@PHP");     // Set the hide effect position.
     REG_CMD(doPHT, "@PHT");     // Set the hide effect time for the specified popup page.
     REG_CMD(doPPA, "@PPA");     // Close all popups on a specified page.
+    REG_CMD(doPPA, "^PPA");     // G5: Close all popups on a specified page.
     REG_CMD(doPPF, "@PPF");     // Deactivate a specific popup page on either a specified page or the current page.
+    REG_CMD(doPPF, "^PPF");     // G5: Deactivate a specific popup page on either a specified page or the current page.
     REG_CMD(doPPF, "PPOF");     // Deactivate a specific popup page on either a specified page or the current page
     REG_CMD(doPPG, "@PPG");     // Toggle a specific popup page on either a specified page or the current page.
+    REG_CMD(doPPG, "^PPG");     // G5: Toggle a specific popup page on either a specified page or the current page.
     REG_CMD(doPPG, "PPOG");     // Toggle a specific popup page on either a specified page or the current page.
     REG_CMD(doPPK, "@PPK");     // Kill a specific popup page from all pages.
+    REG_CMD(doPPK, "^PPK");     // G5: Kill a specific popup page from all pages.
     REG_CMD(doPPM, "@PPM");     // Set the modality of a specific popup page to Modal or NonModal.
+    REG_CMD(doPPM, "^PPM");     // G5: Set the modality of a specific popup page to Modal or NonModal.
     REG_CMD(doPPN, "@PPN");     // Activate a specific popup page to launch on either a specified page or the current page.
+    REG_CMD(doPPN, "^PPN");     // G5: Activate a specific popup page to launch on either a specified page or the current page.
     REG_CMD(doPPN, "PPON");     // Activate a specific popup page to launch on either a specified page or the current page.
     REG_CMD(doPPT, "@PPT");     // Set a specific popup page to timeout within a specified time.
+    REG_CMD(doPPT, "^PPT");     // G5: Set a specific popup page to timeout within a specified time.
     REG_CMD(doPPX, "@PPX");     // Close all popups on all pages.
+    REG_CMD(doPPX, "^PPX");     // G5: Close all popups on all pages.
     REG_CMD(doPSE, "@PSE");     // Set the show effect for the specified popup page to the named show effect.
     REG_CMD(doPSP, "@PSP");     // Set the show effect position.
     REG_CMD(doPST, "@PST");     // Set the show effect time for the specified popup page.
     REG_CMD(doPAGE, "PAGE");    // Flip to a specified page.
+    REG_CMD(doPAGE, "^PGE");    // G5: Flip to a specified page.
 
     REG_CMD(doANI, "^ANI");     // Run a button animation (in 1/10 second).
     REG_CMD(doAPF, "^APF");     // Add page flip action to a button if it does not already exist.
@@ -305,7 +314,8 @@ TPageManager::TPageManager()
 //    REG_CMD(doTOP, "^TOP");     // Send events to the Master as string events.
     REG_CMD(doTXT, "^TXT");     // Assign a text string to those buttons with a defined address range.
 //    REG_CMD(getTXT, "?TXT");    // Get the current text information.
-//    REG_CMD(doUNI, "^UNI");     // Set Unicode text.
+    REG_CMD(doUNI, "^UNI");     // Set Unicode text.
+    REG_CMD(doUTF, "^UTF");     // G5: Set button state text using UTF-8 text command.
 
 //    REG_CMD(doLPC, "^LPC");     // Clear all users from the User Access Passwords list on the Password Setup page.
 //    REG_CMD(doLPR, "^LPR");     // Remove a given user from the User Access Passwords list on the Password Setup page.
@@ -332,16 +342,22 @@ TPageManager::TPageManager()
     REG_CMD(doAKEYR, "AKEYR");  // Remove the Keyboard/Keypad.
     REG_CMD(doAKR, "@AKR");     // Remove the Keyboard/Keypad.
     REG_CMD(doBEEP, "BEEP");    // Play a single beep.
+    REG_CMD(doBEEP, "^ABP");    // G5: Play a single beep.
     REG_CMD(doDBEEP, "DBEEP");  // Play a double beep.
+    REG_CMD(doDBEEP, "^ADB");   // G5: Play a double beep.
     REG_CMD(doEKP, "@EKP");     // Pop up the keypad icon and initialize the text string to that specified.
     REG_CMD(doPKP, "@PKB");     // Present a private keyboard.
     REG_CMD(doPKP, "PKEYP");    // Present a private keypad.
     REG_CMD(doPKP, "@PKP");     // Present a private keypad.
     REG_CMD(doSetup, "SETUP");  // Send panel to SETUP page.
+    REG_CMD(doSetup, "^STP");   // G5: Open setup page.
     REG_CMD(doShutdown, "SHUTDOWN");// Shut down the App
     REG_CMD(doSOU, "@SOU");     // Play a sound file.
+    REG_CMD(doSOU, "^SOU");     // G5: Play a sound file.
     REG_CMD(doTKP, "@TKP");     // Present a telephone keypad.
+    REG_CMD(doTKP, "^TKP");     // G5: Bring up a telephone keypad.
     REG_CMD(doTKP, "@VKB");     // Present a virtual keyboard
+    REG_CMD(doTKP, "^VKB");     // G5: Bring up a virtual keyboard.
 
     // Here the SIP commands will take place
 
@@ -717,8 +733,12 @@ void TPageManager::doCommand(const amx::ANET_COMMAND& cmd)
                     msg.content[len] = 0;
                 }
 
-                com.assign(cp1250ToUTF8((char *)&msg.content));
-                parseCommand( bef.device1, bef.data.chan_state.port, com);
+                if (getCommand((char *)msg.content) == "^UTF")  // This is already UTF8!
+                    com.assign((char *)msg.content);
+                else
+                    com.assign(cp1250ToUTF8((char *)&msg.content));
+
+                parseCommand(bef.device1, bef.data.chan_state.port, com);
                 mCmdBuffer.clear();
             }
             break;
@@ -4194,6 +4214,27 @@ void TPageManager::doBMP(int port, vector<int>& channels, vector<string>& pars)
     TError::clear();
     int btState = atoi(pars[0].c_str());
     string bitmap = pars[1];
+    // If this is a G5 command, we may have up to 2 additional parameters.
+    int slot = -1, justify = -1, jx = 0, jy = 0;
+
+    if (pars.size() > 2)
+    {
+        slot = atoi(pars[2].c_str());
+
+        if (pars.size() >= 4)
+        {
+            justify = atoi(pars[4].c_str());
+
+            if (justify == 0)
+            {
+                if (pars.size() >= 5)
+                    jx = atoi(pars[5].c_str());
+
+                if (pars.size() >= 6)
+                    jy = atoi(pars[6].c_str());
+            }
+        }
+    }
 
     vector<MAP_T> map = findButtons(port, channels);
 
@@ -4217,10 +4258,52 @@ void TPageManager::doBMP(int port, vector<int>& channels, vector<string>& pars)
                 MSG_DEBUG("Setting bitmap " << bitmap << " on all " << bst << " instances...");
 
                 for (int i = 0; i < bst; i++)
-                    bt->setBitmap(bitmap, i);
+                {
+                    if (justify >= 0)
+                    {
+                        if (slot == 2)
+                            bt->setIconJustification(justify, jx, jy, i);
+                        else
+                            bt->setBitmapJusification(justify, jx, jy, i);
+                    }
+
+                    if (slot >= 0)
+                    {
+                        switch(slot)
+                        {
+                            case 0: bt->setCameleon(bitmap, i); break;
+                            case 2: bt->setIcon(bitmap, i); break;  // On G4 we have no bitmap layer. Therefor we use layer 2 as icon layer.
+                            default:
+                                bt->setBitmap(bitmap, i);
+                        }
+                    }
+                    else
+                        bt->setBitmap(bitmap, i);
+                }
             }
             else
-                bt->setBitmap(bitmap, btState);
+            {
+                if (justify >= 0)
+                {
+                    if (slot == 2)
+                        bt->setIconJustification(justify, jx, jy, btState);
+                    else
+                        bt->setBitmapJusification(justify, jx, jy, btState);
+                }
+
+                if (slot >= 0)
+                {
+                    switch(slot)
+                    {
+                        case 0: bt->setCameleon(bitmap, btState); break;
+                        case 2: bt->setIcon(bitmap, btState); break;      // On G4 we have no bitmap layer. Therefor we use layer 2 as icon layer.
+                        default:
+                            bt->setBitmap(bitmap, btState);
+                    }
+                }
+                else
+                    bt->setBitmap(bitmap, btState);
+            }
         }
     }
 }
@@ -5125,6 +5208,119 @@ void TPageManager::doTXT(int port, vector<int>& channels, vector<string>& pars)
     }
 }
 
+/*
+ * Set button state legacy unicode text command.
+ *
+ * Set Unicode text in the legacy G4 format. For the ^UNI command, the Unicode
+ * text is sent as ASCII-HEX nibbles.
+ */
+void TPageManager::doUNI(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doUNI(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Expecting 1 parameters but got none! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    int btState = atoi(pars[0].c_str());
+    string text;
+
+    // Because UTF8 is not supported out of the box from Windows and NetLinx
+    // Studio has no native support for it, any UTF8 text must be encoded in
+    // bytes. Because of this we must decode the bytes into real bytes here.
+    if (pars.size() > 1)
+    {
+        string byte;
+        size_t pos = 0;
+
+        while (pos < pars[1].length())
+        {
+            byte = pars[1].substr(pos, 2);
+            char ch = (char)strtol(byte.c_str(), NULL, 16);
+            text += ch;
+            pos += 2;
+        }
+    }
+
+    vector<MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+            setButtonCallbacks(bt);
+
+            if (btState == 0)       // All instances?
+            {
+                int bst = bt->getNumberInstances();
+                MSG_DEBUG("Setting UNI on all " << bst << " instances...");
+
+                for (int i = 0; i < bst; i++)
+                    bt->setText(text, i);
+            }
+            else
+                bt->setText(text, btState - 1);
+        }
+    }
+}
+
+void TPageManager::doUTF(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doTXT(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Expecting 1 parameters but got none! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    int btState = atoi(pars[0].c_str());
+    string text;
+
+    if (pars.size() > 1)
+        text = pars[1];
+
+    vector<MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+            setButtonCallbacks(bt);
+
+            if (btState == 0)       // All instances?
+            {
+                int bst = bt->getNumberInstances();
+                MSG_DEBUG("Setting TXT on all " << bst << " instances...");
+
+                for (int i = 0; i < bst; i++)
+                    bt->setText(text, i);
+            }
+            else
+                bt->setText(text, btState - 1);
+        }
+    }
+}
 /*
  * Set the bitmap of a button to use a particular resource.
  * Syntax:

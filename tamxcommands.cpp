@@ -49,17 +49,26 @@ CMD_DEFINATIONS cmdDefinations[] = {
     { "@PHP", false, true, ';' },
     { "@PHT", false, true, ';' },
     { "@PPA", false, true, ',' },
+    { "^PPA", false, true, ',' },
     { "@PPF", false, true, ';' },
+    { "^PPF", false, true, ';' },
     { "@PPG", false, true, ';' },
+    { "^PPG", false, true, ';' },
     { "@PPK", false, true, ',' },
+    { "^PPK", false, true, ',' },
     { "@PPM", false, true, ';' },
+    { "^PPM", false, true, ';' },
     { "@PPN", false, true, ';' },
+    { "^PPN", false, true, ';' },
     { "@PPT", false, true, ';' },
+    { "^PPT", false, true, ';' },
     { "@PPX", false, false, '\0' },
+    { "^PPX", false, false, '\0' },
     { "@PSE", false, true, ';' },
     { "@PSP", false, true, ';' },
     { "@PST", false, true, ';' },
     { "PAGE", false, true, ',' },
+    { "^PGE", false, true, ',' },
     { "PPOF", false, true, ';' },
     { "PPOG", false, true, ';' },
     { "PPON", false, true, ';' },
@@ -137,6 +146,7 @@ CMD_DEFINATIONS cmdDefinations[] = {
     { "^TXT", true, true, ',' },
     { "?TXT", true, true, ',' },
     { "^UNI", true, true, ',' },
+    { "^UTF", true, true, ',' },
     { "^LPC", false, true, ',' },
     { "^LPR", false, true, ',' },
     { "^LPS", false, true, ',' },
@@ -149,21 +159,29 @@ CMD_DEFINATIONS cmdDefinations[] = {
     { "@AKP", false, true, ';' },
     { "@AKR", false, false, ',' },
     { "BEEP", false, false, ',' },
+    { "^ABP", false, false, ',' },
     { "BRIT", false, true, ',' },
     { "@BRT", false, true, ',' },
     { "DBEEP", false, false, ',' },
+    { "^ADP", false, false, ',' },
     { "@EKP", false, true, ';' },
     { "PKEYP", false, true, ',' },
     { "@PKB", false, true, ';' },
+    { "^PKB", false, true, ';' },
     { "@PKP", false, true, ';' },
+    { "^PKP", false, true, ';' },
     { "SETUP", false, false, ',' },
+    { "^STP", false, false, ',' },
     { "SHUTDOWN", false, false, ',' },
     { "SLEEP", false, false, ',' },
     { "@SOU", false, true, ',' },
+    { "^SOU", false, true, ',' },
     { "@TKP", false, true, ';' },
+    { "^TKP", false, true, ';' },
     { "TPAGEON", false, false, ',' },
     { "TPAGEOFF", false, false, ',' },
     { "@VKB", false, false, ',' },
+    { "^VKB", false, false, ',' },
     { "WAKE", false, false, ',' },
     { "^CAL", false, false, ',' },
     { "^KPS", false, true, ',' },
@@ -518,14 +536,7 @@ bool TAmxCommands::parseCommand(int device, int port, const string& cmd)
     vector<CMD_TABLE>::iterator iter;
     size_t pos = cmd.find_first_of("-");
 
-    if (pos != string::npos)
-    {
-        MSG_TRACE("Parsing for device <" << device << ":" << port << ":" << TConfig::getSystem() << "> the command: " << cmd.substr(0, pos));
-    }
-    else
-    {
-        MSG_TRACE("Parsing for device <" << device << ":" << port << ":" << TConfig::getSystem() << "> the command: " << cmd);
-    }
+    MSG_TRACE("Parsing for device <" << device << ":" << port << ":" << TConfig::getSystem() << "> the command: " << getCommand(cmd));
 
     if (pos != string::npos)    // Command with parameters
     {

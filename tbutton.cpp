@@ -1034,11 +1034,35 @@ bool TButton::setBitmap(const string& file, int instance)
         return false;
     }
 
+    if (sr[instance].bm == file)
+        return true;
+
     sr[instance].bm = file;
     map<int, IMAGE_t>::iterator iter = mImages.find(sr[instance].number);
 
     if (iter != mImages.end())
         mImages.erase(iter);
+
+    if (!createButtons(true))   // We're forcing the image to load
+        return false;
+
+    return makeElement(instance);
+}
+
+bool TButton::setCameleon(const string& file, int instance)
+{
+    DECL_TRACER("TButton::setCameleon(const string& file, int instance)");
+
+    if (file.empty() || instance >= (int)sr.size())
+    {
+        MSG_ERROR("Invalid parameters!");
+        return false;
+    }
+
+    if (sr[instance].mi == file)
+        return true;
+
+    sr[instance].mi = file;
 
     if (!createButtons(true))   // We're forcing the image to load
         return false;
@@ -1141,6 +1165,102 @@ void TButton::setResourceName(const string& name, int instance)
     }
 
     sr[instance].bm = name;
+}
+
+void TButton::setBitmapJusification(int j, int x, int y, int instance)
+{
+    DECL_TRACER("TButton::setBitmapJusification(int j, int instance)");
+
+    if (j < 0 || j > 9 || instance < 0 || instance >= (int)sr.size())
+        return;
+
+    if (instance == 0)
+    {
+        for (size_t i = 0; i < sr.size(); i++)
+        {
+            sr[i].jb = j;
+
+            if (j == 0)
+            {
+                sr[i].bx = x;
+                sr[i].by = y;
+            }
+        }
+    }
+    else
+    {
+        sr[instance].jb = j;
+
+        if (j == 0)
+        {
+            sr[instance].bx = x;
+            sr[instance].by = y;
+        }
+    }
+}
+
+void TButton::setIconJustification(int j, int x, int y, int instance)
+{
+    DECL_TRACER("TButton::setIconJustification(int j, int x, int y, int instance)");
+
+    if (j < 0 || j > 9 || instance < 0 || instance >= (int)sr.size())
+        return;
+
+    if (instance == 0)
+    {
+        for (size_t i = 0; i < sr.size(); i++)
+        {
+            sr[i].ji = j;
+
+            if (j == 0)
+            {
+                sr[i].ix = x;
+                sr[i].iy = y;
+            }
+        }
+    }
+    else
+    {
+        sr[instance].ji = j;
+
+        if (j == 0)
+        {
+            sr[instance].ix = x;
+            sr[instance].iy = y;
+        }
+    }
+}
+
+void TButton::setTextJustification(int j, int x, int y, int instance)
+{
+    DECL_TRACER("TButton::setTextJustification(int j, int x, int y, int instance)");
+
+    if (j < 0 || j > 9 || instance < 0 || instance >= (int)sr.size())
+        return;
+
+    if (instance == 0)
+    {
+        for (size_t i = 0; i < sr.size(); i++)
+        {
+            sr[i].jt = (TEXT_ORIENTATION)j;
+
+            if (j == 0)
+            {
+                sr[i].tx = x;
+                sr[i].ty = y;
+            }
+        }
+    }
+    else
+    {
+        sr[instance].jt = (TEXT_ORIENTATION)j;
+
+        if (j == 0)
+        {
+            sr[instance].tx = x;
+            sr[instance].ty = y;
+        }
+    }
 }
 
 bool TButton::setWorWrap(bool state, int instance)
