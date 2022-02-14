@@ -4,7 +4,7 @@ ChangeLog
 Release: 1.2.1
 ===============================================================================
 2022-02-13 Adding G5 commands ^ABP, ^ADB, ^SOU, ^STP, ^TKP, ^PGE, ^PPA, ^PPF,
-           ^PPG, ^PPK, ^PPM, ^PPN, ^PPT, ^PPX
+           ^PPG, ^PPK, ^PPM, ^PPN, ^PPT, ^PPX, ^UTF
            Expanded the ^BMP command to be compatible with G5.
            Adding G4 commands ^UNI
            Adding configuration options for SIP to configuration file.
