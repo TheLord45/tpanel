@@ -271,13 +271,13 @@ TPageManager::TPageManager()
     REG_CMD(getBCT, "?BCT");    // Get the current text color.
     REG_CMD(doBDO, "^BDO");     // Set the button draw order
     REG_CMD(doBFB, "^BFB");     // Set the feedback type of the button.
-//    REG_CMD(getBMC, "^BMC");    // Button copy command.
-//    REG_CMD(getBMI, "^BMI");    // Set the button mask image.
-//    REG_CMD(getBML, "^BML");    // Set the maximum length of the text area button.
+    REG_CMD(doBMC, "^BMC");    // Button copy command.
+//    REG_CMD(doBMI, "^BMI");    // Set the button mask image.
+//    REG_CMD(doBML, "^BML");    // Set the maximum length of the text area button.
     REG_CMD(doBMP, "^BMP");     // Assign a picture to those buttons with a defined addressrange.
     REG_CMD(getBMP, "?BMP");    // Get the current bitmap name.
     REG_CMD(doBOP, "^BOP");     // Set the button opacity.
-//    REG_CMD(getBOP, "?BOP");    // Get the button opacity.
+    REG_CMD(getBOP, "?BOP");    // Get the button opacity.
     REG_CMD(doBOR, "^BOR");     // Set a border to a specific border style.
 //    REG_CMD(doBOS, "^BOS");     // Set the button to display either a Video or Non-Video window.
     REG_CMD(doBRD, "^BRD");     // Set the border of a button state/states.
@@ -3916,7 +3916,7 @@ void TPageManager::getBCF(int port, vector<int> &channels, vector<string> &pars)
             }
             else
             {
-                color = bt->getFillColor(btState - 1);
+                color = bt->getFillColor(btState-1);
 
                 amx::ANET_SEND scmd;
                 scmd.port = bt->getChannelPort();
@@ -4198,6 +4198,117 @@ void TPageManager::doBFB(int port, vector<int>& channels, vector<std::string>& p
     }
 }
 
+void TPageManager::doBMC(int port, vector<int>& channels, vector<std::string>& pars)
+{
+    DECL_TRACER("TPageManager::doBMC(int port, vector<int>& channels, vector<std::string>& pars)");
+
+    if (pars.size() < 5)
+    {
+        MSG_ERROR("Expecting 5 parameters but got " << pars.size() << ". Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    int btState = atoi(pars[0].c_str());
+    int src_port = atoi(pars[1].c_str());
+    int src_addr = atoi(pars[2].c_str());
+    int src_state = atoi(pars[3].c_str());
+    string src_codes = pars[4];
+    vector<int> src_channel;
+    src_channel.push_back(src_addr);
+
+    vector<MAP_T> src_map = findButtons(src_port, src_channel);
+
+    if (src_map.size() == 0)
+    {
+        MSG_WARNING("Button <" << TConfig::getChannel() << ":" << src_port << ":" << TConfig::getSystem() << ">:" << src_addr << " does not exist!");
+        return;
+    }
+
+    vector<Button::TButton *>src_buttons = collectButtons(src_map);
+
+    if (src_buttons.size() == 0)
+    {
+        MSG_WARNING("Button <" << TConfig::getChannel() << ":" << src_port << ":" << TConfig::getSystem() << ">:" << src_addr << " does not exist!");
+        return;
+    }
+
+    if (src_buttons[0]->getNumberInstances() < src_state)
+    {
+        MSG_WARNING("Button <" << TConfig::getChannel() << ":" << src_port << ":" << TConfig::getSystem() << ">:" << src_addr << " has less then " << src_state << " elements.");
+        return;
+    }
+
+    if (src_state < 1)
+    {
+        MSG_WARNING("Button <" << TConfig::getChannel() << ":" << src_port << ":" << TConfig::getSystem() << ">:" << src_addr << " has invalid source state " << src_state << ".");
+        return;
+    }
+
+    src_state--;
+
+    if (btState > 0)
+        btState--;
+
+    vector<MAP_T> map = findButtons(port, channels);
+    vector<Button::TButton *> buttons = collectButtons(map);
+    //                        0     1     2     3     4     5     6     7
+    vector<string>codes = { "BM", "BR", "CB", "CF", "CT", "EC", "EF", "FT",
+                            "IC", "JB", "JI", "JT", "LN", "OP", "SO", "TX", // 8 - 15
+                            "VI", "WW" };   // 16, 17
+
+    for (size_t ibuttons = 0; ibuttons < buttons.size(); ibuttons++)
+    {
+        vector<string>::iterator iter;
+        int idx = 0;
+
+        for (iter = codes.begin(); iter != codes.end(); ++iter)
+        {
+            if (src_codes.find(*iter) != string::npos)
+            {
+                int j, x, y;
+
+                switch(idx)
+                {
+                    case 0: buttons[ibuttons]->setBitmap(src_buttons[0]->getBitmapName(src_state), btState); break;
+                    case 1: buttons[ibuttons]->setBorderStyle(src_buttons[0]->getBorderStyle(src_state), btState); break;
+                    case 2: buttons[ibuttons]->setBorderColor(src_buttons[0]->getBorderColor(src_state), btState); break;
+                    case 3: buttons[ibuttons]->setFillColor(src_buttons[0]->getFillColor(src_state), btState); break;
+                    case 4: buttons[ibuttons]->setTextColor(src_buttons[0]->getTextColor(src_state), btState); break;
+                    case 5: buttons[ibuttons]->setTextEffectColor(src_buttons[0]->getTextEffectColor(src_state), btState); break;
+                    case 6: buttons[ibuttons]->setTextEffect(src_buttons[0]->getTextEffect(src_state), btState); break;
+                    case 7: buttons[ibuttons]->setFontIndex(src_buttons[0]->getFontIndex(src_state), btState); break;
+                    case 8: buttons[ibuttons]->setIconIndex(src_buttons[0]->getIconIndex(src_state), btState); break;
+
+                    case 9:
+                        j = src_buttons[0]->getBitmapJustification(&x, &y, src_state);
+                        buttons[ibuttons]->setBitmapJustification(j, x, y, btState);
+                    break;
+
+                    case 10:
+                        j = src_buttons[0]->getIconJustification(&x, &y, src_state);
+                        buttons[ibuttons]->setIconJustification(j, x, y, btState);
+                    break;
+
+                    case 11:
+                        j = src_buttons[0]->getTextJustification(&x, &y, src_state);
+                        buttons[ibuttons]->setTextJustification(j, x, y, btState);
+                    break;
+
+                    case 12: MSG_INFO("\"Lines of video removed\" not supported!"); break;
+                    case 13: buttons[ibuttons]->setOpacity(src_buttons[0]->getOpacity(src_state), btState); break;
+                    case 14: buttons[ibuttons]->setSound(src_buttons[0]->getSound(src_state), btState); break;
+                    case 15: buttons[ibuttons]->setText(src_buttons [0]->getText(src_state), btState); break;
+                    case 16: MSG_INFO("\"Video slot ID\" not supported!"); break;
+                    case 17: buttons[ibuttons]->setTextWordWrap(src_buttons[0]->getTextWordWrap(src_state), btState); break;
+                }
+            }
+
+            idx++;
+        }
+    }
+}
+
 /**
  * Assign a picture to those buttons with a defined address range.
  */
@@ -4264,7 +4375,7 @@ void TPageManager::doBMP(int port, vector<int>& channels, vector<string>& pars)
                         if (slot == 2)
                             bt->setIconJustification(justify, jx, jy, i);
                         else
-                            bt->setBitmapJusification(justify, jx, jy, i);
+                            bt->setBitmapJustification(justify, jx, jy, i);
                     }
 
                     if (slot >= 0)
@@ -4288,7 +4399,7 @@ void TPageManager::doBMP(int port, vector<int>& channels, vector<string>& pars)
                     if (slot == 2)
                         bt->setIconJustification(justify, jx, jy, btState);
                     else
-                        bt->setBitmapJusification(justify, jx, jy, btState);
+                        bt->setBitmapJustification(justify, jx, jy, btState);
                 }
 
                 if (slot >= 0)
@@ -4368,7 +4479,7 @@ void TPageManager::getBMP(int port, vector<int> &channels, vector<string> &pars)
             }
             else
             {
-                bmp = bt->getTextColor(btState - 1);
+                bmp = bt->getTextColor(btState-1);
 
                 amx::ANET_SEND scmd;
                 scmd.port = bt->getChannelPort();
@@ -4444,6 +4555,83 @@ void TPageManager::doBOP(int port, vector<int>& channels, vector<string>& pars)
             }
             else
                 bt->setOpacity(btOpacity, btState);
+        }
+    }
+}
+
+void TPageManager::getBOP(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::getBOP(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Expecting 1 parameters but got none! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    int btState = atoi(pars[0].c_str());
+
+    vector<MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+
+            if (btState == 0)       // All instances?
+            {
+                int bst = bt->getNumberInstances();
+
+                for (int i = 0; i < bst; i++)
+                {
+                    int oo = bt->getOpacity(i);
+
+                    amx::ANET_SEND scmd;
+                    scmd.port = bt->getChannelPort();
+                    scmd.channel = bt->getChannelNumber();
+                    scmd.ID = scmd.channel;
+                    scmd.flag = 0;
+                    scmd.type = 1015;
+                    scmd.value1 = i + 1;    // instance
+                    scmd.value2 = oo;
+                    scmd.value3 = 0;
+                    scmd.MC = 0x008d;       // custom event
+
+                    if (gAmxNet)
+                        gAmxNet->sendCommand(scmd);
+                    else
+                        MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+                }
+            }
+            else
+            {
+                int oo = bt->getOpacity(btState-1);
+
+                amx::ANET_SEND scmd;
+                scmd.port = bt->getChannelPort();
+                scmd.channel = bt->getChannelNumber();
+                scmd.ID = scmd.channel;
+                scmd.flag = 0;
+                scmd.type = 1015;
+                scmd.value1 = btState;  // instance
+                scmd.value2 = oo;
+                scmd.value3 = 0;
+                scmd.MC = 0x008d;       // custom event
+
+                if (gAmxNet)
+                    gAmxNet->sendCommand(scmd);
+                else
+                    MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+            }
         }
     }
 }
@@ -4584,10 +4772,10 @@ void TPageManager::doBRD(int port, vector<int>& channels, vector<string>& pars)
                 int bst = bt->getNumberInstances();
 
                 for (int i = 0; i < bst; i++)
-                    bt->setBorderStyle(border, i);
+                    bt->setBorderStyle(border, i+1);
             }
             else
-                bt->setBorderStyle(border, btState - 1);
+                bt->setBorderStyle(border, btState);
         }
     }
 }

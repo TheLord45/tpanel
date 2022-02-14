@@ -369,9 +369,11 @@ class TPageManager : public TAmxCommands
         void getBCT(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doBDO(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doBFB(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doBMC(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doBMP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void getBMP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doBOP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void getBOP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doBOR(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doBRD(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doBSP(int port, std::vector<int>& channels, std::vector<std::string>& pars);

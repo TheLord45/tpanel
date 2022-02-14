@@ -944,18 +944,20 @@ bool TButton::setBorderStyle(const string& style, int instance)
 {
     DECL_TRACER("TButton::setBorderStyle(const string& style, int instance)");
 
-    if (instance >= 0 && (size_t)instance >= sr.size())
+    if (instance == 0 || (size_t)instance >= sr.size())
     {
         MSG_ERROR("Instance " << instance << " does not exist!");
         return false;
     }
 
+    int inst = (instance > 0) ? (instance - 1) : instance;
+
     if (strCaseCompare(style, "None") == 0)     // Clear the border?
     {
-        if (instance < 0)
+        if (inst < 0)
             bs.clear();
         else
-            sr[instance].bs.clear();
+            sr[inst].bs.clear();
 
         return true;
     }
@@ -965,10 +967,10 @@ bool TButton::setBorderStyle(const string& style, int instance)
     {
         if (gPageManager->getSystemDraw()->existBorder(style))
         {
-            if (instance < 0)
+            if (inst < 0)
                 bs = style;
             else
-                sr[instance].bs = style;
+                sr[inst].bs = style;
 
             return true;
         }
@@ -982,10 +984,10 @@ bool TButton::setBorderStyle(const string& style, int instance)
     {
         if (strCaseCompare(sysBorders[i].name, style) == 0)
         {
-            if (instance < 0)
+            if (inst < 0)
                 bs = sysBorders[i].name;
             else
-                sr[instance].bs = sysBorders[i].name;
+                sr[inst].bs = sysBorders[i].name;
 
             return true;
         }
@@ -994,6 +996,19 @@ bool TButton::setBorderStyle(const string& style, int instance)
     }
 
     return false;
+}
+
+string TButton::getBorderStyle(int instance)
+{
+    DECL_TRACER("TButton::getBorderStyle(int instance)");
+
+    if (instance < 0 || instance >= (int)sr.size())
+    {
+        MSG_ERROR("Invalid instance " << (instance + 1) << " submitted!");
+        return string();
+    }
+
+    return sr[instance].bs;
 }
 
 bool TButton::setBargraphUpperLimit(int limit)
@@ -1167,14 +1182,33 @@ void TButton::setResourceName(const string& name, int instance)
     sr[instance].bm = name;
 }
 
-void TButton::setBitmapJusification(int j, int x, int y, int instance)
+int TButton::getBitmapJustification(int* x, int* y, int instance)
 {
-    DECL_TRACER("TButton::setBitmapJusification(int j, int instance)");
+    DECL_TRACER("TButton::getBitmapJustification(int* x, int* y, int instance)");
+
+    if (instance < 0 || instance >= (int)sr.size())
+    {
+        MSG_ERROR("Invalid instance " << (instance + 1));
+        return -1;
+    }
+
+    if (x)
+        *x = sr[instance].bx;
+
+    if (y)
+        *y = sr[instance].by;
+
+    return sr[instance].jb;
+}
+
+void TButton::setBitmapJustification(int j, int x, int y, int instance)
+{
+    DECL_TRACER("TButton::setBitmapJustification(int j, int instance)");
 
     if (j < 0 || j > 9 || instance < 0 || instance >= (int)sr.size())
         return;
 
-    if (instance == 0)
+    if (instance < 0)
     {
         for (size_t i = 0; i < sr.size(); i++)
         {
@@ -1199,6 +1233,25 @@ void TButton::setBitmapJusification(int j, int x, int y, int instance)
     }
 }
 
+int TButton::getIconJustification(int* x, int* y, int instance)
+{
+    DECL_TRACER("TButton::getIconJustification(int* x, int* y, int instance)");
+
+    if (instance < 0 || instance >= (int)sr.size())
+    {
+        MSG_ERROR("Invalid instance " << (instance + 1));
+        return -1;
+    }
+
+    if (x)
+        *x = sr[instance].ix;
+
+    if (y)
+        *y = sr[instance].iy;
+
+    return sr[instance].ji;
+}
+
 void TButton::setIconJustification(int j, int x, int y, int instance)
 {
     DECL_TRACER("TButton::setIconJustification(int j, int x, int y, int instance)");
@@ -1206,7 +1259,7 @@ void TButton::setIconJustification(int j, int x, int y, int instance)
     if (j < 0 || j > 9 || instance < 0 || instance >= (int)sr.size())
         return;
 
-    if (instance == 0)
+    if (instance < 0)
     {
         for (size_t i = 0; i < sr.size(); i++)
         {
@@ -1231,6 +1284,25 @@ void TButton::setIconJustification(int j, int x, int y, int instance)
     }
 }
 
+int TButton::getTextJustification(int* x, int* y, int instance)
+{
+    DECL_TRACER("TButton::getTextJustification(int* x, int* y, int instance)");
+
+    if (instance < 0 || instance >= (int)sr.size())
+    {
+        MSG_ERROR("Invalid instance " << (instance + 1));
+        return -1;
+    }
+
+    if (x)
+        *x = sr[instance].tx;
+
+    if (y)
+        *y = sr[instance].ty;
+
+    return sr[instance].jt;
+}
+
 void TButton::setTextJustification(int j, int x, int y, int instance)
 {
     DECL_TRACER("TButton::setTextJustification(int j, int x, int y, int instance)");
@@ -1238,7 +1310,7 @@ void TButton::setTextJustification(int j, int x, int y, int instance)
     if (j < 0 || j > 9 || instance < 0 || instance >= (int)sr.size())
         return;
 
-    if (instance == 0)
+    if (instance < 0)
     {
         for (size_t i = 0; i < sr.size(); i++)
         {

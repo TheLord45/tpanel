@@ -371,15 +371,25 @@ namespace Button
             int getChannelPort() { return cp; }
             int getLevelPort() { return lp; }
             int getLevelValue() { return lv; }
-            std::string getText(int inst=0) { return sr[inst].te; }
-            std::string getTextColor(int inst=0) { return sr[inst].ct; }
-            std::string getTextEffectColor(int inst=0) { return sr[inst].ec; }
-            std::string getFillColor(int inst=0) { return sr[inst].cf; }
-            std::string getBitmapName(int inst=0) { return sr[inst].bm; }
+            std::string& getText(int inst=0) { return sr[inst].te; }
+            std::string& getTextColor(int inst=0) { return sr[inst].ct; }
+            std::string& getTextEffectColor(int inst=0) { return sr[inst].ec; }
+            void setTextEffectColor(std::string& ec, int inst=0) { sr[inst].ec = ec; }
+            int getTextEffect(int inst=0) {return sr[inst].et; }
+            void setTextEffect(int et, int inst=0) { sr[inst].et = et; }
+            std::string& getFillColor(int inst=0) { return sr[inst].cf; }
+            std::string& getBitmapName(int inst=0) { return sr[inst].bm; }
             bool isSingleLine() { return ( dt.compare("multiple") != 0); }
             bool isMultiLine() { return ( dt.compare("multiple") == 0); }
             int getTextMaxChars() { return mt; }
             bool getTextWordWrap(int inst=0) { return (sr[inst].ww == 1); }
+            void setTextWordWrap(bool ww, int inst=0) { sr[inst].ww = (ww ? 1 : 0); }
+            int getFontIndex(int inst=0) { return sr[inst].fi; }
+            void setFontIndex(int fi, int inst=0) { sr[inst].fi = fi; }
+            int getIconIndex(int inst=0) { return sr[inst].ii; }
+            void setIconIndex(int ii, int inst=0) { sr[inst].ii = ii; }
+            std::string& getSound(int inst=0) { return sr[inst].sd; }
+            void setSound(std::string& sd, int inst=0) { sr[inst].sd = sd; }
             int getNumberInstances() { return (int)sr.size(); }
             int getActiveInstance() { return mActInstance; }
             ulong getHandle() { return mHandle; }
@@ -431,14 +441,18 @@ namespace Button
              * @return TRUE if no errors occures, otherwise FALSE.
              */
             bool setOpacity(int op, int instance);
+            int getOpacity(int inst=0) { return sr[inst-1].oo; }
             bool setWorWrap(bool state, int instance);
             bool setFont(int id, int instance);
             void setTop(int top);
             void setLeft(int left);
             void setLeftTop(int left, int top);
             void setResourceName(const std::string& name, int instance);
-            void setBitmapJusification(int j, int x, int y, int instance);
+            int getBitmapJustification(int *x, int *y, int instance);
+            void setBitmapJustification(int j, int x, int y, int instance);
+            int getIconJustification(int *x, int *y, int instance);
             void setIconJustification(int j, int x, int y, int instance);
+            int getTextJustification(int *x, int *y, int instance);
             void setTextJustification(int j, int x, int y, int instance);
             bool startAnimation(int start, int end, int time);
             /**
@@ -611,9 +625,18 @@ namespace Button
              * value for those buttons with a defined address range.
              * @param style     The name of the border style
              * @param instance  -1 = style for all instances
-             * >= 0 means the style is valid only for this instance.
+             * > 0 means the style is valid only for this instance.
              */
             bool setBorderStyle(const std::string& style, int instance=-1);
+            /**
+             * Retrieves the border style, if any, of the instance \p instance
+             * and returns it.
+             * @param instance  The instance from where the border style is
+             *                  wanted. This value must be between 1 and the
+             *                  number of available instances.
+             * @return The border style if there is any or an empty string.
+             */
+            std::string getBorderStyle(int instance=-1);
             /**
              * Set the bargraph upper limit. Range = 1 to 65535.
              * @param limit the new limit
