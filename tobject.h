@@ -69,8 +69,9 @@ class TObject
             int height{0};
             QPropertyAnimation *animation{nullptr};
             ANIMATION_t animate;
+            bool aniDirection{false};
             WId wid{0};                     // Used to identify a QTextEdit or QLineEdit
-            bool remove{false};
+            std::atomic<bool> remove{false};// Object is marked for remove. Used with animation.
             OBJECT_t *next{nullptr};
         }OBJECT_t;
 
@@ -85,6 +86,7 @@ class TObject
         OBJECT_t *findNextChild(ulong handle);
         OBJECT_t *getMarkedRemove();
         OBJECT_t *getNextMarkedRemove(OBJECT_t *obj);
+        void cleanMarked();
         void removeAllChilds(ulong handle);
         void removeObject(ulong handle);
 
@@ -96,8 +98,6 @@ class TObject
         }
 
         static std::string objectToString(OBJECT_TYPE o);
-
-    protected:
         void dropContent(OBJECT_t *obj);
 
     private:

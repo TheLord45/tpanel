@@ -1095,6 +1095,68 @@ void TButton::setActiveInstance(int inst)
     mActInstance = inst;
 }
 
+void TButton::setDynamic(int d, int inst)
+{
+    DECL_TRACER("TButton::setDynamic(int d, int inst)");
+
+    if (inst >= (int)sr.size())
+    {
+        MSG_ERROR("Instance is out of size!");
+        return;
+    }
+
+    bool dyn = (d != 0) ? true : false;
+
+    if (inst < 0)
+    {
+        vector<SR_T>::iterator iter;
+        int instance = 0;
+
+        for (iter = sr.begin(); iter != sr.end(); ++iter)
+        {
+            bool old = iter->dynamic;
+            iter->dynamic = dyn;
+
+            if (old && old != dyn && mActInstance == instance)
+            {
+                THR_REFRESH_t *thref = _findResource(mHandle, getParent(), bi);
+
+                if (thref)
+                {
+                    TImageRefresh *mImageRefresh = thref->mImageRefresh;
+
+                    if (mImageRefresh)
+                        mImageRefresh->stop();
+                }
+
+                makeElement(instance);
+            }
+
+            instance++;
+        }
+    }
+    else
+    {
+        bool old = sr[inst].dynamic;
+        sr[inst].dynamic = dyn;
+
+        if (old && old != dyn && mActInstance == inst)
+        {
+            THR_REFRESH_t *thref = _findResource(mHandle, getParent(), bi);
+
+            if (thref)
+            {
+                TImageRefresh *mImageRefresh = thref->mImageRefresh;
+
+                if (mImageRefresh)
+                    mImageRefresh->stop();
+            }
+
+            makeElement(inst);
+        }
+    }
+}
+
 bool TButton::setOpacity(int op, int instance)
 {
     DECL_TRACER("TButton::setOpacity(int op, int instance)");

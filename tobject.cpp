@@ -26,6 +26,10 @@
 #include "tobject.h"
 #include "terror.h"
 
+using std::string;
+
+std::mutex mutex_obj;
+
 TObject::TObject()
 {
     DECL_TRACER("TObject::TObject()");
@@ -62,6 +66,8 @@ void TObject::dropContent(OBJECT_t* obj)
 {
     DECL_TRACER("TObject::dropContent(OBJECT_t* obj)");
 
+    mutex_obj.lock();
+
     try
     {
         switch (obj->type)
@@ -70,7 +76,6 @@ void TObject::dropContent(OBJECT_t* obj)
             case OBJ_INPUT:
                 if (obj->object.multitext)
                 {
-    //                delete obj->object.text;
                     obj->object.multitext = nullptr;
                 }
 
@@ -83,7 +88,6 @@ void TObject::dropContent(OBJECT_t* obj)
             case OBJ_BUTTON:
                 if (obj->object.label)
                 {
-    //                delete obj->object.label;
                     obj->object.label = nullptr;
                 }
             break;
@@ -117,12 +121,15 @@ void TObject::dropContent(OBJECT_t* obj)
     {
         MSG_ERROR("Error freeing an object: " << e.what());
     }
+
+    mutex_obj.unlock();
 }
 
 TObject::OBJECT_t *TObject::addObject()
 {
     DECL_TRACER("TObject::addObject()");
 
+    mutex_obj.lock();
     OBJECT_t *obj = new OBJECT_t;
     obj->next = nullptr;
     obj->object.vwidget = nullptr;
@@ -144,6 +151,7 @@ TObject::OBJECT_t *TObject::addObject()
         p->next = obj;
     }
 
+    mutex_obj.unlock();
     return obj;
 }
 
@@ -262,6 +270,7 @@ void TObject::removeObject(ulong handle)
 {
     DECL_TRACER("TObject::removeObject(ulong handle)");
 
+    mutex_obj.lock();
     OBJECT_t *obj = mObject;
     OBJECT_t *prev = nullptr;
 
@@ -280,18 +289,22 @@ void TObject::removeObject(ulong handle)
                 delete obj;
             }
 
+            mutex_obj.unlock();
             return;
         }
 
         prev = obj;
         obj = obj->next;
     }
+
+    mutex_obj.unlock();
 }
 
 void TObject::removeAllChilds(ulong handle)
 {
     DECL_TRACER("TObject::removeAllChilds(ulong handle)");
 
+    mutex_obj.lock();
     OBJECT_t *obj = mObject;
     OBJECT_t *prev = nullptr;
 
@@ -317,9 +330,48 @@ void TObject::removeAllChilds(ulong handle)
         prev = obj;
         obj = obj->next;
     }
+
+    mutex_obj.unlock();
 }
 
-std::string TObject::objectToString(TObject::OBJECT_TYPE o)
+void TObject::cleanMarked()
+{
+    DECL_TRACER("TObject::cleanMarked()");
+
+    mutex_obj.lock();
+    OBJECT_t *obj = mObject;
+    OBJECT_t *prev = nullptr;
+
+    while (obj)
+    {
+        if (obj->remove && (!obj->animation || obj->animation->state() != QAbstractAnimation::Running))
+        {
+            if (obj->type == OBJ_SUBPAGE && obj->object.widget)
+                delete obj->object.widget;
+
+            if (!prev)
+            {
+                mObject = obj->next;
+                delete obj;
+                obj = mObject;
+                continue;
+            }
+            else
+            {
+                prev->next = obj->next;
+                delete obj;
+                obj = prev;
+            }
+        }
+
+        prev = obj;
+        obj = obj->next;
+    }
+
+    mutex_obj.unlock();
+}
+
+string TObject::objectToString(TObject::OBJECT_TYPE o)
 {
     switch(o)
     {
@@ -332,5 +384,5 @@ std::string TObject::objectToString(TObject::OBJECT_TYPE o)
         case OBJ_VIDEO:   return "VIDEO"; break;
     }
 
-    return std::string();   // Should not happen but is needed to satisfy the compiler.
+    return string();   // Should not happen but is needed to satisfy the compiler.
 }

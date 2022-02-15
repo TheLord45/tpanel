@@ -115,6 +115,8 @@ class TAmxCommands : public TValidateFile
         std::vector<MAP_T> findButtons(int port, std::vector<int>& channels, MAP_TYPE mt = TYPE_AM);
         std::vector<MAP_T> findButtonByName(const std::string& name);
         std::vector<MAP_T> findBargraphs(int port, std::vector<int>& channels);
+        std::vector<std::string> findSounds();
+        bool soundExist(const std::string sname);
         void registerCommand(std::function<void (int port, std::vector<int>& channels, std::vector<std::string>& pars)> command, const std::string& name);
 
     protected:

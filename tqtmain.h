@@ -48,7 +48,7 @@ Q_DECLARE_METATYPE(size_t)
 
 int qtmain(int argc, char **argv, TPageManager *pmanager);
 
-class MainWindow : public QMainWindow, TObject, TQManageQueue
+class MainWindow : public QMainWindow, TQManageQueue
 {
     Q_OBJECT
 
@@ -134,7 +134,7 @@ class MainWindow : public QMainWindow, TObject, TQManageQueue
         void playShowList();
         int scale(int value);
         bool isScaled() { return (mScaleFactor != 1.0); }
-        void startAnimation(OBJECT_t *obj, ANIMATION_t& ani, bool in = true);
+        void startAnimation(TObject::OBJECT_t *obj, ANIMATION_t& ani, bool in = true);
 
         void _displayButton(ulong handle, ulong parent, unsigned char* buffer, int width, int height, int pixline, int left, int top);
         void _setVisible(ulong handle, bool state);
@@ -167,7 +167,7 @@ class MainWindow : public QMainWindow, TObject, TQManageQueue
         std::string mFileConfig;            // Path and file name of the config file
         bool mHasFocus{true};               // If this is FALSE, no output to sceen is allowed.
         std::atomic<double> mScaleFactor{1.0}; // The actual scale factor
-        std::atomic<OBJECT_t *> mLastObject{nullptr};     // This is for the hide effect of widgets.
+        std::atomic<TObject::OBJECT_t *> mLastObject{nullptr};     // This is for the hide effect of widgets.
         TQKeyboard *mQKeyboard{nullptr};    // Pointer to an active virtual keyboard
         TQKeypad *mQKeypad{nullptr};        // Pointer to an active virtual keypad
         bool mKeyboard{false};              // TRUE = keyboard is visible

@@ -78,6 +78,7 @@ extern bool _restart_;                          //!< If this is set to true then
 extern TPageManager *gPageManager;              //!< The pointer to the global defined main class.
 std::mutex draw_mutex;                          //!< We're using threads and need to block execution sometimes
 static bool isRunning = false;                  //!< TRUE = the pageManager was started.
+TObject *gObject = nullptr;                     //!< Internal used pointer to a TObject class. (Necessary because of threads!)
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
 static double gScale = 1.0;                     //!< Global variable holding the scale factor.
 static int gFullWidth = 0;                      //!< Global variable holding the width of the AMX screen. This is used to calculate the scale factor for the settings dialog.
@@ -87,6 +88,8 @@ using std::bind;
 using std::pair;
 using std::string;
 using std::vector;
+
+string _NO_OBJECT = "The global class TObject is not available!";
 
 /**
  * @brief qtmain is used here as the entry point for the surface.
@@ -249,6 +252,8 @@ MainWindow::MainWindow()
 {
     DECL_TRACER("MainWindow::MainWindow()");
 
+    gObject = new TObject;
+
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
     setAttribute(Qt::WA_AcceptTouchEvents, true);   // We accept touch events
     grabGesture(Qt::PinchGesture);                  // We use a pinch gesture to open the settings dialog
@@ -263,6 +268,8 @@ MainWindow::MainWindow()
         MSG_INFO("Orientation set to landscape mode.");
         _setOrientation(O_LANDSCAPE);
     }
+#else
+    setWindowIcon(QIcon("logo.png"));
 #endif
     if (!gPageManager)
     {
@@ -418,6 +425,12 @@ MainWindow::~MainWindow()
     {
         removeToolBar(mToolbar);
         mToolbar = nullptr;
+    }
+
+    if (gObject)
+    {
+        delete gObject;
+        gObject = nullptr;
     }
 
     isRunning = false;
@@ -900,27 +913,33 @@ void MainWindow::animationFinished()
 {
     DECL_TRACER("MainWindow::animationFinished()");
 
-    OBJECT_t *obj = getMarkedRemove();
+    if (!gObject)
+    {
+        MSG_ERROR(_NO_OBJECT);
+        return;
+    }
+
+    TObject::OBJECT_t *obj = gObject->getMarkedRemove();
 
     while (obj)
     {
         if (obj->animation && obj->animation->state() != QAbstractAnimation::Running)
             break;
 
-        obj = getNextMarkedRemove(obj);
+        obj = gObject->getNextMarkedRemove(obj);
     }
 
     if (obj && obj->animation)
     {
-        MSG_DEBUG("Dropping object " << handleToString(obj->handle));
+        MSG_DEBUG("Dropping object " << TObject::handleToString(obj->handle));
         delete obj->animation;
         obj->animation = nullptr;
-        dropContent(obj);
+        gObject->dropContent(obj);
 
         if (mLastObject == obj)
             mLastObject = nullptr;
 
-        removeObject(obj->handle);
+        gObject->removeObject(obj->handle);
     }
     else
     {
@@ -940,9 +959,15 @@ void MainWindow::textChangedMultiLine()
         return;
     }
 
+    if (!gObject)
+    {
+        MSG_ERROR(_NO_OBJECT);
+        return;
+    }
+
     QString text = edit->toPlainText();
     WId id = edit->winId();
-    OBJECT_t *obj = findObject(id);
+    TObject::OBJECT_t *obj = gObject->findObject(id);
 
     if (!obj)
     {
@@ -967,9 +992,15 @@ void MainWindow::textSingleLineReturn()
         return;
     }
 
+    if (!gObject)
+    {
+        MSG_ERROR(_NO_OBJECT);
+        return;
+    }
+
     QString text = edit->text();
     WId id = edit->winId();
-    OBJECT_t *obj = findObject(id);
+    TObject::OBJECT_t *obj = gObject->findObject(id);
 
     if (!obj)
     {
@@ -1113,7 +1144,7 @@ void MainWindow::_setVisible(ulong handle, bool state)
     if (prg_stopped)
         return;
 
-    MSG_DEBUG("Object " << handleToString(handle) << " marked for " << (state ? "VISIBLE" : "INVISIBLE") << " state.");
+    MSG_DEBUG("Object " << TObject::handleToString(handle) << " marked for " << (state ? "VISIBLE" : "INVISIBLE") << " state.");
     emit sigSetVisible(handle, state);
 }
 
@@ -1362,31 +1393,60 @@ void MainWindow::doReleaseButton()
 
 void MainWindow::displayButton(ulong handle, ulong parent, QByteArray buffer, int width, int height, int pixline, int left, int top)
 {
-    draw_mutex.lock();
     DECL_TRACER("MainWindow::displayButton(ulong handle, unsigned char* buffer, size_t size, int width, int height, int pixline, int left, int top)");
+
+    if (!gObject)
+    {
+        MSG_ERROR(_NO_OBJECT);
+        return;
+    }
+
+    draw_mutex.lock();
 
     if (isScaled())
     {
         MSG_DEBUG("Scaling to factor " << mScaleFactor);
     }
 
-    OBJECT_t *obj = findObject(handle);
-    OBJECT_t *par = findObject(parent);
-    MSG_TRACE("Processing button " << handleToString(handle) << " from parent " << handleToString(parent));
+    TObject::OBJECT_t *obj = gObject->findObject(handle);
+    TObject::OBJECT_t *par = gObject->findObject(parent);
+    MSG_TRACE("Processing button " << TObject::handleToString(handle) << " from parent " << TObject::handleToString(parent));
 
     if (!par)
     {
         if (TStreamError::checkFilter(HLOG_DEBUG))
-            MSG_WARNING("Button " << handleToString(handle) << " has no parent (" << handleToString(parent) << ")! Ignoring it.");
+            MSG_WARNING("Button " << TObject::handleToString(handle) << " has no parent (" << TObject::handleToString(parent) << ")! Ignoring it.");
 
+        draw_mutex.unlock();
+        return;
+    }
+
+    if (par->animation && !par->aniDirection)
+    {
+        if (par->animation->state() == QAbstractAnimation::Running)
+        {
+            MSG_WARNING("Object " << TObject::handleToString(parent) << " is busy with an animation!");
+            par->animation->stop();
+        }
+        else
+        {
+            MSG_WARNING("Object " << TObject::handleToString(parent) << " has not finished the animation!");
+        }
+
+        draw_mutex.unlock();
+        return;
+    }
+    else if (par->remove)
+    {
+        MSG_WARNING("Object " << TObject::handleToString(parent) << " is marked for remove. Will not draw image!");
         draw_mutex.unlock();
         return;
     }
 
     if (!obj)
     {
-        MSG_DEBUG("Adding new object " << handleToString(handle) << " ...");
-        obj = addObject();
+        MSG_DEBUG("Adding new object " << TObject::handleToString(handle) << " ...");
+        obj = gObject->addObject();
 
         if (!obj)
         {
@@ -1396,14 +1456,14 @@ void MainWindow::displayButton(ulong handle, ulong parent, QByteArray buffer, in
             return;
         }
 
-        obj->type = OBJ_BUTTON;
+        obj->type = TObject::OBJ_BUTTON;
         obj->handle = handle;
         obj->width = scale(width);
         obj->height = scale(height);
         obj->left = scale(left);
         obj->top = scale(top);
 
-        if (par->type == OBJ_PAGE)
+        if (par->type == TObject::OBJ_PAGE)
             obj->object.label = new QLabel("", mBackground);
         else
             obj->object.label = new QLabel("", par->object.widget);
@@ -1415,45 +1475,59 @@ void MainWindow::displayButton(ulong handle, ulong parent, QByteArray buffer, in
         obj->object.label->setAttribute(Qt::WA_TransparentForMouseEvents);
     }
     else
-        MSG_DEBUG("Object " << handleToString(handle) << " of type " << objectToString(obj->type) << " found!");
-
-//    MSG_DEBUG("Geometry: l:" << obj->left << ", t:" << obj->top << ", w:" << obj->width << ", h:" << obj->height);
+        MSG_DEBUG("Object " << TObject::handleToString(handle) << " of type " << TObject::objectToString(obj->type) << " found!");
 
     try
     {
         if (buffer.size() > 0 && pixline > 0)
         {
-            MSG_DEBUG("Setting image for " << handleToString(handle) << " ...");
+            MSG_DEBUG("Setting image for " << TObject::handleToString(handle) << " ...");
             QImage img((unsigned char *)buffer.data(), width, height, pixline, QImage::Format_ARGB32);  // Original size
+
+            if (img.isNull() || !img.valid(width-1, height-1))
+            {
+                MSG_ERROR("Unable to create a valid image!");
+                draw_mutex.unlock();
+                return;
+            }
+
             QSize size(obj->width, obj->height);
-            QPixmap pixmap(size);
+            QPixmap pixmap;
+            bool ret = false;
 
             if (isScaled())
-                pixmap.convertFromImage(img.scaled(size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation)); // Scaled size
+                ret = pixmap.convertFromImage(img.scaled(size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation)); // Scaled size
             else
-                pixmap.convertFromImage(img);
+                ret = pixmap.convertFromImage(img);
 
-            obj->object.label->setPixmap(pixmap);
+            if (!ret || pixmap.isNull())
+            {
+                MSG_ERROR("Unable to create a pixmap out of an image!");
+                draw_mutex.unlock();
+                return;
+            }
+
+            if (obj->object.label)
+                obj->object.label->setPixmap(pixmap);
+            else
+            {
+                MSG_WARNING("Object " << TObject::handleToString(handle) << " does not exist any more!");
+            }
         }
 
-    //    if (mHasFocus)
+        if (obj->object.label)
             obj->object.label->show();
-    /*    else
-        {
-            if (par->type == OBJ_PAGE || par->type == OBJ_SUBPAGE)
-                mToShow.insert(std::pair<ulong, QWidget *>(par->handle, par->object.widget));
-        }
-    */
     }
     catch(std::exception& e)
     {
-        MSG_ERROR("Error drawing button " << handleToString(handle) << ": " << e.what());
+        MSG_ERROR("Error drawing button " << TObject::handleToString(handle) << ": " << e.what());
     }
     catch(...)
     {
         MSG_ERROR("Unexpected exception occured [MainWindow::displayButton()]");
     }
 
+    gObject->cleanMarked();     // We want to be sure to have no dead entries.
     draw_mutex.unlock();
 }
 
@@ -1461,41 +1535,54 @@ void MainWindow::SetVisible(ulong handle, bool state)
 {
     DECL_TRACER("MainWindow::SetVisible(ulong handle, bool state)");
 
-    OBJECT_t *obj = findObject(handle);
-
-    if (!obj)
+    if (!gObject)
     {
-        MSG_ERROR("Object " << handleToString(handle) << " not found!");
+        MSG_ERROR(_NO_OBJECT);
         return;
     }
 
-    if (obj->type == OBJ_BUTTON && obj->object.label)
+    TObject::OBJECT_t *obj = gObject->findObject(handle);
+
+    if (!obj)
     {
-        MSG_DEBUG("Setting object " << handleToString(handle) << " visibility to " << (state ? "TRUE" : "FALSE"));
+        MSG_ERROR("Object " << TObject::handleToString(handle) << " not found!");
+        return;
+    }
+
+    if (obj->type == TObject::OBJ_BUTTON && obj->object.label)
+    {
+        MSG_DEBUG("Setting object " << TObject::handleToString(handle) << " visibility to " << (state ? "TRUE" : "FALSE"));
         obj->object.label->setVisible(state);
     }
     else
     {
-        MSG_DEBUG("Ignoring non button object " << handleToString(handle));
+        MSG_DEBUG("Ignoring non button object " << TObject::handleToString(handle));
     }
 }
 
 void MainWindow::setPage(ulong handle, int width, int height)
 {
-    draw_mutex.lock();
     DECL_TRACER("MainWindow::setPage(ulong handle, int width, int height)");
+
+    if (!gObject)
+    {
+        MSG_ERROR(_NO_OBJECT);
+        return;
+    }
+
+    draw_mutex.lock();
 
     QSize qs = menuBar()->sizeHint();
     this->setMinimumSize(scale(width), scale(height) + qs.height());
-    OBJECT_t *obj = findObject(handle);
+    TObject::OBJECT_t *obj = gObject->findObject(handle);
 
     if (!obj)
     {
-        obj = addObject();
+        obj = gObject->addObject();
 
         if (!obj)
         {
-            MSG_ERROR("Error crating an object for handle " << handleToString(handle));
+            MSG_ERROR("Error crating an object for handle " << TObject::handleToString(handle));
             TError::setError();
             draw_mutex.unlock();
             return;
@@ -1504,7 +1591,7 @@ void MainWindow::setPage(ulong handle, int width, int height)
         obj->handle = handle;
         obj->height = scale(height);
         obj->width = scale(width);
-        obj->type = OBJ_PAGE;
+        obj->type = TObject::OBJ_PAGE;
     }
 
     bool newBackground = false;
@@ -1554,12 +1641,19 @@ void MainWindow::setSubPage(ulong handle, int left, int top, int width, int heig
     draw_mutex.lock();
     DECL_TRACER("MainWindow::setSubPage(ulong handle, int left, int top, int width, int height)");
 
+    if (!gObject)
+    {
+        MSG_ERROR(_NO_OBJECT);
+        draw_mutex.unlock();
+        return;
+    }
+
     if (isScaled())
     {
         MSG_DEBUG("Scaling to factor " << mScaleFactor);
     }
 
-    OBJECT_t *obj = addObject();
+    TObject::OBJECT_t *obj = gObject->addObject();
 
     if (!obj)
     {
@@ -1574,7 +1668,7 @@ void MainWindow::setSubPage(ulong handle, int left, int top, int width, int heig
     int scWidth = scale(width);
     int scHeight = scale(height);
 
-    obj->type = OBJ_SUBPAGE;
+    obj->type = TObject::OBJ_SUBPAGE;
     obj->handle = handle;
     obj->object.widget = new QWidget(centralWidget());
     obj->object.widget->setAutoFillBackground(true);
@@ -1593,15 +1687,9 @@ void MainWindow::setSubPage(ulong handle, int left, int top, int width, int heig
     QPalette palette;
     palette.setBrush(QPalette::Window, QBrush(pix));
     obj->object.widget->setPalette(palette);
+    obj->aniDirection = true;
 
-//    if (mHasFocus)
-//    {
-        startAnimation(obj, animate);
-//        obj->object.widget->show();
-/*    }
-    else
-        mToShow.insert(std::pair<ulong, QWidget *>(handle, obj->object.widget));
-*/
+    startAnimation(obj, animate);
     draw_mutex.unlock();
 }
 
@@ -1610,20 +1698,28 @@ void MainWindow::setBackground(ulong handle, QByteArray image, size_t rowBytes, 
     draw_mutex.lock();
     DECL_TRACER("MainWindow::setBackground(ulong handle, QByteArray image, size_t rowBytes, ulong color)");
 
-    OBJECT_t *obj = findObject(handle);
-
-    if (!obj)
+    if (!gObject)
     {
-        MSG_WARNING("No object " << handleToString(handle) << " found!");
+        MSG_ERROR(_NO_OBJECT);
         draw_mutex.unlock();
         return;
     }
 
-    MSG_TRACE("Object " << handleToString(handle) << " of type " << objectToString(obj->type) << " found!");
 
-    if (obj->type == OBJ_BUTTON || obj->type == OBJ_SUBPAGE)
+    TObject::OBJECT_t *obj = gObject->findObject(handle);
+
+    if (!obj)
     {
-        MSG_DEBUG("Processing object " << objectToString(obj->type));
+        MSG_WARNING("No object " << TObject::handleToString(handle) << " found!");
+        draw_mutex.unlock();
+        return;
+    }
+
+    MSG_TRACE("Object " << TObject::handleToString(handle) << " of type " << gObject->objectToString(obj->type) << " found!");
+
+    if (obj->type == TObject::OBJ_BUTTON || obj->type == TObject::OBJ_SUBPAGE)
+    {
+        MSG_DEBUG("Processing object " << gObject->objectToString(obj->type));
         QPixmap pix(obj->width, obj->height);
         pix.fill(QColor::fromRgba(qRgba(TColor::getRed(color),TColor::getGreen(color),TColor::getBlue(color),TColor::getAlpha(color))));
 
@@ -1641,7 +1737,7 @@ void MainWindow::setBackground(ulong handle, QByteArray image, size_t rowBytes, 
                 pix.convertFromImage(img);
         }
 
-        if (obj->type == OBJ_BUTTON)
+        if (obj->type == TObject::OBJ_BUTTON)
         {
             obj->object.label->setPixmap(pix);
 
@@ -1655,13 +1751,10 @@ void MainWindow::setBackground(ulong handle, QByteArray image, size_t rowBytes, 
             palette.setBrush(QPalette::Window, QBrush(pix));
             obj->object.widget->setPalette(palette);
 
-//            if (mHasFocus)
-                obj->object.widget->show();
-//            else
-//                mToShow.insert(std::pair<ulong, QWidget *>(handle, obj->object.widget));
+            obj->object.widget->show();
         }
     }
-    else if (obj->type == OBJ_PAGE)
+    else if (obj->type == TObject::OBJ_PAGE)
     {
         bool newBackground = false;
 
@@ -1711,8 +1804,15 @@ void MainWindow::dropPage(ulong handle)
     draw_mutex.lock();
     DECL_TRACER("MainWindow::dropPage(ulong handle)");
 
-    removeAllChilds(handle);
-    removeObject(handle);
+    if (!gObject)
+    {
+        MSG_ERROR(_NO_OBJECT);
+        draw_mutex.unlock();
+        return;
+    }
+
+    gObject->removeAllChilds(handle);
+    gObject->removeObject(handle);
 
     if (mBackground)
     {
@@ -1728,23 +1828,31 @@ void MainWindow::dropSubPage(ulong handle)
     draw_mutex.lock();
     DECL_TRACER("MainWindow::dropSubPage(ulong handle)");
 
-    removeAllChilds(handle);
-    OBJECT_t *obj = findObject(handle);
-
-    if (!obj)
+    if (!gObject)
     {
-        MSG_WARNING("Object " << handleToString(handle) << " does not exist. Ignoring!");
+        MSG_ERROR(_NO_OBJECT);
         draw_mutex.unlock();
         return;
     }
 
+    gObject->removeAllChilds(handle);
+    TObject::OBJECT_t *obj = gObject->findObject(handle);
+
+    if (!obj)
+    {
+        MSG_WARNING("Object " << TObject::handleToString(handle) << " does not exist. Ignoring!");
+        draw_mutex.unlock();
+        return;
+    }
+
+    obj->aniDirection = false;
     startAnimation(obj, obj->animate, false);
-    OBJECT_t *o = mLastObject;
+    TObject::OBJECT_t *o = mLastObject;
 
     if (obj->animate.hideEffect == SE_NONE || !o)
     {
-        dropContent(obj);
-        removeObject(handle);
+        gObject->dropContent(obj);
+        gObject->removeObject(handle);
     }
 
     draw_mutex.unlock();
@@ -1755,22 +1863,29 @@ void MainWindow::dropButton(ulong handle)
     draw_mutex.lock();
     DECL_TRACER("MainWindow::dropButton(ulong handle)");
 
-    OBJECT_t *obj = findObject(handle);
-
-    if (!obj)
+    if (!gObject)
     {
-        MSG_WARNING("Object " << handleToString(handle) << " does not exist. Ignoring!");
+        MSG_ERROR(_NO_OBJECT);
         draw_mutex.unlock();
         return;
     }
 
-    if (obj->type == OBJ_BUTTON && obj->object.label)
+    TObject::OBJECT_t *obj = gObject->findObject(handle);
+
+    if (!obj)
+    {
+        MSG_WARNING("Object " << TObject::handleToString(handle) << " does not exist. Ignoring!");
+        draw_mutex.unlock();
+        return;
+    }
+
+    if (obj->type == TObject::OBJ_BUTTON && obj->object.label)
     {
         obj->object.label->close();
         obj->object.label = nullptr;
     }
 
-    removeObject(handle);
+    gObject->removeObject(handle);
     draw_mutex.unlock();
 }
 
@@ -1779,9 +1894,16 @@ void MainWindow::playVideo(ulong handle, ulong parent, int left, int top, int wi
     draw_mutex.lock();
     DECL_TRACER("MainWindow::playVideo(ulong handle, const string& url, const string& user, const string& pw))");
 
-    OBJECT_t *obj = findObject(handle);
-    OBJECT_t *par = findObject(parent);
-    MSG_TRACE("Processing button " << handleToString(handle) << " from parent " << handleToString(parent));
+    if (!gObject)
+    {
+        MSG_ERROR(_NO_OBJECT);
+        draw_mutex.unlock();
+        return;
+    }
+
+    TObject::OBJECT_t *obj = gObject->findObject(handle);
+    TObject::OBJECT_t *par = gObject->findObject(parent);
+    MSG_TRACE("Processing button " << TObject::handleToString(handle) << " from parent " << TObject::handleToString(parent));
 
     if (!par)
     {
@@ -1793,7 +1915,7 @@ void MainWindow::playVideo(ulong handle, ulong parent, int left, int top, int wi
     if (!obj)
     {
         MSG_DEBUG("Adding new video object ...");
-        obj = addObject();
+        obj = gObject->addObject();
 
         if (!obj)
         {
@@ -1803,7 +1925,7 @@ void MainWindow::playVideo(ulong handle, ulong parent, int left, int top, int wi
             return;
         }
 
-        obj->type = OBJ_VIDEO;
+        obj->type = TObject::OBJ_VIDEO;
         obj->handle = handle;
         obj->width = width;
         obj->height = height;
@@ -1813,7 +1935,7 @@ void MainWindow::playVideo(ulong handle, ulong parent, int left, int top, int wi
         obj->object.vwidget->installEventFilter(this);
     }
     else
-        MSG_DEBUG("Object " << handleToString(handle) << " of type " << objectToString(obj->type) << " found!");
+        MSG_DEBUG("Object " << TObject::handleToString(handle) << " of type " << gObject->objectToString(obj->type) << " found!");
 
     QMediaPlaylist *playlist = new QMediaPlaylist;
     QUrl qurl(url.c_str());
@@ -1829,16 +1951,19 @@ void MainWindow::playVideo(ulong handle, ulong parent, int left, int top, int wi
     obj->player->setPlaylist(playlist);
     obj->player->setVideoOutput(obj->object.vwidget);
 
-//    if (mHasFocus)
-//    {
-        obj->object.vwidget->show();
-        obj->player->play();
-//    }
+    obj->object.vwidget->show();
+    obj->player->play();
 }
 
 void MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, int height, size_t pixline)
 {
     DECL_TRACER("MainWindow::inputText(Button::TButton* button)");
+
+    if (!gObject)
+    {
+        MSG_ERROR(_NO_OBJECT);
+        return;
+    }
 
     if (!button)
     {
@@ -1848,9 +1973,9 @@ void MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, i
 
     ulong handle = button->getHandle();
     ulong parent = button->getParent();
-    OBJECT_t *obj = findObject(handle);
-    OBJECT_t *par = findObject(parent);
-    MSG_TRACE("Processing button " << handleToString(handle) << " from parent " << handleToString(parent));
+    TObject::OBJECT_t *obj = gObject->findObject(handle);
+    TObject::OBJECT_t *par = gObject->findObject(parent);
+    MSG_TRACE("Processing button " << TObject::handleToString(handle) << " from parent " << gObject->handleToString(parent));
 
     if (!par)
     {
@@ -1861,7 +1986,7 @@ void MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, i
     if (!obj)
     {
         MSG_DEBUG("Adding new input object ...");
-        obj = addObject();
+        obj = gObject->addObject();
 
         if (!obj)
         {
@@ -1870,7 +1995,7 @@ void MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, i
             return;
         }
 
-        obj->type = OBJ_INPUT;
+        obj->type = TObject::OBJ_INPUT;
         obj->handle = handle;
         obj->width = scale(width);
         obj->height = scale(height);
@@ -2002,7 +2127,7 @@ void MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, i
         }
     }
     else
-        MSG_DEBUG("Object " << handleToString(handle) << " of type " << objectToString(obj->type) << " found!");
+        MSG_DEBUG("Object " << TObject::handleToString(handle) << " of type " << gObject->objectToString(obj->type) << " found!");
 }
 
 void MainWindow::showKeyboard(const std::string& init, const std::string& prompt, bool priv)
@@ -2237,9 +2362,15 @@ int MainWindow::scale(int value)
     return (int)((double)value * mScaleFactor);
 }
 
-void MainWindow::startAnimation(OBJECT_t* obj, ANIMATION_t& ani, bool in)
+void MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool in)
 {
     DECL_TRACER("MainWindow::startAnimation(OBJECT_t* obj, ANIMATION_t& ani)");
+
+    if (!obj)
+    {
+        MSG_ERROR("Got no object to start the animation!");
+        return;
+    }
 
     SHOWEFFECT_t effect;
     int scLeft = obj->left;
@@ -2260,12 +2391,14 @@ void MainWindow::startAnimation(OBJECT_t* obj, ANIMATION_t& ani, bool in)
 
     if (effect == SE_FADE)
     {
+        MSG_DEBUG("Fading object " << TObject::handleToString(obj->handle) << (in ? " IN" : " OUT"));
         QGraphicsOpacityEffect *effect = new QGraphicsOpacityEffect(obj->object.widget);
         obj->object.widget->setGraphicsEffect(effect);
         obj->animation = new QPropertyAnimation(effect, "opacity");
     }
     else
     {
+        MSG_DEBUG("Moving object " << TObject::handleToString(obj->handle) << (in ? " IN" : " OUT"));
         obj->animation = new QPropertyAnimation(obj->object.widget);
         obj->animation->setTargetObject(obj->object.widget);
     }

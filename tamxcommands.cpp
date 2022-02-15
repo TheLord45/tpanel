@@ -524,6 +524,31 @@ vector<MAP_T> TAmxCommands::findBargraphs(int port, vector<int>& channels)
     return map;
 }
 
+vector<string> TAmxCommands::findSounds()
+{
+    DECL_TRACER("TAmxCommands::findSounds()");
+
+    return mMap.map_sm;
+}
+
+bool TAmxCommands::soundExist(const string sname)
+{
+    DECL_TRACER("TAmxCommands::soundExist(const string sname)");
+
+    if (mMap.map_sm.size() == 0)
+        return false;
+
+    vector<string>::iterator iter;
+
+    for (iter = mMap.map_sm.begin(); iter != mMap.map_sm.end(); ++iter)
+    {
+        if (iter->compare(sname) == 0)
+            return true;
+    }
+
+    return false;
+}
+
 bool TAmxCommands::parseCommand(int device, int port, const string& cmd)
 {
     DECL_TRACER("TAmxCommands::parseCommand(int device, int port, const string& cmd)");

@@ -390,6 +390,8 @@ namespace Button
             void setIconIndex(int ii, int inst=0) { sr[inst].ii = ii; }
             std::string& getSound(int inst=0) { return sr[inst].sd; }
             void setSound(std::string& sd, int inst=0) { sr[inst].sd = sd; }
+            int getDynamic(int inst=0) { return sr[inst].dynamic; }
+            void setDynamic(int d, int inst=-1);
             int getNumberInstances() { return (int)sr.size(); }
             int getActiveInstance() { return mActInstance; }
             ulong getHandle() { return mHandle; }

@@ -3,7 +3,12 @@ ChangeLog
 
 Release: 1.2.1
 ===============================================================================
-2022-02-14 Adding command ^BMC, ?BOP
+2022-02-15 Adding command ?BRD, ^BSM, ^BSO
+           Fixes a bug where a crash could happen when a fading or moving out
+           animation was running and an attempt to write an image to it was
+           made. Writing an image to such a subpage is suppressed now.
+
+2022-02-14 Adding command ^BMC, ?BOP, ^BOS
 
 2022-02-13 Adding G5 commands ^ABP, ^ADB, ^SOU, ^STP, ^TKP, ^PGE, ^PPA, ^PPF,
            ^PPG, ^PPK, ^PPM, ^PPN, ^PPT, ^PPX, ^UTF

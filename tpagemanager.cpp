@@ -279,13 +279,13 @@ TPageManager::TPageManager()
     REG_CMD(doBOP, "^BOP");     // Set the button opacity.
     REG_CMD(getBOP, "?BOP");    // Get the button opacity.
     REG_CMD(doBOR, "^BOR");     // Set a border to a specific border style.
-//    REG_CMD(doBOS, "^BOS");     // Set the button to display either a Video or Non-Video window.
+    REG_CMD(doBOS, "^BOS");     // Set the button to display either a Video or Non-Video window.
     REG_CMD(doBRD, "^BRD");     // Set the border of a button state/states.
-//    REG_CMD(getBRD, "?BRD");    // Get the border of a button state/states.
+    REG_CMD(getBRD, "?BRD");    // Get the border of a button state/states.
 //    REG_CMD(doBSF, "^BSF");     // Set the focus to the text area.
     REG_CMD(doBSP, "^BSP");     // Set the button size and position.
-//    REG_CMD(doBSM, "^BSM");     // Submit text for text area buttons.
-//    REG_CMD(doBSO, "^BSO");     // Set the sound played when a button is pressed.
+    REG_CMD(doBSM, "^BSM");     // Submit text for text area buttons.
+    REG_CMD(doBSO, "^BSO");     // Set the sound played when a button is pressed.
     REG_CMD(doBWW, "^BWW");     // Set the button word wrap feature to those buttons with a defined address range.
 //    REG_CMD(getBWW, "?BWW");    // Get the button word wrap feature to those buttons with a defined address range.
     REG_CMD(doCPF, "^CPF");     // Clear all page flips from a button.
@@ -4729,6 +4729,43 @@ void TPageManager::doBOR(int port, vector<int>& channels, vector<string>& pars)
     }
 }
 
+void TPageManager::doBOS(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doBOS(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.size() < 2)
+    {
+        MSG_ERROR("Expecting at least 2 parameters but got " << pars.size() << "! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    int btState = atoi(pars[0].c_str());
+    int videoState = atoi(pars[1].c_str());
+
+    vector<MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+
+            if (btState == 0)       // All instances?
+                bt->setDynamic(videoState);
+            else
+                bt->setDynamic(videoState, btState-1);
+        }
+    }
+}
+
 /**
  * Set the border of a button state/states.
  * The border names are available through the TPDesign4 border-name drop-down
@@ -4776,6 +4813,85 @@ void TPageManager::doBRD(int port, vector<int>& channels, vector<string>& pars)
             }
             else
                 bt->setBorderStyle(border, btState);
+        }
+    }
+}
+
+void TPageManager::getBRD(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::getBRD(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    int btState = atoi(pars[0].c_str());
+
+    vector<MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+
+            if (btState == 0)       // All instances?
+            {
+                int bst = bt->getNumberInstances();
+
+                for (int i = 0; i < bst; i++)
+                {
+                    string bname = bt->getBorderStyle(i);
+
+                    amx::ANET_SEND scmd;
+                    scmd.port = bt->getChannelPort();
+                    scmd.channel = bt->getChannelNumber();
+                    scmd.ID = scmd.channel;
+                    scmd.flag = 0;
+                    scmd.type = 1014;
+                    scmd.value1 = i + 1;    // instance
+                    scmd.value2 = bname.length();
+                    scmd.value3 = 0;
+                    scmd.msg = bname;
+                    scmd.MC = 0x008d;       // custom event
+
+                    if (gAmxNet)
+                        gAmxNet->sendCommand(scmd);
+                    else
+                        MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+                }
+            }
+            else
+            {
+                string bname = bt->getBorderStyle(btState-1);
+
+                amx::ANET_SEND scmd;
+                scmd.port = bt->getChannelPort();
+                scmd.channel = bt->getChannelNumber();
+                scmd.ID = scmd.channel;
+                scmd.flag = 0;
+                scmd.type = 1014;
+                scmd.value1 = btState;  // instance
+                scmd.value2 = bname.length();
+                scmd.value3 = 0;
+                scmd.msg = bname;
+                scmd.MC = 0x008d;       // custom event
+
+                if (gAmxNet)
+                    gAmxNet->sendCommand(scmd);
+                else
+                    MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+            }
         }
     }
 }
@@ -4905,6 +5021,102 @@ void TPageManager::doBSP(int port, vector<int>& channels, vector<string>& pars)
             }
 
             bt->setLeftTop(x, y);
+        }
+    }
+}
+
+/**
+ * Submit text for text area buttons. This command causes the text areas to
+ * send their text as strings to the NetLinx Master.
+ */
+void TPageManager::doBSM(int port, vector<int>& channels, vector<string>&)
+{
+    DECL_TRACER("TPageManager::doBSM(int port, vector<int>& channels, vector<string>& pars)");
+
+    TError::clear();
+    vector<MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+
+            if (bt->getButtonType() != Button::TEXT_INPUT && bt->getButtonType() != Button::GENERAL)
+                return;
+
+            amx::ANET_SEND scmd;
+            scmd.port = bt->getChannelPort();
+            scmd.channel = bt->getChannelNumber();
+            scmd.ID = scmd.channel;
+            scmd.msg = bt->getText(0);
+            scmd.MC = 0x008b;       // string value
+
+            if (gAmxNet)
+                gAmxNet->sendCommand(scmd);
+            else
+                MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+
+        }
+    }
+}
+
+/**
+ * Set the sound played when a button is pressed. If the sound name is blank
+ * the sound is then cleared. If the sound name is not matched, the button
+ * sound is not changed.
+ */
+void TPageManager::doBSO(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doBSO(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.size() < 2)
+    {
+        MSG_ERROR("Expecting 2 parameters but got " << pars.size() << "! Ignoring command.");
+        return;
+    }
+
+    if (!gPrjResources)
+        return;
+
+    TError::clear();
+    int btState = atoi(pars[0].c_str());
+    string sound = pars[1];
+
+    if (!soundExist(sound))
+        return;
+
+    vector<MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+
+            if (btState == 0)
+            {
+                int bst = bt->getNumberInstances();
+
+                for (int i = 0; i < bst; i++)
+                    bt->setSound(sound, i);
+            }
+            else
+                bt->setSound(sound, btState-1);
         }
     }
 }
