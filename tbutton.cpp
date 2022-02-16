@@ -1039,6 +1039,24 @@ bool TButton::setBargraphLowerLimit(int limit)
     return true;
 }
 
+bool TButton::setBargraphSliderColor(const string& color)
+{
+    DECL_TRACER("TButton::setBargraphSliderColor(const string& color, int inst)");
+
+    if (!TColor::isValidAMXcolor(color))
+    {
+        MSG_PROTOCOL("Invalid color >" << color << "< ignored!");
+        return false;
+    }
+
+    sc = color;
+
+    if (visible)
+        refresh();
+
+    return true;
+}
+
 bool TButton::setBitmap(const string& file, int instance)
 {
     DECL_TRACER("TButton::setBitmap(const string& file, int instance)");
@@ -1395,6 +1413,37 @@ void TButton::setTextJustification(int j, int x, int y, int instance)
             sr[instance].ty = y;
         }
     }
+}
+
+void TButton::setTextEffectColor(const string& ec, int inst)
+{
+    DECL_TRACER("TButton::setTextEffectColor(const string& ec, int inst)");
+
+    if ((size_t)inst >= sr.size())
+    {
+        MSG_ERROR("Instance " << inst << " does not exist!");
+        return;
+    }
+
+    if (!TColor::isValidAMXcolor(ec))
+    {
+        MSG_PROTOCOL("Invalid color >" << ec << "< ignored!");
+        return;
+    }
+
+    if (sr[inst].ec.compare(ec) == 0)
+        return;
+
+    if (inst < 0)
+    {
+        for (size_t i = 0; i < sr.size(); i++)
+            sr[i].ec = ec;
+    }
+    else
+        sr[inst].ec = ec;
+
+    if (visible)
+        makeElement(inst);
 }
 
 bool TButton::setWorWrap(bool state, int instance)
@@ -1787,9 +1836,9 @@ void TButton::addPushFunction(string& func, string& page)
                 pf.pfName = page;
                 pushFunc.push_back(pf);
             }
-        }
 
-        break;
+            break;
+        }
     }
 }
 

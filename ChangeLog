@@ -3,6 +3,9 @@ ChangeLog
 
 Release: 1.2.1
 ===============================================================================
+2022-02-16 Adding commands ?BWW, ?FON, ^GSC, ?ICO, ^JSB, ?JSB, ^JSI, ?JSI,
+           ^JST, ?JST, ABEEP, ADBEEP, ^TEC, ?TEC
+
 2022-02-15 Adding command ?BRD, ^BSM, ^BSO
            Fixes a bug where a crash could happen when a fading or moving out
            animation was running and an attempt to write an image to it was

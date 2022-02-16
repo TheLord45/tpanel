@@ -58,6 +58,22 @@ TColor::COLOR_T TColor::getAMXColor(const string& color)
         return TColor::COLOR_T();
     }
 
+    // Check if we've an index number
+    if (color.length() <= 2 && isdigit(color[0]))
+    {
+        int idx = atoi(color.c_str());
+
+        if (idx < 0 || idx > 88)
+            return TColor::COLOR_T();
+
+        PDATA_T pd = mPalette->findColor(idx);
+
+        if (!pd.name.empty())
+            return splitColors(pd);
+
+        return TColor::COLOR_T();
+    }
+
     TColor::COLOR_T ct;
     ct.red = (int)strtol(color.substr(pos+1, 2).c_str(), NULL, 16);
     ct.green = (int)strtol(color.substr(pos+3, 2).c_str(), NULL, 16);
@@ -246,6 +262,48 @@ std::vector<SkColor> TColor::colorRange(SkColor col, int width, int bandwidth, D
     }
 
     return colRange;
+}
+
+bool TColor::isValidAMXcolor(const string& color)
+{
+    DECL_TRACER("TColor::isValidAMXcolor(const string& color)");
+
+    if (color.empty())
+        return false;
+
+    size_t pos = color.find('#');
+
+    if (pos == string::npos)
+    {
+        if (!mPalette)
+        {
+            MSG_ERROR("No palette was set! First set a palette to be able to get any color!");
+            return false;
+        }
+
+        PDATA_T pd = mPalette->findColor(color);
+
+        if (!pd.name.empty())
+            return true;
+
+        return false;
+    }
+
+    // Check if we've an index number
+    if (color.length() <= 2 && isdigit(color[0]))
+    {
+        int idx = atoi(color.c_str());
+
+        if (idx < 0 || idx > 88)
+            return false;
+
+        return true;
+    }
+
+    if (color.length() >= 7)    // #RRGGBBAA
+        return true;
+
+    return false;
 }
 
 int TColor::setAlpha(ulong color, int alpha)

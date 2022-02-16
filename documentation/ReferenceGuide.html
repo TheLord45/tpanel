@@ -7,7 +7,7 @@
 	<meta name="author" content="Andreas Theofilu"/>
 	<meta name="created" content="2022-02-05T11:11:31.650719961"/>
 	<meta name="changedby" content="Andreas Theofilu"/>
-	<meta name="changed" content="2022-02-14T11:54:53.082270299"/>
+	<meta name="changed" content="2022-02-16T17:38:39.050654943"/>
 	<style type="text/css">
 		@page:first { margin: 2cm }
 		p { line-height: 115%; margin-bottom: 0.25cm; background: transparent }
@@ -86,7 +86,8 @@ guide</font></font></p>
 	<p style="line-height: 100%; margin-left: 0.5cm; margin-bottom: 0cm">
 	<a href="#__RefHeading___Toc1185_1462578860">Why AMX?	5</a></p>
 	<p style="line-height: 100%; margin-left: 1cm; margin-bottom: 0cm"><a href="#__RefHeading___Toc1187_1462578860">Old
-	<i>discontinued</i> equipment	5</a></p>
+	</a><a href="#__RefHeading___Toc1187_1462578860"><i>discontinued</i></a><a href="#__RefHeading___Toc1187_1462578860">
+	equipment	5</a></p>
 	<p style="line-height: 100%; margin-bottom: 0cm"><a href="#__RefHeading___Toc1189_1462578860">Programming	8</a></p>
 	<p style="line-height: 100%; margin-left: 0.5cm; margin-bottom: 0cm">
 	<a href="#__RefHeading___Toc1191_1462578860">Overview	8</a></p>
@@ -5382,6 +5383,77 @@ and are case insensitive:</p>
 		<tr></tr>
 		<tr></tr>
 		<tr valign="top">
+			<td width="9%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm"><pre class="western">^BMC</pre>
+			</td>
+			<td width="91%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm"><p>
+				Button copy command. Copy attributes of the source button to all
+				the destination buttons. Note that the source is a single button
+				state. Each state must be copied as a separate command. The
+				&lt;codes&gt; section represents what attributes will be copied.
+				All codes are 2 char pairs that can be separated by comma, space,
+				percent or just ran together.</p>
+				<p><b>Syntax</b>:</p>
+				<pre class="western"><font size="2" style="font-size: 10pt">&quot;'^BMC-&lt;vt addr range&gt;,&lt;button states range&gt;,&lt;source port&gt;,&lt;source address&gt;,&lt;source state&gt;,&lt;codes&gt;'&quot;</font></pre><p>
+				<b>Variable</b>:</p>
+				<ul>
+					<li><p>variable text address range = 1 - 4000.</p>
+					<li><p>button states range = 1 - 256 for multi-state buttons (0
+					= All states, for General buttons 1 = Off state and 2 = On
+					state).</p>
+					<li><p>source port = 1 - 100.</p>
+					<li><p>source address = 1 - 4000.</p>
+					<li><p>source state = 1 - 256.</p>
+					<li><p><b>codes</b>:<br/>
+    BM – Picture/Bitmap<br/>
+    BR
+					– Border<br/>
+    CB – Border Color<br/>
+    CF – Fill
+					Color<br/>
+    CT – Text Color<br/>
+    EC – Text effect
+					color<br/>
+    EF – Text effect<br/>
+    FT – Font<br/>
+   
+					IC – Icon<br/>
+    JB – Bitmap alignment<br/>
+    JI –
+					Icon alignment<br/>
+    JT – Text alignment<br/>
+    OP –
+					Opacity<br/>
+    SO – Button Sound<br/>
+    TX – Text<br/>
+ 
+					  VI – Video slot ID <br/>
+    WW – Word wrap on/off</p>
+				</ul>
+				<p><b>Example</b>:</p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'^BMC-425,1,1,500,1,BR'&quot;</pre><p>
+				or</p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'^BMC-425,1,1,500,1,%BR'&quot;</pre><p>
+				Copies the OFF state border of button with a variable text
+				address of 500 onto the OFF state border of button with a
+				variable text address of 425.</p>
+				<p><b>Example 2</b>:</p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'^BMC-150,1,1,315,1,%BR%FT%TX%BM%IC%CF%CT'&quot;</pre><p>
+				Copies the OFF state border, font, Text, bitmap, icon, fill color
+				and text color of the button with a variable text address of 315
+				onto the OFF state border, font, Text, bitmap, icon, fill color
+				and text color of the button with a variable text address of 150.</p>
+			</td>
+		</tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr valign="top">
 			<td width="9%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm"><pre class="western">^BMP</pre>
 			</td>
 			<td width="91%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm"><p>
@@ -5519,6 +5591,49 @@ SEND_COMMAND Panel,&quot;'^BOP-500.504&amp;510.515,1,#C8'&quot;</pre><p>
 		<tr></tr>
 		<tr></tr>
 		<tr valign="top">
+			<td width="9%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm"><pre class="western">?BOP</pre>
+			</td>
+			<td width="91%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm"><p>
+				Get the overall button opacity.</p>
+				<p><b>Syntax</b>:</p>
+				<pre class="western">&quot;'?BOP-&lt;vt addr range&gt;,&lt;button states range&gt;'&quot;</pre><p>
+				<b>Variable</b>:</p>
+				<ul>
+					<li><p>variable text address range = 1 - 4000.</p>
+					<li><p>button states range = 1 - 256 for multi-state buttons (0
+					= All states, for General buttons 1 = Off state and 2 = On
+					state).</p>
+					<li><p>custom event type 1015:</p>
+					<li><p>Flag - Zero</p>
+					<li><p>Value1 - Button state number</p>
+					<li><p>Value2 - Opacity</p>
+					<li><p>Value3 - Zero</p>
+					<li><p>Text - Blank</p>
+					<li><p>Text length - Zero</p>
+				</ul>
+				<p><b>Example</b>:</p>
+				<pre class="western">   SEND COMMAND Panel,&quot;'?BOP-529,1'&quot;</pre><p>
+				Gets the button 'OFF state' opacity information.</p>
+				<p>The result sent to the Master would be:</p>
+				<pre class="western" style="margin-left: 1.25cm">ButtonGet Id = 529 Type = 1015
+Flag = 0
+VALUE1 = 1
+VALUE2 = 200
+VALUE3 = 0
+TEXT =
+TEXT LENGTH = 0</pre>
+			</td>
+		</tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr valign="top">
 			<td width="9%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm"><pre class="western">^BOR</pre>
 			</td>
 			<td width="91%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm"><p>
@@ -5536,16 +5651,45 @@ SEND_COMMAND Panel,&quot;'^BOP-500.504&amp;510.515,1,#C8'&quot;</pre><p>
 					<li><p>border value = 0 - 41.</p>
 				</ul>
 				<p><b>Examples</b>:</p>
-				<pre class="western">SEND_COMMAND Panel,&quot;'^BOR-500.504&amp;510.515,10'&quot;</pre><p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'^BOR-500.504&amp;510.515,10'&quot;</pre><p>
 				Sets the border by number (#10) to those buttons with the
 				variable text range of 500-504 &amp; 510-515.</p>
-				<pre class="western">SEND_COMMAND Panel,&quot;'^BOR-500.504&amp;510,AMX Elite -M'&quot;</pre><p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'^BOR-500.504&amp;510,AMX Elite -M'&quot;</pre><p>
 				Sets the border by name (AMX Elite) to those buttons with the
 				variable text range of 500-504 &amp; 510-515.</p>
 				<p>The border style is available through the TPDesign4
 				border-style drop-down list. Refer to the TPD4 Border Styles by
 				Name table on page <span style="background: #c0c0c0">28</span>
 				for more information.</p>
+			</td>
+		</tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr valign="top">
+			<td width="9%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm"><pre class="western">^BOS</pre>
+			</td>
+			<td width="91%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm"><p>
+				Set the button to display either a Video or Non-Video window.</p>
+				<p><b>Syntax</b>:</p>
+				<pre class="western">&quot;'^BOS-&lt;vt addr range&gt;,&lt;button states range&gt;,&lt;video state&gt;'&quot;</pre><p>
+				<b>Variable</b>:</p>
+				<ul>
+					<li><p>variable text address range = 1 - 4000.</p>
+					<li><p>button states range = 1 - 256 for multi-state buttons (0
+					= All states, for General buttons 1 = Off state and 2 = On
+					state).</p>
+					<li><p>video state = Video Off = 0 and Video On = 1.</p>
+				</ul>
+				<p><b>Example</b>:</p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'^BOS-500,1,1'&quot;</pre><p>
+				Sets the button to display video.</p>
 			</td>
 		</tr>
 		<tr></tr>
@@ -5576,10 +5720,111 @@ SEND_COMMAND Panel,&quot;'^BOP-500.504&amp;510.515,1,#C8'&quot;</pre><p>
 					Numbers table on page 87.</p>
 				</ul>
 				<p><b>Example</b>:</p>
-				<pre class="western">SEND_COMMAND Panel,&quot;'^BRD-500.504&amp;510.515,1&amp;2,Quad Line'&quot;</pre><p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'^BRD-500.504&amp;510.515,1&amp;2,Quad Line'&quot;</pre><p>
 				Sets the border by name (Quad Line) to those buttons with the
 				variable text range of 500-504 &amp; 510-515. Refer to the TPD4
 				Border Styles by Name table on page <span style="background: #c0c0c0">28</span>.</p>
+			</td>
+		</tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr valign="top">
+			<td width="9%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm"><pre class="western">?BRD</pre>
+			</td>
+			<td width="91%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm"><p>
+				Get the current border name.</p>
+				<p><b>Syntax</b>:</p>
+				<pre class="western">&quot;'?BRD-&lt;vt addr range&gt;,&lt;button states range&gt;'&quot;</pre><p>
+				<b>Variable</b>:</p>
+				<ul>
+					<li><p>variable text address range = 1 - 4000.</p>
+					<li><p>button states range = 1 - 256 for multi-state buttons (0
+					= All states, for General buttons 1 = Off state and 2 = On
+					state).</p>
+					<li><p>custom event type 1014:</p>
+					<li><p>Flag - Zero</p>
+					<li><p>Value1 - Button state number</p>
+					<li><p>Value2 - Actual length of string</p>
+					<li><p>Value3 - Zero</p>
+					<li><p>Text - String that represents border name</p>
+					<li><p>Text length - Border name length</p>
+				</ul>
+				<p><b>Example</b>:</p>
+				<pre class="western">   SEND COMMAND Panel,&quot;'?BRD-529,1'&quot;</pre><p>
+				Gets the button 'OFF state' border information.</p>
+				<p>The result sent to the Master would be:</p>
+				<pre class="western" style="margin-left: 1.25cm">ButtonGet Id = 529 Type = 1014
+Flag = 0
+VALUE1 = 1
+VALUE2 = 22
+VALUE3 = 0
+TEXT = Double Bevel Raised -L
+TEXT LENGTH = 22</pre>
+			</td>
+		</tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr valign="top">
+			<td width="9%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm"><pre class="western">^BSM</pre>
+			</td>
+			<td width="91%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm"><p>
+				Submit text for text area buttons. This command causes the text
+				areas to send their text as strings to the NetLinx Master.</p>
+				<p><b>Syntax</b>:</p>
+				<pre class="western">&quot;'^BSM-&lt;vt addr range&gt;'&quot;</pre><p>
+				<b>Variable</b>:</p>
+				<ul>
+					<li><p>variable text address range = 1 - 4000.</p>
+				</ul>
+				<p><b>Example</b>:</p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'^BSM-500'&quot;</pre><p>
+				Submits the text of the text area button.</p>
+			</td>
+		</tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr valign="top">
+			<td width="9%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm"><pre class="western">^BSO</pre>
+			</td>
+			<td width="91%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm"><p>
+				Set the sound played when a button is pressed. If the sound name
+				is blank the sound is then cleared. If the sound name is not
+				matched, the button sound is not changed.</p>
+				<p><b>Syntax</b>:</p>
+				<pre class="western">&quot;'^BSO-&lt;vt addr range&gt;,&lt;button states range&gt;,&lt;sound name&gt;'&quot;</pre><p>
+				<b>Variable</b>:</p>
+				<ul>
+					<li><p>variable text address range = 1 - 4000.</p>
+					<li><p>button states range = 1 - 256 for multi-state buttons (0
+					= All states, for General buttons 1 = Off state and 2 = On
+					state).</p>
+					<li><p>sound name = (blank - sound cleared, not matched - button
+					sound not changed).</p>
+				</ul>
+				<p><b>Example</b>:</p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'^BSO-500,1&amp;2,music.wav'&quot;</pre><p>
+				Assigns the sound 'music.wav' to the button Off/On states.</p>
 			</td>
 		</tr>
 		<tr></tr>
@@ -5607,7 +5852,7 @@ SEND_COMMAND Panel,&quot;'^BOP-500.504&amp;510.515,1,#C8'&quot;</pre><p>
 					<li><p>bottom = bottom of page.</p>
 				</ul>
 				<p><b>Example</b>:</p>
-				<pre class="western">SEND_COMMAND Panel,&quot;'^BSP-530,left,top'&quot;</pre><p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'^BSP-530,left,top'&quot;</pre><p>
 				Sets the button with variable text 530 in the left side top of
 				page.</p>
 			</td>
@@ -5638,8 +5883,51 @@ SEND_COMMAND Panel,&quot;'^BOP-500.504&amp;510.515,1,#C8'&quot;</pre><p>
 					<li><p>word wrap = (0=Off and 1=On). Default is Off.</p>
 				</ul>
 				<p><b>Example</b>:</p>
-				<pre class="western">SEND_COMMAND Panel,&quot;'^BWW-500,1,1'&quot;</pre><p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'^BWW-500,1,1'&quot;</pre><p>
 				Sets the word wrap on for the button’s Off state.</p>
+			</td>
+		</tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr valign="top">
+			<td width="9%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm"><pre class="western">?BWW</pre>
+			</td>
+			<td width="91%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm"><p>
+				Get the current word wrap flag status.</p>
+				<p><b>Syntax</b>:</p>
+				<pre class="western">&quot;'?BWW-&lt;vt addr range&gt;,&lt;button states range&gt;'&quot;</pre><p>
+				<b>Variable</b>:</p>
+				<ul>
+					<li><p>variable text address range = 1 - 4000.</p>
+					<li><p>button states range = 1 - 256 for multi-state buttons (0
+					= All states, for General buttons 1 = Off state and 2 = On
+					state).</p>
+					<li><p>custom event type <b>1010</b>:</p>
+					<li><p>Flag - Zero</p>
+					<li><p>Value1 - Button state number</p>
+					<li><p>Value2 - 0 = no word wrap, 1 = word wrap</p>
+					<li><p>Value3 - Zero</p>
+					<li><p>Text - Blank</p>
+					<li><p>Text length - Zero</p>
+				</ul>
+				<p><b>Example</b>:</p>
+				<pre class="western">   SEND COMMAND Panel,&quot;'?BWW-529,1'&quot;</pre><p>
+				Gets the button 'OFF state' word wrap flag status information.</p>
+				<p>The result sent to the Master would be:</p>
+				<pre class="western" style="margin-left: 1.25cm">ButtonGet Id = 529 Type = 1010
+Flag = 0
+VALUE1 = 1
+VALUE2 = 1
+VALUE3 = 0
+TEXT =
+TEXT LENGTH = 0</pre>
 			</td>
 		</tr>
 		<tr></tr>
@@ -5663,7 +5951,7 @@ SEND_COMMAND Panel,&quot;'^BOP-500.504&amp;510.515,1,#C8'&quot;</pre><p>
 					<li><p>variable text address range = 1 - 4000.</p>
 				</ul>
 				<p><b>Example</b>:</p>
-				<pre class="western">SEND_COMMAND Panel,&quot;'^CPF-500'&quot;</pre><p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'^CPF-500'&quot;</pre><p>
 				Clears all page flips from the button.</p>
 			</td>
 		</tr>
@@ -5780,6 +6068,49 @@ SEND_COMMAND Panel,&quot;'^BOP-500.504&amp;510.515,1,#C8'&quot;</pre><p>
 		<tr></tr>
 		<tr></tr>
 		<tr valign="top">
+			<td width="9%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm"><pre class="western">?FON</pre>
+			</td>
+			<td width="91%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm"><p>
+				Get the current font index.</p>
+				<p><b>Syntax</b>:</p>
+				<pre class="western">&quot;'?FON-&lt;vt addr range&gt;,&lt;button states range&gt;'&quot;</pre><p>
+				<b>Variable</b>:</p>
+				<ul>
+					<li><p>variable text address range = 1 - 4000.</p>
+					<li><p>button states range = 1 - 256 for multi-state buttons (0
+					= All states, for General buttons 1 = Off state and 2 = On
+					state).</p>
+					<li><p>custom event type <b>1007</b>:</p>
+					<li><p>Flag - Zero</p>
+					<li><p>Value1 - Button state number</p>
+					<li><p>Value2 - Font index</p>
+					<li><p>Value3 - Zero</p>
+					<li><p>Text - Blank</p>
+					<li><p>Text length - Zero</p>
+				</ul>
+				<p><b>Example</b>:</p>
+				<pre class="western">   SEND COMMAND Panel,&quot;'?FON-529,1'&quot;</pre><p>
+				Gets the button 'OFF state' font type index information.</p>
+				<p>The result sent to the Master would be:</p>
+				<pre class="western" style="margin-left: 1.25cm">ButtonGet Id = 529 Type = 1007
+Flag = 0
+VALUE1 = 1
+VALUE2 = 72
+VALUE3 = 0
+TEXT =
+TEXT LENGTH = 0</pre>
+			</td>
+		</tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr valign="top">
 			<td width="9%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm"><pre class="western">^GLH</pre>
 			</td>
 			<td width="91%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm"><p>
@@ -5834,6 +6165,35 @@ SEND_COMMAND Panel,&quot;'^BOP-500.504&amp;510.515,1,#C8'&quot;</pre><p>
 		<tr></tr>
 		<tr></tr>
 		<tr valign="top">
+			<td width="9%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm"><pre class="western">^GSC</pre>
+			</td>
+			<td width="91%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm"><p>
+				Change the bargraph slider color or joystick cursor color. A user
+				can also assign the color by Name and R,G,B value (RRGGBB or
+				RRGGBBAA).</p>
+				<p><b>Syntax</b>:</p>
+				<pre class="western">&quot;'^GSC-&lt;vt addr range&gt;,&lt;color value&gt;'&quot;</pre><p>
+				<b>Variable</b>:</p>
+				<ul>
+					<li><p>variable text address range = 1 - 4000.</p>
+					<li><p>color value = Refer to the RGB Triplets and Names For
+					Basic 88 Colors table on page <span style="background: #c0c0c0">26</span>.</p>
+				</ul>
+				<p><b>Example</b>:</p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'^GSC-500,12'&quot;</pre><p>
+				Changes the bargraph or joystick slider color to Yellow.</p>
+			</td>
+		</tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr valign="top">
 			<td width="9%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm"><pre class="western">^ICO</pre>
 			</td>
 			<td width="91%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm"><p>
@@ -5864,6 +6224,484 @@ SEND_COMMAND Panel,&quot;'^BOP-500.504&amp;510.515,1,#C8'&quot;</pre><p>
 		<tr></tr>
 		<tr></tr>
 		<tr valign="top">
+			<td width="9%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm"><pre class="western">?ICO</pre>
+			</td>
+			<td width="91%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm"><p>
+				Get the current icon index.</p>
+				<p><b>Syntax</b>:</p>
+				<pre class="western">&quot;'?ICO-&lt;vt addr range&gt;,&lt;button states range&gt;'&quot;</pre><p>
+				<b>Variable</b>:</p>
+				<ul>
+					<li><p>variable text address range = 1 - 4000.</p>
+					<li><p>button states range = 1 - 256 for multi-state buttons (0
+					= All states, for General buttons 1 = Off state and 2 = On
+					state).</p>
+					<li><p>custom event type <b>1003</b>:</p>
+					<li><p>Flag - Zero</p>
+					<li><p>Value1 - Button state number</p>
+					<li><p>Value2 - Icon Index</p>
+					<li><p>Value3 - Zero</p>
+					<li><p>Text - Blank</p>
+					<li><p>Text length - Zero</p>
+				</ul>
+				<p><b>Example</b>:</p>
+				<pre class="western">   SEND COMMAND Panel,&quot;'?ICO-529,1&amp;2'&quot;</pre><p>
+				Gets the button 'OFF state' icon index information.</p>
+				<p>The result sent to the Master would be:</p>
+				<pre class="western" style="margin-left: 1.25cm">ButtonGet Id = 529 Type = 1003
+Flag = 0
+VALUE1 = 2
+VALUE2 = 12
+VALUE3 = 0
+TEXT =
+TEXT LENGTH = 0</pre>
+			</td>
+		</tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr valign="top">
+			<td width="9%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm"><pre class="western">^JSB</pre>
+			</td>
+			<td width="91%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm"><p>
+				Set bitmap/picture alignment using a numeric keypad layout for
+				those buttons with a defined address range. The alignment of 0 is
+				followed by ',&lt;left&gt;,&lt;top&gt;'. The left and top
+				coordinates are relative to the upper left corner of the button.</p>
+				<p><b>Syntax</b>:</p>
+				<pre class="western">&quot;'^JSB-&lt;vt addr range&gt;,&lt;button states range&gt;,&lt;new text alignment&gt;'&quot;</pre><p>
+				<b>Variable</b>:</p>
+				<ul>
+					<li><p>variable text address range = 1 - 4000.</p>
+					<li><p>button states range = 1 - 256 for multi-state buttons (0
+					= All states, for General buttons 1 = Off state and 2 = On
+					state).</p>
+					<li><p>new text alignment = Value of 1- 9 corresponds to the
+					following locations:<br/>
+0 (zero can be used for an absolute
+					position)<br/>
+<br/>
+
+					</p>
+				</ul>
+				<dl>
+					<dd>
+					<table width="109" cellpadding="4" cellspacing="0" style="background: transparent">
+						<col width="29"/>
+
+						<col width="30"/>
+
+						<col width="25"/>
+
+						<tr style="background: transparent" valign="top">
+							<td width="29" style="border-top: 1px solid #000000; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0.1cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm" sdval="1" sdnum="1031;"><p align="center">
+								1</p>
+							</td>
+							<td width="30" style="border-top: 1px solid #000000; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0.1cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm" sdval="2" sdnum="1031;"><p align="center">
+								2</p>
+							</td>
+							<td width="25" style="border: 1px solid #000000; padding: 0.1cm" sdval="3" sdnum="1031;"><p align="center">
+								3</p>
+							</td>
+						</tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr valign="top">
+							<td width="29" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm" sdval="4" sdnum="1031;"><p align="center">
+								4</p>
+							</td>
+							<td width="30" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm" sdval="5" sdnum="1031;"><p align="center">
+								5</p>
+							</td>
+							<td width="25" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm" sdval="6" sdnum="1031;"><p align="center">
+								6</p>
+							</td>
+						</tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr valign="top">
+							<td width="29" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm" sdval="7" sdnum="1031;"><p align="center">
+								7</p>
+							</td>
+							<td width="30" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm" sdval="8" sdnum="1031;"><p align="center">
+								8</p>
+							</td>
+							<td width="25" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm" sdval="9" sdnum="1031;"><p align="center">
+								9</p>
+							</td>
+						</tr>
+					</table>
+				</dl>
+				<p><br/>
+
+				</p>
+				<p><b>Example</b>:</p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'^JSB-500.504&amp;510.515,1&amp;2,1'&quot;</pre><p>
+				Sets the off/on state picture alignment to upper left corner for
+				those buttons with variable text ranges of 500-504 &amp; 510-515.</p>
+			</td>
+		</tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr valign="top">
+			<td width="9%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm"><pre class="western">?JSB</pre>
+			</td>
+			<td width="91%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm"><p>
+				Get the current bitmap justification.</p>
+				<p><b>Syntax</b>:</p>
+				<pre class="western">&quot;'?JSB-&lt;vt addr range&gt;,&lt;button states range&gt;'&quot;</pre><p>
+				<b>Variable</b>:</p>
+				<ul>
+					<li><p>variable text address range = 1 - 4000.</p>
+					<li><p>button states range = 1 - 256 for multi-state buttons (0
+					= All states, for General buttons 1 = Off state and 2 = On
+					state).</p>
+					<li><p>custom event type <b>1005</b>:</p>
+					<li><p>Flag - Zero</p>
+					<li><p>Value1 - Button state number</p>
+					<li><p>Value2 - 1 - 9 justify</p>
+					<li><p>Value3 - Zero</p>
+					<li><p>Text - Blank</p>
+					<li><p>Text length - Zero</p>
+				</ul>
+				<p><b>Example</b>:</p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'?JSB-529,1'&quot;</pre><p>
+				Gets the button 'OFF state' bitmap justification information.</p>
+				<p>The result sent to the Master would be:</p>
+				<pre class="western" style="margin-left: 1.25cm">ButtonGet Id = 529 Type = 1005
+Flag = 0
+VALUE1 = 1
+VALUE2 = 5
+VALUE3 = 0
+TEXT =
+TEXT LENGTH = 0</pre>
+			</td>
+		</tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr valign="top">
+			<td width="9%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm"><pre class="western">^JSI</pre>
+			</td>
+			<td width="91%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm"><p>
+				Set icon alignment using a numeric keypad layout for those
+				buttons with a defined address range. The alignment of 0 is
+				followed by ',&lt;left&gt;,&lt;top&gt;'. The left and top
+				coordinates are relative to the upper left corner of the button.</p>
+				<p><b>Syntax</b>:</p>
+				<pre class="western">&quot;'^JSI-&lt;vt addr range&gt;,&lt;button states range&gt;,&lt;new icon alignment&gt;'&quot;</pre><p>
+				<b>Variable</b>:</p>
+				<ul>
+					<li><p>variable text address range = 1 - 4000.</p>
+					<li><p>button states range = 1 - 256 for multi-state buttons (0
+					= All states, for General buttons 1 = Off state and 2 = On
+					state).</p>
+					<li><p>new icon alignment = Value of 1 - 9 corresponds to the
+					following locations:<br/>
+0 (zero can be used for an absolute
+					position)</p>
+				</ul>
+				<dl>
+					<dd>
+					<table width="109" cellpadding="4" cellspacing="0" style="background: transparent">
+						<col width="29"/>
+
+						<col width="30"/>
+
+						<col width="25"/>
+
+						<tr style="background: transparent" valign="top">
+							<td width="29" style="border-top: 1px solid #000000; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0.1cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm" sdval="1" sdnum="1031;"><p align="center">
+								1</p>
+							</td>
+							<td width="30" style="border-top: 1px solid #000000; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0.1cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm" sdval="2" sdnum="1031;"><p align="center">
+								2</p>
+							</td>
+							<td width="25" style="border: 1px solid #000000; padding: 0.1cm" sdval="3" sdnum="1031;"><p align="center">
+								3</p>
+							</td>
+						</tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr valign="top">
+							<td width="29" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm" sdval="4" sdnum="1031;"><p align="center">
+								4</p>
+							</td>
+							<td width="30" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm" sdval="5" sdnum="1031;"><p align="center">
+								5</p>
+							</td>
+							<td width="25" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm" sdval="6" sdnum="1031;"><p align="center">
+								6</p>
+							</td>
+						</tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr valign="top">
+							<td width="29" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm" sdval="7" sdnum="1031;"><p align="center">
+								7</p>
+							</td>
+							<td width="30" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm" sdval="8" sdnum="1031;"><p align="center">
+								8</p>
+							</td>
+							<td width="25" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm" sdval="9" sdnum="1031;"><p align="center">
+								9</p>
+							</td>
+						</tr>
+					</table>
+				</dl>
+				<p><br/>
+
+				</p>
+				<p><b>Example</b>:</p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'^JSI-500.504&amp;510.515,1&amp;2,1'&quot;</pre><p>
+				Sets the Off/On state icon alignment to upper left corner for
+				those buttons with variable text range of 500-504 &amp; 510-515.</p>
+			</td>
+		</tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr valign="top">
+			<td width="9%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm"><pre class="western">?JSI</pre>
+			</td>
+			<td width="91%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm"><p>
+				Get the current icon justification.</p>
+				<p><b>Syntax</b>:</p>
+				<pre class="western">&quot;'?JSI-&lt;vt addr range&gt;,&lt;button states range&gt;'&quot;</pre><p>
+				<b>Variable</b>:</p>
+				<ul>
+					<li><p>variable text address range = 1 - 4000.</p>
+					<li><p>button states range = 1 - 256 for multi-state buttons (0
+					= All states, for General buttons 1 = Off state and 2 = On
+					state).</p>
+					<li><p>custom event type <b>1006</b>:</p>
+					<li><p>Flag - Zero</p>
+					<li><p>Value1 - Button state number</p>
+					<li><p>Value2 - 1 - 9 justify</p>
+					<li><p>Value3 - Zero</p>
+					<li><p>Text - Blank</p>
+					<li><p>Text length - Zero</p>
+				</ul>
+				<p><b>Example</b>:</p>
+				<pre class="western">   SEND COMMAND Panel,&quot;'?JSI-529,1'&quot;</pre><p>
+				Gets the button 'OFF state' icon justification information.</p>
+				<p>The result sent to the Master would be:</p>
+				<pre class="western" style="margin-left: 1.25cm">ButtonGet Id = 529 Type = 1006
+Flag = 0
+VALUE1 = 1
+VALUE2 = 6
+VALUE3 = 0
+TEXT =
+TEXT LENGTH = 0</pre>
+			</td>
+		</tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr valign="top">
+			<td width="9%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm"><pre class="western">^JST</pre>
+			</td>
+			<td width="91%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm"><p>
+				Set text alignment using a numeric keypad layout for those
+				buttons with a defined address range. The alignment of 0 is
+				followed by ',&lt;left&gt;,&lt;top&gt;'. The left and top
+				coordinates are relative to the upper left corner of the button.</p>
+				<p><b>Syntax</b>:</p>
+				<pre class="western">&quot;'^JST-&lt;vt addr range&gt;,&lt;button states range&gt;,&lt;new text alignment&gt;'&quot;</pre><p>
+				<b>Variable</b>:</p>
+				<ul>
+					<li><p>variable text address range = 1 - 4000.</p>
+					<li><p>button states range = 1 - 256 for multi-state buttons (0
+					= All states, for General buttons 1 = Off state and 2 = On
+					state).</p>
+					<li><p>new text alignment = Value of 1 - 9 corresponds to the
+					following locations:<br/>
+0 (zero can be used for an absolute
+					position)</p>
+				</ul>
+				<dl>
+					<dd>
+					<table width="109" cellpadding="4" cellspacing="0" style="background: transparent">
+						<col width="29"/>
+
+						<col width="30"/>
+
+						<col width="25"/>
+
+						<tr style="background: transparent" valign="top">
+							<td width="29" style="border-top: 1px solid #000000; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0.1cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm" sdval="1" sdnum="1031;"><p align="center">
+								1</p>
+							</td>
+							<td width="30" style="border-top: 1px solid #000000; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0.1cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm" sdval="2" sdnum="1031;"><p align="center">
+								2</p>
+							</td>
+							<td width="25" style="border: 1px solid #000000; padding: 0.1cm" sdval="3" sdnum="1031;"><p align="center">
+								3</p>
+							</td>
+						</tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr valign="top">
+							<td width="29" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm" sdval="4" sdnum="1031;"><p align="center">
+								4</p>
+							</td>
+							<td width="30" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm" sdval="5" sdnum="1031;"><p align="center">
+								5</p>
+							</td>
+							<td width="25" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm" sdval="6" sdnum="1031;"><p align="center">
+								6</p>
+							</td>
+						</tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr></tr>
+						<tr valign="top">
+							<td width="29" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm" sdval="7" sdnum="1031;"><p align="center">
+								7</p>
+							</td>
+							<td width="30" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm" sdval="8" sdnum="1031;"><p align="center">
+								8</p>
+							</td>
+							<td width="25" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm" sdval="9" sdnum="1031;"><p align="center">
+								9</p>
+							</td>
+						</tr>
+					</table>
+				</dl>
+				<p><br/>
+
+				</p>
+				<p><b>Example</b>:</p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'^JST-500.504&amp;510.515,1&amp;2,1'&quot;</pre><p>
+				Sets the text alignment to the upper left corner for those
+				buttons with variable text ranges of 500-504 &amp; 510-515.</p>
+			</td>
+		</tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr valign="top">
+			<td width="9%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm"><pre class="western">?JST</pre>
+			</td>
+			<td width="91%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm"><p>
+				Get the current text justification.</p>
+				<p><b>Syntax</b>:</p>
+				<pre class="western">&quot;'?JST-&lt;vt addr range&gt;,&lt;button states range&gt;'&quot;</pre><p>
+				<b>Variable</b>:</p>
+				<ul>
+					<li><p>variable text address range = 1 - 4000.</p>
+					<li><p>button states range = 1 - 256 for multi-state buttons (0
+					= All states, for General buttons 1 = Off state and 2 = On
+					state).</p>
+					<li><p>custom event type <b>1004</b>:</p>
+					<li><p>Flag - Zero</p>
+					<li><p>Value1 - Button state number</p>
+					<li><p>Value2 - 1 - 9 justify</p>
+					<li><p>Value3 - Zero</p>
+					<li><p>Text - Blank</p>
+					<li><p>Text length - Zero</p>
+				</ul>
+				<p><b>Example</b>:</p>
+				<pre class="western">   SEND COMMAND Panel,&quot;'?JST-529,1'&quot;</pre><p>
+				Gets the button 'OFF state' text justification information.</p>
+				<p>The result sent to the Master would be:</p>
+				<pre class="western" style="margin-left: 1.25cm">ButtonGet Id = 529 Type = 1004
+Flag = 0
+VALUE1 = 1
+VALUE2 = 1
+VALUE3 = 0
+TEXT =
+TEXT LENGTH = 0</pre>
+			</td>
+		</tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr valign="top">
 			<td width="9%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm"><pre class="western">^SHO</pre>
 			</td>
 			<td width="91%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm"><p>
@@ -5879,6 +6717,83 @@ SEND_COMMAND Panel,&quot;'^BOP-500.504&amp;510.515,1,#C8'&quot;</pre><p>
 				<pre class="western">SEND_COMMAND Panel,&quot;'^SHO-500.504&amp;510.515,0'&quot;</pre><p>
 				Hides buttons with variable text address range 500-504 &amp;
 				510-515.</p>
+			</td>
+		</tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr valign="top">
+			<td width="9%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm"><pre class="western">^TEC</pre>
+			</td>
+			<td width="91%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm"><p>
+				Set the text effect color for the specified addresses/states to
+				the specified color. The Text Effect is specified by name and can
+				be found in TPD4. You can also assign the color by name or RGB
+				value (RRGGBB or RRGGBBAA).</p>
+				<p><b>Syntax</b>:</p>
+				<pre class="western">&quot;'^TEC-&lt;vt addr range&gt;,&lt;button states range&gt;,&lt;color value&gt;'&quot;</pre><p>
+				<b>Variable</b>:</p>
+				<ul>
+					<li><p>variable text address range = 1 - 4000.</p>
+					<li><p>button states range = 1 - 256 for multi-state buttons (0
+					= All states, for General buttons 1 = Off state and 2 = On
+					state).</p>
+					<li><p>color value = Refer to the RGB Triplets and Names For
+					Basic 88 Colors table on page <span style="background: #c0c0c0">26</span>.</p>
+				</ul>
+				<p><b>Example</b>:</p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'^TEC-500.504&amp;510.515,1&amp;2,12'&quot;</pre><p>
+				Sets the text effect color to Very Light Yellow on buttons with
+				variable text 500-504 and 510-515.</p>
+			</td>
+		</tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr valign="top">
+			<td width="9%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm"><pre class="western">?TEC</pre>
+			</td>
+			<td width="91%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm"><p>
+				Get the current text effect color.</p>
+				<p><b>Syntax</b>:</p>
+				<pre class="western">&quot;'?TEC-&lt;vt addr range&gt;,&lt;button states range&gt;'&quot;</pre><p>
+				<b>Variable</b>:</p>
+				<ul>
+					<li><p>variable text address range = 1 - 4000.</p>
+					<li><p>button states range = 1 - 256 for multi-state buttons (0
+					= All states, for General buttons 1 = Off state and 2 = On
+					state).</p>
+					<li><p>custom event type <b>1009</b>:</p>
+					<li><p>Flag - Zero</p>
+					<li><p>Value1 - Button state number</p>
+					<li><p>Value2 - Actual length of string (should be 9)</p>
+					<li><p>Value3 - Zero</p>
+					<li><p>Text - Hex encoded color value (ex: #000000FF)</p>
+					<li><p>Text length - Color name length</p>
+				</ul>
+				<p><b>Example</b>:</p>
+				<pre class="western">   SEND COMMAND Panel,&quot;'?TEC-529,1'&quot;</pre><p>
+				Gets the button 'OFF state' text effect color information.</p>
+				<p>The result sent to the Master would be:</p>
+				<pre class="western" style="margin-left: 1.25cm">ButtonGet Id = 529 Type = 1009
+Flag = 0
+VALUE1 = 1
+VALUE2 = 9
+VALUE3 = 0
+TEXT = #5088F2AE
+TEXT LENGTH = 9</pre>
 			</td>
 		</tr>
 		<tr></tr>
@@ -6034,7 +6949,7 @@ Emulator mode. These commands are case insensitive.</p>
 					<li><p>prompt text = 1 - 50 ASCII characters.</p>
 				</ul>
 				<p><b>Example</b>:</p>
-				<pre class="western">  SEND COMMAND Panel,&quot;'@AKB-Texas;Enter State'&quot;</pre><p>
+				<pre class="western">  SEND_COMMAND Panel,&quot;'@AKB-Texas;Enter State'&quot;</pre><p>
 				Pops up the Keyboard and initializes the text string 'Texas' with
 				prompt text 'Enter State'.</p>
 			</td>
@@ -6060,7 +6975,7 @@ Emulator mode. These commands are case insensitive.</p>
 				<b>Variables</b>:</p>
 				<pre class="western">initial text = 1 - 50 ASCII characters.</pre><p>
 				<b>Example</b>:</p>
-				<pre class="western">SEND COMMAND Panel,&quot;'AKEYB-This is a Test'&quot;</pre><p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'AKEYB-This is a Test'&quot;</pre><p>
 				Pops up the Keyboard and initializes the text string 'This is a
 				Test'.</p>
 			</td>
@@ -6088,7 +7003,7 @@ Emulator mode. These commands are case insensitive.</p>
 					<li><p>number string = 0 - 9999.</p>
 				</ul>
 				<p><b>Example</b>:</p>
-				<pre class="western">SEND COMMAND Panel,&quot;'AKEP-12345'&quot;</pre><p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'AKEP-12345'&quot;</pre><p>
 				Pops up the Keypad and initializes the text string '12345'.</p>
 			</td>
 		</tr>
@@ -6111,7 +7026,7 @@ Emulator mode. These commands are case insensitive.</p>
 				<p><b>Syntax</b>:</p>
 				<pre class="western">&quot;'AKEYR'&quot;</pre><p>
 				<b>Example</b>:</p>
-				<pre class="western">  SEND COMMAND Panel,&quot;'AKEYR'&quot;</pre><p>
+				<pre class="western">  SEND_COMMAND Panel,&quot;'AKEYR'&quot;</pre><p>
 				Removes the Keyboard/Keypad.</p>
 			</td>
 		</tr>
@@ -6139,7 +7054,7 @@ Emulator mode. These commands are case insensitive.</p>
 					<li><p>prompt text = 1 - 50 ASCII characters.</p>
 				</ul>
 				<p><b>Example</b>:</p>
-				<pre class="western">SEND COMMAND Panel,&quot;'@AKP-12345678;ENTER PASSWORD'&quot;</pre><p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'@AKP-12345678;ENTER PASSWORD'&quot;</pre><p>
 				Pops up the Keypad and initializes the text string '12345678'
 				with prompt text ’ENTER PASSWORD’.</p>
 			</td>
@@ -6162,8 +7077,50 @@ Emulator mode. These commands are case insensitive.</p>
 				<p><b>Syntax</b>:</p>
 				<pre class="western">&quot;'@AKR'&quot;</pre><p>
 				<b>Example</b>:</p>
-				<pre class="western">SEND COMMAND Panel,&quot;'@AKR'&quot;</pre><p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'@AKR'&quot;</pre><p>
 				Removes the Keyboard/Keypad.</p>
+			</td>
+		</tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr style="background: transparent" valign="top">
+			<td width="12%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm"><pre class="western">ABEEP</pre>
+			</td>
+			<td width="88%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm"><p>
+				Output a single beep even if beep is Off.</p>
+				<p><b>Syntax</b>:</p>
+				<pre class="western">&quot;'ABEEP'&quot;</pre><p>
+				<b>Example</b>:</p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'ABEEP'&quot;</pre><p>
+				Outputs a beep of duration 1 beep even if beep is Off.</p>
+			</td>
+		</tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr style="background: transparent" valign="top">
+			<td width="12%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm"><pre class="western">ADBEEP</pre>
+			</td>
+			<td width="88%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm"><p>
+				Output a double beep even if beep is Off.</p>
+				<p><b>Syntax</b>:</p>
+				<pre class="western">&quot;'ADBEEP'&quot;</pre><p>
+				<b>Example</b>:</p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'ADBEEP'&quot;</pre><p>
+				Outputs a double beep even if beep is Off.</p>
 			</td>
 		</tr>
 		<tr></tr>
@@ -6184,7 +7141,7 @@ Emulator mode. These commands are case insensitive.</p>
 				<p><b>Syntax</b>:</p>
 				<pre class="western">&quot;'BEEP'&quot;</pre><p>
 				<b>Example</b>:</p>
-				<pre class="western">SEND COMMAND Panel,&quot;'BEEP'&quot;</pre><p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'BEEP'&quot;</pre><p>
 				Outputs a beep.</p>
 			</td>
 		</tr>
@@ -6206,7 +7163,7 @@ Emulator mode. These commands are case insensitive.</p>
 				<p><b>Syntax</b>:</p>
 				<pre class="western">&quot;'DBEEP'&quot;</pre><p>
 				<b>Example</b>:</p>
-				<pre class="western">SEND COMMAND Panel,&quot;'DBEEP'&quot;</pre><p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'DBEEP'&quot;</pre><p>
 				Outputs a double beep.</p>
 			</td>
 		</tr>
@@ -6233,7 +7190,7 @@ Emulator mode. These commands are case insensitive.</p>
 					<li><p>prompt text = 1 - 50 ASCII characters.</p>
 				</ul>
 				<p><b>Example</b>:</p>
-				<pre class="western">SEND COMMAND Panel,&quot;'@EKP-33333333;Enter Password'&quot;</pre><p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'@EKP-33333333;Enter Password'&quot;</pre><p>
 				Pops up the Keypad and initializes the text string '33333333'
 				with prompt text 'Enter Password'.</p>
 			</td>

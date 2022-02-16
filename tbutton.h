@@ -374,7 +374,7 @@ namespace Button
             std::string& getText(int inst=0) { return sr[inst].te; }
             std::string& getTextColor(int inst=0) { return sr[inst].ct; }
             std::string& getTextEffectColor(int inst=0) { return sr[inst].ec; }
-            void setTextEffectColor(std::string& ec, int inst=0) { sr[inst].ec = ec; }
+            void setTextEffectColor(const std::string& ec, int inst=-1);
             int getTextEffect(int inst=0) {return sr[inst].et; }
             void setTextEffect(int et, int inst=0) { sr[inst].et = et; }
             std::string& getFillColor(int inst=0) { return sr[inst].cf; }
@@ -651,6 +651,14 @@ namespace Button
              * @return TRUE on success.
              */
             bool setBargraphLowerLimit(int limit);
+            /**
+             * Change the bargraph slider color or joystick cursor color.
+             * A user can also assign the color by Name and R,G,B value
+             * (RRGGBB or RRGGBBAA).
+             * @param color     The color value.
+             * @return TRUE on success.
+             */
+            bool setBargraphSliderColor(const std::string& color);
             /**
              * Read the images, if any, from files and create an image. If there
              * are no files, draw the image as defined.

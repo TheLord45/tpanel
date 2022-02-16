@@ -287,28 +287,28 @@ TPageManager::TPageManager()
     REG_CMD(doBSM, "^BSM");     // Submit text for text area buttons.
     REG_CMD(doBSO, "^BSO");     // Set the sound played when a button is pressed.
     REG_CMD(doBWW, "^BWW");     // Set the button word wrap feature to those buttons with a defined address range.
-//    REG_CMD(getBWW, "?BWW");    // Get the button word wrap feature to those buttons with a defined address range.
+    REG_CMD(getBWW, "?BWW");    // Get the button word wrap feature to those buttons with a defined address range.
     REG_CMD(doCPF, "^CPF");     // Clear all page flips from a button.
     REG_CMD(doDPF, "^DPF");     // Delete page flips from button if it already exists.
     REG_CMD(doENA, "^ENA");     // Enable or disable buttons with a set variable text range.
     REG_CMD(doFON, "^FON");     // Set a font to a specific Font ID value for those buttons with a range.
-//    REG_CMD(getFON, "?FON");    // Get the current font index.
+    REG_CMD(getFON, "?FON");    // Get the current font index.
 //    REG_CMD(doGDI, "^GDI");     // Change the bargraph drag increment.
 //    REG_CMD(doGDV, "^GDV");     // Invert the joystick axis to move the origin to another corner.
     REG_CMD(doGLH, "^GLH");     // Change the bargraph upper limit.
     REG_CMD(doGLL, "^GLL");     // Change the bargraph lower limit.
-//    REG_CMD(doGSC, "^GSC");     // Change the bargraph slider color or joystick cursor color.
+    REG_CMD(doGSC, "^GSC");     // Change the bargraph slider color or joystick cursor color.
     REG_CMD(doICO, "^ICO");     // Set the icon to a button.
-//    REG_CMD(getICO, "?ICO");    // Get the current icon index.
-//    REG_CMD(doJSB, "^JSB");     // Set bitmap/picture alignment using a numeric keypad layout for those buttons with a defined address range.
-//    REG_CMD(getJSB, "?JSB");    // Get the current bitmap justification.
-//    REG_CMD(doJSI, "^JSI");     // Set icon alignment using a numeric keypad layout for those buttons with a defined address range.
-//    REG_CMD(getJSI, "?JSI");    // Get the current icon justification.
-//    REG_CMD(doJST, "^JST");     // Set text alignment using a numeric keypad layout for those buttons with a defined address range.
-//    REG_CMD(getJST, "?JST");    // Get the current text justification.
+    REG_CMD(getICO, "?ICO");    // Get the current icon index.
+    REG_CMD(doJSB, "^JSB");     // Set bitmap/picture alignment using a numeric keypad layout for those buttons with a defined address range.
+    REG_CMD(getJSB, "?JSB");    // Get the current bitmap justification.
+    REG_CMD(doJSI, "^JSI");     // Set icon alignment using a numeric keypad layout for those buttons with a defined address range.
+    REG_CMD(getJSI, "?JSI");    // Get the current icon justification.
+    REG_CMD(doJST, "^JST");     // Set text alignment using a numeric keypad layout for those buttons with a defined address range.
+    REG_CMD(getJST, "?JST");    // Get the current text justification.
     REG_CMD(doSHO, "^SHO");     // Show or hide a button with a set variable text range.
-//    REG_CMD(doTEC, "^TEC");     // Set the text effect color for the specified addresses/states to the specified color.
-//    REG_CMD(getTEC, "?TEC");    // Get the current text effect color.
+    REG_CMD(doTEC, "^TEC");     // Set the text effect color for the specified addresses/states to the specified color.
+    REG_CMD(getTEC, "?TEC");    // Get the current text effect color.
 //    REG_CMD(doTEF, "^TEF");     // Set the text effect. The Text Effect is specified by name and can be found in TPD4.
 //    REG_CMD(getTEF, "?TEF");    // Get the current text effect name.
 //    REG_CMD(doTOP, "^TOP");     // Send events to the Master as string events.
@@ -333,8 +333,8 @@ TPageManager::TPageManager()
     REG_CMD(doRMF, "^RMF");     // Modify an existing resource.
 //    REG_CMD(doRSR, "^RSR");     // Change the refresh rate for a given resource.
 
-//    REG_CMD(doABEEP, "ABEEP");  // Output a single beep even if beep is Off.
-//    REG_CMD(doADBEEP, "ADBEEP");// Output a double beep even if beep is Off.
+    REG_CMD(doABEEP, "ABEEP");  // Output a single beep even if beep is Off.
+    REG_CMD(doADBEEP, "ADBEEP");// Output a double beep even if beep is Off.
     REG_CMD(doAKB, "@AKB");     // Pop up the keyboard icon and initialize the text string to that specified.
     REG_CMD(doAKEYB, "AKEYB");  // Pop up the keyboard icon and initialize the text string to that specified.
     REG_CMD(doAKP, "@AKP");     // Pop up the keypad icon and initialize the text string to that specified.
@@ -5168,6 +5168,79 @@ void TPageManager::doBWW(int port, vector<int>& channels, vector<string>& pars)
     }
 }
 
+void TPageManager::getBWW(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::getBWW(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    int btState = atoi(pars[0].c_str());
+
+    vector<MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+
+            if (btState == 0)       // All instances?
+            {
+                int bst = bt->getNumberInstances();
+
+                for (int i = 0; i < bst; i++)
+                {
+                    amx::ANET_SEND scmd;
+                    scmd.port = bt->getChannelPort();
+                    scmd.channel = bt->getChannelNumber();
+                    scmd.ID = scmd.channel;
+                    scmd.flag = 0;
+                    scmd.type = 1010;
+                    scmd.value1 = i + 1;    // instance
+                    scmd.value2 = bt->getTextWordWrap(i);
+                    scmd.value3 = 0;
+                    scmd.MC = 0x008d;       // custom event
+
+                    if (gAmxNet)
+                        gAmxNet->sendCommand(scmd);
+                    else
+                        MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+                }
+            }
+            else
+            {
+                amx::ANET_SEND scmd;
+                scmd.port = bt->getChannelPort();
+                scmd.channel = bt->getChannelNumber();
+                scmd.ID = scmd.channel;
+                scmd.flag = 0;
+                scmd.type = 1010;
+                scmd.value1 = btState;  // instance
+                scmd.value2 = bt->getTextWordWrap(btState-1);
+                scmd.value3 = 0;
+                scmd.MC = 0x008d;       // custom event
+
+                if (gAmxNet)
+                    gAmxNet->sendCommand(scmd);
+                else
+                    MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+            }
+        }
+    }
+}
+
 /**
  * Clear all page flips from a button.
  */
@@ -5356,6 +5429,79 @@ void TPageManager::doFON(int port, vector<int>& channels, vector<string>& pars)
     }
 }
 
+void TPageManager::getFON(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::getFON(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    int btState = atoi(pars[0].c_str());
+
+    vector<MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+
+            if (btState == 0)       // All instances?
+            {
+                int bst = bt->getNumberInstances();
+
+                for (int i = 0; i < bst; i++)
+                {
+                    amx::ANET_SEND scmd;
+                    scmd.port = bt->getChannelPort();
+                    scmd.channel = bt->getChannelNumber();
+                    scmd.ID = scmd.channel;
+                    scmd.flag = 0;
+                    scmd.type = 1007;
+                    scmd.value1 = i + 1;    // instance
+                    scmd.value2 = bt->getFontIndex(i);
+                    scmd.value3 = 0;
+                    scmd.MC = 0x008d;       // custom event
+
+                    if (gAmxNet)
+                        gAmxNet->sendCommand(scmd);
+                    else
+                        MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+                }
+            }
+            else
+            {
+                amx::ANET_SEND scmd;
+                scmd.port = bt->getChannelPort();
+                scmd.channel = bt->getChannelNumber();
+                scmd.ID = scmd.channel;
+                scmd.flag = 0;
+                scmd.type = 1007;
+                scmd.value1 = btState;  // instance
+                scmd.value2 = bt->getFontIndex(btState-1);
+                scmd.value3 = 0;
+                scmd.MC = 0x008d;       // custom event
+
+                if (gAmxNet)
+                    gAmxNet->sendCommand(scmd);
+                else
+                    MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+            }
+        }
+    }
+}
+
 /**
  * Change the bargraph upper limit.
  */
@@ -5440,6 +5586,38 @@ void TPageManager::doGLL(int port, vector<int>& channels, vector<std::string>& p
     }
 }
 
+void TPageManager::doGSC(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doGSC(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Expecting 1 parameter but got " << pars.size() << "! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    string color = pars[0];
+    vector<MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+            setButtonCallbacks(bt);
+            bt->setBargraphSliderColor(color);
+        }
+    }
+}
+
 /**
  * Set the icon to a button.
  */
@@ -5490,6 +5668,460 @@ void TPageManager::doICO(int port, vector<int>& channels, vector<string>& pars)
                 bt->setIcon(iconIdx, btState - 1);
             else
                 bt->revokeIcon(btState - 1);
+        }
+    }
+}
+
+void TPageManager::getICO(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::getICO(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    int btState = atoi(pars[0].c_str());
+
+    vector<MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+
+            if (btState == 0)       // All instances?
+            {
+                int bst = bt->getNumberInstances();
+
+                for (int i = 0; i < bst; i++)
+                {
+                    amx::ANET_SEND scmd;
+                    scmd.port = bt->getChannelPort();
+                    scmd.channel = bt->getChannelNumber();
+                    scmd.ID = scmd.channel;
+                    scmd.flag = 0;
+                    scmd.type = 1003;
+                    scmd.value1 = i + 1;    // instance
+                    scmd.value2 = bt->getIconIndex(i);
+                    scmd.value3 = 0;
+                    scmd.MC = 0x008d;       // custom event
+
+                    if (gAmxNet)
+                        gAmxNet->sendCommand(scmd);
+                    else
+                        MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+                }
+            }
+            else
+            {
+                amx::ANET_SEND scmd;
+                scmd.port = bt->getChannelPort();
+                scmd.channel = bt->getChannelNumber();
+                scmd.ID = scmd.channel;
+                scmd.flag = 0;
+                scmd.type = 1003;
+                scmd.value1 = btState;  // instance
+                scmd.value2 = bt->getIconIndex(btState-1);
+                scmd.value3 = 0;
+                scmd.MC = 0x008d;       // custom event
+
+                if (gAmxNet)
+                    gAmxNet->sendCommand(scmd);
+                else
+                    MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+            }
+        }
+    }
+}
+
+/**
+ * Set bitmap/picture alignment using a numeric keypad layout for those buttons
+ * with a defined address range. The alignment of 0 is followed by
+ * ',<left>,<top>'. The left and top coordinates are relative to the upper left
+ * corner of the button.
+ */
+void TPageManager::doJSB(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doJSB(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.size() < 2)
+    {
+        MSG_ERROR("Expecting at least 2 parameters but got less! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    int btState = atoi(pars[0].c_str());
+    int align = atoi(pars[1].c_str());
+    int x = 0, y = 0;
+
+    if (!align && pars.size() >= 3)
+    {
+        x = atoi(pars[2].c_str());
+
+        if (pars.size() >= 4)
+            y = atoi(pars[3].c_str());
+    }
+
+    vector<MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+
+            if (btState == 0)
+                bt->setBitmapJustification(align, x, y, -1);
+            else
+                bt->setBitmapJustification(align, x, y, btState-1);
+        }
+    }
+}
+
+void TPageManager::getJSB(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::getJSB(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    int btState = atoi(pars[0].c_str());
+    int j, x, y;
+
+    vector<MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+
+            if (btState == 0)       // All instances?
+            {
+                int bst = bt->getNumberInstances();
+
+                for (int i = 0; i < bst; i++)
+                {
+                    j = bt->getBitmapJustification(&x, &y, i);
+
+                    amx::ANET_SEND scmd;
+                    scmd.port = bt->getChannelPort();
+                    scmd.channel = bt->getChannelNumber();
+                    scmd.ID = scmd.channel;
+                    scmd.flag = 0;
+                    scmd.type = 1005;
+                    scmd.value1 = i + 1;    // instance
+                    scmd.value2 = j;
+                    scmd.value3 = 0;
+                    scmd.MC = 0x008d;       // custom event
+
+                    if (gAmxNet)
+                        gAmxNet->sendCommand(scmd);
+                    else
+                        MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+                }
+            }
+            else
+            {
+                j = bt->getBitmapJustification(&x, &y, btState-1);
+                amx::ANET_SEND scmd;
+                scmd.port = bt->getChannelPort();
+                scmd.channel = bt->getChannelNumber();
+                scmd.ID = scmd.channel;
+                scmd.flag = 0;
+                scmd.type = 1005;
+                scmd.value1 = btState;  // instance
+                scmd.value2 = j;
+                scmd.value3 = 0;
+                scmd.MC = 0x008d;       // custom event
+
+                if (gAmxNet)
+                    gAmxNet->sendCommand(scmd);
+                else
+                    MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+            }
+        }
+    }
+}
+
+/**
+ * Set icon alignment using a numeric keypad layout for those buttons with a
+ * defined address range. The alignment of 0 is followed by ',<left>,<top>'.
+ * The left and top coordinates are relative to the upper left corner of the
+ * button.
+ */
+void TPageManager::doJSI(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doJSB(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.size() < 2)
+    {
+        MSG_ERROR("Expecting at least 2 parameters but got less! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    int btState = atoi(pars[0].c_str());
+    int align = atoi(pars[1].c_str());
+    int x = 0, y = 0;
+
+    if (!align && pars.size() >= 3)
+    {
+        x = atoi(pars[2].c_str());
+
+        if (pars.size() >= 4)
+            y = atoi(pars[3].c_str());
+    }
+
+    vector<MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+
+            if (btState == 0)
+                bt->setIconJustification(align, x, y, -1);
+            else
+                bt->setIconJustification(align, x, y, btState-1);
+        }
+    }
+}
+
+void TPageManager::getJSI(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::getJSB(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    int btState = atoi(pars[0].c_str());
+    int j, x, y;
+
+    vector<MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+
+            if (btState == 0)       // All instances?
+            {
+                int bst = bt->getNumberInstances();
+
+                for (int i = 0; i < bst; i++)
+                {
+                    j = bt->getIconJustification(&x, &y, i);
+
+                    amx::ANET_SEND scmd;
+                    scmd.port = bt->getChannelPort();
+                    scmd.channel = bt->getChannelNumber();
+                    scmd.ID = scmd.channel;
+                    scmd.flag = 0;
+                    scmd.type = 1006;
+                    scmd.value1 = i + 1;    // instance
+                    scmd.value2 = j;
+                    scmd.value3 = 0;
+                    scmd.MC = 0x008d;       // custom event
+
+                    if (gAmxNet)
+                        gAmxNet->sendCommand(scmd);
+                    else
+                        MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+                }
+            }
+            else
+            {
+                j = bt->getIconJustification(&x, &y, btState-1);
+                amx::ANET_SEND scmd;
+                scmd.port = bt->getChannelPort();
+                scmd.channel = bt->getChannelNumber();
+                scmd.ID = scmd.channel;
+                scmd.flag = 0;
+                scmd.type = 1006;
+                scmd.value1 = btState;  // instance
+                scmd.value2 = j;
+                scmd.value3 = 0;
+                scmd.MC = 0x008d;       // custom event
+
+                if (gAmxNet)
+                    gAmxNet->sendCommand(scmd);
+                else
+                    MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+            }
+        }
+    }
+}
+
+void TPageManager::doJST(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doJSB(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.size() < 2)
+    {
+        MSG_ERROR("Expecting at least 2 parameters but got less! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    int btState = atoi(pars[0].c_str());
+    int align = atoi(pars[1].c_str());
+    int x = 0, y = 0;
+
+    if (!align && pars.size() >= 3)
+    {
+        x = atoi(pars[2].c_str());
+
+        if (pars.size() >= 4)
+            y = atoi(pars[3].c_str());
+    }
+
+    vector<MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+
+            if (btState == 0)
+                bt->setTextJustification(align, x, y, -1);
+            else
+                bt->setTextJustification(align, x, y, btState-1);
+        }
+    }
+}
+
+void TPageManager::getJST(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::getJSB(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    int btState = atoi(pars[0].c_str());
+    int j, x, y;
+
+    vector<MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+
+            if (btState == 0)       // All instances?
+            {
+                int bst = bt->getNumberInstances();
+
+                for (int i = 0; i < bst; i++)
+                {
+                    j = bt->getTextJustification(&x, &y, i);
+
+                    amx::ANET_SEND scmd;
+                    scmd.port = bt->getChannelPort();
+                    scmd.channel = bt->getChannelNumber();
+                    scmd.ID = scmd.channel;
+                    scmd.flag = 0;
+                    scmd.type = 1004;
+                    scmd.value1 = i + 1;    // instance
+                    scmd.value2 = j;
+                    scmd.value3 = 0;
+                    scmd.MC = 0x008d;       // custom event
+
+                    if (gAmxNet)
+                        gAmxNet->sendCommand(scmd);
+                    else
+                        MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+                }
+            }
+            else
+            {
+                j = bt->getTextJustification(&x, &y, btState-1);
+                amx::ANET_SEND scmd;
+                scmd.port = bt->getChannelPort();
+                scmd.channel = bt->getChannelNumber();
+                scmd.ID = scmd.channel;
+                scmd.flag = 0;
+                scmd.type = 1004;
+                scmd.value1 = btState;  // instance
+                scmd.value2 = j;
+                scmd.value3 = 0;
+                scmd.MC = 0x008d;       // custom event
+
+                if (gAmxNet)
+                    gAmxNet->sendCommand(scmd);
+                else
+                    MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+            }
         }
     }
 }
@@ -5552,6 +6184,121 @@ void TPageManager::doSHO(int port, vector<int>& channels, vector<string>& pars)
                     _setVisible(bt->getHandle(), (cvalue ? true : false));
                 else
                     bt->refresh();
+            }
+        }
+    }
+}
+
+void TPageManager::doTEC(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doTEC(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.size() < 2)
+    {
+        MSG_ERROR("Expecting at least 2 parameters but got less! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    int btState = atoi(pars[0].c_str());
+    string color = pars[1];
+
+    vector<MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+
+            if (btState == 0)
+                bt->setTextEffectColor(color);
+            else
+                bt->setTextEffectColor(color, btState-1);
+        }
+    }
+}
+
+void TPageManager::getTEC(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::getTEC(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    int btState = atoi(pars[0].c_str());
+
+    vector<MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+
+            if (btState == 0)       // All instances?
+            {
+                int bst = bt->getNumberInstances();
+
+                for (int i = 0; i < bst; i++)
+                {
+                    string c = bt->getTextEffectColor(i);
+
+                    amx::ANET_SEND scmd;
+                    scmd.port = bt->getChannelPort();
+                    scmd.channel = bt->getChannelNumber();
+                    scmd.ID = scmd.channel;
+                    scmd.flag = 0;
+                    scmd.type = 1009;
+                    scmd.value1 = i + 1;    // instance
+                    scmd.value2 = c.length();
+                    scmd.value3 = 0;
+                    scmd.msg = c;
+                    scmd.MC = 0x008d;       // custom event
+
+                    if (gAmxNet)
+                        gAmxNet->sendCommand(scmd);
+                    else
+                        MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+                }
+            }
+            else
+            {
+                string c = bt->getTextEffectColor(btState-1);
+                amx::ANET_SEND scmd;
+                scmd.port = bt->getChannelPort();
+                scmd.channel = bt->getChannelNumber();
+                scmd.ID = scmd.channel;
+                scmd.flag = 0;
+                scmd.type = 1009;
+                scmd.value1 = btState;  // instance
+                scmd.value2 = c.length();
+                scmd.value3 = 0;
+                scmd.msg = c;
+                scmd.MC = 0x008d;       // custom event
+
+                if (gAmxNet)
+                    gAmxNet->sendCommand(scmd);
+                else
+                    MSG_WARNING("Missing global class TAmxNet. Can't send message!");
             }
         }
     }
@@ -6068,7 +6815,7 @@ void TPageManager::doAKR(int port, vector<int>& channels, vector<string>& pars)
     doAKEYR(port, channels, pars);
 }
 
-void TPageManager::doBEEP(int, std::vector<int>&, vector<string>&)
+void TPageManager::doABEEP(int, std::vector<int>&, vector<string>&)
 {
     DECL_TRACER("TPageManager::doBEEP(int, std::vector<int>&, vector<string>&)");
 
@@ -6078,7 +6825,36 @@ void TPageManager::doBEEP(int, std::vector<int>&, vector<string>&)
     string snd = TConfig::getSystemPath(TConfig::SOUNDS) + "/" + TConfig::getSingleBeepSound();
     TValidateFile vf;
 
-    if (vf.isValidFile(snd))
+    if (_playSound && vf.isValidFile(snd))
+        _playSound(snd);
+}
+
+void TPageManager::doADBEEP(int, std::vector<int>&, vector<string>&)
+{
+    DECL_TRACER("TPageManager::doDBEEP(int, std::vector<int>&, vector<string>&)");
+
+    if (!_playSound)
+        return;
+
+    string snd = TConfig::getSystemPath(TConfig::SOUNDS) + "/" + TConfig::getDoubleBeepSound();
+    TValidateFile vf;
+
+    if (_playSound && vf.isValidFile(snd))
+        _playSound(snd);
+}
+
+void TPageManager::doBEEP(int, std::vector<int>&, vector<string>&)
+{
+    DECL_TRACER("TPageManager::doBEEP(int, std::vector<int>&, vector<string>&)");
+
+    if (!_playSound)
+        return;
+
+    string snd = TConfig::getSystemPath(TConfig::SOUNDS) + "/" + TConfig::getSingleBeepSound();
+    TValidateFile vf;
+    TSystemSound sysSound(TConfig::getSystemPath(TConfig::SOUNDS));
+
+    if (_playSound && sysSound.getSystemSoundState() && vf.isValidFile(snd))
         _playSound(snd);
 }
 
@@ -6091,8 +6867,9 @@ void TPageManager::doDBEEP(int, std::vector<int>&, vector<string>&)
 
     string snd = TConfig::getSystemPath(TConfig::SOUNDS) + "/" + TConfig::getDoubleBeepSound();
     TValidateFile vf;
+    TSystemSound sysSound(TConfig::getSystemPath(TConfig::SOUNDS));
 
-    if (vf.isValidFile(snd))
+    if (_playSound && sysSound.getSystemSoundState() && vf.isValidFile(snd))
         _playSound(snd);
 }
 
