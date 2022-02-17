@@ -273,7 +273,7 @@ TPageManager::TPageManager()
     REG_CMD(doBFB, "^BFB");     // Set the feedback type of the button.
     REG_CMD(doBMC, "^BMC");    // Button copy command.
 //    REG_CMD(doBMI, "^BMI");    // Set the button mask image.
-//    REG_CMD(doBML, "^BML");    // Set the maximum length of the text area button.
+    REG_CMD(doBML, "^BML");    // Set the maximum length of the text area button.
     REG_CMD(doBMP, "^BMP");     // Assign a picture to those buttons with a defined addressrange.
     REG_CMD(getBMP, "?BMP");    // Get the current bitmap name.
     REG_CMD(doBOP, "^BOP");     // Set the button opacity.
@@ -309,11 +309,11 @@ TPageManager::TPageManager()
     REG_CMD(doSHO, "^SHO");     // Show or hide a button with a set variable text range.
     REG_CMD(doTEC, "^TEC");     // Set the text effect color for the specified addresses/states to the specified color.
     REG_CMD(getTEC, "?TEC");    // Get the current text effect color.
-//    REG_CMD(doTEF, "^TEF");     // Set the text effect. The Text Effect is specified by name and can be found in TPD4.
-//    REG_CMD(getTEF, "?TEF");    // Get the current text effect name.
+    REG_CMD(doTEF, "^TEF");     // Set the text effect. The Text Effect is specified by name and can be found in TPD4.
+    REG_CMD(getTEF, "?TEF");    // Get the current text effect name.
 //    REG_CMD(doTOP, "^TOP");     // Send events to the Master as string events.
     REG_CMD(doTXT, "^TXT");     // Assign a text string to those buttons with a defined address range.
-//    REG_CMD(getTXT, "?TXT");    // Get the current text information.
+    REG_CMD(getTXT, "?TXT");    // Get the current text information.
     REG_CMD(doUNI, "^UNI");     // Set Unicode text.
     REG_CMD(doUTF, "^UTF");     // G5: Set button state text using UTF-8 text command.
 
@@ -2565,6 +2565,52 @@ void TPageManager::sendString(uint handle, const std::string& text)
         MSG_WARNING("Missing global class TAmxNet. Can't send message!");
 }
 
+/**
+ * Sending a custom event is identical in all cases. Because of this I
+ * implemented this method to send a custom event. This is called in all cases
+ * where a ?XXX command is received.
+ *
+ * @param value1    The instance of the button.
+ * @param value2    The value of a numeric request or the length of the string.
+ * @param value3    Always 0
+ * @param msg       In case of a string this contains the string.
+ * @param evType    This is the event type, a number between 1001 and 1099.
+ * @param cp        Channel port of button.
+ * @param cn        Channel number. of button.
+ *
+ * @return If all parameters are valid it returns TRUE.
+ */
+bool TPageManager::sendCustomEvent(int value1, int value2, int value3, const string& msg, int evType, int cp, int cn)
+{
+    DECL_TRACER("TPageManager::sendCustomEvent(int value1, int value2, int value3, const string& msg, int evType)");
+
+    if (value1 < 1)
+        return false;
+
+    amx::ANET_SEND scmd;
+    scmd.port = cp;
+    scmd.channel = cn;
+    scmd.ID = scmd.channel;
+    scmd.flag = 0;
+    scmd.type = evType;
+    scmd.value1 = value1;   // instance
+    scmd.value2 = value2;
+    scmd.value3 = value3;
+    scmd.msg = msg;
+
+    if (!msg.empty())
+        scmd.dtype = 0x0001;// Char array
+
+    scmd.MC = 0x008d;       // custom event
+
+    if (gAmxNet)
+        gAmxNet->sendCommand(scmd);
+    else
+        MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+
+    return true;
+}
+
 /****************************************************************************
  * The following functions implements one of the commands the panel accepts.
  ****************************************************************************/
@@ -3742,65 +3788,30 @@ void TPageManager::getBCB(int port, vector<int> &channels, vector<string> &pars)
 
     if (buttons.size() > 0)
     {
-        vector<Button::TButton *>::iterator mapIter;
+        Button::TButton *bt = buttons[0];
 
-        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        if (btState == 0)       // All instances?
         {
-            Button::TButton *bt = *mapIter;
+            int bst = bt->getNumberInstances();
 
-            if (btState == 0)       // All instances?
+            for (int i = 0; i < bst; i++)
             {
-                int bst = bt->getNumberInstances();
-
-                for (int i = 0; i < bst; i++)
-                {
-                    color = bt->getBorderColor(i);
-
-                    if (color.empty())
-                        continue;
-
-                    amx::ANET_SEND scmd;
-                    scmd.port = bt->getChannelPort();
-                    scmd.channel = bt->getChannelNumber();
-                    scmd.ID = scmd.channel;
-                    scmd.flag = 0;
-                    scmd.type = 1011;
-                    scmd.value1 = i + 1;    // instance
-                    scmd.value2 = color.length();
-                    scmd.value3 = 0;
-                    scmd.msg = color;
-                    scmd.MC = 0x008d;       // custom event
-
-                    if (gAmxNet)
-                        gAmxNet->sendCommand(scmd);
-                    else
-                        MSG_WARNING("Missing global class TAmxNet. Can't send message!");
-                }
-            }
-            else
-            {
-                color = bt->getBorderColor(btState - 1);
+                color = bt->getBorderColor(i);
 
                 if (color.empty())
-                    return;
+                    continue;
 
-                amx::ANET_SEND scmd;
-                scmd.port = bt->getChannelPort();
-                scmd.channel = bt->getChannelNumber();
-                scmd.ID = scmd.channel;
-                scmd.flag = 0;
-                scmd.type = 1011;
-                scmd.value1 = btState;  // instance
-                scmd.value2 = color.length();
-                scmd.value3 = 0;
-                scmd.msg = color;
-                scmd.MC = 0x008d;       // custom event
-
-                if (gAmxNet)
-                    gAmxNet->sendCommand(scmd);
-                else
-                    MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+                sendCustomEvent(i + 1, color.length(), 0, color, 1011, bt->getChannelPort(), bt->getChannelNumber());
             }
+        }
+        else
+        {
+            color = bt->getBorderColor(btState - 1);
+
+            if (color.empty())
+                return;
+
+            sendCustomEvent(btState, color.length(), 0, color, 1011, bt->getChannelPort(), bt->getChannelNumber());
         }
     }
 }
@@ -3879,62 +3890,26 @@ void TPageManager::getBCF(int port, vector<int> &channels, vector<string> &pars)
 
     if (buttons.size() > 0)
     {
-        vector<Button::TButton *>::iterator mapIter;
+        Button::TButton *bt = buttons[0];
 
-        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        if (btState == 0)       // All instances?
         {
-            Button::TButton *bt = *mapIter;
+            int bst = bt->getNumberInstances();
 
-            if (btState == 0)       // All instances?
+            for (int i = 0; i < bst; i++)
             {
-                int bst = bt->getNumberInstances();
+                color = bt->getFillColor(i);
 
-                for (int i = 0; i < bst; i++)
-                {
-                    color = bt->getFillColor(i);
+                if (color.empty())
+                    continue;
 
-                    if (color.empty())
-                        continue;
-
-                    amx::ANET_SEND scmd;
-                    scmd.port = bt->getChannelPort();
-                    scmd.channel = bt->getChannelNumber();
-                    scmd.ID = scmd.channel;
-                    scmd.flag = 0;
-                    scmd.type = 1012;
-                    scmd.value1 = i + 1;    // instance
-                    scmd.value2 = color.length();
-                    scmd.value3 = 0;
-                    scmd.msg = color;
-                    scmd.MC = 0x008d;       // custom event
-
-                    if (gAmxNet)
-                        gAmxNet->sendCommand(scmd);
-                    else
-                        MSG_WARNING("Missing global class TAmxNet. Can't send message!");
-                }
+                sendCustomEvent(i + 1, color.length(), 0, color, 1012, bt->getChannelPort(), bt->getChannelNumber());
             }
-            else
-            {
-                color = bt->getFillColor(btState-1);
-
-                amx::ANET_SEND scmd;
-                scmd.port = bt->getChannelPort();
-                scmd.channel = bt->getChannelNumber();
-                scmd.ID = scmd.channel;
-                scmd.flag = 0;
-                scmd.type = 1012;
-                scmd.value1 = btState;  // instance
-                scmd.value2 = color.length();
-                scmd.value3 = 0;
-                scmd.msg = color;
-                scmd.MC = 0x008d;       // custom event
-
-                if (gAmxNet)
-                    gAmxNet->sendCommand(scmd);
-                else
-                    MSG_WARNING("Missing global class TAmxNet. Can't send message!");
-            }
+        }
+        else
+        {
+            color = bt->getFillColor(btState-1);
+            sendCustomEvent(btState, color.length(), 0, color, 1012, bt->getChannelPort(), bt->getChannelNumber());
         }
     }
 }
@@ -4013,62 +3988,26 @@ void TPageManager::getBCT(int port, vector<int> &channels, vector<string> &pars)
 
     if (buttons.size() > 0)
     {
-        vector<Button::TButton *>::iterator mapIter;
+        Button::TButton *bt = buttons[0];
 
-        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        if (btState == 0)       // All instances?
         {
-            Button::TButton *bt = *mapIter;
+            int bst = bt->getNumberInstances();
 
-            if (btState == 0)       // All instances?
+            for (int i = 0; i < bst; i++)
             {
-                int bst = bt->getNumberInstances();
+                color = bt->getTextColor(i);
 
-                for (int i = 0; i < bst; i++)
-                {
-                    color = bt->getTextColor(i);
+                if (color.empty())
+                    continue;
 
-                    if (color.empty())
-                        continue;
-
-                    amx::ANET_SEND scmd;
-                    scmd.port = bt->getChannelPort();
-                    scmd.channel = bt->getChannelNumber();
-                    scmd.ID = scmd.channel;
-                    scmd.flag = 0;
-                    scmd.type = 1013;
-                    scmd.value1 = i + 1;    // instance
-                    scmd.value2 = color.length();
-                    scmd.value3 = 0;
-                    scmd.msg = color;
-                    scmd.MC = 0x008d;       // custom event
-
-                    if (gAmxNet)
-                        gAmxNet->sendCommand(scmd);
-                    else
-                        MSG_WARNING("Missing global class TAmxNet. Can't send message!");
-                }
+                sendCustomEvent(i + 1, color.length(), 0, color, 1013, bt->getChannelPort(), bt->getChannelNumber());
             }
-            else
-            {
-                color = bt->getTextColor(btState - 1);
-
-                amx::ANET_SEND scmd;
-                scmd.port = bt->getChannelPort();
-                scmd.channel = bt->getChannelNumber();
-                scmd.ID = scmd.channel;
-                scmd.flag = 0;
-                scmd.type = 1013;
-                scmd.value1 = btState;  // instance
-                scmd.value2 = color.length();
-                scmd.value3 = 0;
-                scmd.msg = color;
-                scmd.MC = 0x008d;       // custom event
-
-                if (gAmxNet)
-                    gAmxNet->sendCommand(scmd);
-                else
-                    MSG_WARNING("Missing global class TAmxNet. Can't send message!");
-            }
+        }
+        else
+        {
+            color = bt->getTextColor(btState - 1);
+            sendCustomEvent(btState, color.length(), 0, color, 1013, bt->getChannelPort(), bt->getChannelNumber());
         }
     }
 }
@@ -4278,7 +4217,7 @@ void TPageManager::doBMC(int port, vector<int>& channels, vector<std::string>& p
                     case 5: buttons[ibuttons]->setTextEffectColor(src_buttons[0]->getTextEffectColor(src_state), btState); break;
                     case 6: buttons[ibuttons]->setTextEffect(src_buttons[0]->getTextEffect(src_state), btState); break;
                     case 7: buttons[ibuttons]->setFontIndex(src_buttons[0]->getFontIndex(src_state), btState); break;
-                    case 8: buttons[ibuttons]->setIconIndex(src_buttons[0]->getIconIndex(src_state), btState); break;
+                    case 8: buttons[ibuttons]->setIcon(src_buttons[0]->getIconIndex(src_state), btState); break;
 
                     case 9:
                         j = src_buttons[0]->getBitmapJustification(&x, &y, src_state);
@@ -4305,6 +4244,50 @@ void TPageManager::doBMC(int port, vector<int>& channels, vector<std::string>& p
             }
 
             idx++;
+        }
+    }
+}
+
+/**
+ * Set the maximum length of the text area button. If this value is set to
+ * zero (0), the text area has no max length. The maximum length available is
+ * 2000. This is only for a Text area input button and not for a Text area input
+ * masking button.
+ */
+void TPageManager::doBML(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doBML(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Expecting 1 parameter but got " << pars.size() << "! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    int maxLen = atoi(pars[0].c_str());
+
+    if (maxLen < 0 || maxLen > 2000)
+    {
+        MSG_WARNING("Got illegal length of text area! [" << maxLen << "]");
+        return;
+    }
+
+    vector<MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+            bt->setTextMaxChars(maxLen);
         }
     }
 }
@@ -4442,62 +4425,26 @@ void TPageManager::getBMP(int port, vector<int> &channels, vector<string> &pars)
 
     if (buttons.size() > 0)
     {
-        vector<Button::TButton *>::iterator mapIter;
+        Button::TButton *bt = buttons[0];
 
-        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        if (btState == 0)       // All instances?
         {
-            Button::TButton *bt = *mapIter;
+            int bst = bt->getNumberInstances();
 
-            if (btState == 0)       // All instances?
+            for (int i = 0; i < bst; i++)
             {
-                int bst = bt->getNumberInstances();
+                bmp = bt->getBitmapName(i);
 
-                for (int i = 0; i < bst; i++)
-                {
-                    bmp = bt->getBitmapName(i);
+                if (bmp.empty())
+                    continue;
 
-                    if (bmp.empty())
-                        continue;
-
-                    amx::ANET_SEND scmd;
-                    scmd.port = bt->getChannelPort();
-                    scmd.channel = bt->getChannelNumber();
-                    scmd.ID = scmd.channel;
-                    scmd.flag = 0;
-                    scmd.type = 1002;
-                    scmd.value1 = i + 1;    // instance
-                    scmd.value2 = bmp.length();
-                    scmd.value3 = 0;
-                    scmd.msg = bmp;
-                    scmd.MC = 0x008d;       // custom event
-
-                    if (gAmxNet)
-                        gAmxNet->sendCommand(scmd);
-                    else
-                        MSG_WARNING("Missing global class TAmxNet. Can't send message!");
-                }
+                sendCustomEvent(i + 1, bmp.length(), 0, bmp, 1002, bt->getChannelPort(), bt->getChannelNumber());
             }
-            else
-            {
-                bmp = bt->getTextColor(btState-1);
-
-                amx::ANET_SEND scmd;
-                scmd.port = bt->getChannelPort();
-                scmd.channel = bt->getChannelNumber();
-                scmd.ID = scmd.channel;
-                scmd.flag = 0;
-                scmd.type = 1002;
-                scmd.value1 = btState;  // instance
-                scmd.value2 = bmp.length();
-                scmd.value3 = 0;
-                scmd.msg = bmp;
-                scmd.MC = 0x008d;       // custom event
-
-                if (gAmxNet)
-                    gAmxNet->sendCommand(scmd);
-                else
-                    MSG_WARNING("Missing global class TAmxNet. Can't send message!");
-            }
+        }
+        else
+        {
+            bmp = bt->getTextColor(btState-1);
+            sendCustomEvent(btState, bmp.length(), 0, bmp, 1002, bt->getChannelPort(), bt->getChannelNumber());
         }
     }
 }
@@ -4581,57 +4528,22 @@ void TPageManager::getBOP(int port, vector<int>& channels, vector<string>& pars)
 
     if (buttons.size() > 0)
     {
-        vector<Button::TButton *>::iterator mapIter;
+        Button::TButton *bt = buttons[0];
 
-        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        if (btState == 0)       // All instances?
         {
-            Button::TButton *bt = *mapIter;
+            int bst = bt->getNumberInstances();
 
-            if (btState == 0)       // All instances?
+            for (int i = 0; i < bst; i++)
             {
-                int bst = bt->getNumberInstances();
-
-                for (int i = 0; i < bst; i++)
-                {
-                    int oo = bt->getOpacity(i);
-
-                    amx::ANET_SEND scmd;
-                    scmd.port = bt->getChannelPort();
-                    scmd.channel = bt->getChannelNumber();
-                    scmd.ID = scmd.channel;
-                    scmd.flag = 0;
-                    scmd.type = 1015;
-                    scmd.value1 = i + 1;    // instance
-                    scmd.value2 = oo;
-                    scmd.value3 = 0;
-                    scmd.MC = 0x008d;       // custom event
-
-                    if (gAmxNet)
-                        gAmxNet->sendCommand(scmd);
-                    else
-                        MSG_WARNING("Missing global class TAmxNet. Can't send message!");
-                }
+                int oo = bt->getOpacity(i);
+                sendCustomEvent(i + 1, oo, 0, "", 1015, bt->getChannelPort(), bt->getChannelNumber());
             }
-            else
-            {
-                int oo = bt->getOpacity(btState-1);
-
-                amx::ANET_SEND scmd;
-                scmd.port = bt->getChannelPort();
-                scmd.channel = bt->getChannelNumber();
-                scmd.ID = scmd.channel;
-                scmd.flag = 0;
-                scmd.type = 1015;
-                scmd.value1 = btState;  // instance
-                scmd.value2 = oo;
-                scmd.value3 = 0;
-                scmd.MC = 0x008d;       // custom event
-
-                if (gAmxNet)
-                    gAmxNet->sendCommand(scmd);
-                else
-                    MSG_WARNING("Missing global class TAmxNet. Can't send message!");
-            }
+        }
+        else
+        {
+            int oo = bt->getOpacity(btState-1);
+            sendCustomEvent(btState, oo, 0, "", 1015, bt->getChannelPort(), bt->getChannelNumber());
         }
     }
 }
@@ -4839,59 +4751,22 @@ void TPageManager::getBRD(int port, vector<int>& channels, vector<string>& pars)
 
     if (buttons.size() > 0)
     {
-        vector<Button::TButton *>::iterator mapIter;
+        Button::TButton *bt = buttons[0];
 
-        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        if (btState == 0)       // All instances?
         {
-            Button::TButton *bt = *mapIter;
+            int bst = bt->getNumberInstances();
 
-            if (btState == 0)       // All instances?
+            for (int i = 0; i < bst; i++)
             {
-                int bst = bt->getNumberInstances();
-
-                for (int i = 0; i < bst; i++)
-                {
-                    string bname = bt->getBorderStyle(i);
-
-                    amx::ANET_SEND scmd;
-                    scmd.port = bt->getChannelPort();
-                    scmd.channel = bt->getChannelNumber();
-                    scmd.ID = scmd.channel;
-                    scmd.flag = 0;
-                    scmd.type = 1014;
-                    scmd.value1 = i + 1;    // instance
-                    scmd.value2 = bname.length();
-                    scmd.value3 = 0;
-                    scmd.msg = bname;
-                    scmd.MC = 0x008d;       // custom event
-
-                    if (gAmxNet)
-                        gAmxNet->sendCommand(scmd);
-                    else
-                        MSG_WARNING("Missing global class TAmxNet. Can't send message!");
-                }
+                string bname = bt->getBorderStyle(i);
+                sendCustomEvent(i + 1, bname.length(), 0, bname, 1014, bt->getChannelPort(), bt->getChannelNumber());
             }
-            else
-            {
-                string bname = bt->getBorderStyle(btState-1);
-
-                amx::ANET_SEND scmd;
-                scmd.port = bt->getChannelPort();
-                scmd.channel = bt->getChannelNumber();
-                scmd.ID = scmd.channel;
-                scmd.flag = 0;
-                scmd.type = 1014;
-                scmd.value1 = btState;  // instance
-                scmd.value2 = bname.length();
-                scmd.value3 = 0;
-                scmd.msg = bname;
-                scmd.MC = 0x008d;       // custom event
-
-                if (gAmxNet)
-                    gAmxNet->sendCommand(scmd);
-                else
-                    MSG_WARNING("Missing global class TAmxNet. Can't send message!");
-            }
+        }
+        else
+        {
+            string bname = bt->getBorderStyle(btState-1);
+            sendCustomEvent(btState, bname.length(), 0, bname, 1014, bt->getChannelPort(), bt->getChannelNumber());
         }
     }
 }
@@ -5160,10 +5035,10 @@ void TPageManager::doBWW(int port, vector<int>& channels, vector<string>& pars)
                 MSG_DEBUG("Setting word wrap on all " << bst << " instances...");
 
                 for (int i = 0; i < bst; i++)
-                    bt->setWorWrap(true, i);
+                    bt->setTextWordWrap(true, i);
             }
             else
-                bt->setWorWrap(true, btState - 1);
+                bt->setTextWordWrap(true, btState - 1);
         }
     }
 }
@@ -5190,54 +5065,17 @@ void TPageManager::getBWW(int port, vector<int>& channels, vector<string>& pars)
 
     if (buttons.size() > 0)
     {
-        vector<Button::TButton *>::iterator mapIter;
+        Button::TButton *bt = buttons[0];
 
-        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        if (btState == 0)       // All instances?
         {
-            Button::TButton *bt = *mapIter;
+            int bst = bt->getNumberInstances();
 
-            if (btState == 0)       // All instances?
-            {
-                int bst = bt->getNumberInstances();
-
-                for (int i = 0; i < bst; i++)
-                {
-                    amx::ANET_SEND scmd;
-                    scmd.port = bt->getChannelPort();
-                    scmd.channel = bt->getChannelNumber();
-                    scmd.ID = scmd.channel;
-                    scmd.flag = 0;
-                    scmd.type = 1010;
-                    scmd.value1 = i + 1;    // instance
-                    scmd.value2 = bt->getTextWordWrap(i);
-                    scmd.value3 = 0;
-                    scmd.MC = 0x008d;       // custom event
-
-                    if (gAmxNet)
-                        gAmxNet->sendCommand(scmd);
-                    else
-                        MSG_WARNING("Missing global class TAmxNet. Can't send message!");
-                }
-            }
-            else
-            {
-                amx::ANET_SEND scmd;
-                scmd.port = bt->getChannelPort();
-                scmd.channel = bt->getChannelNumber();
-                scmd.ID = scmd.channel;
-                scmd.flag = 0;
-                scmd.type = 1010;
-                scmd.value1 = btState;  // instance
-                scmd.value2 = bt->getTextWordWrap(btState-1);
-                scmd.value3 = 0;
-                scmd.MC = 0x008d;       // custom event
-
-                if (gAmxNet)
-                    gAmxNet->sendCommand(scmd);
-                else
-                    MSG_WARNING("Missing global class TAmxNet. Can't send message!");
-            }
+            for (int i = 0; i < bst; i++)
+                sendCustomEvent(i + 1, bt->getTextWordWrap(i), 0, "", 1010, bt->getChannelPort(), bt->getChannelNumber());
         }
+        else
+            sendCustomEvent(btState, bt->getTextWordWrap(btState-1), 0, "", 1010, bt->getChannelPort(), bt->getChannelNumber());
     }
 }
 
@@ -5451,54 +5289,17 @@ void TPageManager::getFON(int port, vector<int>& channels, vector<string>& pars)
 
     if (buttons.size() > 0)
     {
-        vector<Button::TButton *>::iterator mapIter;
+        Button::TButton *bt = buttons[0];
 
-        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        if (btState == 0)       // All instances?
         {
-            Button::TButton *bt = *mapIter;
+            int bst = bt->getNumberInstances();
 
-            if (btState == 0)       // All instances?
-            {
-                int bst = bt->getNumberInstances();
-
-                for (int i = 0; i < bst; i++)
-                {
-                    amx::ANET_SEND scmd;
-                    scmd.port = bt->getChannelPort();
-                    scmd.channel = bt->getChannelNumber();
-                    scmd.ID = scmd.channel;
-                    scmd.flag = 0;
-                    scmd.type = 1007;
-                    scmd.value1 = i + 1;    // instance
-                    scmd.value2 = bt->getFontIndex(i);
-                    scmd.value3 = 0;
-                    scmd.MC = 0x008d;       // custom event
-
-                    if (gAmxNet)
-                        gAmxNet->sendCommand(scmd);
-                    else
-                        MSG_WARNING("Missing global class TAmxNet. Can't send message!");
-                }
-            }
-            else
-            {
-                amx::ANET_SEND scmd;
-                scmd.port = bt->getChannelPort();
-                scmd.channel = bt->getChannelNumber();
-                scmd.ID = scmd.channel;
-                scmd.flag = 0;
-                scmd.type = 1007;
-                scmd.value1 = btState;  // instance
-                scmd.value2 = bt->getFontIndex(btState-1);
-                scmd.value3 = 0;
-                scmd.MC = 0x008d;       // custom event
-
-                if (gAmxNet)
-                    gAmxNet->sendCommand(scmd);
-                else
-                    MSG_WARNING("Missing global class TAmxNet. Can't send message!");
-            }
+            for (int i = 0; i < bst; i++)
+                sendCustomEvent(i + 1, bt->getFontIndex(i), 0, "", 1007, bt->getChannelPort(), bt->getChannelNumber());
         }
+        else
+            sendCustomEvent(btState, bt->getFontIndex(btState - 1), 0, "", 1007, bt->getChannelPort(), bt->getChannelNumber());
     }
 }
 
@@ -5694,54 +5495,17 @@ void TPageManager::getICO(int port, vector<int>& channels, vector<string>& pars)
 
     if (buttons.size() > 0)
     {
-        vector<Button::TButton *>::iterator mapIter;
+        Button::TButton *bt = buttons[0];
 
-        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        if (btState == 0)       // All instances?
         {
-            Button::TButton *bt = *mapIter;
+            int bst = bt->getNumberInstances();
 
-            if (btState == 0)       // All instances?
-            {
-                int bst = bt->getNumberInstances();
-
-                for (int i = 0; i < bst; i++)
-                {
-                    amx::ANET_SEND scmd;
-                    scmd.port = bt->getChannelPort();
-                    scmd.channel = bt->getChannelNumber();
-                    scmd.ID = scmd.channel;
-                    scmd.flag = 0;
-                    scmd.type = 1003;
-                    scmd.value1 = i + 1;    // instance
-                    scmd.value2 = bt->getIconIndex(i);
-                    scmd.value3 = 0;
-                    scmd.MC = 0x008d;       // custom event
-
-                    if (gAmxNet)
-                        gAmxNet->sendCommand(scmd);
-                    else
-                        MSG_WARNING("Missing global class TAmxNet. Can't send message!");
-                }
-            }
-            else
-            {
-                amx::ANET_SEND scmd;
-                scmd.port = bt->getChannelPort();
-                scmd.channel = bt->getChannelNumber();
-                scmd.ID = scmd.channel;
-                scmd.flag = 0;
-                scmd.type = 1003;
-                scmd.value1 = btState;  // instance
-                scmd.value2 = bt->getIconIndex(btState-1);
-                scmd.value3 = 0;
-                scmd.MC = 0x008d;       // custom event
-
-                if (gAmxNet)
-                    gAmxNet->sendCommand(scmd);
-                else
-                    MSG_WARNING("Missing global class TAmxNet. Can't send message!");
-            }
+            for (int i = 0; i < bst; i++)
+                sendCustomEvent(i + 1, bt->getIconIndex(i), 0, "", 1003, bt->getChannelPort(), bt->getChannelNumber());
         }
+        else
+            sendCustomEvent(btState, bt->getIconIndex(btState - 1), 0, "", 1003, bt->getChannelPort(), bt->getChannelNumber());
     }
 }
 
@@ -5820,56 +5584,22 @@ void TPageManager::getJSB(int port, vector<int>& channels, vector<string>& pars)
 
     if (buttons.size() > 0)
     {
-        vector<Button::TButton *>::iterator mapIter;
+        Button::TButton *bt = buttons[0];
 
-        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        if (btState == 0)       // All instances?
         {
-            Button::TButton *bt = *mapIter;
+            int bst = bt->getNumberInstances();
 
-            if (btState == 0)       // All instances?
+            for (int i = 0; i < bst; i++)
             {
-                int bst = bt->getNumberInstances();
-
-                for (int i = 0; i < bst; i++)
-                {
-                    j = bt->getBitmapJustification(&x, &y, i);
-
-                    amx::ANET_SEND scmd;
-                    scmd.port = bt->getChannelPort();
-                    scmd.channel = bt->getChannelNumber();
-                    scmd.ID = scmd.channel;
-                    scmd.flag = 0;
-                    scmd.type = 1005;
-                    scmd.value1 = i + 1;    // instance
-                    scmd.value2 = j;
-                    scmd.value3 = 0;
-                    scmd.MC = 0x008d;       // custom event
-
-                    if (gAmxNet)
-                        gAmxNet->sendCommand(scmd);
-                    else
-                        MSG_WARNING("Missing global class TAmxNet. Can't send message!");
-                }
+                j = bt->getBitmapJustification(&x, &y, i);
+                sendCustomEvent(i + 1, j, 0, "", 1005, bt->getChannelPort(), bt->getChannelNumber());
             }
-            else
-            {
-                j = bt->getBitmapJustification(&x, &y, btState-1);
-                amx::ANET_SEND scmd;
-                scmd.port = bt->getChannelPort();
-                scmd.channel = bt->getChannelNumber();
-                scmd.ID = scmd.channel;
-                scmd.flag = 0;
-                scmd.type = 1005;
-                scmd.value1 = btState;  // instance
-                scmd.value2 = j;
-                scmd.value3 = 0;
-                scmd.MC = 0x008d;       // custom event
-
-                if (gAmxNet)
-                    gAmxNet->sendCommand(scmd);
-                else
-                    MSG_WARNING("Missing global class TAmxNet. Can't send message!");
-            }
+        }
+        else
+        {
+            j = bt->getBitmapJustification(&x, &y, btState-1);
+            sendCustomEvent(btState, j, 0, "", 1005, bt->getChannelPort(), bt->getChannelNumber());
         }
     }
 }
@@ -5949,56 +5679,22 @@ void TPageManager::getJSI(int port, vector<int>& channels, vector<string>& pars)
 
     if (buttons.size() > 0)
     {
-        vector<Button::TButton *>::iterator mapIter;
+        Button::TButton *bt = buttons[0];
 
-        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        if (btState == 0)       // All instances?
         {
-            Button::TButton *bt = *mapIter;
+            int bst = bt->getNumberInstances();
 
-            if (btState == 0)       // All instances?
+            for (int i = 0; i < bst; i++)
             {
-                int bst = bt->getNumberInstances();
-
-                for (int i = 0; i < bst; i++)
-                {
-                    j = bt->getIconJustification(&x, &y, i);
-
-                    amx::ANET_SEND scmd;
-                    scmd.port = bt->getChannelPort();
-                    scmd.channel = bt->getChannelNumber();
-                    scmd.ID = scmd.channel;
-                    scmd.flag = 0;
-                    scmd.type = 1006;
-                    scmd.value1 = i + 1;    // instance
-                    scmd.value2 = j;
-                    scmd.value3 = 0;
-                    scmd.MC = 0x008d;       // custom event
-
-                    if (gAmxNet)
-                        gAmxNet->sendCommand(scmd);
-                    else
-                        MSG_WARNING("Missing global class TAmxNet. Can't send message!");
-                }
+                j = bt->getIconJustification(&x, &y, i);
+                sendCustomEvent(i + 1, j, 0, "", 1006, bt->getChannelPort(), bt->getChannelNumber());
             }
-            else
-            {
-                j = bt->getIconJustification(&x, &y, btState-1);
-                amx::ANET_SEND scmd;
-                scmd.port = bt->getChannelPort();
-                scmd.channel = bt->getChannelNumber();
-                scmd.ID = scmd.channel;
-                scmd.flag = 0;
-                scmd.type = 1006;
-                scmd.value1 = btState;  // instance
-                scmd.value2 = j;
-                scmd.value3 = 0;
-                scmd.MC = 0x008d;       // custom event
-
-                if (gAmxNet)
-                    gAmxNet->sendCommand(scmd);
-                else
-                    MSG_WARNING("Missing global class TAmxNet. Can't send message!");
-            }
+        }
+        else
+        {
+            j = bt->getIconJustification(&x, &y, btState-1);
+            sendCustomEvent(btState, j, 0, "", 1006, bt->getChannelPort(), bt->getChannelNumber());
         }
     }
 }
@@ -6072,56 +5768,22 @@ void TPageManager::getJST(int port, vector<int>& channels, vector<string>& pars)
 
     if (buttons.size() > 0)
     {
-        vector<Button::TButton *>::iterator mapIter;
+        Button::TButton *bt = buttons[0];
 
-        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        if (btState == 0)       // All instances?
         {
-            Button::TButton *bt = *mapIter;
+            int bst = bt->getNumberInstances();
 
-            if (btState == 0)       // All instances?
+            for (int i = 0; i < bst; i++)
             {
-                int bst = bt->getNumberInstances();
-
-                for (int i = 0; i < bst; i++)
-                {
-                    j = bt->getTextJustification(&x, &y, i);
-
-                    amx::ANET_SEND scmd;
-                    scmd.port = bt->getChannelPort();
-                    scmd.channel = bt->getChannelNumber();
-                    scmd.ID = scmd.channel;
-                    scmd.flag = 0;
-                    scmd.type = 1004;
-                    scmd.value1 = i + 1;    // instance
-                    scmd.value2 = j;
-                    scmd.value3 = 0;
-                    scmd.MC = 0x008d;       // custom event
-
-                    if (gAmxNet)
-                        gAmxNet->sendCommand(scmd);
-                    else
-                        MSG_WARNING("Missing global class TAmxNet. Can't send message!");
-                }
+                j = bt->getTextJustification(&x, &y, i);
+                sendCustomEvent(i + 1, j, 0, "", 1004, bt->getChannelPort(), bt->getChannelNumber());
             }
-            else
-            {
-                j = bt->getTextJustification(&x, &y, btState-1);
-                amx::ANET_SEND scmd;
-                scmd.port = bt->getChannelPort();
-                scmd.channel = bt->getChannelNumber();
-                scmd.ID = scmd.channel;
-                scmd.flag = 0;
-                scmd.type = 1004;
-                scmd.value1 = btState;  // instance
-                scmd.value2 = j;
-                scmd.value3 = 0;
-                scmd.MC = 0x008d;       // custom event
-
-                if (gAmxNet)
-                    gAmxNet->sendCommand(scmd);
-                else
-                    MSG_WARNING("Missing global class TAmxNet. Can't send message!");
-            }
+        }
+        else
+        {
+            j = bt->getTextJustification(&x, &y, btState-1);
+            sendCustomEvent(btState, j, 0, "", 1004, bt->getChannelPort(), bt->getChannelNumber());
         }
     }
 }
@@ -6248,58 +5910,101 @@ void TPageManager::getTEC(int port, vector<int>& channels, vector<string>& pars)
 
     if (buttons.size() > 0)
     {
+        Button::TButton *bt = buttons[0];
+
+        if (btState == 0)       // All instances?
+        {
+            int bst = bt->getNumberInstances();
+
+            for (int i = 0; i < bst; i++)
+            {
+                string c = bt->getTextEffectColor(i);
+                sendCustomEvent(i + 1, c.length(), 0, c, 1009, bt->getChannelPort(), bt->getChannelNumber());
+            }
+        }
+        else
+        {
+            string c = bt->getTextEffectColor(btState-1);
+            sendCustomEvent(btState, c.length(), 0, c, 1009, bt->getChannelPort(), bt->getChannelNumber());
+        }
+    }
+}
+
+void TPageManager::doTEF(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doTEF(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.size() < 2)
+    {
+        MSG_ERROR("Expecting at least 2 parameters but got less! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    int btState = atoi(pars[0].c_str());
+    string tef = pars[1];
+
+    vector<MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
         vector<Button::TButton *>::iterator mapIter;
 
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
 
-            if (btState == 0)       // All instances?
-            {
-                int bst = bt->getNumberInstances();
-
-                for (int i = 0; i < bst; i++)
-                {
-                    string c = bt->getTextEffectColor(i);
-
-                    amx::ANET_SEND scmd;
-                    scmd.port = bt->getChannelPort();
-                    scmd.channel = bt->getChannelNumber();
-                    scmd.ID = scmd.channel;
-                    scmd.flag = 0;
-                    scmd.type = 1009;
-                    scmd.value1 = i + 1;    // instance
-                    scmd.value2 = c.length();
-                    scmd.value3 = 0;
-                    scmd.msg = c;
-                    scmd.MC = 0x008d;       // custom event
-
-                    if (gAmxNet)
-                        gAmxNet->sendCommand(scmd);
-                    else
-                        MSG_WARNING("Missing global class TAmxNet. Can't send message!");
-                }
-            }
+            if (btState == 0)
+                bt->setTextEffectName(tef);
             else
-            {
-                string c = bt->getTextEffectColor(btState-1);
-                amx::ANET_SEND scmd;
-                scmd.port = bt->getChannelPort();
-                scmd.channel = bt->getChannelNumber();
-                scmd.ID = scmd.channel;
-                scmd.flag = 0;
-                scmd.type = 1009;
-                scmd.value1 = btState;  // instance
-                scmd.value2 = c.length();
-                scmd.value3 = 0;
-                scmd.msg = c;
-                scmd.MC = 0x008d;       // custom event
+                bt->setTextEffectName(tef, btState-1);
+        }
+    }
+}
 
-                if (gAmxNet)
-                    gAmxNet->sendCommand(scmd);
-                else
-                    MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+void TPageManager::getTEF(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::getTEF(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    int btState = atoi(pars[0].c_str());
+
+    vector<MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        Button::TButton *bt = buttons[0];
+
+        if (btState == 0)       // All instances?
+        {
+            int bst = bt->getNumberInstances();
+
+            for (int i = 0; i < bst; i++)
+            {
+                string c = bt->getTextEffectName(i);
+                sendCustomEvent(i + 1, c.length(), 0, c, 1008, bt->getChannelPort(), bt->getChannelNumber());
             }
+        }
+        else
+        {
+            string c = bt->getTextEffectName(btState-1);
+            sendCustomEvent(btState, c.length(), 0, c, 1008, bt->getChannelPort(), bt->getChannelNumber());
         }
     }
 }
@@ -6351,6 +6056,48 @@ void TPageManager::doTXT(int port, vector<int>& channels, vector<string>& pars)
             }
             else
                 bt->setText(text, btState - 1);
+        }
+    }
+}
+
+void TPageManager::getTXT(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::getTXT(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    int btState = atoi(pars[0].c_str());
+
+    vector<MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        Button::TButton *bt = buttons[0];
+
+        if (btState == 0)       // All instances?
+        {
+            int bst = bt->getNumberInstances();
+
+            for (int i = 0; i < bst; i++)
+            {
+                string c = bt->getText(i);
+                sendCustomEvent(i + 1, c.length(), 0, c, 1001, bt->getChannelPort(), bt->getChannelNumber());
+            }
+        }
+        else
+        {
+            string c = bt->getText(btState-1);
+            sendCustomEvent(btState, c.length(), 0, c, 1001, bt->getChannelPort(), bt->getChannelNumber());
         }
     }
 }

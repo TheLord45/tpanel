@@ -82,6 +82,12 @@ namespace Button
         int lh{0};                  // Level high range
     }SYSBUTTONS_t;
 
+    typedef struct SYSTEF_t         // Text effect names
+    {
+        int idx{0};
+        std::string name;
+    }SYSTEF_t;
+
     typedef enum TEXT_ORIENTATION
     {
         ORI_ABSOLUT,
@@ -371,26 +377,28 @@ namespace Button
             int getChannelPort() { return cp; }
             int getLevelPort() { return lp; }
             int getLevelValue() { return lv; }
-            std::string& getText(int inst=0) { return sr[inst].te; }
-            std::string& getTextColor(int inst=0) { return sr[inst].ct; }
-            std::string& getTextEffectColor(int inst=0) { return sr[inst].ec; }
+            std::string getText(int inst=0);
+            std::string getTextColor(int inst=0);
+            std::string getTextEffectColor(int inst=0);
             void setTextEffectColor(const std::string& ec, int inst=-1);
-            int getTextEffect(int inst=0) {return sr[inst].et; }
-            void setTextEffect(int et, int inst=0) { sr[inst].et = et; }
-            std::string& getFillColor(int inst=0) { return sr[inst].cf; }
-            std::string& getBitmapName(int inst=0) { return sr[inst].bm; }
+            int getTextEffect(int inst=0);
+            void setTextEffect(int et, int inst=-1);
+            std::string getTextEffectName(int inst=0);
+            void setTextEffectName(const std::string& name, int inst=-1);
+            std::string getFillColor(int inst=0);
+            std::string getBitmapName(int inst=0);
             bool isSingleLine() { return ( dt.compare("multiple") != 0); }
             bool isMultiLine() { return ( dt.compare("multiple") == 0); }
             int getTextMaxChars() { return mt; }
-            bool getTextWordWrap(int inst=0) { return (sr[inst].ww == 1); }
-            void setTextWordWrap(bool ww, int inst=0) { sr[inst].ww = (ww ? 1 : 0); }
-            int getFontIndex(int inst=0) { return sr[inst].fi; }
-            void setFontIndex(int fi, int inst=0) { sr[inst].fi = fi; }
-            int getIconIndex(int inst=0) { return sr[inst].ii; }
-            void setIconIndex(int ii, int inst=0) { sr[inst].ii = ii; }
-            std::string& getSound(int inst=0) { return sr[inst].sd; }
-            void setSound(std::string& sd, int inst=0) { sr[inst].sd = sd; }
-            int getDynamic(int inst=0) { return sr[inst].dynamic; }
+            void setTextMaxChars(int m) { mt = m; }
+            bool getTextWordWrap(int inst=0);
+            bool setTextWordWrap(bool ww, int inst=-1);
+            int getFontIndex(int inst=0);
+            bool setFontIndex(int fi, int inst=-1);
+            int getIconIndex(int inst=0);
+            std::string getSound(int inst=0);
+            void setSound(const std::string& sd, int inst=-1);
+            bool getDynamic(int inst=0);
             void setDynamic(int d, int inst=-1);
             int getNumberInstances() { return (int)sr.size(); }
             int getActiveInstance() { return mActInstance; }
@@ -443,8 +451,7 @@ namespace Button
              * @return TRUE if no errors occures, otherwise FALSE.
              */
             bool setOpacity(int op, int instance);
-            int getOpacity(int inst=0) { return sr[inst-1].oo; }
-            bool setWorWrap(bool state, int instance);
+            int getOpacity(int inst=0);
             bool setFont(int id, int instance);
             void setTop(int top);
             void setLeft(int left);

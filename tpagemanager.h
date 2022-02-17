@@ -329,6 +329,7 @@ class TPageManager : public TAmxCommands
         bool destroyAll();
         TPage *loadPage(PAGELIST_T& pl);
         void setButtonCallbacks(Button::TButton *bt);
+        bool sendCustomEvent(int value1, int value2, int value3, const std::string& msg, int evType, int cp, int cn);
 
         // List of command functions
         void doFTR(int port, std::vector<int>&, std::vector<std::string>& pars);
@@ -370,6 +371,7 @@ class TPageManager : public TAmxCommands
         void doBDO(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doBFB(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doBMC(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doBML(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doBMP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void getBMP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doBOP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
@@ -402,7 +404,10 @@ class TPageManager : public TAmxCommands
         void doSHO(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doTEC(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void getTEC(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doTEF(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void getTEF(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doTXT(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void getTXT(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doUNI(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doUTF(int port, std::vector<int>& channels, std::vector<std::string>& pars);
 

@@ -155,6 +155,66 @@ SYSBUTTONS_t sysButtons[] = {
     {    0, NONE,                  0, 0,   0 }   // Terminate
 };
 
+SYSTEF_t sysTefs[] = {
+    {  1, "Outline-S" },
+    {  2, "Outline-M" },
+    {  3, "Outline-L" },
+    {  4, "Outline-X" },
+    {  5, "Glow-S" },
+    {  6, "Glow-M" },
+    {  7, "Glow-L" },
+    {  8, "Glow-X" },
+    {  9, "Soft Drop Shadow 1" },
+    { 10, "Soft Drop Shadow 2" },
+    { 11, "Soft Drop Shadow 3" },
+    { 12, "Soft Drop Shadow 4" },
+    { 13, "Soft Drop Shadow 5" },
+    { 14, "Soft Drop Shadow 6" },
+    { 15, "Soft Drop Shadow 7" },
+    { 16, "Soft Drop Shadow 8" },
+    { 17, "Medium Drop Shadow 1" },
+    { 18, "Medium Drop Shadow 2" },
+    { 19, "Medium Drop Shadow 3" },
+    { 20, "Medium Drop Shadow 4" },
+    { 21, "Medium Drop Shadow 5" },
+    { 22, "Medium Drop Shadow 6" },
+    { 23, "Medium Drop Shadow 7" },
+    { 24, "Medium Drop Shadow 8" },
+    { 25, "Hard Drop Shadow 1" },
+    { 26, "Hard Drop Shadow 2" },
+    { 27, "Hard Drop Shadow 3" },
+    { 28, "Hard Drop Shadow 4" },
+    { 29, "Hard Drop Shadow 5" },
+    { 30, "Hard Drop Shadow 6" },
+    { 31, "Hard Drop Shadow 7" },
+    { 32, "Hard Drop Shadow 8" },
+    { 33, "Soft Drop Shadow 1 with outline" },
+    { 34, "Soft Drop Shadow 2 with outline" },
+    { 35, "Soft Drop Shadow 3 with outline" },
+    { 36, "Soft Drop Shadow 4 with outline" },
+    { 37, "Soft Drop Shadow 5 with outline" },
+    { 38, "Soft Drop Shadow 6 with outline" },
+    { 39, "Soft Drop Shadow 7 with outline" },
+    { 40, "Soft Drop Shadow 8 with outline" },
+    { 41, "Medium Drop Shadow 1 with outline" },
+    { 42, "Medium Drop Shadow 2 with outline" },
+    { 43, "Medium Drop Shadow 3 with outline" },
+    { 44, "Medium Drop Shadow 4 with outline" },
+    { 45, "Medium Drop Shadow 5 with outline" },
+    { 46, "Medium Drop Shadow 6 with outline" },
+    { 47, "Medium Drop Shadow 7 with outline" },
+    { 48, "Medium Drop Shadow 8 with outline" },
+    { 49, "Hard Drop Shadow 1 with outline" },
+    { 50, "Hard Drop Shadow 2 with outline" },
+    { 51, "Hard Drop Shadow 3 with outline" },
+    { 52, "Hard Drop Shadow 4 with outline" },
+    { 53, "Hard Drop Shadow 5 with outline" },
+    { 54, "Hard Drop Shadow 6 with outline" },
+    { 55, "Hard Drop Shadow 7 with outline" },
+    { 56, "Hard Drop Shadow 8 with outline" },
+    { 0,  "\0" }
+};
+
 TButton::TButton()
 {
     DECL_TRACER("TButton::TButton()");
@@ -1113,6 +1173,19 @@ void TButton::setActiveInstance(int inst)
     mActInstance = inst;
 }
 
+bool TButton::getDynamic(int inst)
+{
+    DECL_TRACER("TButton::getDynamic(int inst)");
+
+    if (inst < 0 || inst >= (int)sr.size())
+    {
+        MSG_ERROR("Instance " << inst << " does not exist!");
+        return false;
+    }
+
+    return sr[inst].dynamic;
+}
+
 void TButton::setDynamic(int d, int inst)
 {
     DECL_TRACER("TButton::setDynamic(int d, int inst)");
@@ -1173,6 +1246,19 @@ void TButton::setDynamic(int d, int inst)
             makeElement(inst);
         }
     }
+}
+
+int TButton::getOpacity(int inst)
+{
+    DECL_TRACER("TButoon::getOpacity(int inst)");
+
+    if (inst < 0 || inst >= (int)sr.size())
+    {
+        MSG_ERROR("Instance " << inst << " does not exist!");
+        return 0;
+    }
+
+    return sr[inst].oo;
 }
 
 bool TButton::setOpacity(int op, int instance)
@@ -1311,6 +1397,8 @@ void TButton::setBitmapJustification(int j, int x, int y, int instance)
             sr[instance].by = y;
         }
     }
+
+    makeElement();
 }
 
 int TButton::getIconJustification(int* x, int* y, int instance)
@@ -1362,6 +1450,8 @@ void TButton::setIconJustification(int j, int x, int y, int instance)
             sr[instance].iy = y;
         }
     }
+
+    makeElement();
 }
 
 int TButton::getTextJustification(int* x, int* y, int instance)
@@ -1413,6 +1503,47 @@ void TButton::setTextJustification(int j, int x, int y, int instance)
             sr[instance].ty = y;
         }
     }
+
+    makeElement();
+}
+
+string TButton::getText(int inst)
+{
+    DECL_TRACER("TButton::getText(int inst)");
+
+    if (inst < 0 || inst >= (int)sr.size())
+    {
+        MSG_ERROR("Instance " << inst << " does not exist!");
+        return string();
+    }
+
+    return sr[inst].te;
+}
+
+string TButton::getTextColor(int inst)
+{
+    DECL_TRACER("TButton::getTextColor(int const)");
+
+    if (inst < 0 || inst >= (int)sr.size())
+    {
+        MSG_ERROR("Instance " << inst << " does not exist!");
+        return string();
+    }
+
+    return sr[inst].ct;
+}
+
+string TButton::getTextEffectColor(int inst)
+{
+    DECL_TRACER ("TButton::getTextEffectColor(int inst)");
+
+    if (inst < 0 || inst >= (int)sr.size())
+    {
+        MSG_ERROR("Instance " << inst << " does not exist!");
+        return string();
+    }
+
+    return sr[inst].ec;
 }
 
 void TButton::setTextEffectColor(const string& ec, int inst)
@@ -1443,21 +1574,229 @@ void TButton::setTextEffectColor(const string& ec, int inst)
         sr[inst].ec = ec;
 
     if (visible)
-        makeElement(inst);
+        makeElement();
 }
 
-bool TButton::setWorWrap(bool state, int instance)
+int TButton::getTextEffect(int inst)
+{
+    DECL_TRACER("TButton::getTextEffect(int inst)");
+
+    if (inst < 0 || inst >= (int)sr.size())
+    {
+        MSG_ERROR("Instance " << inst << " does not exist!");
+        return 0;
+    }
+
+    return sr[inst].et;
+}
+
+void TButton::setTextEffect(int et, int inst)
+{
+    DECL_TRACER("TButton::setTextEffect(bool et, int inst)");
+
+    if (inst >= (int)sr.size())
+    {
+        MSG_ERROR("instance " << inst << " is out of bounds!");
+        return;
+    }
+
+    if (inst < 0)
+    {
+        for (size_t i = 0; i < sr.size(); i++)
+            sr[i].et = et;
+    }
+    else
+        sr[inst].et = et;
+
+    makeElement();
+}
+
+string TButton::getTextEffectName(int inst)
+{
+    DECL_TRACER("TButton::getTextEffectName(int inst)");
+
+    if (inst < 0 || inst >= (int)sr.size())
+        return string();
+
+    int idx = 0;
+
+    while (sysTefs[idx].idx)
+    {
+        if (sysTefs[idx].idx == sr[inst].et)
+            return sysTefs[idx].name;
+
+        idx++;
+    }
+
+    return string();
+}
+
+void TButton::setTextEffectName(const string& name, int inst)
+{
+    DECL_TRACER("TButton::setTextEffectName(const string& name, int inst)");
+
+    if (inst >= (int)sr.size())
+        return;
+
+    int idx = 0;
+
+    while (sysTefs[idx].idx)
+    {
+        if (strCaseCompare(sysTefs[idx].name, name) == 0)
+        {
+            if (inst < 0)
+            {
+                for (size_t i = 0; i < sr.size(); i++)
+                    sr[i].et = sysTefs[idx].idx;
+            }
+            else
+                sr[inst].et = sysTefs[idx].idx;
+
+            makeElement();
+            break;
+        }
+
+        idx++;
+    }
+}
+
+string TButton::getBitmapName(int inst)
+{
+    DECL_TRACER("TButton::getBitmapName(int inst)");
+
+    if (inst < 0 || inst >= (int)sr.size())
+    {
+        MSG_ERROR("Instance " << inst << " does not exist!");
+        return string();
+    }
+
+    return sr[inst].bm;
+}
+
+string TButton::getFillColor(int inst)
+{
+    DECL_TRACER("TButton::getFillColor(int inst)");
+
+    if (inst < 0 || inst >= (int)sr.size())
+    {
+        MSG_ERROR("Instance " << inst << " does not exist!");
+        return string();
+    }
+
+    return sr[inst].cf;
+}
+
+bool TButton::setTextWordWrap(bool state, int instance)
 {
     DECL_TRACER("TButton::setWorWrap(bool state, int instance)");
 
-    if (instance < 0 || instance >= (int)sr.size())
+    if (instance >= (int)sr.size())
     {
         MSG_ERROR("Invalid instance " << instance);
         return false;
     }
 
-    sr[instance].ww = state ? 1 : 0;
+    if (instance < 0)
+    {
+        for (size_t i = 0; i < sr.size(); i++)
+            sr[i].ww = state ? 1 : 0;
+    }
+    else
+        sr[instance].ww = state ? 1 : 0;
+
     return makeElement(instance);
+}
+
+bool TButton::getTextWordWrap(int inst)
+{
+    DECL_TRACER("TButton::getTextWordWrap(int inst)");
+
+    if (inst < 0 || inst >= (int)sr.size())
+    {
+        MSG_ERROR("Instance " << inst << " does not exist!");
+        return false;
+    }
+
+    return (sr[inst].ww == 1);
+}
+
+int TButton::getFontIndex(int inst)
+{
+    DECL_TRACER("TButton::getFontIndex(int inst)");
+
+    if (inst < 0 || inst >= (int)sr.size())
+    {
+        MSG_ERROR("Instance " << inst << " does not exist!");
+        return 0;
+    }
+
+    return sr[inst].fi;
+}
+
+bool TButton::setFontIndex(int fi, int inst)
+{
+    DECL_TRACER("TButton::setFontIndex(int fi, int inst)");
+
+    if (inst >= (int)sr.size())
+    {
+        MSG_ERROR("Invalid instance " << inst);
+        return false;
+    }
+
+    if (inst < 0)
+    {
+        for (size_t i = 0; i < sr.size(); i++)
+            sr[i].fi = fi;
+    }
+    else
+        sr[inst].fi = fi;
+
+    return makeElement(inst);
+}
+
+int TButton::getIconIndex(int inst)
+{
+    DECL_TRACER("TButton::getIconIndex(int inst)");
+
+    if (inst < 0 || inst >= (int)sr.size())
+    {
+        MSG_ERROR("Instance " << inst << " does not exist!");
+        return 0;
+    }
+
+    return sr[inst].ii;
+}
+
+string TButton::getSound(int inst)
+{
+    DECL_TRACER("TButton::getSound(int inst)");
+
+    if (inst < 0 || inst >= (int)sr.size())
+    {
+        MSG_ERROR("Instance " << inst << " does not exist!");
+        return string();
+    }
+
+    return sr[inst].sd;
+}
+
+void TButton::setSound(const string& sound, int inst)
+{
+    DECL_TRACER("TButton::setSound(const string& sound, int inst)");
+
+    if (inst >= (int)sr.size())
+    {
+        MSG_ERROR("Invalid instance " << inst);
+        return;
+    }
+
+    if (inst < 0)
+    {
+        for (size_t i = 0; i < sr.size(); i++)
+            sr[i].sd = sound;
+    }
+    else
+        sr[inst].sd = sound;
 }
 
 bool TButton::startAnimation(int start, int end, int time)

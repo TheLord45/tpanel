@@ -3,6 +3,14 @@ ChangeLog
 
 Release: 1.2.1
 ===============================================================================
+2022-02-17 Made all methods who need the "instance" (button state) as a
+           parameter a full method instead of a 1 line method in only the
+           header file.
+           Added a general method to send custom events and replaced the
+           repeating parts for sending custom events with a call to the new
+           method.
+           Adding commands ^BML, ^TEF, ?TEF, ?TXT
+
 2022-02-16 Adding commands ?BWW, ?FON, ^GSC, ?ICO, ^JSB, ?JSB, ^JSI, ?JSI,
            ^JST, ?JST, ABEEP, ADBEEP, ^TEC, ?TEC
 

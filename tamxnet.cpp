@@ -1271,8 +1271,11 @@ bool TAmxNet::sendCommand(const ANET_SEND& s)
 
             com.data.customEvent.length = len;
             memset(com.data.customEvent.data, 0, sizeof(com.data.customEvent.data));
-            memcpy(&com.data.customEvent.data[0], s.msg.c_str(), s.msg.length());
-            com.hlen = 0x0016 - 3 + 29 + s.msg.length();
+
+            if (len > 0)
+                memcpy(&com.data.customEvent.data[0], s.msg.c_str(), len);
+
+            com.hlen = 0x0016 - 3 + 29 + len;
             comStack.push_back(com);
             mSendReady = true;
         break;
