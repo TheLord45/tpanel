@@ -2862,7 +2862,7 @@ bool TButton::loadImage(SkBitmap* bm, SkBitmap& image, int instance)
     return true;
 }
 
-bool TButton::barLevel(SkBitmap* bm, int inst, int level)
+bool TButton::barLevel(SkBitmap* bm, int, int level)
 {
     DECL_TRACER("TButton::barLevel(SkBitmap* bm, int inst, int level)");
 

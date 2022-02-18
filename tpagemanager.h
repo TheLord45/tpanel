@@ -122,6 +122,7 @@ class TPageManager : public TAmxCommands
         void regCallbackResetSurface(std::function<void ()> resetSurface) { _resetSurface = resetSurface; }
         void regCallbackShutdown(std::function<void ()> shutdown) { _shutdown = shutdown; }
         void regCallbackPlaySound(std::function<void (const std::string& file)> playSound) { _playSound = playSound; }
+        void regSendVirtualKeys(std::function<void (const std::string& str)> sendVirtualKeys) { _sendVirtualKeys = sendVirtualKeys; }
 
         /**
          * The following function must be called to start non graphics part
@@ -224,6 +225,7 @@ class TPageManager : public TAmxCommands
         void sendKeyboard(const std::string& text);
         void sendKeypad(const std::string& text);
         void sendString(uint handle, const std::string& text);
+        void sendKeyStroke(char key);
         /**
          * This starts the communication with the AMX controller. The method
          * registers the callbacks and starts a thread. This thread runs as
@@ -243,10 +245,12 @@ class TPageManager : public TAmxCommands
         std::function<void (ulong handle)> getCallDropPage() { return _callDropPage; }
         std::function<void (ulong handle)> getCallDropSubPage() { return _callDropSubPage; }
         std::function<void (const std::string& file)> getCallPlaySound() { return _playSound; }
+        std::function<void (const std::string& str)> sendVirtualKeys() { return _sendVirtualKeys; }
 
         bool havePlaySound() { return _playSound != nullptr; }
         TSystemDraw *getSystemDraw() { return mSystemDraw; }
         void reset();
+        bool getPassThrough() { return mPassThrough; }
 
     protected:
         PAGELIST_T findPage(const std::string& name);
@@ -280,6 +284,7 @@ class TPageManager : public TAmxCommands
         std::function<void ()> _resetSurface{nullptr};
         std::function<void ()> _shutdown{nullptr};
         std::function<void (const std::string& file)> _playSound{nullptr};
+        std::function<void (const std::string& str)> _sendVirtualKeys{nullptr};
 
         /**
          * @brief doOverlap checks for overlapping objects
@@ -411,10 +416,14 @@ class TPageManager : public TAmxCommands
         void doUNI(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doUTF(int port, std::vector<int>& channels, std::vector<std::string>& pars);
 
+        void doKPS(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doVKS(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+
         void doBBR(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doRAF(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doRFR(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doRMF(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doRSR(int port, std::vector<int>& channels, std::vector<std::string>& pars);
 
         void doAKB(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doAKEYB(int port, std::vector<int>& channels, std::vector<std::string>& pars);
@@ -457,6 +466,7 @@ class TPageManager : public TAmxCommands
         std::string mCmdBuffer;                         // Internal used buffer for commands who need more than one network package
         std::string mAkbText;                           // This is the text for the virtual keyboard (@AKB)
         std::string mAkpText;                           // This is the text for the virtual keyad (@AKP)
+        bool mPassThrough{false};                       // Can ve set to true with the command ^KPS
 #ifdef _SCALE_SKIA_
         double mScaleFactor{1.0};                       // The scale factor to zoom or shrink all components
         double mScaleFactorWidth{1.0};                  // The individual scale factor for the width

@@ -7,7 +7,7 @@
 	<meta name="author" content="Andreas Theofilu"/>
 	<meta name="created" content="2022-02-05T11:11:31.650719961"/>
 	<meta name="changedby" content="Andreas Theofilu"/>
-	<meta name="changed" content="2022-02-17T19:08:53.302706125"/>
+	<meta name="changed" content="2022-02-18T17:31:29.055944451"/>
 	<style type="text/css">
 		@page:first { margin: 2cm }
 		p { line-height: 115%; margin-bottom: 0.25cm; background: transparent }
@@ -285,12 +285,17 @@ guide</font></font></p>
 	/ ^TKP	60</a></p>
 	<p style="line-height: 100%; margin-left: 1cm; margin-bottom: 0cm"><a href="#1%19@VKB%19C%7Ctoxmark">@VKB	60</a></p>
 	<p style="line-height: 100%; margin-left: 0.5cm; margin-bottom: 0cm">
+	<a href="#__RefHeading___Toc8084_2806082894">Input Commands	61</a></p>
+	<p style="line-height: 100%; margin-left: 1cm; margin-bottom: 0cm"><a href="#1%19%5EKPS%19C%7Ctoxmark">^KPS	61</a></p>
+	<p style="line-height: 100%; margin-left: 1cm; margin-bottom: 0cm"><a href="#1%19%5EVKS%19C%7Ctoxmark">^VKS	61</a></p>
+	<p style="line-height: 100%; margin-left: 0.5cm; margin-bottom: 0cm">
 	<a href="#__RefHeading___Toc2010_1462578860">Daynamic Image
-	Commands	60</a></p>
-	<p style="line-height: 100%; margin-left: 1cm; margin-bottom: 0cm"><a href="#1%19%5EBBR%19C%7Ctoxmark">^BBR	60</a></p>
-	<p style="line-height: 100%; margin-left: 1cm; margin-bottom: 0cm"><a href="#1%19%5ERAF%19C%7Ctoxmark">^RAF	61</a></p>
-	<p style="line-height: 100%; margin-left: 1cm; margin-bottom: 0cm"><a href="#1%19%5ERFR%19C%7Ctoxmark">^RFR	61</a></p>
-	<p style="line-height: 100%; margin-left: 1cm; margin-bottom: 0cm"><a href="#1%19%5ERMF%19C%7Ctoxmark">^RMF	61</a></p>
+	Commands	62</a></p>
+	<p style="line-height: 100%; margin-left: 1cm; margin-bottom: 0cm"><a href="#1%19%5EBBR%19C%7Ctoxmark">^BBR	62</a></p>
+	<p style="line-height: 100%; margin-left: 1cm; margin-bottom: 0cm"><a href="#1%19%5ERAF%19C%7Ctoxmark">^RAF	62</a></p>
+	<p style="line-height: 100%; margin-left: 1cm; margin-bottom: 0cm"><a href="#1%19%5ERFR%19C%7Ctoxmark">^RFR	62</a></p>
+	<p style="line-height: 100%; margin-left: 1cm; margin-bottom: 0cm"><a href="#1%19%5ERMF%19C%7Ctoxmark">^RMF	63</a></p>
+	<p style="line-height: 100%; margin-left: 1cm; margin-bottom: 0cm"><a href="#1%19%5ERSR%19C%7Ctoxmark">^RSR	63</a></p>
 </div>
 <p><br/>
 <br/>
@@ -8150,8 +8155,105 @@ Emulator mode. These commands are case insensitive.</p>
 		</tr>
 	</tbody>
 </table>
-<h2 class="western"><a name="__RefHeading___Toc2010_1462578860"></a>Daynamic
-Image Commands</h2>
+<h2 class="western"><br/>
+<br/>
+
+</h2>
+<h2 class="western" style="page-break-before: always"><a name="__RefHeading___Toc8084_2806082894"></a>
+Input Commands</h2>
+<p>These Send Commands are case insensitive.</p>
+<table width="643" cellpadding="4" cellspacing="0" style="background: transparent; page-break-before: auto; page-break-after: avoid">
+	<col width="67"/>
+
+	<col width="558"/>
+
+	<thead>
+		<tr style="background: transparent">
+			<td colspan="2" width="633" valign="top" bgcolor="#e6e6e6" style="background: #e6e6e6; border: 1px solid #000000; padding: 0.1cm"><p>
+				<b>Input Commands</b></p>
+			</td>
+		</tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+	</thead>
+	<tbody>
+		<tr style="background: transparent" valign="top">
+			<td width="67" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm"><pre class="western">^KPS</pre>
+			</td>
+			<td width="558" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm"><p>
+				 Set the keyboard passthru.</p>
+				<p><b>Syntax</b>:</p>
+				<pre class="western">&quot;'^KPS-&lt;pass data&gt;'&quot;</pre><p>
+				<b>Variable</b>:</p>
+				<p style="margin-left: 1.25cm"><b>pass data</b>:</p>
+				<ul>
+					<li><p>&lt;blank/empty&gt; = Disables the keyboard.</p>
+					<li><p>0 = Pass data to G4 application (default). This can be
+					used with VPC or text areas.</p>
+					<li><p>1 - 4 = Not used.</p>
+					<li><p>5 = Sends out data to the Master.</p>
+				</ul>
+				<p><b>Example</b>:</p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'^KPS-5'&quot;</pre><p>
+				Sets the keyboard passthru to the Master. Option 5 sends
+				keystrokes directly to the Master via the Send Output String
+				mechanism. This process sends a virtual keystroke command (^VKS)
+				to the Master.</p>
+				<p><b>Example 2</b>:</p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'^KPS-0'&quot;</pre><p>
+				Disables the keyboard passthru to the Master.</p>
+			</td>
+		</tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr valign="top">
+			<td width="67" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm"><pre class="western">^VKS</pre>
+			</td>
+			<td width="558" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm"><p>
+				Send one or more virtual key strokes to the G4 application. Key
+				presses and key releases are not distinguished except in the case
+				of CTRL, ALT, and SHIFT.</p>
+				<p>Refer to the Embedded Codes table on page 115 that defines
+				special characters which can be included with the string but may
+				not be represented by the ASCII character set.</p>
+				<p><b>Syntax</b>:</p>
+				<pre class="western">&quot;'^VKS-&lt;string&gt;'&quot;</pre><p>
+				<b>Variable</b>:</p>
+				<ul>
+					<li><p>string = Only 1 string per command/only one stroke per
+					command.</p>
+				</ul>
+				<p><b>Example</b>:</p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'^VKS-'8&quot;</pre><p>
+				Sends out the keystroke 'backspace' to the G4 application.</p>
+			</td>
+		</tr>
+	</tbody>
+</table>
+<p><br/>
+<br/>
+
+</p>
+<h2 class="western"><br/>
+<br/>
+
+</h2>
+<h2 class="western" style="page-break-before: always"><a name="__RefHeading___Toc2010_1462578860"></a>
+Daynamic Image Commands</h2>
 <p style="font-style: normal">The following table describes Dynamic
 Image Commands.</p>
 <table width="100%" cellpadding="4" cellspacing="0" style="background: transparent; page-break-after: avoid">
@@ -8293,6 +8395,33 @@ Image Commands.</p>
 				<pre class="western"><font size="2" style="font-size: 9pt">SEND_COMMAND Panel,&quot;'^RMF-Sports_Image,%ALab/Test/Images%Ftest.jpg'&quot;</font></pre><p>
 				Changes the resource ’Sports_Image’ file name to ’test.jpg’
 				and the path to ’Lab_Test/Images’.</p>
+			</td>
+		</tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr></tr>
+		<tr style="background: transparent" valign="top">
+			<td width="12%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: none; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0cm"><pre class="western">^RSR</pre>
+			</td>
+			<td width="88%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm"><p>
+				Change the refresh rate for a given resource.</p>
+				<p><b>Syntax</b>:</p>
+				<pre class="western">&quot;'^RSR-&lt;resource name&gt;,&lt;refresh rate&gt;'&quot;</pre><p>
+				<b>Variable</b>:</p>
+				<ul>
+					<li><p>resource name = 1 - 50 ASCII characters.</p>
+					<li><p>refresh rate = Measured in seconds.</p>
+				</ul>
+				<p><b>Example</b>:</p>
+				<pre class="western">   SEND_COMMAND Panel,&quot;'^RSR-Sports_Image,5'&quot;</pre><p>
+				Sets the refresh rate to 5 seconds for the given resource
+				(’Sports_Image’).</p>
 			</td>
 		</tr>
 	</tbody>

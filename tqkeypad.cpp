@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2021, 2022 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,6 +24,9 @@
 #include "terror.h"
 #include "tresources.h"
 #include "tconfig.h"
+#include "tpagemanager.h"
+
+extern TPageManager *gPageManager;              //!< The pointer to the global defined main class.
 
 TQKeypad::TQKeypad(const std::string& init, const std::string& prompt, QWidget *parent, bool priv)
     : QDialog(parent),
@@ -146,6 +149,9 @@ void TQKeypad::setKey(Ui::KEYSP_t key)
         case Ui::KEYP_Clear:    mText.clear(); break;
     }
 
+    if (mMaxLen > 0 && mText.length() > (size_t)mMaxLen)
+        mText = mText.substr(0, mMaxLen);
+
     if (!mPrivate)
         ui->label_TextLine->setText(mText.c_str());
     else
@@ -157,6 +163,28 @@ void TQKeypad::setKey(Ui::KEYSP_t key)
         MSG_DEBUG("Playing sound: " << snd);
         QSound::play(snd.c_str());
     }
+
+    if (gPageManager && gPageManager->getPassThrough() && !mText.empty() &&
+        key != Ui::KEYP_Clear)
+    {
+        size_t pos = mText.length() - 1;
+        gPageManager->sendKeyStroke(mText[pos]);
+    }
+}
+
+void TQKeypad::setString(const std::string& str)
+{
+    DECL_TRACER("TQKeypad::setString(const string& str)");
+
+    mText += str;
+
+    if (mMaxLen > 0 && mText.length() > (size_t)mMaxLen)
+        mText = mText.substr(0, mMaxLen);
+
+    if (!mPrivate)
+        ui->label_TextLine->setText(mText.c_str());
+    else
+        ui->label_TextLine->setText(fillString('*', mText.length()).c_str());
 }
 
 int TQKeypad::scale(int value)

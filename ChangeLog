@@ -3,6 +3,8 @@ ChangeLog
 
 Release: 1.2.1
 ===============================================================================
+2022-02-18 Adding commands ^RSR, ^KPS, ^VKS
+
 2022-02-17 Made all methods who need the "instance" (button state) as a
            parameter a full method instead of a 1 line method in only the
            header file.

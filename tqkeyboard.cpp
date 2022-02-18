@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2021, 2022 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,6 +24,9 @@
 #include "terror.h"
 #include "tresources.h"
 #include "tconfig.h"
+#include "tpagemanager.h"
+
+extern TPageManager *gPageManager;              //!< The pointer to the global defined main class.
 
 TQKeyboard::TQKeyboard(const std::string& init, const std::string& prompt, QWidget *parent, bool priv)
     : QDialog(parent),
@@ -226,6 +229,9 @@ void TQKeyboard::setKey(Ui::KEYS_t key)
     if (key != Ui::KEY_AltGR)
         mGr = false;
 
+    if (mMaxLen > 0 && mText.length() > (size_t)mMaxLen)
+        mText = mText.substr(0, mMaxLen);
+
     if (!mPrivate)
         ui->label_TextLine->setText(mText.c_str());
     else
@@ -237,6 +243,29 @@ void TQKeyboard::setKey(Ui::KEYS_t key)
         MSG_DEBUG("Playing sound: " << snd);
         QSound::play(snd.c_str());
     }
+
+    if (gPageManager && gPageManager->getPassThrough() && !mText.empty() &&
+        key != Ui::KEY_Backspace && key != Ui::KEY_Clear &&
+        key != Ui::KEY_Shift && key != Ui::KEY_AltGR && key != Ui::KEY_Caps)
+    {
+        size_t pos = mText.length() - 1;
+        gPageManager->sendKeyStroke(mText[pos]);
+    }
+}
+
+void TQKeyboard::setString(const std::string& str)
+{
+    DECL_TRACER("TQKeyboard::setString(const string& str)");
+
+    mText += str;
+
+    if (mMaxLen > 0 && mText.length() > (size_t)mMaxLen)
+        mText = mText.substr(0, mMaxLen);
+
+    if (!mPrivate)
+        ui->label_TextLine->setText(mText.c_str());
+    else
+        ui->label_TextLine->setText(fillString('*', mText.length()).c_str());
 }
 
 int TQKeyboard::scale(int value)

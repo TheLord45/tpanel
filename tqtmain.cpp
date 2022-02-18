@@ -333,6 +333,7 @@ MainWindow::MainWindow()
     gPageManager->regCallbackShutdown(bind(&MainWindow::_shutdown, this));
     gPageManager->regCallbackPlaySound(bind(&MainWindow::_playSound, this, std::placeholders::_1));
     gPageManager->registerCBsetVisible(bind(&MainWindow::_setVisible, this, std::placeholders::_1, std::placeholders::_2));
+    gPageManager->regSendVirtualKeys(bind(&MainWindow::_sendVirtualKeys, this, std::placeholders::_1));
     gPageManager->deployCallbacks();
     createActions();
 
@@ -368,6 +369,7 @@ MainWindow::MainWindow()
         connect(this, &MainWindow::sigPlaySound, this, &MainWindow::playSound);
         connect(this, &MainWindow::sigDropButton, this, &MainWindow::dropButton);
         connect(this, &MainWindow::sigSetVisible, this, &MainWindow::SetVisible);
+        connect(this, &MainWindow::sigSendVirtualKeys, this, &MainWindow::sendVirtualKeys);
         connect(qApp, &QGuiApplication::applicationStateChanged, this, &MainWindow::appStateChanged);
     }
     catch (std::exception& e)
@@ -1367,6 +1369,13 @@ void MainWindow::_setOrientation(J_ORIENTATION ori)
 #endif
 }
 
+void MainWindow::_sendVirtualKeys(const string& str)
+{
+    DECL_TRACER("MainWindow::_sendVirtualKeys(const string& str)");
+
+    emit sigSendVirtualKeys(str);
+}
+
 void MainWindow::doReleaseButton()
 {
     DECL_TRACER("MainWindow::doReleaseButton()");
@@ -2181,6 +2190,7 @@ void MainWindow::showKeypad(const std::string& init, const std::string& prompt, 
     mQKeypad->setScaleFactor(mScaleFactor);
 #endif
     mQKeypad->setPrivate(priv);
+    mQKeypad->setMaxLength(50);     // Standard maximum length
     mQKeypad->doResize();
     mQKeypad->setWindowFlags(Qt::Dialog | Qt::CustomizeWindowHint | Qt::FramelessWindowHint);
     int ret = mQKeypad->exec();
@@ -2215,6 +2225,16 @@ void MainWindow::resetKeyboard()
 
     if (mQKeypad)
         mQKeyboard->reject();
+}
+
+void MainWindow::sendVirtualKeys(const string& str)
+{
+    DECL_TRACER("MainWindow::sendVirtualKeys(const string& str)");
+
+    if (mKeyboard && mQKeyboard)
+        mQKeyboard->setString(str);
+    else if (mKeypad && mQKeypad)
+        mQKeypad->setString(str);
 }
 
 void MainWindow::showSetup()

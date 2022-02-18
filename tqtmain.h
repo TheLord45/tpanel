@@ -83,6 +83,7 @@ class MainWindow : public QMainWindow, TQManageQueue
         void sigResetKeyboard();
         void sigShowSetup();
         void sigPlaySound(const std::string& file);
+        void sigSendVirtualKeys(const std::string& str);
 
     protected:
         bool event(QEvent *event) override;
@@ -109,6 +110,7 @@ class MainWindow : public QMainWindow, TQManageQueue
         void inputText(Button::TButton *button, QByteArray buffer, int width, int height, size_t pixline);
         void showKeyboard(const std::string& init, const std::string& prompt, bool priv);
         void showKeypad(const std::string& init, const std::string& prompt, bool priv);
+        void sendVirtualKeys(const std::string& str);
         void resetKeyboard();
         void showSetup();
         void playSound(const std::string& file);
@@ -154,6 +156,7 @@ class MainWindow : public QMainWindow, TQManageQueue
         void _shutdown();
         void _playSound(const std::string& file);
         void _setOrientation(J_ORIENTATION ori);
+        void _sendVirtualKeys(const std::string& str);
 #ifdef __ANDROID__
         void _signalState(Qt::ApplicationState state);
 #endif

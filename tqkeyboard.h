@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2021, 2022 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -97,7 +97,9 @@ class TQKeyboard : public QDialog, TSystemSound
         void doResize();
         void setPrivate(bool mode) { mPrivate = mode; }
         void setScaleFactor(double sf) { mScaleFactor = sf; }
+        void setMaxLength(int len) { mMaxLen = len; }
         std::string& getText() { return mText; }
+        void setString(const std::string& str);
 
     private slots:
         void keyA() { setKey(Ui::KEY_A); }
@@ -168,6 +170,7 @@ class TQKeyboard : public QDialog, TSystemSound
         bool mPrivate{false};       // TRUE = private mode. Only * are showed.
         double mScaleFactor{0.0};   // The scale factor if we are on a mobile device
         std::string mText;          // The typed text.
+        int mMaxLen{0};             // If >0 then this is the maximum number of chars
 };
 
 #endif // TQKEYBOARD_H

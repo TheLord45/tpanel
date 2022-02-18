@@ -321,8 +321,8 @@ TPageManager::TPageManager()
 //    REG_CMD(doLPR, "^LPR");     // Remove a given user from the User Access Passwords list on the Password Setup page.
 //    REG_CMD(doLPS, "^LPS");     // Set the user name and password.
 
-//    REG_CMD(doKPS, "^KPS");     // Set the keyboard passthru.
-//    REG_CMD(doVKS, "^VKS");     // Send one or more virtual key strokes to the G4 application.
+    REG_CMD(doKPS, "^KPS");     // Set the keyboard passthru.
+    REG_CMD(doVKS, "^VKS");     // Send one or more virtual key strokes to the G4 application.
 
 //    REG_CMD(doPWD, "@PWD");     // Set the page flip password.
 //    REG_CMD(doPWD, "^PWD");     // Set the page flip password.
@@ -331,7 +331,7 @@ TPageManager::TPageManager()
     REG_CMD(doRAF, "^RAF");     // Add new resources
     REG_CMD(doRFR, "^RFR");     // Force a refresh for a given resource.
     REG_CMD(doRMF, "^RMF");     // Modify an existing resource.
-//    REG_CMD(doRSR, "^RSR");     // Change the refresh rate for a given resource.
+    REG_CMD(doRSR, "^RSR");     // Change the refresh rate for a given resource.
 
     REG_CMD(doABEEP, "ABEEP");  // Output a single beep even if beep is Off.
     REG_CMD(doADBEEP, "ADBEEP");// Output a double beep even if beep is Off.
@@ -2563,6 +2563,30 @@ void TPageManager::sendString(uint handle, const std::string& text)
         gAmxNet->sendCommand(scmd);
     else
         MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+}
+
+void TPageManager::sendKeyStroke(char key)
+{
+    DECL_TRACER("TPageManager::sendKeyStroke(char key)");
+
+    if (!key)
+        return;
+
+    char msg[2];
+    msg[0] = key;
+    msg[1] = 0;
+
+    amx::ANET_SEND scmd;
+    scmd.port = 1;
+    scmd.channel = 0;
+    scmd.msg.assign(msg);
+    scmd.MC = 0x008b;
+
+    if (gAmxNet)
+        gAmxNet->sendCommand(scmd);
+    else
+        MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+
 }
 
 /**
@@ -6215,6 +6239,42 @@ void TPageManager::doUTF(int port, vector<int>& channels, vector<string>& pars)
         }
     }
 }
+
+/**
+ * Set the keyboard passthru.
+ */
+void TPageManager::doKPS(int, vector<int>&, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doKPS(int, vector<int>&, vector<string>& pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Got no parameter. Ignoring command!");
+        return;
+    }
+
+    int state = atoi(pars[0].c_str());
+
+    if (state == 0)
+        mPassThrough = false;
+    else if (state == 5)
+        mPassThrough = true;
+}
+
+void TPageManager::doVKS(int, std::vector<int>&, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doVKS(int, std::vector<int>&, vector<string>& pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Got no parameter. Ignoring command!");
+        return;
+    }
+
+    if (_sendVirtualKeys)
+        _sendVirtualKeys(pars[0]);
+}
+
 /*
  * Set the bitmap of a button to use a particular resource.
  * Syntax:
@@ -6351,7 +6411,7 @@ void TPageManager::doRAF(int, vector<int>&, vector<string>& pars)
     }
 }
 
-void TPageManager::doRFR(int port, vector<int>& channels, vector<string>& pars)
+void TPageManager::doRFR(int, vector<int>&, vector<string>& pars)
 {
     DECL_TRACER("TPageManager::doRFR(int port, vector<int>& channels, vector<string>& pars)");
 
@@ -6457,6 +6517,36 @@ void TPageManager::doRMF(int, vector<int>&, vector<string>& pars)
         if (gPrjResources)
             gPrjResources->setResource(name, res.protocol, res.host, res.path, res.file, res.user, res.password, res.refresh);
     }
+}
+
+/**
+ * Change the refresh rate for a given resource.
+ */
+void TPageManager::doRSR(int, vector<int>&, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doRSR(int, vector<int>&, vector<string>& pars)");
+
+    if (pars.size() < 2)
+    {
+        MSG_ERROR("Expecting 2 parameters but got none! Ignoring command.");
+        return;
+    }
+
+    string resName = pars[0];
+    int resRefresh = atoi(pars[1].c_str());
+
+    if (!gPrjResources)
+    {
+        MSG_ERROR("Missing the resource module. Ignoring command!");
+        return;
+    }
+
+    RESOURCE_T res = gPrjResources->findResource(resName);
+
+    if (res.name.empty() || res.refresh == resRefresh)
+        return;
+
+    gPrjResources->setResource(resName, res.protocol, res.host, res.path, res.file, res.user, res.password, resRefresh);
 }
 
 /**

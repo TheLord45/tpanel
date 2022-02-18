@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2021, 2022 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -58,7 +58,9 @@ class TQKeypad : public QDialog, TSystemSound
         void doResize();
         void setPrivate(bool mode) { mPrivate = mode; }
         void setScaleFactor(double sf) { mScaleFactor = sf; }
+        void setMaxLength(int len) { mMaxLen = len; }
         std::string& getText() { return mText; }
+        void setString(const std::string& str);
 
     private slots:
         void key0() { setKey(Ui::KEYP_0); }
@@ -88,6 +90,7 @@ class TQKeypad : public QDialog, TSystemSound
         double mScaleFactor{0.0};   // The scale factor if we are on a mobile device
         std::string mText;          // The typed text.
         std::string mSound;         // Path and name to a sound file played on every key press.
+        int mMaxLen{0};             // If >0 then this is the maximum number of chars
 };
 
 #endif // TQKEYPAD_H
