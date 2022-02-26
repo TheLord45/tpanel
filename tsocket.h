@@ -33,7 +33,7 @@ class TSocket
 
         bool connect(bool encrypt=false);
         bool connect(const std::string& host, int port, bool encrypt=false);
-        size_t receive(char *buffer, size_t size);
+        size_t receive(char *buffer, size_t size, bool doPoll=true);
         size_t readAbsolut(char *buffer, size_t size);
         size_t send(char *buffer, size_t size);
         bool close();

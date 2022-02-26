@@ -24,8 +24,8 @@
 #include "terror.h"
 
 #define V_MAJOR     1
-#define V_MINOR     2
-#define V_PATCH     1
+#define V_MINOR     3
+#define V_PATCH     0
 
 /**
  * @def TPANEL_VERSION
@@ -80,6 +80,8 @@ class TConfig
         static bool getSystemSoundState();
         static std::string& getSingleBeepSound();
         static std::string& getDoubleBeepSound();
+        static std::string& getFtpUser();
+        static std::string& getFtpPassword();
 
         static std::string& getController();
         static int getSystem();
@@ -107,6 +109,8 @@ class TConfig
         static void savePassword4(const std::string& pw);
         static void saveSystemSoundFile(const std::string& snd);
         static void saveSystemSoundState(bool state);
+        static void saveFtpUser(const std::string& user);
+        static void saveFtpPassword(const std::string& pw);
 
         // SIP management
         static std::string& getSIPproxy();

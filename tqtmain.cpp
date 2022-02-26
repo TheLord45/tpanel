@@ -269,7 +269,7 @@ MainWindow::MainWindow()
         _setOrientation(O_LANDSCAPE);
     }
 #else
-    setWindowIcon(QIcon("logo.png"));
+    setWindowIcon(QIcon(":images/icon.png"));
 #endif
     if (!gPageManager)
     {

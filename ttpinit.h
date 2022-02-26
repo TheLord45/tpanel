@@ -32,6 +32,7 @@ class TTPInit
     private:
         bool createPanelConfigs();
         bool _makeDir(const std::string& dir);
+        bool copyFile(const std::string& fname);
 #ifdef __ANDROID__
         bool askPermissions();
 #endif

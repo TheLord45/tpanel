@@ -133,6 +133,8 @@ SYSBORDER_t sysBorders[] = {
 SYSBUTTONS_t sysButtons[] = {
     {    8, MULTISTATE_BARGRAPH,  12, 0,  11 },  // Connection status
     {   17, GENERAL,               2, 0,   0 },  // Button sounds on/off
+    {   73, GENERAL,               2, 0,   0 },  // Enter setup page
+    {   80, GENERAL,               2, 0,   0 },  // Shutdown program
     {   81, MULTISTATE_BARGRAPH,   6, 1,   6 },  // Network signal stength
     {  122, TEXT_INPUT,            2, 0,   0 },  // IP Address of server or domain name
     {  123, TEXT_INPUT,            2, 9,   0 },  // Channel number of panel
@@ -5756,6 +5758,22 @@ bool TButton::doClick(int x, int y, bool pressed)
                 TConfig::saveSettings();
                 drawButton(mActInstance, false);
                 showLastButton();
+            }
+        }
+        else if (isSystem && ch == 73)  // Enter setup page
+        {
+            if (pressed)
+            {
+                if (gPageManager && gPageManager->haveSetupPage())
+                    gPageManager->callSetupPage();
+            }
+        }
+        else if (isSystem && ch == 80)  // Shutdown program
+        {
+            if (pressed)
+            {
+                if (gPageManager && gPageManager->haveShutdown())
+                    gPageManager->callShutdown();
             }
         }
         else if (fb == FB_MOMENTARY)

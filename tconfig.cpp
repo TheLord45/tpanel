@@ -77,6 +77,9 @@ struct SETTINGS
     bool systemSoundState{false};   //!< TRUE = play systemsound on every touch
     string systemSingleBeep;    //!< name of the system sound file to play a single beep.
     string systemDoubleBeep;    //!< name of the system sound file to play a double beep.
+    // FTP credentials
+    string ftpUser;             //!< The username for FTP of the controller (default: administrator)
+    string ftpPassword;         //!< The password for FTP of the controller (default: password)
     // SIP settings
     string sip_proxy;           //!< The address of the SIP proxy
     int sip_port{5060};         //!< Initializes the port of the SIP proxy to 5060
@@ -300,6 +303,7 @@ string& TConfig::getProjectPath()
 	return localSettings.project;
 }
 
+
 string TConfig::getSystemPath(SYSTEMRESOURCE_t sres)
 {
     string p;
@@ -456,6 +460,16 @@ void TConfig::saveSystemSoundState(bool state)
     localSettings.systemSoundState = state;
 }
 
+void TConfig::saveFtpUser(const string& user)
+{
+    localSettings.ftpUser = user;
+}
+
+void TConfig::saveFtpPassword(const string& pw)
+{
+    localSettings.ftpPassword = pw;
+}
+
 std::string& TConfig::getSIPproxy()
 {
     return localSettings.sip_proxy;
@@ -556,6 +570,9 @@ bool TConfig::saveSettings()
         lines += string("SystemSoundState=") + (localSettings.systemSoundState ? "ON" : "OFF") + "\n";
         lines += string("SystemSingleBeep=") + localSettings.systemSingleBeep + "\n";
         lines += string("SystemDoubleBeep=") + localSettings.systemDoubleBeep + "\n";
+        // FTP credentials
+        lines += string("FTPuser=") + localSettings.ftpUser + "\n";
+        lines += string("FTPpassword=") + localSettings.ftpPassword + "\n";
         // SIP settings
         lines += string("SIP_DOMAIN") + localSettings.sip_domain + "\n";
         lines += string("SIP_PROXY") + localSettings.sip_password + "\n";
@@ -659,6 +676,16 @@ string& TConfig::getSingleBeepSound()
 string& TConfig::getDoubleBeepSound()
 {
     return localSettings.systemDoubleBeep;
+}
+
+string& TConfig::getFtpUser()
+{
+    return localSettings.ftpUser;
+}
+
+string& TConfig::getFtpPassword()
+{
+    return localSettings.ftpPassword;
 }
 
 /**
@@ -827,6 +854,9 @@ bool TConfig::findConfig()
     localSettings.systemSoundState = true;
     localSettings.systemSingleBeep = "singleBeep01.wav";
     localSettings.systemDoubleBeep = "doubleBeep01.wav";
+    localSettings.ftpUser = "administrator";
+    localSettings.ftpPassword = "password";
+    localSettings.sip_port = 5050;
 #ifdef __ANDROID__
     std::stringstream s;
     TValidateFile vf;
@@ -877,6 +907,9 @@ bool TConfig::findConfig()
             content += "SystemSoundState=ON\n";
             content += "SystemSingleBeep=singleBeep01.wav\n";
             content += "SystemDoubleBeep=doubleBeep01.wav\n";
+            content += "FTPuser=administrator\n";
+            content += "FTPpassword=password\n";
+            content += "SIP_PORT=5050\n";
             cfg.write(content.c_str(), content.size());
             cfg.close();
 
@@ -906,6 +939,7 @@ bool TConfig::findConfig()
         {
             sFileName = f;
             localSettings.path = *iter;
+            found = true;
             break;
         }
     }
@@ -914,8 +948,11 @@ bool TConfig::findConfig()
     if (HOME)
     {
         string f = HOME;
+#ifndef __ANDROID__
         f += "/.tpanel.conf";
-
+#else
+        f += "/tpanel.conf";
+#endif
         if (!access(f.data(), R_OK))
         {
             sFileName = f;
@@ -961,6 +998,9 @@ bool TConfig::readConfig()
     localSettings.systemSound = "singleBeep.wav";
     localSettings.systemSingleBeep = "singleBeep01.wav";
     localSettings.systemDoubleBeep = "doubleBeep01.wav";
+    localSettings.ftpUser = "administrator";
+    localSettings.ftpPassword = "password";
+    localSettings.sip_port = 5050;
 #ifdef __ANDROID__
     localSettings.logLevel = SLOG_NONE;
     localSettings.logLevelBits = HLOG_NONE;
@@ -1051,7 +1091,7 @@ bool TConfig::readConfig()
             {
                 localSettings.ID = atoi(right.c_str());
 
-                if (localSettings.ID < 10000 || localSettings.ID >= 11000)
+                if (localSettings.ID < 10000 || localSettings.ID >= 29000)
                 {
                     std::cerr << "TConfig::readConfig: Invalid port number " << right << std::endl;
                     localSettings.ID = 0;
@@ -1077,6 +1117,10 @@ bool TConfig::readConfig()
                 localSettings.systemSingleBeep = right;
             else if (caseCompare(left, "SystemDoubleBeep") == 0 && !right.empty())
                 localSettings.systemDoubleBeep = right;
+            else if (caseCompare(left, "FTPuser") == 0 && !right.empty())       // FTP credentials
+                localSettings.ftpUser = right;
+            else if (caseCompare(left, "FTPpassword") == 0 && !right.empty())
+                localSettings.ftpPassword = right;
             else if (caseCompare(left, "SIP_PROXY") == 0 && !right.empty())     // SIP settings starting here
                 localSettings.sip_proxy = right;
             else if (caseCompare(left, "SIP_PORT") == 0 && !right.empty())

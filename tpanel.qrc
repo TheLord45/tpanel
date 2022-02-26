@@ -14,6 +14,8 @@
         <file>images/vol_up.png</file>
         <file>images/vol_down.png</file>
         <file>images/vol_mute.png</file>
+        <file>images/info.png</file>
+        <file>images/reset.png</file>
         <file>ressources/_main.xml</file>
         <file>ressources/_setup.xml</file>
         <file>ressources/external.xma</file>
@@ -26,8 +28,6 @@
         <file>ressources/pal_001.xma</file>
         <file>ressources/prj.xma</file>
         <file>ressources/table.xma</file>
-        <file>images/info.png</file>
-        <file>images/reset.png</file>
         <file>ressources/__system/graphics/fonts/amxbold_.ttf</file>
         <file>ressources/__system/graphics/fonts/arial.ttf</file>
         <file>ressources/__system/graphics/fonts/arialbd.ttf</file>

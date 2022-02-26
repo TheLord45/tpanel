@@ -83,6 +83,9 @@ set(SOURCES tmain.cpp
 			tsystemsound.cpp
 			tsystemdraw.cpp
 			timgcache.cpp
+			tfsfreader.cpp
+			readtp4.cpp
+			expand.cpp
 			texcept.cpp
 			base64.cpp
 			texpat++.cpp

@@ -306,7 +306,7 @@ bool TSocket::isSockValid()
     return false;
 }
 
-size_t TSocket::receive(char* buffer, size_t size)
+size_t TSocket::receive(char* buffer, size_t size, bool doPoll)
 {
     DECL_TRACER("TSocket::receive(char* buffer, size_t size)");
 
@@ -332,7 +332,10 @@ size_t TSocket::receive(char* buffer, size_t size)
 
     do
     {
-        s = poll(&pfd, nfds, 10000);    // FIXME: Make the timeout configurable.
+        if (doPoll)
+            s = poll(&pfd, nfds, 10000);    // FIXME: Make the timeout configurable.
+        else
+            s = 1;
 
         if (s < 0)
         {

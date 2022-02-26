@@ -251,6 +251,10 @@ class TPageManager : public TAmxCommands
         TSystemDraw *getSystemDraw() { return mSystemDraw; }
         void reset();
         bool getPassThrough() { return mPassThrough; }
+        bool haveSetupPage() { return _callShowSetup != nullptr; }
+        bool haveShutdown() { return _shutdown != nullptr; }
+        void callSetupPage() { if (_callShowSetup) _callShowSetup(); }
+        void callShutdown() { if (_shutdown) _shutdown(); }
 
     protected:
         PAGELIST_T findPage(const std::string& name);
