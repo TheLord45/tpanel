@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2019 to 2022 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,29 +15,27 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
  */
-#ifndef TTPINIT_H
-#define TTPINIT_H
+
+#ifndef __EXPAND_H__
+#define __EXPAND_H__
 
 #include <string>
+#include <zlib.h>
 
-class TTPInit
+#define CHUNK	16384
+
+class Expand
 {
-    public:
-        TTPInit(const std::string& path);
-        TTPInit();
+	std::string fname;
 
-        void setPath(const std::string& p) { mPath = p; }
-        bool createDirectoryStructure();
-        bool loadSurfaceFromController(bool force=false);
+	public:
+		explicit Expand(const std::string& fn) : fname{fn} {}
 
-    private:
-        bool createPanelConfigs();
-        bool _makeDir(const std::string& dir);
-        bool copyFile(const std::string& fname);
-#ifdef __ANDROID__
-        bool askPermissions();
-#endif
-        std::string mPath;
+		void setFileName(const std::string& fn);
+		int unzip();
+
+	private:
+		void zerr(int err);
 };
 
-#endif // TTPINIT_H
+#endif

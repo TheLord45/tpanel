@@ -80,6 +80,8 @@ struct SETTINGS
     // FTP credentials
     string ftpUser;             //!< The username for FTP of the controller (default: administrator)
     string ftpPassword;         //!< The password for FTP of the controller (default: password)
+    string ftpSurface;          //!< The name of the file containing the TPDesign4 file to load
+    time_t ftpLastDownload{0};  //!< The timestamp of the last download
     // SIP settings
     string sip_proxy;           //!< The address of the SIP proxy
     int sip_port{5060};         //!< Initializes the port of the SIP proxy to 5060
@@ -470,6 +472,16 @@ void TConfig::saveFtpPassword(const string& pw)
     localSettings.ftpPassword = pw;
 }
 
+void TConfig::saveFtpSurface(const string& fname)
+{
+    localSettings.ftpSurface = fname;
+}
+
+void TConfig::saveFtpDownloadTime(time_t t)
+{
+    localSettings.ftpLastDownload = t;
+}
+
 std::string& TConfig::getSIPproxy()
 {
     return localSettings.sip_proxy;
@@ -573,6 +585,8 @@ bool TConfig::saveSettings()
         // FTP credentials
         lines += string("FTPuser=") + localSettings.ftpUser + "\n";
         lines += string("FTPpassword=") + localSettings.ftpPassword + "\n";
+        lines += string("FTPsurface=") + localSettings.ftpSurface + "\n";
+        lines += string("FTPdownloadTime=") + std::to_string(localSettings.ftpLastDownload) + "\n";
         // SIP settings
         lines += string("SIP_DOMAIN") + localSettings.sip_domain + "\n";
         lines += string("SIP_PROXY") + localSettings.sip_password + "\n";
@@ -686,6 +700,16 @@ string& TConfig::getFtpUser()
 string& TConfig::getFtpPassword()
 {
     return localSettings.ftpPassword;
+}
+
+string& TConfig::getFtpSurface()
+{
+    return localSettings.ftpSurface;
+}
+
+time_t TConfig::getFtpDownloadTime()
+{
+    return localSettings.ftpLastDownload;
 }
 
 /**
@@ -856,6 +880,7 @@ bool TConfig::findConfig()
     localSettings.systemDoubleBeep = "doubleBeep01.wav";
     localSettings.ftpUser = "administrator";
     localSettings.ftpPassword = "password";
+    localSettings.ftpSurface = "tpanel.tp4";
     localSettings.sip_port = 5050;
 #ifdef __ANDROID__
     std::stringstream s;
@@ -909,6 +934,8 @@ bool TConfig::findConfig()
             content += "SystemDoubleBeep=doubleBeep01.wav\n";
             content += "FTPuser=administrator\n";
             content += "FTPpassword=password\n";
+            content += "FTPsurface=tpanel.tp4\n";
+            content += "FTPdownloadTime=0\n";
             content += "SIP_PORT=5050\n";
             cfg.write(content.c_str(), content.size());
             cfg.close();
@@ -1000,6 +1027,7 @@ bool TConfig::readConfig()
     localSettings.systemDoubleBeep = "doubleBeep01.wav";
     localSettings.ftpUser = "administrator";
     localSettings.ftpPassword = "password";
+    localSettings.ftpSurface = "tpanel.tp4";
     localSettings.sip_port = 5050;
 #ifdef __ANDROID__
     localSettings.logLevel = SLOG_NONE;
@@ -1121,6 +1149,10 @@ bool TConfig::readConfig()
                 localSettings.ftpUser = right;
             else if (caseCompare(left, "FTPpassword") == 0 && !right.empty())
                 localSettings.ftpPassword = right;
+            else if (caseCompare(left, "FTPsurface") == 0 && !right.empty())
+                localSettings.ftpSurface = right;
+            else if (caseCompare(left, "FTPdownloadTime") == 0 && !right.empty())
+                localSettings.ftpLastDownload = atol(right.c_str());
             else if (caseCompare(left, "SIP_PROXY") == 0 && !right.empty())     // SIP settings starting here
                 localSettings.sip_proxy = right;
             else if (caseCompare(left, "SIP_PORT") == 0 && !right.empty())
@@ -1165,6 +1197,10 @@ bool TConfig::readConfig()
         MSG_INFO("    Sound state:  " << (localSettings.systemSoundState ? "ACTIVATED" : "DEACTIVATED"));
         MSG_INFO("    Single beep:  " << localSettings.systemSingleBeep);
         MSG_INFO("    Double beep:  " << localSettings.systemDoubleBeep);
+        MSG_INFO("    FTP user:     " << localSettings.ftpUser);
+        MSG_INFO("    FTP password: " << localSettings.ftpPassword);
+        MSG_INFO("    FTP surface:  " << localSettings.ftpSurface);
+        MSG_INFO("    FTP dl. time: " << localSettings.ftpLastDownload);
     }
 
     return true;

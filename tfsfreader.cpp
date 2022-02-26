@@ -86,15 +86,31 @@ bool TFsfReader::sendCommand(int cmd, const string& param)
     else
         buf = mFtpCmds[cmd].cmd + " " + param + "\r\n";
 
-    if (mFtp->send((char *)buf.c_str(), buf.length()) != TSocket::npos)
+    MSG_DEBUG("SEND: " << buf);
+
+    if (mFtp->send((char *)buf.c_str(), buf.length()) == TSocket::npos)
+    {
+        if (errno)
+        {
+            MSG_ERROR("Send error: " << strerror(errno));
+        }
+
         return false;
+    }
 
     char buffer[128];
     size_t size;
     memset(buffer, 0, sizeof(buffer));
 
     if ((size = mFtp->receive(buffer, sizeof(buffer))) == TSocket::npos)
+    {
+        if (errno)
+        {
+            MSG_ERROR("Receive error: " << strerror(errno));
+        }
+
         return false;
+    }
 
     mLastCmdBuffer = buffer;
     int code = 0;
@@ -142,6 +158,8 @@ bool TFsfReader::copyOverFTP(const string& fname, const string& target)
         return false;
     }
 
+    MSG_DEBUG("RECV: " << buffer);
+
     if (!startsWith(buffer, "220 "))
     {
         MSG_ERROR("Unexpected answer: " << buffer);
@@ -152,6 +170,7 @@ bool TFsfReader::copyOverFTP(const string& fname, const string& target)
     // We send the authentication
     if (!sendCommand(FTP_CMD_USER, TConfig::getFtpUser()))
     {
+        MSG_ERROR("Error sending command USER");
         mFtp->close();
         return false;
     }
@@ -159,6 +178,7 @@ bool TFsfReader::copyOverFTP(const string& fname, const string& target)
     // Here we send the password
     if (!sendCommand(FTP_CMD_PASS, TConfig::getFtpPassword()))
     {
+        MSG_ERROR("Error sending command PASS");
         mFtp->close();
         return false;
     }
@@ -166,6 +186,7 @@ bool TFsfReader::copyOverFTP(const string& fname, const string& target)
     // Switching to passive mode
     if (!sendCommand(FTP_CMD_PASV, ""))
     {
+        MSG_ERROR("Error sending command PASV");
         mFtp->close();
         return false;
     }
@@ -200,6 +221,7 @@ bool TFsfReader::copyOverFTP(const string& fname, const string& target)
         return false;
     }
 
+    MSG_DEBUG("Got data port " << mDataPort);
     // We connect to the data port
     if (mFtpData)
         delete mFtpData;

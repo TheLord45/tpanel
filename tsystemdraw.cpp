@@ -48,33 +48,37 @@ TSystemDraw::TSystemDraw(const string &path)
     }
 
     if (isValidDir(path + "/borders"))
+        mHaveBorders = true;
+    else
     {
         MSG_WARNING("Have no system border images");
-        mHaveBorders = true;
     }
 
     if (isValidDir(path + "/cursors"))
+        mHaveCursors = true;
+    else
     {
         MSG_WARNING("Have no system cursor images");
-        mHaveCursors = true;
     }
 
     if (isValidDir(path + "/fonts"))
+        mHaveFonts = true;
     {
         MSG_WARNING("Have no system fonts");
-        mHaveFonts = true;
     }
 
     if (isValidDir(path + "/images"))
+        mHaveImages = true;
+    else
     {
         MSG_WARNING("Have no system images");
-        mHaveImages = true;
     }
 
     if (isValidDir(path + "/sliders"))
+        mHaveSliders = true;
+    else
     {
         MSG_WARNING("Have no system slider images");
-        mHaveSliders = true;
     }
 
     if (isValidFile(path + "/draw.xma"))

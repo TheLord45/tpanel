@@ -82,6 +82,8 @@ class TConfig
         static std::string& getDoubleBeepSound();
         static std::string& getFtpUser();
         static std::string& getFtpPassword();
+        static std::string& getFtpSurface();
+        static time_t getFtpDownloadTime();
 
         static std::string& getController();
         static int getSystem();
@@ -111,6 +113,8 @@ class TConfig
         static void saveSystemSoundState(bool state);
         static void saveFtpUser(const std::string& user);
         static void saveFtpPassword(const std::string& pw);
+        static void saveFtpSurface(const std::string& fname);
+        static void saveFtpDownloadTime(time_t t);
 
         // SIP management
         static std::string& getSIPproxy();

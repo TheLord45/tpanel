@@ -33,6 +33,8 @@
 #include "ttpinit.h"
 #include "terror.h"
 #include "tvalidatefile.h"
+#include "tconfig.h"
+#include "tfsfreader.h"
 
 using std::string;
 using std::vector;
@@ -50,6 +52,7 @@ TTPInit::TTPInit(const string& path)
 
     createDirectoryStructure();
     createPanelConfigs();
+    loadSurfaceFromController();
 }
 
 bool TTPInit::createPanelConfigs()
@@ -255,10 +258,46 @@ bool TTPInit::copyFile(const std::string& fname)
     return err;
 }
 
+/**
+ * This methods checks if there exists a previous downloaded TP4 file. If this
+ * is the case, nothing happens.
+ * If there is no previous downloaded file it checks if there is one on the
+ * controller and downloads it if it exists. After successfull download the
+ * file is unpacked.
+ *
+ * @return TRUE is returned when there was a file successfully downloaded and
+ * unpacked. In any other case FALSE is returned.
+ */
+bool TTPInit::loadSurfaceFromController(bool force)
+{
+    DECL_TRACER("TTPInit::loadSurfaceFromController(bool force)");
+
+    TFsfReader reader;
+    string target = mPath + "/" + TConfig::getFtpSurface();
+
+    if (!force)
+    {
+        QFile pan(target.c_str());
+
+        if (pan.exists() || TConfig::getFtpDownloadTime() > 0)
+            return false;
+    }
+
+    if (!reader.copyOverFTP(TConfig::getFtpSurface(), target))
+        return false;
+
+    if (!reader.unpack(TConfig::getFtpSurface(), mPath))
+        return false;
+
+    TConfig::saveFtpDownloadTime(time(NULL));
+    TConfig::saveSettings();
+    return true;
+}
+
 #ifdef __ANDROID__
 bool TTPInit::askPermissions()
 {
-    DECL_TRACER("TTPInit::askPermissions(const std::string& path)");
+    DECL_TRACER("TTPInit::askPermissions()");
 
     QStringList permissions = { "android.permission.READ_EXTERNAL_STORAGE", "android.permission.WRITE_EXTERNAL_STORAGE" };
     QtAndroid::PermissionResultMap perms = QtAndroid::requestPermissionsSync(permissions);
