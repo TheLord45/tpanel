@@ -239,6 +239,7 @@ namespace reader
 
             ~ReadTP4();
 
+            bool isReady();
             bool doRead();
             std::string toHex(int num, int width);
 

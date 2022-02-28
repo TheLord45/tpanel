@@ -36,7 +36,27 @@ using namespace std;
 
 ReadTP4::~ReadTP4()
 {
+    DECL_TRACER("ReadTP4::~ReadTP4()");
+
     deleteIndex();
+}
+
+bool ReadTP4::isReady()
+{
+    DECL_TRACER("ReadTP4::isReady()");
+
+    if (access(fname.c_str(), R_OK) != 0)
+        return false;
+
+    if (access(target.c_str(), F_OK) == 0)
+    {
+        if (access(target.c_str(), R_OK | W_OK | X_OK) != 0)
+            return false;
+
+        return true;
+    }
+
+    return true;
 }
 
 bool ReadTP4::doRead()

@@ -40,6 +40,7 @@ class TSocket
         bool isConnected() { return mConnected; }
         std::string& getMyIP() { return mMyIP; }
         int retrieveSSLerror(int rcode) { return SSL_get_error(mSsl, rcode); }
+        int getSocket() { return mSockfd; }
 
         static const size_t npos = static_cast<size_t>(-1);
 

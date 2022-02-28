@@ -3,6 +3,9 @@ ChangeLog
 
 Release: 1.3.0
 ===============================================================================
+2022-02-28 Adds a new FTP library to do FTP stuff and fixes the unpacking of
+           the downloaded file.
+
 2022-02-26 Fixes an accidentaly written warning on startup claiming the system
            directories are not found although the contrary was the case.
            Integrates the FTP transfer into initialisation.

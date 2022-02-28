@@ -17,6 +17,10 @@
  */
 
 #include <fstream>
+#include <functional>
+#include <iostream>
+#include <cstdint>
+#include <filesystem>
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -27,6 +31,10 @@
 #include <sys/sendfile.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <arpa/inet.h>
 
 #include "tfsfreader.h"
 #include "tsocket.h"
@@ -46,264 +54,72 @@
 
 using std::string;
 using std::vector;
+using std::bind;
+
+namespace fs = std::filesystem;
 
 TFsfReader::TFsfReader()
 {
     DECL_TRACER("TFsfReader::TFsfReader()");
 
-    mFtpCmds = {
-        { "USER", 331 },    // 0
-        { "PASS", 230 },    // 1
-        { "PASV", 227 },    // 2
-        { "TYPE", 200 },    // 3
-        { "RETR", 150 },    // 4
-        { "QUIT", 221 }     // 5
-    };
 }
 
 TFsfReader::~TFsfReader()
 {
     DECL_TRACER("TFsfReader::~TFsfReader()");
 
-    if (mFtp)
-        delete mFtp;
-
-    if (mFtpData)
-        delete mFtpData;
-}
-
-bool TFsfReader::sendCommand(int cmd, const string& param)
-{
-    DECL_TRACER("TFsfReader::sendCommand(int cmd, const string& param)");
-
-    if (cmd < 0 || cmd > (int)mFtpCmds.size() || !mFtp)
-        return false;
-
-    string buf;
-
-    if (!param.empty())
-        buf = mFtpCmds[cmd].cmd + "\r\n";
-    else
-        buf = mFtpCmds[cmd].cmd + " " + param + "\r\n";
-
-    MSG_DEBUG("SEND: " << buf);
-
-    if (mFtp->send((char *)buf.c_str(), buf.length()) == TSocket::npos)
-    {
-        if (errno)
-        {
-            MSG_ERROR("Send error: " << strerror(errno));
-        }
-
-        return false;
-    }
-
-    char buffer[128];
-    size_t size;
-    memset(buffer, 0, sizeof(buffer));
-
-    if ((size = mFtp->receive(buffer, sizeof(buffer))) == TSocket::npos)
-    {
-        if (errno)
-        {
-            MSG_ERROR("Receive error: " << strerror(errno));
-        }
-
-        return false;
-    }
-
-    mLastCmdBuffer = buffer;
-    int code = 0;
-
-    if (mFtpCmds[cmd].success && !isdigit(buffer[0]))
-    {
-        MSG_ERROR("Unexpected answer: " << buffer);
-        return false;
-    }
-    else if (mFtpCmds[cmd].success)
-        code = atoi(buffer);
-
-    if (code != mFtpCmds[cmd].success)
-    {
-        MSG_ERROR("FTP error: " << buffer);
-        return false;
-    }
-
-    MSG_DEBUG("FTP command " << mFtpCmds[cmd].cmd << " returned: " << buffer);
-    return true;
+    if (mFtpLib)
+        delete mFtpLib;
 }
 
 bool TFsfReader::copyOverFTP(const string& fname, const string& target)
 {
     DECL_TRACER("TFsfReader::copyOverFTP(const string& fname, const string& target, const string& user, const string& pw)");
 
-    if (mFtp)
-        delete mFtp;
+    if (mFtpLib)
+        delete mFtpLib;
 
-    mFtp = new TSocket(TConfig::getController(), FTP_PORT);
+    mFtpLib = new ftplib();
 
-    string buf, filename;
-    char *f, buffer[128];
-    size_t size;
-
-    if (!mFtp->connect())
-        return false;
-
-    // Server should answer with: 220 <message>
-    memset(buffer, 0, sizeof(buffer));
-
-    if ((size = mFtp->receive(buffer, sizeof(buffer))) == TSocket::npos)
-    {
-        mFtp->close();
-        return false;
-    }
-
-    MSG_DEBUG("RECV: " << buffer);
-
-    if (!startsWith(buffer, "220 "))
-    {
-        MSG_ERROR("Unexpected answer: " << buffer);
-        mFtp->close();
-        return false;
-    }
-
-    // We send the authentication
-    if (!sendCommand(FTP_CMD_USER, TConfig::getFtpUser()))
-    {
-        MSG_ERROR("Error sending command USER");
-        mFtp->close();
-        return false;
-    }
-
-    // Here we send the password
-    if (!sendCommand(FTP_CMD_PASS, TConfig::getFtpPassword()))
-    {
-        MSG_ERROR("Error sending command PASS");
-        mFtp->close();
-        return false;
-    }
-
-    // Switching to passive mode
-    if (!sendCommand(FTP_CMD_PASV, ""))
-    {
-        MSG_ERROR("Error sending command PASV");
-        mFtp->close();
-        return false;
-    }
-
-    size_t pos = mLastCmdBuffer.find_last_of("(");
-
-    if (pos != string::npos)
-    {
-        size_t end = mLastCmdBuffer.find_last_of(")");
-
-        if (end != string::npos)
-        {
-            string info = mLastCmdBuffer.substr(pos + 1, end-pos-2);
-            MSG_DEBUG("PASV " << info);
-            vector<string> parts = StrSplit(info, ",");
-
-            if (parts.size() < 6)
-            {
-                MSG_ERROR("PASV command failed!");
-            }
-            else
-            {
-                mDataPort = atoi(parts[4].c_str()) * 256 + atoi(parts[5].c_str());
-                mPassive = true;
-            }
-        }
-    }
+    if (TConfig::getFtpPassive())
+        mFtpLib->SetConnmode(ftplib::pasv);
     else
+        mFtpLib->SetConnmode(ftplib::port);
+
+    mFtpLib->SetCallbackLogFunction(&TFsfReader::callbackLog);
+    string scon = TConfig::getController() + ":21";
+    MSG_DEBUG("Trying to connect to " << scon);
+
+    if (!mFtpLib->Connect(scon.c_str()))
     {
-        MSG_ERROR("Unexpected response from FTP server!");
-        mFtp->close();
+        delete mFtpLib;
+        mFtpLib = nullptr;
         return false;
     }
 
-    MSG_DEBUG("Got data port " << mDataPort);
-    // We connect to the data port
-    if (mFtpData)
-        delete mFtpData;
+    string sUser = TConfig::getFtpUser();
+    string sPass = TConfig::getFtpPassword();
+    MSG_DEBUG("Trying to login <" << sUser << ", " << sPass << ">");
 
-    mFtpData = new TSocket(TConfig::getController(), mDataPort);
-
-    if (!mFtpData->connect())
+    if (!mFtpLib->Login(sUser.c_str(), sPass.c_str()))
     {
-        mFtp->close();
+        delete mFtpLib;
+        mFtpLib = nullptr;
         return false;
     }
 
-    // Switch to image mode
-    if (!sendCommand(FTP_CMD_TYPE, "I"))
+    MSG_DEBUG("Trying to download file " << fname << " to " << target);
+
+    if (!mFtpLib->Get(target.c_str(), fname.c_str(), ftplib::image))
     {
-        mFtp->close();
+        MSG_ERROR("Error downloading file " << fname);
+        delete mFtpLib;
+        mFtpLib = nullptr;
         return false;
     }
 
-    // GET a file
-    if (!sendCommand(FTP_CMD_RETR, fname))
-    {
-        mFtp->close();
-        return false;
-    }
-
-    size = 0;
-    pos = mLastCmdBuffer.find_last_of("(");
-
-    if (pos != string::npos)
-    {
-        string info = mLastCmdBuffer.substr(pos + 1);
-        MSG_DEBUG("RETR size: " << info);
-        size = atoi(info.c_str());
-    }
-    else
-    {
-        MSG_ERROR("Unexpected response: " << mLastCmdBuffer);
-        mFtp->close();
-        return false;
-    }
-
-    // FIXME: Add code to receive file
-    f = new char[size+1];
-
-    if (mFtpData->readAbsolut(f, size) == TSocket::npos)
-    {
-        MSG_ERROR("Error receiving file " << fname << " from FTP server!");
-        mFtpData->close();
-        mFtp->close();
-        delete[] f;
-        return false;
-    }
-
-    // Write the file into place
-    try
-    {
-        std::ofstream file;
-
-        file.open(target, std::ios_base::binary);
-        file.write(f, size);
-        file.close();
-    }
-    catch (std::exception& e)
-    {
-        MSG_ERROR("Error on file " << target << ": " << e.what());
-        mFtpData->close();
-        mFtp->close();
-        delete[] f;
-        return false;
-    }
-
-    // QUIT from FTP-server
-    if (!sendCommand(FTP_CMD_QUIT, ""))
-    {
-        mFtp->close();
-        mFtpData->close();
-        return false;
-    }
-
-    mFtp->close();
-    mFtpData->close();
+    MSG_TRACE("File " << fname << " successfully downloaded to " << target << ".");
+    mFtpLib->Quit();
     return true;
 }
 
@@ -318,5 +134,35 @@ bool TFsfReader::unpack(const string& fname, const string& path)
     }
 
     reader::ReadTP4 readtp4(fname, path);
+
+    if (!readtp4.isReady())
+        return false;
+
+    // We must delete the old files first
+    std::uintmax_t n = fs::remove_all(path);
+    MSG_TRACE("Deleted " << n << " files/directories from " << path);
     return readtp4.doRead();
+}
+
+void TFsfReader::callbackLog(char* str, void* arg, bool out)
+{
+    DECL_TRACER("TFsfReader::callbackLog(char* str, void* arg, bool out)");
+
+    if (!str)
+        return;
+
+    string msg = str;
+    size_t pos = 0;
+
+    if ((pos = msg.find("\r")) != string::npos)
+        msg = msg.substr(0, pos);
+
+    if (!out)
+    {
+        MSG_DEBUG("Output: " << msg);
+    }
+    else
+    {
+        MSG_DEBUG("Input: " << msg);
+    }
 }

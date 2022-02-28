@@ -37,7 +37,7 @@ bool TValidateFile::isValidFile(const string& file)
 
     if (stat (file.c_str(), &buffer) != 0)
     {
-        MSG_WARNING("File access error: " << strerror(errno));
+        MSG_WARNING("File access error (" << file << "): " << strerror(errno));
         return false;
     }
 

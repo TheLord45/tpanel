@@ -22,7 +22,9 @@
 #include <string>
 #include <vector>
 
-#include "tsocket.h"
+#include "ftplib/ftplib.h"
+
+#define _BUF_SIZE   1024
 
 class TFsfReader
 {
@@ -38,16 +40,10 @@ class TFsfReader
 
         bool copyOverFTP(const std::string& fname, const std::string& target);
         bool unpack(const std::string&fname, const std::string& path);
+        static void callbackLog(char *str, void* arg, bool out);
 
     private:
-        bool sendCommand(int cmd, const std::string& param);
-
-        TSocket *mFtp{nullptr};
-        TSocket *mFtpData{nullptr};
-        std::vector<FTP_CMDS_t> mFtpCmds;
-        std::string mLastCmdBuffer;     // Contains the result of the last command.
-        int mDataPort{20};              // The FTP data port to transfer files.
-        bool mPassive{false};           // TRUE = passive mode active
+        ftplib *mFtpLib{nullptr};
 };
 
 #endif

@@ -120,6 +120,58 @@ bool TTPInit::createPanelConfigs()
     return err;
 }
 
+bool TTPInit::createSystemConfigs()
+{
+    DECL_TRACER("TTPInit::createSystemConfigs()");
+
+    vector<string> resFiles = {
+        ":ressources/__system/graphics/fonts/amxbold_.ttf",
+        ":ressources/__system/graphics/fonts/arialbd.ttf",
+        ":ressources/__system/graphics/fonts/arial.ttf",
+        ":ressources/__system/graphics/fonts/cour.ttf",
+        ":ressources/__system/graphics/sounds/audioTest.wav",
+        ":ressources/__system/graphics/sounds/docked.mp3",
+        ":ressources/__system/graphics/sounds/doubleBeep01.wav",
+        ":ressources/__system/graphics/sounds/doubleBeep02.wav",
+        ":ressources/__system/graphics/sounds/doubleBeep03.wav",
+        ":ressources/__system/graphics/sounds/doubleBeep04.wav",
+        ":ressources/__system/graphics/sounds/doubleBeep05.wav",
+        ":ressources/__system/graphics/sounds/doubleBeep06.wav",
+        ":ressources/__system/graphics/sounds/doubleBeep07.wav",
+        ":ressources/__system/graphics/sounds/doubleBeep08.wav",
+        ":ressources/__system/graphics/sounds/doubleBeep09.wav",
+        ":ressources/__system/graphics/sounds/doubleBeep10.wav",
+        ":ressources/__system/graphics/sounds/doubleBeep.wav",
+        ":ressources/__system/graphics/sounds/ringback.wav",
+        ":ressources/__system/graphics/sounds/ringtone.wav",
+        ":ressources/__system/graphics/sounds/singleBeep01.wav",
+        ":ressources/__system/graphics/sounds/singleBeep02.wav",
+        ":ressources/__system/graphics/sounds/singleBeep03.wav",
+        ":ressources/__system/graphics/sounds/singleBeep04.wav",
+        ":ressources/__system/graphics/sounds/singleBeep05.wav",
+        ":ressources/__system/graphics/sounds/singleBeep06.wav",
+        ":ressources/__system/graphics/sounds/singleBeep07.wav",
+        ":ressources/__system/graphics/sounds/singleBeep08.wav",
+        ":ressources/__system/graphics/sounds/singleBeep09.wav",
+        ":ressources/__system/graphics/sounds/singleBeep10.wav",
+        ":ressources/__system/graphics/sounds/singleBeep.wav",
+        ":ressources/__system/graphics/draw.xma",
+        ":ressources/__system/graphics/fnt.xma",
+        ":ressources/__system/graphics/version.xma"
+    };
+
+    bool err = false;
+    vector<string>::iterator iter;
+
+    for (iter = resFiles.begin(); iter != resFiles.end(); ++iter)
+    {
+        if (!copyFile(*iter))
+            err = true;
+    }
+
+    return err;
+}
+
 bool TTPInit::createDirectoryStructure()
 {
     DECL_TRACER("TTPInit::createDirectoryStructure()");
@@ -274,6 +326,10 @@ bool TTPInit::loadSurfaceFromController(bool force)
 
     TFsfReader reader;
     string target = mPath + "/" + TConfig::getFtpSurface();
+    size_t pos = 0;
+
+    if ((pos = mPath.find_last_of("/")) != string::npos)
+        target = mPath.substr(0, pos) + "/" + TConfig::getFtpSurface();
 
     if (!force)
     {
@@ -286,9 +342,14 @@ bool TTPInit::loadSurfaceFromController(bool force)
     if (!reader.copyOverFTP(TConfig::getFtpSurface(), target))
         return false;
 
-    if (!reader.unpack(TConfig::getFtpSurface(), mPath))
+    if (!reader.unpack(target, mPath))
+    {
+        MSG_ERROR("Unpacking was not successfull.");
         return false;
+    }
 
+    createDirectoryStructure();
+    createSystemConfigs();
     TConfig::saveFtpDownloadTime(time(NULL));
     TConfig::saveSettings();
     return true;

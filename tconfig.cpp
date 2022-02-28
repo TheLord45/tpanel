@@ -41,6 +41,8 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
+bool TConfig::mInitialized{false};
+
 /**
  * @struct SETTINGS
  * @brief The SETTINGS struct bundles the configuration options.
@@ -81,6 +83,7 @@ struct SETTINGS
     string ftpUser;             //!< The username for FTP of the controller (default: administrator)
     string ftpPassword;         //!< The password for FTP of the controller (default: password)
     string ftpSurface;          //!< The name of the file containing the TPDesign4 file to load
+    bool ftpPassive{true};      //!< If false the data port 20 is used for file transfer
     time_t ftpLastDownload{0};  //!< The timestamp of the last download
     // SIP settings
     string sip_proxy;           //!< The address of the SIP proxy
@@ -101,7 +104,7 @@ static settings_t localSettings;    //!< Global defines settings used in class T
  * @param path  A path and name of a configuration file.
  */
 TConfig::TConfig(const std::string& path)
-	: mPath(path)
+    : mPath(path)
 {
     // Initialize the possible configuration paths
     mCfgPaths.push_back("/etc");
@@ -129,7 +132,7 @@ bool TConfig::reReadConfig()
  */
 void TConfig::setProgName(const std::string& pname)
 {
-	localSettings.pname = pname;
+    localSettings.pname = pname;
 }
 
 /**
@@ -138,7 +141,7 @@ void TConfig::setProgName(const std::string& pname)
  */
 std::string & TConfig::getProgName()
 {
-	return localSettings.pname;
+    return localSettings.pname;
 }
 
 /**
@@ -152,7 +155,9 @@ std::string & TConfig::getProgName()
  */
 int TConfig::getChannel()
 {
-	return localSettings.ID;
+    DECL_TRACER("TConfig::getChannel()");
+
+    return localSettings.ID;
 }
 
 /**
@@ -162,7 +167,7 @@ int TConfig::getChannel()
  */
 std::string& TConfig::getConfigFileName()
 {
-	return localSettings.name;
+    return localSettings.name;
 }
 
 /**
@@ -175,7 +180,7 @@ std::string& TConfig::getConfigFileName()
  */
 std::string& TConfig::getConfigPath()
 {
-	return localSettings.path;
+    return localSettings.path;
 }
 
 /**
@@ -187,7 +192,9 @@ std::string& TConfig::getConfigPath()
  */
 std::string& TConfig::getController()
 {
-	return localSettings.server;
+    DECL_TRACER("TConfig::getController()");
+
+    return localSettings.server;
 }
 
 /**
@@ -201,6 +208,8 @@ std::string& TConfig::getController()
  */
 int TConfig::getSystem()
 {
+    DECL_TRACER("TConfig::getSystem()");
+
     return localSettings.system;
 }
 
@@ -216,7 +225,9 @@ int TConfig::getSystem()
  */
 std::string& TConfig::getFirmVersion()
 {
-	return localSettings.version;
+    DECL_TRACER("TConfig::getFirmVersion()");
+
+    return localSettings.version;
 }
 
 /**
@@ -229,7 +240,7 @@ std::string& TConfig::getFirmVersion()
  */
 std::string& TConfig::getLogFile()
 {
-	return localSettings.logFile;
+    return localSettings.logFile;
 }
 
 /**
@@ -252,7 +263,7 @@ std::string& TConfig::getLogFile()
  */
 string& TConfig::getLogLevel()
 {
-	return localSettings.logLevel;
+    return localSettings.logLevel;
 }
 
 /**
@@ -264,6 +275,8 @@ string& TConfig::getLogLevel()
  */
 uint TConfig::getLogLevelBits()
 {
+    DECL_TRACER("TConfig::getLogLevelBits()");
+
     return localSettings.logLevelBits;
 }
 /**
@@ -276,7 +289,9 @@ uint TConfig::getLogLevelBits()
  */
 std::string& TConfig::getPanelType()
 {
-	return localSettings.ptype;
+    DECL_TRACER("TConfig::getPanelType()");
+
+    return localSettings.ptype;
 }
 
 /**
@@ -289,7 +304,9 @@ std::string& TConfig::getPanelType()
  */
 int TConfig::getPort()
 {
-	return localSettings.port;
+    DECL_TRACER("TConfig::getPort()");
+
+    return localSettings.port;
 }
 
 /**
@@ -302,12 +319,14 @@ int TConfig::getPort()
  */
 string& TConfig::getProjectPath()
 {
-	return localSettings.project;
+    return localSettings.project;
 }
 
 
 string TConfig::getSystemPath(SYSTEMRESOURCE_t sres)
 {
+    DECL_TRACER("TConfig::getSystemPath(SYSTEMRESOURCE_t sres)");
+
     string p;
 
     switch(sres)
@@ -429,126 +448,183 @@ void TConfig::saveScale(bool scale)
 
 void TConfig::saveProfiling(bool prof)
 {
+    DECL_TRACER("TConfig::saveProfiling(bool prof)");
+
     localSettings.profiling = prof;
 }
 
 void TConfig::savePassword1(const std::string& pw)
 {
+    DECL_TRACER("TConfig::savePassword1(const std::string& pw)");
+
     localSettings.password1 = pw;
 }
 
 void TConfig::savePassword2(const std::string& pw)
 {
+    DECL_TRACER("TConfig::savePassword2(const std::string& pw)");
+
     localSettings.password2 = pw;
 }
 
 void TConfig::savePassword3(const std::string& pw)
 {
+    DECL_TRACER("TConfig::savePassword3(const std::string& pw)");
+
     localSettings.password3 = pw;
 }
 
 void TConfig::savePassword4(const std::string& pw)
 {
+    DECL_TRACER("TConfig::savePassword4(const std::string& pw)");
+
     localSettings.password4 = pw;
 }
 
 void TConfig::saveSystemSoundFile(const std::string& snd)
 {
+    DECL_TRACER("TConfig::saveSystemSoundFile(const std::string& snd)");
+
     localSettings.systemSound = snd;
 }
 
 void TConfig::saveSystemSoundState(bool state)
 {
+    DECL_TRACER("TConfig::saveSystemSoundState(bool state)");
+
     localSettings.systemSoundState = state;
 }
 
 void TConfig::saveFtpUser(const string& user)
 {
+    DECL_TRACER("TConfig::saveFtpUser(const string& user)");
+
     localSettings.ftpUser = user;
 }
 
 void TConfig::saveFtpPassword(const string& pw)
 {
+    DECL_TRACER("TConfig::saveFtpPassword(const string& pw)");
+
     localSettings.ftpPassword = pw;
 }
 
 void TConfig::saveFtpSurface(const string& fname)
 {
+    DECL_TRACER("TConfig::saveFtpSurface(const string& fname)");
+
     localSettings.ftpSurface = fname;
+}
+
+void TConfig::saveFtpPassive(bool mode)
+{
+    DECL_TRACER("TConfig::saveFtpPassive(bool mode)");
+
+    localSettings.ftpPassive = mode;
 }
 
 void TConfig::saveFtpDownloadTime(time_t t)
 {
+    DECL_TRACER("TConfig::saveFtpDownloadTime(time_t t)");
+
     localSettings.ftpLastDownload = t;
 }
 
 std::string& TConfig::getSIPproxy()
 {
+    DECL_TRACER("TConfig::getSIPproxy()");
+
     return localSettings.sip_proxy;
 }
 
 void TConfig::setSIPproxy(const std::string& address)
 {
+    DECL_TRACER("TConfig::setSIPproxy(const std::string& address)");
+
     localSettings.sip_proxy = address;
 }
 
 int TConfig::getSIPport()
 {
+    DECL_TRACER("TConfig::getSIPport()");
+
     return localSettings.sip_port;
 }
 
 void TConfig::setSIPport(int port)
 {
+    DECL_TRACER("TConfig::setSIPport(int port)");
+
     localSettings.sip_port = port;
 }
 
 std::string& TConfig::getSIPstun()
 {
+    DECL_TRACER("TConfig::getSIPstun()");
+
     return localSettings.sip_stun;
 }
 
 void TConfig::setSIPstun(const std::string& address)
 {
+    DECL_TRACER("TConfig::setSIPstun(const std::string& address)");
+
     localSettings.sip_stun = address;
 }
 
 std::string& TConfig::getSIPdomain()
 {
+    DECL_TRACER("TConfig::getSIPdomain()");
+
     return localSettings.sip_domain;
 }
 
 void TConfig::setSIPdomain(const std::string& domain)
 {
+    DECL_TRACER("TConfig::setSIPdomain(const std::string& domain)");
+
     localSettings.sip_domain = domain;
 }
 
 std::string& TConfig::getSIPuser()
 {
+    DECL_TRACER("TConfig::getSIPuser()");
+
     return localSettings.sip_user;
 }
 
 void TConfig::setSIPuser(const std::string& user)
 {
+    DECL_TRACER("TConfig::setSIPuser(const std::string& user)");
+
     localSettings.sip_user = user;
 }
 
 std::string& TConfig::getSIPpassword()
 {
+    DECL_TRACER("TConfig::getSIPpassword()");
+
     return localSettings.sip_password;
 }
 
 void TConfig::setSIPpassword(const std::string& pw)
 {
+    DECL_TRACER("TConfig::setSIPpassword(const std::string& pw)");
+
     localSettings.sip_password = pw;
 }
 
 bool TConfig::getSIPstatus()
 {
+    DECL_TRACER("TConfig::getSIPstatus()");
+
     return localSettings.sip_enabled;
 }
 
 void TConfig::setSIPstatus(bool state)
 {
+    DECL_TRACER("TConfig::setSIPstatus(bool state)");
+
     localSettings.sip_enabled = state;
 }
 
@@ -586,15 +662,16 @@ bool TConfig::saveSettings()
         lines += string("FTPuser=") + localSettings.ftpUser + "\n";
         lines += string("FTPpassword=") + localSettings.ftpPassword + "\n";
         lines += string("FTPsurface=") + localSettings.ftpSurface + "\n";
+        lines += string("FTPpassive=") + (localSettings.ftpPassive ? "true" : "false") + "\n";
         lines += string("FTPdownloadTime=") + std::to_string(localSettings.ftpLastDownload) + "\n";
         // SIP settings
-        lines += string("SIP_DOMAIN") + localSettings.sip_domain + "\n";
-        lines += string("SIP_PROXY") + localSettings.sip_password + "\n";
-        lines += string("SIP_PORT") + std::to_string(localSettings.sip_port) + "\n";
-        lines += string("SIP_STUN") + localSettings.sip_stun + "\n";
-        lines += string("SIP_USER") + localSettings.sip_user + "\n";
-        lines += string("SIP_PASSWORD") + localSettings.sip_password + "\n";
-        lines += string("SIP_ENABLED") + (localSettings.sip_enabled ? "true" : "false") + "\n";
+        lines += string("SIP_DOMAIN=") + localSettings.sip_domain + "\n";
+        lines += string("SIP_PROXY=") + localSettings.sip_password + "\n";
+        lines += string("SIP_PORT=") + std::to_string(localSettings.sip_port) + "\n";
+        lines += string("SIP_STUN=") + localSettings.sip_stun + "\n";
+        lines += string("SIP_USER=") + localSettings.sip_user + "\n";
+        lines += string("SIP_PASSWORD=") + localSettings.sip_password + "\n";
+        lines += string("SIP_ENABLED=") + (localSettings.sip_enabled ? "true" : "false") + "\n";
         file.write(lines.c_str(), lines.size());
         file.close();
         MSG_INFO("Actual log level: " << localSettings.logLevel);
@@ -605,8 +682,8 @@ bool TConfig::saveSettings()
         return false;
     }
 
-    TError::Current()->setLogFile(localSettings.logFile);
     TError::Current()->setLogLevel(localSettings.logLevel);
+    TError::Current()->setLogFile(localSettings.logFile);
     return true;
 }
 
@@ -620,7 +697,7 @@ bool TConfig::saveSettings()
  */
 bool TConfig::isLongFormat()
 {
-	return localSettings.longformat;
+    return localSettings.longformat;
 }
 
 /**
@@ -632,7 +709,9 @@ bool TConfig::isLongFormat()
  */
 bool TConfig::showBanner()
 {
-	return !localSettings.noBanner;
+    DECL_TRACER("TConfig::showBanner()");
+
+    return !localSettings.noBanner;
 }
 
 /**
@@ -644,6 +723,8 @@ bool TConfig::showBanner()
  */
 bool TConfig::getScale()
 {
+    DECL_TRACER("TConfig::getScale()");
+
     return localSettings.scale;
 }
 
@@ -654,61 +735,92 @@ bool TConfig::getProfiling()
 
 string & TConfig::getPassword1()
 {
+    DECL_TRACER("TConfig::getPassword1()");
+
     return localSettings.password1;
 }
 
 string & TConfig::getPassword2()
 {
+    DECL_TRACER("TConfig::getPassword2()");
+
     return localSettings.password2;
 }
 
 string & TConfig::getPassword3()
 {
+    DECL_TRACER("TConfig::getPassword3()");
+
     return localSettings.password3;
 }
 
 string & TConfig::getPassword4()
 {
+    DECL_TRACER("TConfig::getPassword4()");
+
     return localSettings.password4;
 }
 
 string & TConfig::getSystemSound()
 {
+    DECL_TRACER("TConfig::getSystemSound()");
+
     return localSettings.systemSound;
 }
 
 bool TConfig::getSystemSoundState()
 {
+    DECL_TRACER("TConfig::getSystemSoundState()");
+
     return localSettings.systemSoundState;
 }
 
 string& TConfig::getSingleBeepSound()
 {
+    DECL_TRACER("TConfig::getSingleBeepSound()");
+
     return localSettings.systemSingleBeep;
 }
 
 string& TConfig::getDoubleBeepSound()
 {
+    DECL_TRACER("TConfig::getDoubleBeepSound()");
+
     return localSettings.systemDoubleBeep;
 }
 
 string& TConfig::getFtpUser()
 {
+    DECL_TRACER("TConfig::getFtpUser()");
+
     return localSettings.ftpUser;
 }
 
 string& TConfig::getFtpPassword()
 {
+    DECL_TRACER("TConfig::getFtpPassword()");
+
     return localSettings.ftpPassword;
 }
 
 string& TConfig::getFtpSurface()
 {
+    DECL_TRACER("TConfig::getFtpSurface()");
+
     return localSettings.ftpSurface;
+}
+
+bool TConfig::getFtpPassive()
+{
+    DECL_TRACER("TConfig::getFtpPassive()");
+
+    return localSettings.ftpPassive;
 }
 
 time_t TConfig::getFtpDownloadTime()
 {
+    DECL_TRACER("TConfig::getFtpDownloadTime()");
+
     return localSettings.ftpLastDownload;
 }
 
@@ -881,7 +993,7 @@ bool TConfig::findConfig()
     localSettings.ftpUser = "administrator";
     localSettings.ftpPassword = "password";
     localSettings.ftpSurface = "tpanel.tp4";
-    localSettings.sip_port = 5050;
+    localSettings.sip_port = 5060;
 #ifdef __ANDROID__
     std::stringstream s;
     TValidateFile vf;
@@ -935,6 +1047,7 @@ bool TConfig::findConfig()
             content += "FTPuser=administrator\n";
             content += "FTPpassword=password\n";
             content += "FTPsurface=tpanel.tp4\n";
+            content += "FTPpassive=true\n";
             content += "FTPdownloadTime=0\n";
             content += "SIP_PORT=5050\n";
             cfg.write(content.c_str(), content.size());
@@ -953,7 +1066,7 @@ bool TConfig::findConfig()
     }
 #else
     if (!(HOME = getenv("HOME")))
-        std::cerr << "TConfig::findConfig: No environment variable HOME!" << std::endl;
+        MSG_ERROR("TConfig::findConfig: No environment variable HOME!");
 
     vector<string>::iterator iter;
     bool found = false;
@@ -990,7 +1103,7 @@ bool TConfig::findConfig()
 
     if (!found)
     {
-        std::cerr << "TConfig::findConfig: Can't find any configuration file!" << std::endl;
+        MSG_ERROR("TConfig::findConfig: Can't find any configuration file!");
         TError::setError();
         sFileName.clear();
         localSettings.name.clear();
@@ -1028,7 +1141,7 @@ bool TConfig::readConfig()
     localSettings.ftpUser = "administrator";
     localSettings.ftpPassword = "password";
     localSettings.ftpSurface = "tpanel.tp4";
-    localSettings.sip_port = 5050;
+    localSettings.sip_port = 5060;
 #ifdef __ANDROID__
     localSettings.logLevel = SLOG_NONE;
     localSettings.logLevelBits = HLOG_NONE;
@@ -1043,7 +1156,7 @@ bool TConfig::readConfig()
     }
     catch (const fstream::failure e)
     {
-        std::cerr << "TConfig::readConfig: Error on file " << mCFile << ": " << e.what() << std::endl;
+        cerr << "TConfig::readConfig: Error on file " << mCFile << ": " << e.what() << endl;
         TError::setError();
         return false;
     }
@@ -1121,7 +1234,7 @@ bool TConfig::readConfig()
 
                 if (localSettings.ID < 10000 || localSettings.ID >= 29000)
                 {
-                    std::cerr << "TConfig::readConfig: Invalid port number " << right << std::endl;
+                    cerr << "TConfig::readConfig: Invalid port number " << right << endl;
                     localSettings.ID = 0;
                 }
             }
@@ -1151,6 +1264,8 @@ bool TConfig::readConfig()
                 localSettings.ftpPassword = right;
             else if (caseCompare(left, "FTPsurface") == 0 && !right.empty())
                 localSettings.ftpSurface = right;
+            else if (caseCompare(left, "FTPpassive") == 0 && !right.empty())
+                localSettings.ftpPassive = isTrue(right);
             else if (caseCompare(left, "FTPdownloadTime") == 0 && !right.empty())
                 localSettings.ftpLastDownload = atol(right.c_str());
             else if (caseCompare(left, "SIP_PROXY") == 0 && !right.empty())     // SIP settings starting here
@@ -1171,6 +1286,9 @@ bool TConfig::readConfig()
     }
 
     fs.close();
+    mInitialized = true;
+    TStreamError::setLogLevel(localSettings.logLevel);
+    TStreamError::setLogFile(localSettings.logFile);
 
     if (TStreamError::checkFilter(HLOG_DEBUG))
     {
@@ -1200,6 +1318,7 @@ bool TConfig::readConfig()
         MSG_INFO("    FTP user:     " << localSettings.ftpUser);
         MSG_INFO("    FTP password: " << localSettings.ftpPassword);
         MSG_INFO("    FTP surface:  " << localSettings.ftpSurface);
+        MSG_INFO("    FTP passive:  " << (localSettings.ftpPassive ? "YES" : "NO"));
         MSG_INFO("    FTP dl. time: " << localSettings.ftpLastDownload);
     }
 
@@ -1220,6 +1339,8 @@ bool TConfig::readConfig()
  */
 vector<string> TConfig::split(const string& str, const string& seps, const bool trimEmpty)
 {
+    DECL_TRACER("TConfig::split(const string& str, const string& seps, const bool trimEmpty)");
+
 	size_t pos = 0, mark = 0;
 	vector<string> parts;
 
@@ -1280,6 +1401,8 @@ vector<string> TConfig::split(const string& str, const string& seps, const bool 
  */
 int TConfig::caseCompare(const string& str1, const string& str2)
 {
+    DECL_TRACER("TConfig::caseCompare(const string& str1, const string& str2)");
+
 	size_t i = 0;
 
 	if (str1.length() != str2.length())

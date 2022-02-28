@@ -83,6 +83,7 @@ class TConfig
         static std::string& getFtpUser();
         static std::string& getFtpPassword();
         static std::string& getFtpSurface();
+        static bool getFtpPassive();
         static time_t getFtpDownloadTime();
 
         static std::string& getController();
@@ -92,6 +93,7 @@ class TConfig
         static std::string& getPanelType();
         static std::string& getFirmVersion();
         static bool certCheck();
+        static bool isInitialized() { return mInitialized; }
 
         static bool saveProjectPath(const std::string& path);
         static bool saveLogFile(const std::string& file);
@@ -114,6 +116,7 @@ class TConfig
         static void saveFtpUser(const std::string& user);
         static void saveFtpPassword(const std::string& pw);
         static void saveFtpSurface(const std::string& fname);
+        static void saveFtpPassive(bool mode);
         static void saveFtpDownloadTime(time_t t);
 
         // SIP management
@@ -146,6 +149,7 @@ class TConfig
         std::string mPath;
         std::string mCFile;
         std::vector<std::string> mCfgPaths;
+        static bool mInitialized;
 #ifdef __ANDROID__
         std::string mRoot;
 #endif

@@ -46,6 +46,8 @@ if (APPLE)
 	set(LIBS ${LIBS} ${OSX_LIB})
 endif(APPLE)
 
+add_subdirectory(ftplib)
+
 set(SOURCES tmain.cpp
 			tconfig.cpp
 			terror.cpp
@@ -110,6 +112,6 @@ if(CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
 	target_link_libraries(tpanel stdc++fs)
 endif()
 
-target_link_libraries(tpanel m pthread ssl crypto ${LIBS} ${LIBSKIA_LIBRARY} Qt5::Widgets Qt5::Multimedia Qt5::MultimediaWidgets)
+target_link_libraries(tpanel m pthread ssl crypto ftp ${LIBS} ${LIBSKIA_LIBRARY} Qt5::Widgets Qt5::Multimedia Qt5::MultimediaWidgets)
 
 install(TARGETS tpanel RUNTIME DESTINATION bin)
