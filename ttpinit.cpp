@@ -19,9 +19,11 @@
 #include <iostream>
 #include <fstream>
 
+#include <stdio.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <unistd.h>
 
 #include <QFile>
 #ifdef __ANDROID__
@@ -281,6 +283,11 @@ bool TTPInit::copyFile(const std::string& fname)
     {
         QString path = mPath.c_str();
         path += bname.c_str();
+        bname = path.toStdString();
+
+        // If the target already exists we must delete it first.
+        if (access(bname.data(), F_OK) == 0)
+            remove(bname.data());
 
         if (!external.copy(path))
         {
@@ -348,8 +355,12 @@ bool TTPInit::loadSurfaceFromController(bool force)
         return false;
     }
 
-    createDirectoryStructure();
-    createSystemConfigs();
+    if (!force)
+    {
+        createDirectoryStructure();
+        createSystemConfigs();
+    }
+
     TConfig::saveFtpDownloadTime(time(NULL));
     TConfig::saveSettings();
     return true;

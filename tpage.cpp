@@ -610,9 +610,9 @@ int TPage::numberLines(const string& str)
     return lines;
 }
 
-int TPage::calcLineHeight(string text, SkFont& font)
+int TPage::calcLineHeight(const string& text, SkFont& font)
 {
-    DECL_TRACER("TButton::calcLineHeight(string text, SkFont& font)");
+    DECL_TRACER("TButton::calcLineHeight(const string& text, SkFont& font)");
 
     sk_sp<SkTextBlob> blob = SkTextBlob::MakeFromString(text.c_str(), font);
     SkRect rect = blob.get()->bounds();
@@ -877,7 +877,7 @@ bool TPage::drawText(SkBitmap *img)
             vector<string>::iterator iter;
             int line = 0;
 
-            for (iter = textLines.begin(); iter != textLines.end(); iter++)
+            for (iter = textLines.begin(); iter != textLines.end(); ++iter)
             {
                 sk_sp<SkTextBlob> blob = SkTextBlob::MakeFromString(iter->c_str(), skFont);
                 SkRect rect;

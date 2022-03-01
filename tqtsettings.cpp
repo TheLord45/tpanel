@@ -52,9 +52,12 @@ TQtSettings::TQtSettings(QWidget *parent)
     ui->lineEdit_logFile->setText(TConfig::getLogFile().c_str());
     ui->lineEdit_Controller->setText(TConfig::getController().c_str());
     ui->lineEdit_PType->setText(TConfig::getPanelType().c_str());
-
     ui->spinBox_Port->setValue(TConfig::getPort());
     ui->spinBox_Channel->setValue(TConfig::getChannel());
+    ui->lineEdit_FTPuser->setText(TConfig::getFtpUser().c_str());
+    ui->lineEdit_FTPpassword->setText(TConfig::getFtpPassword().c_str());
+    ui->lineEdit_FTPsurface->setText(TConfig::getFtpSurface().c_str());
+    ui->checkBox_FTPpassive->setCheckState((TConfig::getFtpPassive() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked));
 
     mLogLevel = TConfig::getLogLevelBits();
     ui->checkBox_LogInfo->setCheckState((mLogLevel & HLOG_INFO) ? Qt::CheckState::Checked : Qt::CheckState::Unchecked);
@@ -67,6 +70,16 @@ TQtSettings::TQtSettings(QWidget *parent)
 
     ui->checkBox_Format->setCheckState((TConfig::isLongFormat() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked));
     ui->checkBox_Scale->setCheckState((TConfig::getScale() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked));
+    ui->checkBox_Banner->setCheckState((TConfig::showBanner() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked));
+
+    ui->lineEdit_SIPproxy->setText(TConfig::getSIPproxy().c_str());
+    ui->spinBox_SIPport->setValue(TConfig::getSIPport());
+    ui->lineEdit_SIPstun->setText(TConfig::getSIPstun().c_str());
+    ui->lineEdit_SIPdomain->setText(TConfig::getSIPdomain().c_str());
+    ui->lineEdit_SIPuser->setText(TConfig::getSIPuser().c_str());
+    ui->lineEdit_SIPpassword->setText(TConfig::getSIPpassword().c_str());
+    ui->checkBox_SIPenabled->setCheckState((TConfig::getSIPstatus() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked));
+
     mInitRun = false;
     mSetChanged = false;
 }
@@ -114,7 +127,6 @@ void TQtSettings::on_kiconbutton_logFile_clicked()
         return;
 
 #ifdef __ANDROID__
-//    QString fileName = QQmlFile::urlToLocalFileOrQrc(fname);
     QString fileName = fname;
 
     if (fileName.contains("content://"))
@@ -165,195 +177,79 @@ void TQtSettings::doResize()
     }
 
     // Layout
-    size = ui->scrollArea->size();
-    size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-    ui->scrollArea->resize(size);
-    rect = ui->scrollArea->geometry();
-    ui->scrollArea->move(scale(rect.left()), scale(rect.top()));
+    // Iterate through childs and resize them
+    QObjectList childs = children();
+    QList<QObject *>::Iterator iter;
 
-    size = ui->scrollAreaWidgetContents->size();
-    size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-    ui->scrollAreaWidgetContents->resize(size);
-    rect = ui->scrollAreaWidgetContents->geometry();
-    ui->scrollAreaWidgetContents->move(scale(rect.left()), scale(rect.top()));
+    for (iter = childs.begin(); iter != childs.end(); ++iter)
+    {
+        QString name = iter.i->t()->objectName();
+        QObject *obj = iter.i->t();
 
-    // labels
-    QFont font = ui->label_Channel->font();
-    font.setPointSizeF(12.0);
-    size = ui->label_Channel->size();
-    size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-    ui->label_Channel->resize(size);
-    rect = ui->label_Channel->geometry();
-    ui->label_Channel->move(scale(rect.left()), scale(rect.top()));
-    ui->label_Channel->setFont(font);
-
-    ui->label_Controller->resize(size);
-    rect = ui->label_Controller->geometry();
-    ui->label_Controller->move(scale(rect.left()), scale(rect.top()));
-    ui->label_Controller->setFont(font);
-
-    ui->label_PType->resize(size);
-    rect = ui->label_PType->geometry();
-    ui->label_PType->move(scale(rect.left()), scale(rect.top()));
-    ui->label_PType->setFont(font);
-
-    ui->label_PType_2->resize(size);
-    rect = ui->label_PType_2->geometry();
-    ui->label_PType_2->move(scale(rect.left()), scale(rect.top()));
-    ui->label_PType_2->setFont(font);
-
-    ui->label_Port->resize(size);
-    rect = ui->label_Port->geometry();
-    ui->label_Port->move(scale(rect.left()), scale(rect.top()));
-    ui->label_Port->setFont(font);
-
-    ui->label_logLevel->resize(size);
-    rect = ui->label_logLevel->geometry();
-    ui->label_logLevel->move(scale(rect.left()), scale(rect.top()));
-    ui->label_logLevel->setFont(font);
-
-    ui->label_logFile->resize(size);
-    rect = ui->label_logFile->geometry();
-    ui->label_logFile->move(scale(rect.left()), scale(rect.top()));
-    ui->label_logFile->setFont(font);
-
-    ui->label_logFormats->resize(size);
-    rect = ui->label_logFormats->geometry();
-    ui->label_logFormats->move(scale(rect.left()), scale(rect.top()));
-    ui->label_logFormats->setFont(font);
-
-    // Inputs
-    size = ui->lineEdit_Controller->size();
-    rect = ui->lineEdit_Controller->geometry();
-    size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-    ui->lineEdit_Controller->resize(size);
-    rect = ui->lineEdit_Controller->geometry();
-    ui->lineEdit_Controller->move(scale(rect.left()), scale(rect.top()));
-    ui->lineEdit_Controller->setFont(font);
-
-    size = ui->lineEdit_PType->size();
-    size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-    ui->lineEdit_PType->resize(size);
-    rect = ui->lineEdit_PType->geometry();
-    ui->lineEdit_PType->move(scale(rect.left()), scale(rect.top()));
-    ui->lineEdit_PType->setFont(font);
-
-    size = ui->lineEdit_logFile->size();
-    size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-    ui->lineEdit_logFile->resize(size);
-    rect = ui->lineEdit_logFile->geometry();
-    ui->lineEdit_logFile->move(scale(rect.left()), scale(rect.top()));
-    ui->lineEdit_logFile->setFont(font);
-
-    size = ui->kiconbutton_reset->size();
-    size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-    ui->kiconbutton_reset->resize(size);
-    rect = ui->kiconbutton_reset->geometry();
-    ui->kiconbutton_reset->move(scale(rect.left()), scale(rect.top()));
-    size = ui->kiconbutton_reset->iconSize();
-    size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-    ui->kiconbutton_reset->setIconSize(size);
-
-    size = ui->kiconbutton_logFile->size();
-    size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-    ui->kiconbutton_logFile->resize(size);
-    rect = ui->kiconbutton_logFile->geometry();
-    ui->kiconbutton_logFile->move(scale(rect.left()), scale(rect.top()));
-    size = ui->kiconbutton_logFile->iconSize();
-    size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-    ui->kiconbutton_logFile->setIconSize(size);
-
-    size = ui->spinBox_Channel->size();
-    size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-    ui->spinBox_Channel->resize(size);
-    rect = ui->spinBox_Channel->geometry();
-    ui->spinBox_Channel->move(scale(rect.left()), scale(rect.top()));
-    ui->spinBox_Channel->setFont(font);
-
-    size = ui->spinBox_Port->size();
-    size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-    ui->spinBox_Port->resize(size);
-    rect = ui->spinBox_Port->geometry();
-    ui->spinBox_Port->move(scale(rect.left()), scale(rect.top()));
-    ui->spinBox_Port->setFont(font);
-
-
-    size = ui->checkBox_LogInfo->size();
-    size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-    ui->checkBox_LogInfo->resize(size);
-    rect = ui->checkBox_LogInfo->geometry();
-    ui->checkBox_LogInfo->move(scale(rect.left()), scale(rect.top()));
-    ui->checkBox_LogInfo->setFont(font);
-
-    size = ui->checkBox_LogWarning->size();
-    size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-    ui->checkBox_LogWarning->resize(size);
-    rect = ui->checkBox_LogWarning->geometry();
-    ui->checkBox_LogWarning->move(scale(rect.left()), scale(rect.top()));
-    ui->checkBox_LogWarning->setFont(font);
-
-    size = ui->checkBox_LogError->size();
-    size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-    ui->checkBox_LogError->resize(size);
-    rect = ui->checkBox_LogError->geometry();
-    ui->checkBox_LogError->move(scale(rect.left()), scale(rect.top()));
-    ui->checkBox_LogError->setFont(font);
-
-    size = ui->checkBox_LogTrace->size();
-    size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-    ui->checkBox_LogTrace->resize(size);
-    rect = ui->checkBox_LogTrace->geometry();
-    ui->checkBox_LogTrace->move(scale(rect.left()), scale(rect.top()));
-    ui->checkBox_LogTrace->setFont(font);
-
-    size = ui->checkBox_LogDebug->size();
-    size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-    ui->checkBox_LogDebug->resize(size);
-    rect = ui->checkBox_LogDebug->geometry();
-    ui->checkBox_LogDebug->move(scale(rect.left()), scale(rect.top()));
-    ui->checkBox_LogDebug->setFont(font);
-
-    size = ui->checkBox_LogProtocol->size();
-    size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-    ui->checkBox_LogProtocol->resize(size);
-    rect = ui->checkBox_LogProtocol->geometry();
-    ui->checkBox_LogProtocol->move(scale(rect.left()), scale(rect.top()));
-    ui->checkBox_LogProtocol->setFont(font);
-
-    size = ui->checkBox_LogAll->size();
-    size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-    ui->checkBox_LogAll->resize(size);
-    rect = ui->checkBox_LogAll->geometry();
-    ui->checkBox_LogAll->move(scale(rect.left()), scale(rect.top()));
-    ui->checkBox_LogAll->setFont(font);
-
-    size = ui->checkBox_Format->size();
-    size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-    ui->checkBox_Format->resize(size);
-    rect = ui->checkBox_Format->geometry();
-    ui->checkBox_Format->move(scale(rect.left()), scale(rect.top()));
-    ui->checkBox_Format->setFont(font);
-
-    size = ui->checkBox_Profiling->size();
-    size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-    ui->checkBox_Profiling->resize(size);
-    rect = ui->checkBox_Profiling->geometry();
-    ui->checkBox_Profiling->move(scale(rect.left()), scale(rect.top()));
-    ui->checkBox_Profiling->setFont(font);
-
-    size = ui->checkBox_Scale->size();
-    size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-    ui->checkBox_Scale->resize(size);
-    rect = ui->checkBox_Scale->geometry();
-    ui->checkBox_Scale->move(scale(rect.left()), scale(rect.top()));
-    ui->checkBox_Scale->setFont(font);
-
-    size = ui->buttonBox->size();
-    size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-    ui->buttonBox->resize(size);
-    rect = ui->buttonBox->geometry();
-    ui->buttonBox->move(scale(rect.left()), scale(rect.top()));
-    ui->buttonBox->setFont(font);
+        if (name.startsWith("kiconbutton"))
+        {
+            QToolButton *bt = dynamic_cast<QToolButton *>(obj);
+            size = bt->size();
+            size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
+            bt->resize(size);
+            rect = bt->geometry();
+            bt->move(scale(rect.left()), scale(rect.top()));
+        }
+        else if (name.startsWith("tabWidget"))
+        {
+            QTabWidget *bt = dynamic_cast<QTabWidget *>(obj);
+            size = bt->size();
+            size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
+            bt->resize(size);
+            rect = bt->geometry();
+            bt->move(scale(rect.left()), scale(rect.top()));
+        }
+        else if (name.startsWith("tab"))
+        {
+            QWidget *bt = dynamic_cast<QWidget *>(obj);
+            size = bt->size();
+            size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
+            bt->resize(size);
+            rect = bt->geometry();
+            bt->move(scale(rect.left()), scale(rect.top()));
+        }
+        else if (name.startsWith("checkBox"))
+        {
+            QCheckBox *bt = dynamic_cast<QCheckBox *>(obj);
+            size = bt->size();
+            size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
+            bt->resize(size);
+            rect = bt->geometry();
+            bt->move(scale(rect.left()), scale(rect.top()));
+        }
+        else if (name.startsWith("lineEdit"))
+        {
+            QLineEdit *bt = dynamic_cast<QLineEdit *>(obj);
+            size = bt->size();
+            size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
+            bt->resize(size);
+            rect = bt->geometry();
+            bt->move(scale(rect.left()), scale(rect.top()));
+        }
+        else if (name.startsWith("spinBox"))
+        {
+            QSpinBox *bt = dynamic_cast<QSpinBox *>(obj);
+            size = bt->size();
+            size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
+            bt->resize(size);
+            rect = bt->geometry();
+            bt->move(scale(rect.left()), scale(rect.top()));
+        }
+        else if (name.startsWith("label"))
+        {
+            QLabel *lb = dynamic_cast<QLabel *>(obj);
+            size = lb->size();
+            size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
+            lb->resize(size);
+            rect = lb->geometry();
+            lb->move(scale(rect.left()), scale(rect.top()));
+        }
+    }
 }
 
 void TQtSettings::on_lineEdit_logFile_textChanged(const QString &arg1)
@@ -431,6 +327,17 @@ void TQtSettings::on_checkBox_Scale_toggled(bool checked)
 
     mSetChanged = true;
     TConfig::saveScale(checked);
+}
+
+void TQtSettings::on_checkBox_Banner_toggled(bool checked)
+{
+    DECL_TRACER("TQtSettings::on_checkBox_Banner_toggled(bool checked)");
+
+    if (TConfig::showBanner() == checked)
+        return;
+
+    mSetChanged = true;
+    TConfig::saveBanner(!checked);
 }
 
 void TQtSettings::on_checkBox_Profiling_toggled(bool checked)
@@ -635,6 +542,8 @@ void TQtSettings::on_checkBox_LogAll_toggled(bool checked)
 
 int TQtSettings::scale(int value)
 {
+    DECL_TRACER("TQtSettings::scale(int value)");
+
     if (value <= 0 || mScaleFactor == 1.0)
         return value;
 
@@ -643,6 +552,8 @@ int TQtSettings::scale(int value)
 
 void TQtSettings::on_kiconbutton_reset_clicked()
 {
+    DECL_TRACER("TQtSettings::on_kiconbutton_reset_clicked()");
+
     char *HOME = getenv("HOME");
     QString logFile = TConfig::getLogFile().c_str();
 
@@ -653,4 +564,125 @@ void TQtSettings::on_kiconbutton_reset_clicked()
     }
 
     ui->lineEdit_logFile->setText(logFile);
+}
+
+void TQtSettings::on_lineEdit_FTPuser_textChanged(const QString& arg1)
+{
+    DECL_TRACER("TQtSettings::on_lineEdit_FTPuser_textChanged(const QString& arg1)");
+
+    if (arg1.compare(TConfig::getFtpUser().c_str()) == 0)
+        return;
+
+    mSetChanged = true;
+    TConfig::saveFtpUser(arg1.toStdString());
+}
+
+void TQtSettings::on_lineEdit_FTPpassword_textChanged(const QString& arg1)
+{
+    DECL_TRACER("TQtSettings::on_lineEdit_FTPpassword_textChanged(const QString& arg1)");
+
+    if (arg1.compare(TConfig::getFtpPassword().c_str()) == 0)
+        return;
+
+    mSetChanged = true;
+    TConfig::saveFtpPassword(arg1.toStdString());
+}
+
+void TQtSettings::on_lineEdit_FTPsurface_textChanged(const QString& arg1)
+{
+    DECL_TRACER("TQtSettings::on_lineEdit_FTPsurface_textChanged(const QString& arg1)");
+
+    if (arg1.compare(TConfig::getFtpSurface().c_str()) == 0)
+        return;
+
+    mSetChanged = true;
+    TConfig::saveFtpSurface(arg1.toStdString());
+}
+
+void TQtSettings::on_checkBox_FTPpassive_toggled(bool checked)
+{
+    DECL_TRACER("TQtSettings::on_checkBox_FTPpassive_toggled(bool checked)");
+
+    if (TConfig::getFtpPassive() == checked)
+        return;
+
+    mSetChanged = true;
+    TConfig::saveFtpPassive(checked);
+}
+
+void TQtSettings::on_lineEdit_SIPproxy_textChanged(const QString& arg1)
+{
+    DECL_TRACER("TQtSettings::on_lineEdit_SIPproxy_textChanged(const QString& arg1)");
+
+    if (arg1.compare(TConfig::getSIPproxy().c_str()) == 0)
+        return;
+
+    mSetChanged = true;
+    TConfig::setSIPproxy(arg1.toStdString());
+}
+
+void TQtSettings::on_spinBox_SIPport_valueChanged(int arg1)
+{
+    DECL_TRACER("TQtSettings::on_spinBox_SIPport_valueChanged(int arg1)");
+
+    if (TConfig::getSIPport() == arg1)
+        return;
+
+    mSetChanged = true;
+    TConfig::setSIPport(arg1);
+}
+
+void TQtSettings::on_lineEdit_SIPstun_textChanged(const QString& arg1)
+{
+    DECL_TRACER("TQtSettings::on_lineEdit_SIPstun_textChanged(const QString& arg1)");
+
+    if (arg1.compare(TConfig::getSIPstun().c_str()) == 0)
+        return;
+
+    mSetChanged = true;
+    TConfig::setSIPstun(arg1.toStdString());
+}
+
+void TQtSettings::on_lineEdit_SIPdomain_textChanged(const QString& arg1)
+{
+    DECL_TRACER("TQtSettings::on_lineEdit_SIPdomain_textChanged(const QString& arg1)");
+
+    if (arg1.compare(TConfig::getSIPdomain().c_str()) == 0)
+        return;
+
+    mSetChanged = true;
+    TConfig::setSIPdomain(arg1.toStdString());
+}
+
+void TQtSettings::on_lineEdit_SIPuser_textChanged(const QString& arg1)
+{
+    DECL_TRACER("TQtSettings::on_lineEdit_SIPuser_textChanged(const QString& arg1)");
+
+    if (arg1.compare(TConfig::getSIPuser().c_str()) == 0)
+        return;
+
+    mSetChanged = true;
+    TConfig::setSIPuser(arg1.toStdString());
+}
+
+void TQtSettings::on_lineEdit_SIPpassword_textChanged(const QString& arg1)
+{
+    DECL_TRACER("TQtSettings::on_lineEdit_SIPpassword_textChanged(const QString& arg1)");
+
+    if (arg1.compare(TConfig::getSIPpassword().c_str()) == 0)
+        return;
+
+    mSetChanged = true;
+    TConfig::setSIPpassword(arg1.toStdString());
+}
+
+void TQtSettings::on_checkBox_SIPenabled_toggled(bool checked)
+{
+    DECL_TRACER("TQtSettings::on_checkBox_SIPenabled_toggled(bool checked)");
+
+    if (TConfig::getSIPstatus() == checked)
+        return;
+
+    mSetChanged = true;
+    TConfig::setSIPstatus(checked);
 }

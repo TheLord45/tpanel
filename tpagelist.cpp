@@ -160,7 +160,7 @@ PAGELIST_T TPageList::findPage(const std::string& name)
     vector<PAGELIST_T>::iterator iter;
     PAGELIST_T page;
 
-    for (iter = mPageList.begin(); iter != mPageList.end(); iter++)
+    for (iter = mPageList.begin(); iter != mPageList.end(); ++iter)
     {
         if (iter->name.compare(name) == 0)
         {
@@ -181,7 +181,7 @@ PAGELIST_T TPageList::findPage(int pageID)
     vector<PAGELIST_T>::iterator iter;
     PAGELIST_T page;
 
-    for (iter = mPageList.begin(); iter != mPageList.end(); iter++)
+    for (iter = mPageList.begin(); iter != mPageList.end(); ++iter)
     {
         if (iter->pageID == pageID)
         {
@@ -202,7 +202,7 @@ SUBPAGELIST_T TPageList::findSubPage(const std::string& name)
     vector<SUBPAGELIST_T>::iterator iter;
     SUBPAGELIST_T page;
 
-    for (iter = mSubPageList.begin(); iter != mSubPageList.end(); iter++)
+    for (iter = mSubPageList.begin(); iter != mSubPageList.end(); ++iter)
     {
         if (iter->name.compare(name) == 0)
         {
@@ -223,7 +223,7 @@ SUBPAGELIST_T TPageList::findSubPage(int pageID)
     vector<SUBPAGELIST_T>::iterator iter;
     SUBPAGELIST_T page;
 
-    for (iter = mSubPageList.begin(); iter != mSubPageList.end(); iter++)
+    for (iter = mSubPageList.begin(); iter != mSubPageList.end(); ++iter)
     {
         if (iter->pageID == pageID)
         {

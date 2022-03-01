@@ -667,7 +667,7 @@ bool TButton::createButtons(bool force)
     vector<SR_T>::iterator srIter;
     int i = 0;
 
-    for (srIter = sr.begin(); srIter != sr.end(); srIter++)
+    for (srIter = sr.begin(); srIter != sr.end(); ++srIter)
     {
         int number = srIter->number;
         IMAGE_t img;
@@ -2160,7 +2160,7 @@ void TButton::addPushFunction(string& func, string& page)
             bool found = false;
             vector<PUSH_FUNC_T>::iterator iterPf;
 
-            for (iterPf = pushFunc.begin(); iterPf != pushFunc.end(); iterPf++)
+            for (iterPf = pushFunc.begin(); iterPf != pushFunc.end(); ++iterPf)
             {
                 if (iterPf->pfType.compare(func) == 0)
                 {
@@ -2192,7 +2192,7 @@ void TButton::clearPushFunction(const string& action)
 
     vector<PUSH_FUNC_T>::iterator iter;
 
-    for (iter = pushFunc.begin(); iter != pushFunc.end(); iter++)
+    for (iter = pushFunc.begin(); iter != pushFunc.end(); ++iter)
     {
         if (iter->pfName.compare(action) == 0)
         {
@@ -3435,7 +3435,7 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
             if (textLines.size() > 0)
             {
                 // Calculate the maximum width
-                for (iter = textLines.begin(); iter != textLines.end(); iter++)
+                for (iter = textLines.begin(); iter != textLines.end(); ++iter)
                 {
                     SkRect rect;
                     skFont.measureText(iter->c_str(), iter->length(), SkTextEncoding::kUTF8, &rect, &paint);
@@ -3455,7 +3455,7 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
 
                 SkScalar lnHt = metrics.fAscent * -1;
 
-                for (iter = textLines.begin(); iter != textLines.end(); iter++)
+                for (iter = textLines.begin(); iter != textLines.end(); ++iter)
                 {
                     sk_sp<SkTextBlob> blob = SkTextBlob::MakeFromString(iter->c_str(), skFont);
                     MSG_DEBUG("Triing to print line: " << *iter);
@@ -4017,7 +4017,7 @@ int TButton::numberLines(const string& str)
 
     string::const_iterator iter;
 
-    for (iter = str.begin(); iter != str.end(); iter++)
+    for (iter = str.begin(); iter != str.end(); ++iter)
     {
         if (*iter == '\n')
             lines++;
@@ -5572,7 +5572,7 @@ void TButton::funcTimer(const amx::ANET_BLINK& blink)
     vector<SR_T>::iterator iter;
     tm = sstr.str();
 
-    for (iter = sr.begin(); iter != sr.end(); iter++)
+    for (iter = sr.begin(); iter != sr.end(); ++iter)
         iter->te = tm;
 
     if (visible)
@@ -6018,7 +6018,7 @@ bool TButton::doClick(int x, int y, bool pressed)
         MSG_DEBUG("Executing a push function ...");
         vector<PUSH_FUNC_T>::iterator iter;
 
-        for (iter = pushFunc.begin(); iter != pushFunc.end(); iter++)
+        for (iter = pushFunc.begin(); iter != pushFunc.end(); ++iter)
         {
             MSG_DEBUG("Testing for function " << iter->pfType);
 

@@ -266,7 +266,7 @@ bool TAmxCommands::readMap()
     if (elements.size() == 0)
         return false;
 
-    for (mapIter = elements.begin(); mapIter != elements.end(); mapIter++)
+    for (mapIter = elements.begin(); mapIter != elements.end(); ++mapIter)
     {
         if ((index = xml.getElementIndex(*mapIter, &depth)) == TExpat::npos)
         {
@@ -419,7 +419,7 @@ vector<string> TAmxCommands::getFields(string& msg, char sep)
         vector<string>::iterator iter;
         int i = 1;
 
-        for (iter = flds.begin(); iter != flds.end(); iter++)
+        for (iter = flds.begin(); iter != flds.end(); ++iter)
         {
             MSG_DEBUG("    " << i << ": " << *iter);
             i++;
@@ -457,11 +457,11 @@ vector<MAP_T> TAmxCommands::findButtons(int port, vector<int>& channels, MAP_TYP
         return map;
     }
 
-    for (iter = channels.begin(); iter != channels.end(); iter++)
+    for (iter = channels.begin(); iter != channels.end(); ++iter)
     {
         vector<MAP_T>::iterator mapIter;
 
-        for (mapIter = localMap.begin(); mapIter != localMap.end(); mapIter++)
+        for (mapIter = localMap.begin(); mapIter != localMap.end(); ++mapIter)
         {
             if (mapIter->p == port && mapIter->c == *iter)
                 map.push_back(*mapIter);
@@ -486,7 +486,7 @@ vector<MAP_T> TAmxCommands::findButtonByName(const string& name)
 
     vector<MAP_T>::iterator mapIter;
 
-    for (mapIter = mMap.map_cm.begin(); mapIter != mMap.map_cm.end(); mapIter++)
+    for (mapIter = mMap.map_cm.begin(); mapIter != mMap.map_cm.end(); ++mapIter)
     {
         if (mapIter->bn == name)
             map.push_back(*mapIter);
@@ -506,13 +506,13 @@ vector<MAP_T> TAmxCommands::findBargraphs(int port, vector<int>& channels)
     if (channels.size() == 0)
         return map;
 
-    for (iter = channels.begin(); iter != channels.end(); iter++)
+    for (iter = channels.begin(); iter != channels.end(); ++iter)
     {
         vector<MAP_T>::iterator mapIter;
 
         if (mMap.map_lm.size() > 0)
         {
-            for (mapIter = mMap.map_lm.begin(); mapIter != mMap.map_lm.end(); mapIter++)
+            for (mapIter = mMap.map_lm.begin(); mapIter != mMap.map_lm.end(); ++mapIter)
             {
                 if (mapIter->p == port && mapIter->c == *iter)
                     map.push_back(*mapIter);
@@ -531,7 +531,7 @@ vector<string> TAmxCommands::findSounds()
     return mMap.map_sm;
 }
 
-bool TAmxCommands::soundExist(const string sname)
+bool TAmxCommands::soundExist(const string& sname)
 {
     DECL_TRACER("TAmxCommands::soundExist(const string sname)");
 
@@ -568,7 +568,7 @@ bool TAmxCommands::parseCommand(int device, int port, const string& cmd)
         string bef = cmd.substr(0, pos);
         string rest = cmd.substr(pos + 1);
 
-        for (iter = mCmdTable.begin(); iter != mCmdTable.end(); iter++)
+        for (iter = mCmdTable.begin(); iter != mCmdTable.end(); ++iter)
         {
             iter->channels.clear();
             iter->pars.clear();
@@ -599,7 +599,7 @@ bool TAmxCommands::parseCommand(int device, int port, const string& cmd)
                             vector<string>::iterator piter;
                             int cnt = 0;
 
-                            for (piter = parts.begin(); piter != parts.end(); piter++)
+                            for (piter = parts.begin(); piter != parts.end(); ++piter)
                             {
                                 if (cdef.hasChannels && !cnt)
                                 {
@@ -623,7 +623,7 @@ bool TAmxCommands::parseCommand(int device, int port, const string& cmd)
     }
     else        // Command without parameter
     {
-        for (iter = mCmdTable.begin(); iter != mCmdTable.end(); iter++)
+        for (iter = mCmdTable.begin(); iter != mCmdTable.end(); ++iter)
         {
             if (iter->cmd.compare(cmd) == 0 && iter->command)
             {
@@ -658,7 +658,7 @@ bool TAmxCommands::extractChannels(const string& schan, vector<int>* ch)
 
         if (parts.size() > 0)
         {
-            for (iter = parts.begin(); iter != parts.end(); iter++)
+            for (iter = parts.begin(); iter != parts.end(); ++iter)
             {
                 if (iter->find(".") != string::npos)
                 {
@@ -699,7 +699,7 @@ void TAmxCommands::registerCommand(std::function<void (int port, vector<int>& ch
 
     vector<CMD_TABLE>::iterator iter;
 
-    for (iter = mCmdTable.begin(); iter != mCmdTable.end(); iter++)
+    for (iter = mCmdTable.begin(); iter != mCmdTable.end(); ++iter)
     {
         if (iter->cmd.compare(name) == 0)
         {

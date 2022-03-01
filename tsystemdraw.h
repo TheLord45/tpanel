@@ -72,6 +72,25 @@ typedef struct BORDER_DATA_t
     int minWidth;
     int incHeight;
     int incWidth;
+
+    void init()
+    {
+        multiColor = 0;
+        fillTop = 0;
+        fillLeft = 0;
+        fillBottom = 0;
+        fillRight = 0;
+        textTop = 0;
+        textLeft = 0;
+        textBottom = 0;
+        textRight = 0,
+        idealWidth = 0;
+        idealHeight = 0;
+        minHeight = 0;
+        minWidth = 0;
+        incHeight = 0;
+        incWidth = 0;
+    }
 }BORDER_DATA_t;
 
 typedef struct CURSOR_STYLE_t
@@ -80,6 +99,11 @@ typedef struct CURSOR_STYLE_t
     std::string baseFile;
     int multiColor;
     std::vector<int> g3Equiv;
+
+    void init()
+    {
+        multiColor = 0;
+    }
 }CURSOR_STYLE_t;
 
 typedef struct SLIDER_STYLE_t
@@ -91,6 +115,14 @@ typedef struct SLIDER_STYLE_t
     int minSize;
     int fixedSize;
     std::vector<int> g3Equiv;
+
+    void init()
+    {
+        multiColor = 0;
+        incRepeat = 0;
+        minSize = 0;
+        fixedSize = 0;
+    }
 }SLIDER_STYLE_t;
 
 typedef struct EFFECT_STYLE_t
@@ -103,6 +135,16 @@ typedef struct EFFECT_STYLE_t
     int width;
     int cutout;
     std::string pixelMap;
+
+    void init()
+    {
+        number = 0;
+        startx = 0;
+        starty = 0;
+        height = 0;
+        width = 0;
+        cutout = 0;
+    }
 }EFFECT_STYLE_t;
 
 typedef struct POPUP_EFFECT_t
@@ -110,6 +152,12 @@ typedef struct POPUP_EFFECT_t
     std::string name;
     int number;
     int valueUsed;
+
+    void init()
+    {
+        number = 0;
+        valueUsed = 0;
+    }
 }POPUP_EFFECT_t;
 
 typedef struct DRAW_t

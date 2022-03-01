@@ -25,9 +25,9 @@
 #ifdef __ANDROID__
 #include <android/log.h>
 #include "tvalidatefile.h"
-#include "ttpinit.h"
 #include "tvalidatefile.h"
 #endif
+#include "ttpinit.h"
 #include "tconfig.h"
 #include "terror.h"
 #include "tresources.h"
@@ -121,6 +121,13 @@ TConfig::TConfig(const std::string& path)
         readConfig();
 }
 
+/**
+ * Simple method to read the configuration again. This is usefull if, for
+ * example the configuration options changed but should not be saved. Instead
+ * they were canceled and therefor the options are read again from file.
+ *
+ * @return On success it returns TRUE.
+ */
 bool TConfig::reReadConfig()
 {
     return readConfig();
@@ -444,6 +451,13 @@ void TConfig::saveScale(bool scale)
     DECL_TRACER("TConfig::saveScale(bool scale)");
 
     localSettings.scale = scale;
+}
+
+void TConfig::saveBanner(bool banner)
+{
+    DECL_TRACER("TConfig::saveBanner(bool banner)");
+
+    localSettings.noBanner = banner;
 }
 
 void TConfig::saveProfiling(bool prof)
@@ -940,6 +954,38 @@ string TConfig::logLevelBitsToString(uint level)
 
     return l;
 }
+
+string TConfig::makeConfigDefault(const std::string& log, const std::string& project)
+{
+    string content = "LogFile=" + log + "\n";
+    content += "LogLevel=NONE\n";
+    content += "ProjectPath=" + project + "\n";
+    content += "LongFormat=false\n";
+    content += "Address=0.0.0.0\n";
+    content += "Port=1319\n";
+    content += "Channel=10001\n";
+    content += "PanelType=Android\n";
+    content += string("Firmware=") + VERSION_STRING() + "\n";
+    content += "Scale=true\n";
+    content += "Profiling=false\n";
+    content += "Password1=1988\n";
+    content += "Password2=1988\n";
+    content += "Password3=1988\n";
+    content += "Password4=1988\n";
+    content += "SystemSoundFile=singleBeep.wav\n";
+    content += "SystemSoundState=ON\n";
+    content += "SystemSingleBeep=singleBeep01.wav\n";
+    content += "SystemDoubleBeep=doubleBeep01.wav\n";
+    content += "FTPuser=administrator\n";
+    content += "FTPpassword=password\n";
+    content += "FTPsurface=tpanel.tp4\n";
+    content += "FTPpassive=true\n";
+    content += "FTPdownloadTime=0\n";
+    content += "SIP_PORT=" + std::to_string(localSettings.sip_port) + "\n";
+
+    return content;
+}
+
 /**
  * @brief TConfig::findConfig search for the location of the configuration file.
  *
@@ -993,7 +1039,6 @@ bool TConfig::findConfig()
     localSettings.ftpUser = "administrator";
     localSettings.ftpPassword = "password";
     localSettings.ftpSurface = "tpanel.tp4";
-    localSettings.sip_port = 5060;
 #ifdef __ANDROID__
     std::stringstream s;
     TValidateFile vf;
@@ -1025,31 +1070,7 @@ bool TConfig::findConfig()
         {
             ofstream cfg(sFileName);
 
-            string content = "LogFile=" + localSettings.path + "/tpanel.log\n";
-            content += "LogLevel=NONE\n";
-            content += "ProjectPath=" + localSettings.path + "/tpanel\n";
-            content += "LongFormat=false\n";
-            content += "Address=0.0.0.0\n";
-            content += "Port=1319\n";
-            content += "Channel=10001\n";
-            content += "PanelType=Android\n";
-            content += string("Firmware=") + VERSION_STRING() + "\n";
-            content += "Scale=true\n";
-            content += "Profiling=false\n";
-            content += "Password1=1988\n";
-            content += "Password2=1988\n";
-            content += "Password3=1988\n";
-            content += "Password4=1988\n";
-            content += "SystemSoundFile=singleBeep.wav\n";
-            content += "SystemSoundState=ON\n";
-            content += "SystemSingleBeep=singleBeep01.wav\n";
-            content += "SystemDoubleBeep=doubleBeep01.wav\n";
-            content += "FTPuser=administrator\n";
-            content += "FTPpassword=password\n";
-            content += "FTPsurface=tpanel.tp4\n";
-            content += "FTPpassive=true\n";
-            content += "FTPdownloadTime=0\n";
-            content += "SIP_PORT=5050\n";
+            string content = makeConfigDefault(localSettings.path + "/tpanel.log", localSettings.path + "/tpanel");
             cfg.write(content.c_str(), content.size());
             cfg.close();
 
@@ -1103,11 +1124,39 @@ bool TConfig::findConfig()
 
     if (!found)
     {
-        MSG_ERROR("TConfig::findConfig: Can't find any configuration file!");
-        TError::setError();
-        sFileName.clear();
-        localSettings.name.clear();
-        localSettings.path.clear();
+        MSG_WARNING("This seems to be the first start because of missing configuration file. Will try to create a default one ...");
+
+        if (HOME)
+        {
+            localSettings.path = HOME;
+            sFileName = string(HOME) + "/.tpanel.conf";
+
+            try
+            {
+                ofstream cfg(sFileName);
+
+                string content = makeConfigDefault(localSettings.path + "/tpanel.log", localSettings.path + "/tpanel");
+                cfg.write(content.c_str(), content.size());
+                cfg.close();
+
+                string path = localSettings.path + "/tpanel";
+                TTPInit init(path);
+            }
+            catch (std::exception& e)
+            {
+                cerr << "Error: " << e.what();
+                TError::setErrorMsg(TERRERROR, string("Error: ") + e.what());
+                return false;
+            }
+        }
+        else
+        {
+            MSG_ERROR("TConfig::findConfig: Can't find any configuration file!");
+            TError::setError();
+            sFileName.clear();
+            localSettings.name.clear();
+            localSettings.path.clear();
+        }
     }
 #endif
     mCFile = sFileName;

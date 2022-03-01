@@ -2675,7 +2675,7 @@ void TAmxNet::sendAllFuncNetwork(int state)
     MSG_DEBUG("Setting network state to " << state);
     map<ulong, FUNC_NETWORK_t>::iterator iter;
 
-    for (iter = mFuncsNetwork.begin(); iter != mFuncsNetwork.end(); iter++)
+    for (iter = mFuncsNetwork.begin(); iter != mFuncsNetwork.end(); ++iter)
         iter->second.func(state);
 }
 
@@ -2688,7 +2688,7 @@ void TAmxNet::sendAllFuncTimer(const ANET_BLINK& blink)
 
     map<ulong, FUNC_TIMER_t>::iterator iter;
 
-    for (iter = mFuncsTimer.begin(); iter != mFuncsTimer.end(); iter++)
+    for (iter = mFuncsTimer.begin(); iter != mFuncsTimer.end(); ++iter)
         iter->second.func(blink);
 }
 

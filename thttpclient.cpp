@@ -633,7 +633,7 @@ string THTTPClient::getHeadParameter(const string& name)
 
     vector<HTTPHEAD_t>::iterator iter;
 
-    for (iter = mHeader.begin(); iter != mHeader.end(); iter++)
+    for (iter = mHeader.begin(); iter != mHeader.end(); ++iter)
     {
         if (iter->name.compare(name) == 0)
             return iter->content;

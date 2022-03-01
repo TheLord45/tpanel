@@ -130,7 +130,7 @@ int TIcons::getNumber(const string& file)
 
     map<int, string>::iterator iter;
 
-    for (iter = mIcons.begin(); iter != mIcons.end(); iter++)
+    for (iter = mIcons.begin(); iter != mIcons.end(); ++iter)
     {
         if (iter->second.compare(file) == 0)
             return iter->first;

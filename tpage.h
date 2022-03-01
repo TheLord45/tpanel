@@ -95,7 +95,7 @@ class TPage : public TValidateFile
         void addProgress();
         bool drawText(SkBitmap *img);
         Button::POSITION_t calcImagePosition(int width, int height, Button::CENTER_CODE cc, int line);
-        int calcLineHeight(std::string text, SkFont& font);
+        int calcLineHeight(const std::string& text, SkFont& font);
         int numberLines(const std::string& str);
 
         std::function<void (ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color)> _setBackground{nullptr};

@@ -367,6 +367,7 @@ void TSystemDraw::CharacterDataHandler(void *userData, const XML_Char *s, int le
                     if (mActElement.compare("name") == 0)
                     {
                         BORDER_DATA_t bd;
+                        bd.init();
                         bd.name = content;
                         draw->borderData.push_back(bd);
                     }
@@ -432,6 +433,7 @@ void TSystemDraw::CharacterDataHandler(void *userData, const XML_Char *s, int le
                     {
                         DRAW_t *draw = (DRAW_t *)userData;
                         CURSOR_STYLE_t cs;
+                        cs.init();
                         cs.name = content;
                         draw->cursorStyles.push_back(cs);
                     }
@@ -480,6 +482,7 @@ void TSystemDraw::CharacterDataHandler(void *userData, const XML_Char *s, int le
                     {
                         DRAW_t *draw = (DRAW_t *)userData;
                         SLIDER_STYLE_t ss;
+                        ss.init();
                         ss.name = content;
                         draw->sliderStyles.push_back(ss);
                     }
@@ -543,6 +546,7 @@ void TSystemDraw::CharacterDataHandler(void *userData, const XML_Char *s, int le
                     {
                         DRAW_t *draw = (DRAW_t *)userData;
                         EFFECT_STYLE_t es;
+                        es.init();
                         es.name = content;
                         draw->effectStyles.push_back(es);
                     }
@@ -595,6 +599,7 @@ void TSystemDraw::CharacterDataHandler(void *userData, const XML_Char *s, int le
                 {
                     DRAW_t *draw = (DRAW_t *)userData;
                     POPUP_EFFECT_t pe;
+                    pe.init();
                     pe.name = content;
                     draw->popupEffects.push_back(pe);
                 }

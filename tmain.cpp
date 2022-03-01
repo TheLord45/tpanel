@@ -61,7 +61,7 @@ class InputParser
          * @brief InputParser is the constructor.
          *
          * The constructor requires the command line parameters. It immediately
-         * starts to parse each parameter. It it finds the string `--` it stops
+         * starts to parse each parameter. If it finds the string `--` it stops
          * and ignores the rest of parameters. \p argc contains the rest of
          * the parameters after `--`, if there are any.
          *

@@ -27,10 +27,6 @@
 
 #define SETSOCKOPT_OPTVAL_TYPE (void *)
 
-#define net_read read
-#define net_write write
-#define net_close close
-
 using namespace std;
 
 /* socket values */
@@ -229,11 +225,11 @@ int ftplib::readline(char *buf, int max, ftphandle *ctl)
             if (ctl->tlsctrl)
                 x = SSL_read(ctl->ssl, ctl->cput, ctl->cleft);
             else
-                x = net_read(ctl->handle, ctl->cput, ctl->cleft);
+                x = read(ctl->handle, ctl->cput, ctl->cleft);
         }
 
 #else
-        x = net_read(ctl->handle, ctl->cput, ctl->cleft);
+        x = read(ctl->handle, ctl->cput, ctl->cleft);
 #endif
 
         if (x == -1)
@@ -293,10 +289,10 @@ int ftplib::writeline(char *buf, int len, ftphandle *nData)
                 if (nData->tlsctrl)
                     w = SSL_write(nData->ssl, nbp, FTPLIB_BUFSIZ);
                 else
-                    w = net_write(nData->handle, nbp, FTPLIB_BUFSIZ);
+                    w = write(nData->handle, nbp, FTPLIB_BUFSIZ);
 
 #else
-                w = net_write(nData->handle, nbp, FTPLIB_BUFSIZ);
+                w = write(nData->handle, nbp, FTPLIB_BUFSIZ);
 #endif
 
                 if (w != FTPLIB_BUFSIZ)
@@ -321,10 +317,10 @@ int ftplib::writeline(char *buf, int len, ftphandle *nData)
             if (nData->tlsctrl)
                 w = SSL_write(nData->ssl, nbp, FTPLIB_BUFSIZ);
             else
-                w = net_write(nData->handle, nbp, FTPLIB_BUFSIZ);
+                w = write(nData->handle, nbp, FTPLIB_BUFSIZ);
 
 #else
-            w = net_write(nData->handle, nbp, FTPLIB_BUFSIZ);
+            w = write(nData->handle, nbp, FTPLIB_BUFSIZ);
 #endif
 
             if (w != FTPLIB_BUFSIZ)
@@ -347,10 +343,10 @@ int ftplib::writeline(char *buf, int len, ftphandle *nData)
 #ifndef NOSSL
 
         if (nData->tlsctrl) w = SSL_write(nData->ssl, nbp, nb);
-        else w = net_write(nData->handle, nbp, nb);
+        else w = write(nData->handle, nbp, nb);
 
 #else
-        w = net_write(nData->handle, nbp, nb);
+        w = write(nData->handle, nbp, nb);
 #endif
 
         if (w != nb)
@@ -496,14 +492,14 @@ int ftplib::Connect(const char *host)
     if (setsockopt(sControl, SOL_SOCKET, SO_REUSEADDR, SETSOCKOPT_OPTVAL_TYPE & on, sizeof(on)) == -1)
     {
         perror("setsockopt");
-        net_close(sControl);
+        close(sControl);
         return 0;
     }
 
     if (connect(sControl, (struct sockaddr *)&sin, sizeof(sin)) == -1)
     {
         perror("connect");
-        net_close(sControl);
+        close(sControl);
         return 0;
     }
 
@@ -511,7 +507,7 @@ int ftplib::Connect(const char *host)
 
     if (readresp('2', mp_ftphandle) == 0)
     {
-        net_close(sControl);
+        close(sControl);
         mp_ftphandle->handle = 0;
         return 0;
     }
@@ -540,10 +536,10 @@ int ftplib::FtpSendCmd(const char *cmd, char expresp, ftphandle *nControl)
     if (nControl->tlsctrl)
         x = SSL_write(nControl->ssl, buf, strlen(buf));
     else
-        x = net_write(nControl->handle, buf, strlen(buf));
+        x = write(nControl->handle, buf, strlen(buf));
 
 #else
-    x = net_write(nControl->handle, buf, strlen(buf));
+    x = write(nControl->handle, buf, strlen(buf));
 #endif
 
     if (x <= 0)
@@ -617,14 +613,14 @@ int ftplib::FtpAcceptConnection(ftphandle *nData, ftphandle *nControl)
     if (i == -1)
     {
         strncpy(nControl->response, strerror(errno), sizeof(nControl->response));
-        net_close(nData->handle);
+        close(nData->handle);
         nData->handle = 0;
         rv = 0;
     }
     else if (i == 0)
     {
         strcpy(nControl->response, "timed out waiting for connection");
-        net_close(nData->handle);
+        close(nData->handle);
         nData->handle = 0;
         rv = 0;
     }
@@ -635,7 +631,7 @@ int ftplib::FtpAcceptConnection(ftphandle *nData, ftphandle *nControl)
             l = sizeof(addr);
             sData = accept(nData->handle, &addr, &l);
             i = errno;
-            net_close(nData->handle);
+            close(nData->handle);
 
             if (sData > 0)
             {
@@ -652,7 +648,7 @@ int ftplib::FtpAcceptConnection(ftphandle *nData, ftphandle *nControl)
         }
         else if (FD_ISSET(nControl->handle, &mask))
         {
-            net_close(nData->handle);
+            close(nData->handle);
             nData->handle = 0;
             readresp('2', nControl);
             rv = 0;
@@ -818,14 +814,14 @@ int ftplib::FtpOpenPort(ftphandle *nControl, ftphandle **nData, transfermode mod
     if (setsockopt(sData, SOL_SOCKET, SO_REUSEADDR, SETSOCKOPT_OPTVAL_TYPE & on, sizeof(on)) == -1)
     {
         perror("setsockopt");
-        net_close(sData);
+        close(sData);
         return -1;
     }
 
     if (setsockopt(sData, SOL_SOCKET, SO_LINGER, SETSOCKOPT_OPTVAL_TYPE & lng, sizeof(lng)) == -1)
     {
         perror("setsockopt");
-        net_close(sData);
+        close(sData);
         return -1;
     }
 
@@ -834,14 +830,14 @@ int ftplib::FtpOpenPort(ftphandle *nControl, ftphandle **nData, transfermode mod
     if (bind(sData, &sin.sa, sizeof(sin)) == -1)
     {
         perror("bind");
-        net_close(sData);
+        close(sData);
         return -1;
     }
 
     if (listen(sData, 1) < 0)
     {
         perror("listen");
-        net_close(sData);
+        close(sData);
         return -1;
     }
 
@@ -858,7 +854,7 @@ int ftplib::FtpOpenPort(ftphandle *nControl, ftphandle **nData, transfermode mod
 
     if (!FtpSendCmd(buf, '2', nControl))
     {
-        net_close(sData);
+        close(sData);
         return -1;
     }
 
@@ -869,7 +865,7 @@ int ftplib::FtpOpenPort(ftphandle *nControl, ftphandle **nData, transfermode mod
 
         if (!FtpSendCmd(buf, '3', nControl))
         {
-            net_close(sData);
+            close(sData);
             return 0;
         }
     }
@@ -879,14 +875,14 @@ int ftplib::FtpOpenPort(ftphandle *nControl, ftphandle **nData, transfermode mod
     if (ctrl == NULL)
     {
         perror("calloc");
-        net_close(sData);
+        close(sData);
         return -1;
     }
 
     if ((mode == 'A') && ((ctrl->buf = static_cast<char*>(malloc(FTPLIB_BUFSIZ))) == NULL))
     {
         perror("calloc");
-        net_close(sData);
+        close(sData);
         free(ctrl);
         return -1;
     }
@@ -1007,14 +1003,14 @@ int ftplib::FtpOpenPasv(ftphandle *nControl, ftphandle **nData, transfermode mod
     if (setsockopt(sData, SOL_SOCKET, SO_REUSEADDR, SETSOCKOPT_OPTVAL_TYPE & on, sizeof(on)) == -1)
     {
         perror("setsockopt");
-        net_close(sData);
+        close(sData);
         return -1;
     }
 
     if (setsockopt(sData, SOL_SOCKET, SO_LINGER, SETSOCKOPT_OPTVAL_TYPE & lng, sizeof(lng)) == -1)
     {
         perror("setsockopt");
-        net_close(sData);
+        close(sData);
         return -1;
     }
 
@@ -1027,10 +1023,10 @@ int ftplib::FtpOpenPasv(ftphandle *nControl, ftphandle **nData, transfermode mod
     if (nControl->tlsctrl)
         ret = SSL_write(nControl->ssl, cmd, strlen(cmd));
     else
-        ret = net_write(nControl->handle, cmd, strlen(cmd));
+        ret = write(nControl->handle, cmd, strlen(cmd));
 
 #else
-    ret = net_write(nControl->handle, cmd, strlen(cmd));
+    ret = write(nControl->handle, cmd, strlen(cmd));
 #endif
 
     if (ret <= 0)
@@ -1042,13 +1038,13 @@ int ftplib::FtpOpenPasv(ftphandle *nControl, ftphandle **nData, transfermode mod
     if (connect(sData, &sin.sa, sizeof(sin.sa)) == -1)
     {
         perror("connect");
-        net_close(sData);
+        close(sData);
         return -1;
     }
 
     if (!readresp('1', nControl))
     {
-        net_close(sData);
+        close(sData);
         return -1;
     }
 
@@ -1057,14 +1053,14 @@ int ftplib::FtpOpenPasv(ftphandle *nControl, ftphandle **nData, transfermode mod
     if (ctrl == NULL)
     {
         perror("calloc");
-        net_close(sData);
+        close(sData);
         return -1;
     }
 
     if ((mode == 'A') && ((ctrl->buf = static_cast<char*>(malloc(FTPLIB_BUFSIZ))) == NULL))
     {
         perror("calloc");
-        net_close(sData);
+        close(sData);
         free(ctrl);
         return -1;
     }
@@ -1102,7 +1098,8 @@ int ftplib::FtpClose(ftphandle *nData)
 
     if (nData->dir == FTPLIB_WRITE)
     {
-        if (nData->buf != NULL) writeline(NULL, 0, nData);
+        if (nData->buf != NULL)
+            writeline(NULL, 0, nData);
     }
     else if (nData->dir != FTPLIB_READ)
         return 0;
@@ -1111,7 +1108,7 @@ int ftplib::FtpClose(ftphandle *nData)
         free(nData->buf);
 
     shutdown(nData->handle, 2);
-    net_close(nData->handle);
+    close(nData->handle);
 
     ctrl = nData->ctrl;
 #ifndef NOSSL
@@ -1149,10 +1146,10 @@ int ftplib::FtpRead(void *buf, int max, ftphandle *nData)
         if (nData->tlsdata)
             i = SSL_read(nData->ssl, buf, max);
         else
-            i = net_read(nData->handle, buf, max);
+            i = read(nData->handle, buf, max);
 
 #else
-        i = net_read(nData->handle, buf, max);
+        i = read(nData->handle, buf, max);
 #endif
     }
 
@@ -1195,10 +1192,10 @@ int ftplib::FtpWrite(void *buf, int len, ftphandle *nData)
         if (nData->tlsdata)
             i = SSL_write(nData->ssl, buf, len);
         else
-            i = net_write(nData->handle, buf, len);
+            i = write(nData->handle, buf, len);
 
 #else
-        i = net_write(nData->handle, buf, len);
+        i = write(nData->handle, buf, len);
 #endif
     }
 
@@ -1657,12 +1654,12 @@ int ftplib::Quit()
 
     if (!FtpSendCmd("QUIT", '2', mp_ftphandle))
     {
-        net_close(mp_ftphandle->handle);
+        close(mp_ftphandle->handle);
         return 0;
     }
     else
     {
-        net_close(mp_ftphandle->handle);
+        close(mp_ftphandle->handle);
         return 1;
     }
 }
@@ -1975,7 +1972,7 @@ int ftplib::CorrectPasvResponse(unsigned char *v)
     if (getpeername(mp_ftphandle->handle, &ipholder, &ipholder_size) == -1)
     {
         perror("getpeername");
-        net_close(mp_ftphandle->handle);
+        close(mp_ftphandle->handle);
         return 0;
     }
 

@@ -106,6 +106,7 @@ class TConfig
         static bool saveSettings();
         static void saveFormat(bool format);
         static void saveScale(bool scale);
+        static void saveBanner(bool banner);
         static void saveProfiling(bool prof);
         static void savePassword1(const std::string& pw);
         static void savePassword2(const std::string& pw);
@@ -145,6 +146,7 @@ class TConfig
         bool readConfig();
         std::vector<std::string> split(const std::string& str, const std::string& seps, const bool trimEmpty);
         static int caseCompare(const std::string& str1, const std::string& str2);
+        static std::string makeConfigDefault(const std::string& log, const std::string& project);
 
         std::string mPath;
         std::string mCFile;

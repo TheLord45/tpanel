@@ -63,6 +63,7 @@
 #include "tqkeypad.h"
 #include "tcolor.h"
 #include "texcept.h"
+#include "ttpinit.h"
 
 /**
  * @def THREAD_WAIT
@@ -734,6 +735,7 @@ void MainWindow::settings()
     string oldHost = TConfig::getController();
     int oldPort = TConfig::getPort();
     int oldChannelID = TConfig::getChannel();
+    string oldSurface = TConfig::getFtpSurface();
     // Initialize and open the settings dialog.
     TQtSettings *dlg_settings = new TQtSettings(this);
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
@@ -743,14 +745,25 @@ void MainWindow::settings()
     dlg_settings->doResize();
 #endif
     int ret = dlg_settings->exec();
+    bool rebootAnyway = false;
 
     if (ret && dlg_settings->hasChanged())
     {
         writeSettings();
 
+        if (TConfig::getFtpSurface() != oldSurface)
+        {
+            TTPInit tpinit;
+
+            tpinit.setPath(TConfig::getProjectPath());
+
+            if (tpinit.loadSurfaceFromController(true))
+                rebootAnyway = true;
+        }
+
         if (TConfig::getController() != oldHost ||
             TConfig::getChannel() != oldChannelID ||
-            TConfig::getPort() != oldPort)
+            TConfig::getPort() != oldPort || rebootAnyway)
         {
             // Start over by exiting this class
             MSG_INFO("Program will start over!");

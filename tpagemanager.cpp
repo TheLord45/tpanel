@@ -159,7 +159,7 @@ TPageManager::TPageManager()
     {
         vector<PALETTE_SETUP>::iterator iterPal;
 
-        for (iterPal = pal.begin(); iterPal != pal.end(); iterPal++)
+        for (iterPal = pal.begin(); iterPal != pal.end(); ++iterPal)
             mPalette->initialize(iterPal->file);
     }
 
@@ -207,7 +207,7 @@ TPageManager::TPageManager()
     {
         vector<string>::iterator iter;
 
-        for (iter = popups.begin(); iter != popups.end(); iter++)
+        for (iter = popups.begin(); iter != popups.end(); ++iter)
         {
             if (readSubPage(*iter))
             {
@@ -508,7 +508,7 @@ void TPageManager::initialize()
     {
         vector<PALETTE_SETUP>::iterator iterPal;
 
-        for (iterPal = pal.begin(); iterPal != pal.end(); iterPal++)
+        for (iterPal = pal.begin(); iterPal != pal.end(); ++iterPal)
             mPalette->initialize(iterPal->file);
     }
 
@@ -569,7 +569,7 @@ void TPageManager::initialize()
     {
         vector<string>::iterator iter;
 
-        for (iter = popups.begin(); iter != popups.end(); iter++)
+        for (iter = popups.begin(); iter != popups.end(); ++iter)
         {
             if (readSubPage(*iter))
             {
@@ -1177,7 +1177,7 @@ bool TPageManager::readPages()
     {
         vector<PAGELIST_T>::iterator pgIter;
 
-        for (pgIter = pageList.begin(); pgIter != pageList.end(); pgIter++)
+        for (pgIter = pageList.begin(); pgIter != pageList.end(); ++pgIter)
         {
             TPage *page = new TPage(pgIter->name+".xml");
 
@@ -1204,7 +1204,7 @@ bool TPageManager::readPages()
     {
         vector<SUBPAGELIST_T>::iterator spgIter;
 
-        for (spgIter = subPageList.begin(); spgIter != subPageList.end(); spgIter++)
+        for (spgIter = subPageList.begin(); spgIter != subPageList.end(); ++spgIter)
         {
             TSubPage *page = new TSubPage(spgIter->name+".xml");
 
@@ -1393,7 +1393,7 @@ PAGELIST_T TPageManager::findPage(const std::string& name)
     {
         vector<PAGELIST_T>::iterator pgIter;
 
-        for (pgIter = pageList.begin(); pgIter != pageList.end(); pgIter++)
+        for (pgIter = pageList.begin(); pgIter != pageList.end(); ++pgIter)
         {
             if (pgIter->name.compare(name) == 0)
                 return *pgIter;
@@ -1413,7 +1413,7 @@ PAGELIST_T TPageManager::findPage(int ID)
     {
         vector<PAGELIST_T>::iterator pgIter;
 
-        for (pgIter = pageList.begin(); pgIter != pageList.end(); pgIter++)
+        for (pgIter = pageList.begin(); pgIter != pageList.end(); ++pgIter)
         {
             if (pgIter->pageID == ID)
                 return *pgIter;
@@ -1433,7 +1433,7 @@ SUBPAGELIST_T TPageManager::findSubPage(const std::string& name)
     {
         vector<SUBPAGELIST_T>::iterator pgIter;
 
-        for (pgIter = pageList.begin(); pgIter != pageList.end(); pgIter++)
+        for (pgIter = pageList.begin(); pgIter != pageList.end(); ++pgIter)
         {
             if (pgIter->name.compare(name) == 0)
                 return *pgIter;
@@ -1453,7 +1453,7 @@ SUBPAGELIST_T TPageManager::findSubPage(int ID)
     {
         vector<SUBPAGELIST_T>::iterator pgIter;
 
-        for (pgIter = pageList.begin(); pgIter != pageList.end(); pgIter++)
+        for (pgIter = pageList.begin(); pgIter != pageList.end(); ++pgIter)
         {
             if (pgIter->pageID == ID)
                 return *pgIter;
@@ -1857,7 +1857,7 @@ TSubPage *TPageManager::getTopPage()
             vector<RECT_T>::iterator iter;
             int zo = 0;
 
-            for (iter = regions.begin(); iter != regions.end(); iter++)
+            for (iter = regions.begin(); iter != regions.end(); ++iter)
             {
                 if (doOverlap(*iter, r) && zPos > zo)
                     top = pg;
@@ -1897,7 +1897,7 @@ TSubPage *TPageManager::getCoordMatch(int x, int y)
     {
         map<int, TSubPage *>::reverse_iterator iter;
 
-        for (iter = zOrder.rbegin(); iter != zOrder.rend(); iter++)
+        for (iter = zOrder.rbegin(); iter != zOrder.rend(); ++iter)
         {
             RECT_T r = iter->second->getRegion();
 
@@ -2265,7 +2265,7 @@ void TPageManager::setTextToButton(ulong handle, const string& txt)
     {
         vector<Button::TButton *>::iterator mapIter;
         // Finaly we iterate through all found buttons and set the text
-        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); ++mapIter)
         {
             Button::TButton *bt = *mapIter;
 
@@ -2288,7 +2288,7 @@ vector<Button::TButton *> TPageManager::collectButtons(vector<MAP_T>& map)
 
     vector<MAP_T>::iterator iter;
 
-    for (iter = map.begin(); iter != map.end(); iter++)
+    for (iter = map.begin(); iter != map.end(); ++iter)
     {
         if (iter->pg < 500)     // Main page?
         {
@@ -2822,7 +2822,7 @@ void TPageManager::doON(int port, vector<int>&, vector<string>& pars)
     {
         vector<Button::TButton *>::iterator mapIter;
 
-        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); ++mapIter)
         {
             Button::TButton *bt = *mapIter;
 
@@ -2863,7 +2863,7 @@ void TPageManager::doOFF(int port, vector<int>&, vector<string>& pars)
     {
         vector<Button::TButton *>::iterator mapIter;
 
-        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); ++mapIter)
         {
             Button::TButton *bt = *mapIter;
 
@@ -2908,7 +2908,7 @@ void TPageManager::doLEVEL(int port, vector<int>&, vector<string>& pars)
     {
         vector<Button::TButton *>::iterator mapIter;
 
-        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); ++mapIter)
         {
             Button::TButton *bt = *mapIter;
 

@@ -30,7 +30,7 @@ typedef struct PALETTE_SETUP
 {
     std::string name;
     std::string file;
-    int paletteID;
+    int paletteID{0};
 }PALETTE_SETUP;
 
 typedef struct PANEL_SETUP
