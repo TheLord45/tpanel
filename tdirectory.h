@@ -65,6 +65,8 @@ namespace dir
 			std::string stripPath(const std::string& p, const std::string& s);
             bool createAllPath(std::string& path, bool cut=false);
             bool drop(const std::string& path);
+            bool dropDir(const std::string& path);
+            bool dropFile(const std::string& fname);
             std::string getEntryWithEnd(const std::string& end);
             std::string getEntryWithPart(const std::string& part, bool precice=true);
 			bool testDirectory(unsigned short att) { return (att & ATTR_DIRECTORY); }

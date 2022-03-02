@@ -394,6 +394,69 @@ bool TDirectory::drop(const string &path)
     return false;
 }
 
+/**
+ * @brief TDirectory::dropDir deletes all files in a directory
+ * This methos deletes only the files in a given directory and leaves all
+ * subdirectories along with the files in them alone.
+ *
+ * @param path  A valid path. The files in this path will be deleted.
+ * @return On success TRUE is returned.
+ */
+bool TDirectory::dropDir(const string& path)
+{
+    DECL_TRACER("TDirectory::dropDir(const string& path)");
+
+    if (path.empty())
+        return 0;
+
+    int count = 0;
+
+    try
+    {
+        for(auto& p: fs::directory_iterator(path))
+        {
+            string f = fs::path(p.path()).filename();
+
+            if (checkDot(f))
+                continue;
+#if __GNUC__ < 9
+            if (fs::is_directory(p.path()))
+#else
+            if (p.is_directory())
+#endif
+                continue;
+
+            fs::remove(p.path());
+            count++;
+        }
+    }
+    catch (std::exception& e)
+    {
+        MSG_ERROR("Error dir drop: " << e.what());
+        return false;
+    }
+
+    MSG_DEBUG("Deleted " << count << " files.");
+    return true;
+}
+
+bool TDirectory::dropFile(const string& fname)
+{
+    DECL_TRACER("TDirectory::dropFile(const string& fname)");
+
+    try
+    {
+        fs::remove(fname);
+    }
+    catch (std::exception& e)
+    {
+        MSG_ERROR("Error removing file " << fname << "!");
+        return false;
+    }
+
+    return true;
+}
+
 string TDirectory::getEntryWithEnd(const string &end)
 {
     DECL_TRACER("TDirectory::getEntryWithEnd(const string &end)");

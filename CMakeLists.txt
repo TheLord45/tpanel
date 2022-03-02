@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.1.0)
-project(tpanel VERSION 1.0.0)
+project(tpanel VERSION 1.3.0)
 
 find_package(PkgConfig)
 
@@ -8,6 +8,8 @@ find_package(Qt5Gui)
 find_package(Qt5Widgets)
 find_package(Qt5Multimedia)
 find_package(Qt5MultimediaWidgets)
+find_package(Qt5Qml)
+find_package(Qt5QuickWidgets)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -39,6 +41,7 @@ endif()
 find_package(Qt5 COMPONENTS Widgets REQUIRED)
 find_package(Qt5 COMPONENTS Multimedia REQUIRED)
 find_package(Qt5 COMPONENTS MultimediaWidgets REQUIRED)
+find_package(Qt5 COMPONENTS Qml QuickWidgets REQUIRED)
 
 if (APPLE)
 	set(OSX_INCLUDE -I/opt/local/include -I/usr/local/include)
@@ -91,6 +94,7 @@ set(SOURCES tmain.cpp
 			texcept.cpp
 			base64.cpp
 			texpat++.cpp
+			tqtbusy.cpp
 			tpanel.qrc)
 
 add_executable(tpanel ${SOURCES})
@@ -98,6 +102,7 @@ add_executable(tpanel ${SOURCES})
 add_definitions(-D_REENTRANT)
 add_definitions(-D_GNU_SOURCE)
 add_definitions(-DQT5_LINUX)
+add_definitions(${Qt5Widgets_DEFINITIONS} ${QtQml_DEFINITIONS} ${${Qt5Quick_DEFINITIONS}})
 include_directories(/usr/local/include/skia)
 
 if (DEBUG)
@@ -112,6 +117,6 @@ if(CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
 	target_link_libraries(tpanel stdc++fs)
 endif()
 
-target_link_libraries(tpanel m pthread ssl crypto ftp ${LIBS} ${LIBSKIA_LIBRARY} Qt5::Widgets Qt5::Multimedia Qt5::MultimediaWidgets)
+target_link_libraries(tpanel m pthread ssl crypto ftp ${LIBS} ${LIBSKIA_LIBRARY} Qt5::Widgets Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Qml Qt5::QuickWidgets)
 
 install(TARGETS tpanel RUNTIME DESTINATION bin)

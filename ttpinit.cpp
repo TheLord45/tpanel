@@ -37,6 +37,7 @@
 #include "tvalidatefile.h"
 #include "tconfig.h"
 #include "tfsfreader.h"
+#include "tdirectory.h"
 
 using std::string;
 using std::vector;
@@ -346,6 +347,18 @@ bool TTPInit::loadSurfaceFromController(bool force)
             return false;
     }
 
+    // To be sure the target directory tree is empty, we delete all files but
+    // keep the system directories and their content, if they exist.
+    dir::TDirectory dir;
+
+    if (dir.exists(mPath))
+    {
+        dir.dropDir(mPath);
+        dir.dropDir(mPath + "/fonts");
+        dir.dropDir(mPath + "/images");
+        dir.dropDir(mPath + "/sounds");
+    }
+
     if (!reader.copyOverFTP(TConfig::getFtpSurface(), target))
         return false;
 
@@ -355,12 +368,13 @@ bool TTPInit::loadSurfaceFromController(bool force)
         return false;
     }
 
-    if (!force)
+    if (!force || !dir.exists(mPath + "/__system"))
     {
         createDirectoryStructure();
         createSystemConfigs();
     }
 
+    dir.dropFile(target);       // We remove our traces
     TConfig::saveFtpDownloadTime(time(NULL));
     TConfig::saveSettings();
     return true;

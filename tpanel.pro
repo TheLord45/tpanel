@@ -4,6 +4,7 @@
 TARGET = tpanel
 QT = core gui widgets multimedia multimediawidgets qml androidextras
 
+# The main application
 HEADERS = \
    $$PWD/base64.h \
    $$PWD/config.h \
@@ -36,6 +37,9 @@ HEADERS = \
    $$PWD/ttimer.h \
    $$PWD/tvalidatefile.h \
    $$PWD/ttpinit.h \
+   $$PWD/tfsfreader.h \
+   $$PWD/expand.h \
+   $$PWD/readtp4.h \
    $$PWD/texternal.h \
    $$PWD/tqemitqueue.h \
    $$PWD/tqkeyboard.h \
@@ -45,7 +49,8 @@ HEADERS = \
    $$PWD/timgcache.h \
    $$PWD/tsystemsound.h \
    $$PWD/tsystemdraw.h \
-   $$PWD/texpat++.h
+   $$PWD/texpat++.h \
+   $$PWD/ftplib/ftplib.h
 
 SOURCES = \
    $$PWD/base64.cpp \
@@ -79,6 +84,9 @@ SOURCES = \
    $$PWD/ttimer.cpp \
    $$PWD/tvalidatefile.cpp \
    $$PWD/ttpinit.cpp \
+   $$PWD/tfsfreader.cpp \
+   $$PWD/expand.cpp \
+   $$PWD/readtp4.cpp \
    $$PWD/texternal.cpp \
    $$PWD/tqemitqueue.cpp \
    $$PWD/tqkeyboard.cpp \
@@ -88,7 +96,8 @@ SOURCES = \
    $$PWD/timgcache.cpp \
    $$PWD/tsystemsound.cpp \
    $$PWD/tsystemdraw.cpp \
-   $$PWD/texpat++.cpp
+   $$PWD/texpat++.cpp \
+   $$PWD/ftplib/ftplib.cpp
 
 OTHER_FILES += \
         $$PWD/android/src/org/qtproject/theosys/BatteryState.java \
@@ -99,6 +108,7 @@ OTHER_FILES += \
 
 INCLUDEPATH = \
     $$PWD/. \
+    $$PWD/ftplib \
     $$EXT_LIB_PATH/skia \
     $$EXTRA_PATH/expat/include
 
@@ -138,7 +148,8 @@ RESOURCES += \
 FORMS += \
     keyboard.ui \
     keypad.ui \
-    tqtsettings.ui
+    tqtsettings.ui \
+    busy.ui
 
 LIBS += -lcrypto_1_1 -lssl_1_1 -lEGL -lGLESv2 -landroid -llog
 
@@ -150,6 +161,10 @@ DISTFILES += \
     android/gradle/wrapper/gradle-wrapper.properties \
     android/gradlew \
     android/gradlew.bat \
-    android/res/values/libs.xml
+    android/res/values/libs.xml \
+    ftplib/ftplib.pri
 
 ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
+
+# Add the ftp library
+DEPENDPATH += $$PWD/ftplib

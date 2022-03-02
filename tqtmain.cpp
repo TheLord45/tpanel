@@ -64,6 +64,7 @@
 #include "tcolor.h"
 #include "texcept.h"
 #include "ttpinit.h"
+#include "tqtbusy.h"
 
 /**
  * @def THREAD_WAIT
@@ -754,11 +755,20 @@ void MainWindow::settings()
         if (TConfig::getFtpSurface() != oldSurface)
         {
             TTPInit tpinit;
-
+            string msg = "Loading file <b>" + TConfig::getFtpSurface() + "<b>.<br>Please wait ...";
+            Ui::TQtBusy *dlg_busy = new Ui::TQtBusy(msg, this);
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+            dlg_busy->setScaleFactor(gScale);
+            dlg_busy->doResize();
+#endif
+            dlg_busy->show();
             tpinit.setPath(TConfig::getProjectPath());
 
             if (tpinit.loadSurfaceFromController(true))
                 rebootAnyway = true;
+
+            dlg_busy->close();
+            delete dlg_busy;
         }
 
         if (TConfig::getController() != oldHost ||

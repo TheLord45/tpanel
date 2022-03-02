@@ -216,6 +216,7 @@ bool _startUp(int oldArgc, int argc, char *argv[])
     if (TError::isError())
     {
         delete pageManager;
+        pageManager = nullptr;
         return false;
     }
 
@@ -231,6 +232,7 @@ bool _startUp(int oldArgc, int argc, char *argv[])
     // The _restart_ variable is reset in class initialization MainWindow.
     ret = qtmain(argc, &argv[pt], pageManager);
     delete pageManager;
+    pageManager = nullptr;
 
     if (ret != 0)
         return false;

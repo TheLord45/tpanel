@@ -56,7 +56,26 @@ using std::string;
 using std::vector;
 using std::bind;
 
-namespace fs = std::filesystem;
+#if __GNUC__ < 9 && !defined(__ANDROID__)
+   #if __cplusplus < 201703L
+      #warning "Your C++ compiler seems to have no support for C++17 standard!"
+   #endif
+   #include <experimental/filesystem>
+   namespace fs = std::experimental::filesystem;
+#else
+#  ifdef __ANDROID__
+#   if _LIBCPP_STD_VER >= 17
+#       include <filesystem>
+        namespace fs = std::__fs::filesystem;
+#   else
+#       include <experimental/filesystem>
+        namespace fs = std::__fs::filesystem;
+#   endif
+#  else
+#   include <filesystem>
+    namespace fs = std::filesystem;
+#  endif
+#endif
 
 TFsfReader::TFsfReader()
 {
