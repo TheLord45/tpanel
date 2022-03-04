@@ -70,6 +70,7 @@ struct SETTINGS
     bool noBanner{false};       //!< Startup without showing a banner on the command line.
     bool certCheck{false};      //!< TRUE = Check certificate for SSL connection
     bool scale{false};          //!< TRUE = Images are scaled to fit the whole screen
+    bool tbforce{false};        //!< TRUE = The toolbar is forced to display
     bool profiling{false};      //!< TRUE = The declaration traces meassure the time and write it to the log
     string password1;           //!< First panel password
     string password2;           //!< Second panel password
@@ -460,6 +461,13 @@ void TConfig::saveBanner(bool banner)
     localSettings.noBanner = banner;
 }
 
+void TConfig::saveToolbarForce(bool tb)
+{
+    DECL_TRACER("TConfig::saveToolbarForce(bool tb)");
+
+    localSettings.tbforce = tb;
+}
+
 void TConfig::saveProfiling(bool prof)
 {
     DECL_TRACER("TConfig::saveProfiling(bool prof)");
@@ -654,6 +662,7 @@ bool TConfig::saveSettings()
         lines += "LogLevel=" + localSettings.logLevel + "\n";
         lines += "ProjectPath=" + localSettings.project + "\n";
         lines += string("NoBanner=") + (localSettings.noBanner ? "true" : "false") + "\n";
+        lines += string("ToolbarForce=") + (localSettings.tbforce ? "true" : "false") + "\n";
         lines += string("LongFormat=") + (localSettings.longformat ? "true" : "false") + "\n";
         lines += "Address=" + localSettings.server + "\n";
         lines += "Port=" + std::to_string(localSettings.port) + "\n";
@@ -740,6 +749,13 @@ bool TConfig::getScale()
     DECL_TRACER("TConfig::getScale()");
 
     return localSettings.scale;
+}
+
+bool TConfig::getToolbarForce()
+{
+    DECL_TRACER("TConfig::getToolbarForce()");
+
+    return localSettings.tbforce;
 }
 
 bool TConfig::getProfiling()
@@ -967,6 +983,7 @@ string TConfig::makeConfigDefault(const std::string& log, const std::string& pro
     content += "PanelType=Android\n";
     content += string("Firmware=") + VERSION_STRING() + "\n";
     content += "Scale=true\n";
+    content += "ToolbarForce=false\n";
     content += "Profiling=false\n";
     content += "Password1=1988\n";
     content += "Password2=1988\n";
@@ -1289,6 +1306,8 @@ bool TConfig::readConfig()
             }
             else if (caseCompare(left, "Scale") == 0 && !right.empty())
                 localSettings.scale = isTrue(right);
+            else if (caseCompare(left, "ToolbarForce") == 0 && !right.empty())
+                localSettings.tbforce = isTrue(right);
             else if (caseCompare(left, "Profiling") == 0 && !right.empty())
                 localSettings.profiling = isTrue(right);
             else if (caseCompare(left, "Password1") == 0 && !right.empty())

@@ -24,7 +24,7 @@
 #include "ui_busy.h"
 #include "terror.h"
 
-Ui::TQtBusy::TQtBusy(const std::string& msg, QWidget* parent)
+TQBusy::TQBusy(const std::string& msg, QWidget* parent)
     : QDialog(parent),
       ui(new Ui::TQBusy)
 {
@@ -35,14 +35,16 @@ Ui::TQtBusy::TQtBusy(const std::string& msg, QWidget* parent)
     ui->label_Download->setText(msg.c_str());
 }
 
-Ui::TQtBusy::~TQtBusy()
+TQBusy::~TQBusy()
 {
     DECL_TRACER("TQBusy::~TQBusy()");
+
+    delete ui;
 }
 
-void Ui::TQtBusy::doResize()
+void TQBusy::doResize()
 {
-    DECL_TRACER("TQtBusy::doResize()");
+    DECL_TRACER("TQBusy::doResize()");
 
     if (mScaleFactor == 0.0 || mScaleFactor == 1.0)
         return;
@@ -90,7 +92,7 @@ void Ui::TQtBusy::doResize()
     }
 }
 
-int Ui::TQtBusy::scale(int value)
+int TQBusy::scale(int value)
 {
     if (value <= 0 || mScaleFactor == 1.0)
         return value;

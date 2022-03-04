@@ -181,6 +181,9 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
             height = std::min(screenGeometry.height(), screenGeometry.width());
         }
 
+        if (TConfig::getToolbarForce())
+            minWidth += 48;
+
         MSG_INFO("Dimension of AMX screen:" << minWidth << " x " << minHeight);
         MSG_INFO("Screen size: " << width << " x " << height);
         // The scale factor is always calculated in difference to the prefered
@@ -188,6 +191,7 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
         double scaleW = width / minWidth;
         double scaleH = height / minHeight;
         scale = std::min(scaleW, scaleH);
+
         gScale = scale;     // The calculated scale factor
         gFullWidth = width;
         // This preprocessor variable allows the scaling to be done by the Skia
@@ -586,7 +590,7 @@ void MainWindow::createActions()
         int tbWidth = (int)(48.0 * gScale);
         int icWidth = (int)(40.0 * gScale);
 
-        if ((gFullWidth - width) < tbWidth)
+        if ((gFullWidth - width) < tbWidth && !TConfig::getToolbarForce())
         {
             delete mToolbar;
             mToolbar = nullptr;
@@ -737,6 +741,7 @@ void MainWindow::settings()
     int oldPort = TConfig::getPort();
     int oldChannelID = TConfig::getChannel();
     string oldSurface = TConfig::getFtpSurface();
+    bool oldToolbar = TConfig::getToolbarForce();
     // Initialize and open the settings dialog.
     TQtSettings *dlg_settings = new TQtSettings(this);
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
@@ -752,23 +757,27 @@ void MainWindow::settings()
     {
         writeSettings();
 
+        if (oldToolbar != TConfig::getToolbarForce())
+        {
+            QMessageBox msgBox;
+            msgBox.setText("The change for the visibility of the toolbar will be active on the next start of TPanel!");
+            msgBox.exec();
+        }
+
         if (TConfig::getFtpSurface() != oldSurface)
         {
             TTPInit tpinit;
-            string msg = "Loading file <b>" + TConfig::getFtpSurface() + "<b>.<br>Please wait ...";
-            Ui::TQtBusy *dlg_busy = new Ui::TQtBusy(msg, this);
-#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
-            dlg_busy->setScaleFactor(gScale);
-            dlg_busy->doResize();
-#endif
-            dlg_busy->show();
+            tpinit.regCallbackProcessEvents(bind(&MainWindow::runEvents, this));
             tpinit.setPath(TConfig::getProjectPath());
+            string msg = "Loading file <b>" + TConfig::getFtpSurface() + "</b>.<br>Please wait ...";
+
+            busyIndicator(msg, this);
 
             if (tpinit.loadSurfaceFromController(true))
                 rebootAnyway = true;
 
-            dlg_busy->close();
-            delete dlg_busy;
+            mBusyDialog->close();
+            mBusy = false;
         }
 
         if (TConfig::getController() != oldHost ||
@@ -2178,22 +2187,15 @@ void MainWindow::showKeyboard(const std::string& init, const std::string& prompt
     mQKeyboard->doResize();
     mQKeyboard->setWindowFlags(Qt::Dialog | Qt::CustomizeWindowHint | Qt::FramelessWindowHint);
     int ret = mQKeyboard->exec();
+    string text = "KEYB-";
 
     if (ret == QDialog::Accepted)
-    {
-        string text = "KEYB-";
         text.append(mQKeyboard->getText());
-
-        if (gPageManager)
-            gPageManager->sendKeyboard(text);
-    }
     else
-    {
-        string text = "KEYB-ABORT";
+        text = "KEYB-ABORT";
 
-        if (gPageManager)
-            gPageManager->sendKeyboard(text);
-    }
+    if (gPageManager)
+        gPageManager->sendKeyboard(text);
 
     delete mQKeyboard;
     mQKeyboard = nullptr;
@@ -2561,6 +2563,29 @@ void MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
         default:
             MSG_WARNING("Subpage effect " << ani.showEffect << " is not supported.");
     }
+}
+
+void MainWindow::busyIndicator(const string& msg, QWidget* parent)
+{
+    DECL_TRACER("MainWindow::busyIndicator(const string& msg, QWidget* parent)");
+
+    if (mBusy)
+        return;
+
+    mBusy = true;
+    mBusyDialog = new TQBusy(msg, parent);
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+    mBusyDialog->setScaleFactor(gScale);
+    mBusyDialog->doResize();
+#endif
+    mBusyDialog->show();
+}
+
+void MainWindow::runEvents()
+{
+    DECL_TRACER("MainWindow::runEvents()");
+
+    QApplication::processEvents();
 }
 
 #ifndef QT_NO_SESSIONMANAGER

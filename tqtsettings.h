@@ -72,9 +72,15 @@ class TQtSettings : public QDialog
         // View
         void on_checkBox_Scale_toggled(bool checked);
         void on_checkBox_Banner_toggled(bool checked);
+        void on_checkBox_Toolbar_toggled(bool checked);
 
     private:
         int scale(int value);
+#ifdef __ANDROID__
+        QPalette qt_fusionPalette();
+#endif
+        template <typename T>
+        void scaleObject(T *obj);
 
         Ui::TQtSettings *ui{nullptr};
         bool mSetChanged{false};

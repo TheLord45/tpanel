@@ -5,5 +5,6 @@ BusyIndicator {
     id: busy
 
     anchors.fill: parent
+    visible: true
     running: true
 }

@@ -65,6 +65,7 @@ typedef struct x509_st X509;
 typedef int (*FtpCallbackXfer)(off64_t xfered, void *arg);
 typedef int (*FtpCallbackIdle)(void *arg);
 typedef void (*FtpCallbackLog)(char *str, void* arg, bool out);
+typedef void (*FtpCallbackError)(char *str, void* arg, int err);
 //SSL
 typedef bool (*FtpCallbackCert)(void *arg, X509 *cert);
 
@@ -82,6 +83,7 @@ struct ftphandle
     FtpCallbackXfer xfercb;
     FtpCallbackIdle idlecb;
     FtpCallbackLog logcb;
+    FtpCallbackError errorcb;
     void *cbarg;
     off64_t xfered;
     off64_t cbbytes;
@@ -160,6 +162,7 @@ class ftplib
         int Quit();
         void SetCallbackIdleFunction(FtpCallbackIdle pointer);
         void SetCallbackLogFunction(FtpCallbackLog pointer);
+        void SetCallbackErrorFunction(FtpCallbackError pointer);
         void SetCallbackXferFunction(FtpCallbackXfer pointer);
         void SetCallbackArg(void *arg);
         void SetCallbackBytes(off64_t bytes);
@@ -195,6 +198,7 @@ class ftplib
         void sprint_rest(char *buf, off64_t offset);
         void ClearHandle();
         int CorrectPasvResponse(unsigned char *v);
+        void errorHandler(const char *stub, int err, int line);
     };
 
 #endif

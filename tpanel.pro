@@ -2,7 +2,7 @@
 # You may attempt to use it for building too, by modifying this file here.
 
 TARGET = tpanel
-QT = core gui widgets multimedia multimediawidgets qml androidextras
+QT = core gui widgets multimedia multimediawidgets qml quick quickwidgets androidextras
 
 # The main application
 HEADERS = \
@@ -44,6 +44,7 @@ HEADERS = \
    $$PWD/tqemitqueue.h \
    $$PWD/tqkeyboard.h \
    $$PWD/tqkeypad.h \
+   $$PWD/tqtbusy.h \
    $$PWD/texcept.h \
    $$PWD/tfsfreader.cpp \
    $$PWD/timgcache.h \
@@ -91,6 +92,7 @@ SOURCES = \
    $$PWD/tqemitqueue.cpp \
    $$PWD/tqkeyboard.cpp \
    $$PWD/tqkeypad.cpp \
+   $$PWD/tqtbusy.cpp \
    $$PWD/tfsfreader.h \
    $$PWD/texcept.cpp \
    $$PWD/timgcache.cpp \
@@ -162,7 +164,7 @@ DISTFILES += \
     android/gradlew \
     android/gradlew.bat \
     android/res/values/libs.xml \
-    ftplib/ftplib.pri
+    qrc/BusyIndicator.qml
 
 ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
 

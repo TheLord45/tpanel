@@ -26,25 +26,26 @@
 namespace Ui
 {
     class TQBusy;
-
-    class TQtBusy : public QDialog
-    {
-        Q_OBJECT
-
-        public:
-            explicit TQtBusy(const std::string& msg, QWidget *parent = nullptr);
-            ~TQtBusy();
-
-            void doResize();
-            void setScaleFactor(double sf) { mScaleFactor = sf; }
-
-        private:
-            Ui::TQBusy *ui{nullptr};
-
-            int scale(int value);
-
-            double mScaleFactor{0.0};
-    };
 }
+
+class TQBusy : public QDialog
+{
+    Q_OBJECT
+
+    public:
+        explicit TQBusy(const std::string& msg, QWidget *parent = nullptr);
+        ~TQBusy();
+
+        void doResize();
+        void setScaleFactor(double sf) { mScaleFactor = sf; }
+
+    private:
+        Ui::TQBusy *ui{nullptr};
+
+        int scale(int value);
+
+        double mScaleFactor{0.0};
+        bool mStop{false};
+};
 
 #endif

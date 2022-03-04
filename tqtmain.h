@@ -42,6 +42,7 @@ class QEvent;
 class TQtSettings;
 class TQKeyboard;
 class TQKeypad;
+class TQBusy;
 QT_END_NAMESPACE
 
 Q_DECLARE_METATYPE(size_t)
@@ -137,6 +138,8 @@ class MainWindow : public QMainWindow, TQManageQueue
         int scale(int value);
         bool isScaled() { return (mScaleFactor != 1.0); }
         void startAnimation(TObject::OBJECT_t *obj, ANIMATION_t& ani, bool in = true);
+        void busyIndicator(const std::string& msg, QWidget *parent);
+        void runEvents();
 
         void _displayButton(ulong handle, ulong parent, unsigned char* buffer, int width, int height, int pixline, int left, int top);
         void _setVisible(ulong handle, bool state);
@@ -171,8 +174,11 @@ class MainWindow : public QMainWindow, TQManageQueue
         bool mHasFocus{true};               // If this is FALSE, no output to sceen is allowed.
         std::atomic<double> mScaleFactor{1.0}; // The actual scale factor
         std::atomic<TObject::OBJECT_t *> mLastObject{nullptr};     // This is for the hide effect of widgets.
+        std::atomic<bool> mBusy{false};     // If TRUE the busy indicator is active
+        TQBusy *mBusyDialog{nullptr};       // Pointer to busy indicator dialog window
         TQKeyboard *mQKeyboard{nullptr};    // Pointer to an active virtual keyboard
         TQKeypad *mQKeypad{nullptr};        // Pointer to an active virtual keypad
+//        std::thread mThreadBusy;            // The thread of the busy indicator.
         bool mKeyboard{false};              // TRUE = keyboard is visible
         bool mKeypad{false};                // TRUE = keypad is visible
         // Mouse

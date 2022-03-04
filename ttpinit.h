@@ -19,6 +19,7 @@
 #define TTPINIT_H
 
 #include <string>
+#include <functional>
 
 class TTPInit
 {
@@ -30,7 +31,12 @@ class TTPInit
         bool createDirectoryStructure();
         bool loadSurfaceFromController(bool force=false);
 
+        int progressCallback(off64_t xfer);
+        void regCallbackProcessEvents(std::function<void ()> pe) { _processEvents = pe; }
+
     private:
+        std::function<void ()> _processEvents{nullptr};
+
         bool createPanelConfigs();
         bool createSystemConfigs();
         bool _makeDir(const std::string& dir);

@@ -21,6 +21,7 @@
 
 #include <string>
 #include <vector>
+#include <functional>
 
 #include "ftplib/ftplib.h"
 
@@ -41,9 +42,14 @@ class TFsfReader
         bool copyOverFTP(const std::string& fname, const std::string& target);
         bool unpack(const std::string&fname, const std::string& path);
         static void callbackLog(char *str, void* arg, bool out);
+        static void callbackError(char *msg, void *arg, int err);
+        static int callbackXfer(off64_t xfered, void *arg);
+
+        static void regCallbackProgress(std::function<int (off64_t xfered)> progress) { _progress = progress; }
 
     private:
         ftplib *mFtpLib{nullptr};
+        static std::function<int (off64_t xfered)> _progress;
 };
 
 #endif

@@ -77,6 +77,8 @@ using std::bind;
 #  endif
 #endif
 
+std::function<int (off64_t xfered)> TFsfReader::_progress{nullptr};
+
 TFsfReader::TFsfReader()
 {
     DECL_TRACER("TFsfReader::TFsfReader()");
@@ -105,7 +107,10 @@ bool TFsfReader::copyOverFTP(const string& fname, const string& target)
     else
         mFtpLib->SetConnmode(ftplib::port);
 
-    mFtpLib->SetCallbackLogFunction(&TFsfReader::callbackLog);
+    mFtpLib->SetCallbackLogFunction(&TFsfReader::callbackLog);      // Print some debugging messages
+    mFtpLib->SetCallbackErrorFunction(&TFsfReader::callbackError);  // Print errors or info's
+    mFtpLib->SetCallbackXferFunction(&TFsfReader::callbackXfer);    // This is the progress
+    mFtpLib->SetCallbackBytes(10000L);                              // This tells the progress to be called every 10KiB
     string scon = TConfig::getController() + ":21";
     MSG_DEBUG("Trying to connect to " << scon);
 
@@ -163,7 +168,7 @@ bool TFsfReader::unpack(const string& fname, const string& path)
     return readtp4.doRead();
 }
 
-void TFsfReader::callbackLog(char* str, void* arg, bool out)
+void TFsfReader::callbackLog(char* str, void*, bool out)
 {
     DECL_TRACER("TFsfReader::callbackLog(char* str, void* arg, bool out)");
 
@@ -184,4 +189,35 @@ void TFsfReader::callbackLog(char* str, void* arg, bool out)
     {
         MSG_DEBUG("Input: " << msg);
     }
+}
+
+void TFsfReader::callbackError(char* msg, void*, int err)
+{
+    DECL_TRACER("TFsfReader::callbackError(char* msg, void* arg, int err)");
+
+    if (!msg)
+        return;
+
+    if (err)
+    {
+        MSG_ERROR(msg);
+    }
+    else if (*msg >= '0' && *msg <= '9')
+    {
+        MSG_INFO(msg);
+    }
+    else
+    {
+        MSG_DEBUG(msg);
+    }
+}
+
+int TFsfReader::callbackXfer(off64_t xfered, void*)
+{
+    DECL_TRACER("TFsfReader::callbackXfer(off64_t xfered, void*)");
+
+    if (_progress)
+        return _progress(xfered);
+
+    return 1;
 }

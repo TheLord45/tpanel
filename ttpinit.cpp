@@ -18,6 +18,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <functional>
 
 #include <stdio.h>
 #include <sys/stat.h>
@@ -42,6 +43,7 @@
 using std::string;
 using std::vector;
 using std::ostream;
+using std::bind;
 
 TTPInit::TTPInit()
 {
@@ -333,6 +335,7 @@ bool TTPInit::loadSurfaceFromController(bool force)
     DECL_TRACER("TTPInit::loadSurfaceFromController(bool force)");
 
     TFsfReader reader;
+    reader.regCallbackProgress(bind(&TTPInit::progressCallback, this, std::placeholders::_1));
     string target = mPath + "/" + TConfig::getFtpSurface();
     size_t pos = 0;
 
@@ -346,6 +349,9 @@ bool TTPInit::loadSurfaceFromController(bool force)
         if (pan.exists() || TConfig::getFtpDownloadTime() > 0)
             return false;
     }
+
+    if (_processEvents)
+        _processEvents();
 
     // To be sure the target directory tree is empty, we delete all files but
     // keep the system directories and their content, if they exist.
@@ -362,6 +368,9 @@ bool TTPInit::loadSurfaceFromController(bool force)
     if (!reader.copyOverFTP(TConfig::getFtpSurface(), target))
         return false;
 
+    if (_processEvents)
+        _processEvents();
+
     if (!reader.unpack(target, mPath))
     {
         MSG_ERROR("Unpacking was not successfull.");
@@ -374,10 +383,23 @@ bool TTPInit::loadSurfaceFromController(bool force)
         createSystemConfigs();
     }
 
+    if (_processEvents)
+        _processEvents();
+
     dir.dropFile(target);       // We remove our traces
     TConfig::saveFtpDownloadTime(time(NULL));
     TConfig::saveSettings();
     return true;
+}
+
+int TTPInit::progressCallback(off64_t xfer)
+{
+    DECL_TRACER("TTPInit::progressCallback(off64_t xfer)");
+
+    if (_processEvents && xfer > 0)
+        _processEvents();
+
+    return 1;
 }
 
 #ifdef __ANDROID__

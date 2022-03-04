@@ -14,7 +14,10 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Dialog</string>
+   <string>Busy</string>
+  </property>
+  <property name="autoFillBackground">
+   <bool>true</bool>
   </property>
   <property name="modal">
    <bool>false</bool>
@@ -45,6 +48,9 @@
      <width>101</width>
      <height>91</height>
     </rect>
+   </property>
+   <property name="acceptDrops">
+    <bool>false</bool>
    </property>
    <property name="resizeMode">
     <enum>QQuickWidget::SizeRootObjectToView</enum>

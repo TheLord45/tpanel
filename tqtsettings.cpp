@@ -70,7 +70,14 @@ TQtSettings::TQtSettings(QWidget *parent)
 
     ui->checkBox_Format->setCheckState((TConfig::isLongFormat() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked));
     ui->checkBox_Scale->setCheckState((TConfig::getScale() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked));
+#ifndef __ANDROID__
+    ui->checkBox_Scale->setDisabled(true);
+#endif
     ui->checkBox_Banner->setCheckState((TConfig::showBanner() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked));
+#ifdef __ANDROID__
+    ui->checkBox_Banner->setDisabled(true);
+#endif
+    ui->checkBox_Toolbar->setCheckState((TConfig::getToolbarForce() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked));
 
     ui->lineEdit_SIPproxy->setText(TConfig::getSIPproxy().c_str());
     ui->spinBox_SIPport->setValue(TConfig::getSIPport());
@@ -79,7 +86,13 @@ TQtSettings::TQtSettings(QWidget *parent)
     ui->lineEdit_SIPuser->setText(TConfig::getSIPuser().c_str());
     ui->lineEdit_SIPpassword->setText(TConfig::getSIPpassword().c_str());
     ui->checkBox_SIPenabled->setCheckState((TConfig::getSIPstatus() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked));
-
+#ifdef __ANDROID__
+    ui->tabWidget->setPalette(qt_fusionPalette());
+    ui->tabCtrl->setPalette(qt_fusionPalette());
+    ui->tabLog->setPalette(qt_fusionPalette());
+    ui->tabSIP->setPalette(qt_fusionPalette());
+    ui->tabView->setPalette(qt_fusionPalette());
+#endif
     mInitRun = false;
     mSetChanged = false;
 }
@@ -89,6 +102,44 @@ TQtSettings::~TQtSettings()
 	DECL_TRACER("TQtSettings::~TQtSettings()");
 	delete ui;
 }
+
+#ifdef __ANDROID__
+QPalette TQtSettings::qt_fusionPalette()
+{
+    QColor backGround(239, 239, 239);
+    QColor light = backGround.lighter(150);
+    QColor mid(backGround.darker(130));
+    QColor midLight = mid.lighter(110);
+    QColor base = Qt::white;
+    QColor disabledBase(backGround);
+    QColor dark = backGround.darker(150);
+    QColor darkDisabled = QColor(209, 209, 209).darker(110);
+    QColor text = Qt::black;
+    QColor hightlightedText = Qt::white;
+    QColor disabledText = QColor(190, 190, 190);
+    QColor button = backGround;
+    QColor shadow = dark.darker(135);
+    QColor disabledShadow = shadow.lighter(150);
+
+    QPalette fusionPalette(Qt::black,backGround,light,dark,mid,text,base);
+    fusionPalette.setBrush(QPalette::Midlight, midLight);
+    fusionPalette.setBrush(QPalette::Button, button);
+    fusionPalette.setBrush(QPalette::Shadow, shadow);
+    fusionPalette.setBrush(QPalette::HighlightedText, hightlightedText);
+
+    fusionPalette.setBrush(QPalette::Disabled, QPalette::Text, disabledText);
+    fusionPalette.setBrush(QPalette::Disabled, QPalette::WindowText, disabledText);
+    fusionPalette.setBrush(QPalette::Disabled, QPalette::ButtonText, disabledText);
+    fusionPalette.setBrush(QPalette::Disabled, QPalette::Base, disabledBase);
+    fusionPalette.setBrush(QPalette::Disabled, QPalette::Dark, darkDisabled);
+    fusionPalette.setBrush(QPalette::Disabled, QPalette::Shadow, disabledShadow);
+
+    fusionPalette.setBrush(QPalette::Active, QPalette::Highlight, QColor(48, 140, 198));
+    fusionPalette.setBrush(QPalette::Inactive, QPalette::Highlight, QColor(48, 140, 198));
+    fusionPalette.setBrush(QPalette::Disabled, QPalette::Highlight, QColor(145, 145, 145));
+    return fusionPalette;
+}
+#endif
 
 void TQtSettings::on_kiconbutton_logFile_clicked()
 {
@@ -158,6 +209,18 @@ void TQtSettings::on_kiconbutton_logFile_clicked()
     }
 }
 
+template<typename T>
+void TQtSettings::scaleObject(T *obj)
+{
+    DECL_TRACER("TQtSettings::scaleObject(T *obj)");
+
+    QSize size = obj->size();
+    size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
+    obj->resize(size);
+    QRect rect = obj->geometry();
+    obj->move(scale(rect.left()), scale(rect.top()));
+}
+
 void TQtSettings::doResize()
 {
     DECL_TRACER("TQtSettings::doResize()");
@@ -186,69 +249,65 @@ void TQtSettings::doResize()
         QString name = iter.i->t()->objectName();
         QObject *obj = iter.i->t();
 
-        if (name.startsWith("kiconbutton"))
+        if (name.startsWith("tabWidget"))
         {
-            QToolButton *bt = dynamic_cast<QToolButton *>(obj);
-            size = bt->size();
-            size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-            bt->resize(size);
-            rect = bt->geometry();
-            bt->move(scale(rect.left()), scale(rect.top()));
+            scaleObject(dynamic_cast<QTabWidget *>(obj));
+
+            QObjectList childsTab = obj->children();
+            QList<QObject *>::Iterator iterTab;
+
+            for (iterTab = childsTab.begin(); iterTab != childsTab.end(); ++iterTab)
+            {
+                QString namet = iterTab.i->t()->objectName();
+                QObject *objt = iterTab.i->t();
+
+                if (namet.startsWith("qt_tabwidget_stackedwidget"))
+                {
+                    QObjectList childsStack = objt->children();
+                    QList<QObject *>::Iterator iterStack;
+
+                    for (iterStack = childsStack.begin(); iterStack != childsStack.end(); ++iterStack)
+                    {
+                        QObjectList tabStack = iterStack.i->t()->children();
+                        QList<QObject *>::Iterator tabIter;
+
+                        for (tabIter = tabStack.begin(); tabIter != tabStack.end(); ++tabIter)
+                        {
+                            QString n = tabIter.i->t()->objectName();
+                            QObject *on = tabIter.i->t();
+
+                            if (n.startsWith("kiconbutton"))
+                                scaleObject(dynamic_cast<QToolButton *>(on));
+                            else if (n.startsWith("checkBox"))
+                            {
+                                scaleObject(dynamic_cast<QCheckBox *>(on));
+#ifdef __ANDROID__
+                                QCheckBox *cb = dynamic_cast<QCheckBox *>(on);
+                                cb->setPalette(qt_fusionPalette());
+#endif
+                            }
+                            else if (n.startsWith("lineEdit"))
+                                scaleObject(dynamic_cast<QLineEdit *>(on));
+                            else if (n.startsWith("spinBox"))
+                                scaleObject(dynamic_cast<QSpinBox *>(on));
+                            else if (n.startsWith("label"))
+                            {
+                                scaleObject(dynamic_cast<QLabel *>(on));
+#ifdef __ANDROID__
+                                QLabel *lb = dynamic_cast<QLabel *>(on);
+                                lb->setPalette(qt_fusionPalette());
+#endif
+                            }
+                        }
+                    }
+
+//                    if (namet.startsWith("tab"))
+//                        scaleObject(dynamic_cast<QWidget *>(objt));
+                }
+            }
         }
-        else if (name.startsWith("tabWidget"))
-        {
-            QTabWidget *bt = dynamic_cast<QTabWidget *>(obj);
-            size = bt->size();
-            size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-            bt->resize(size);
-            rect = bt->geometry();
-            bt->move(scale(rect.left()), scale(rect.top()));
-        }
-        else if (name.startsWith("tab"))
-        {
-            QWidget *bt = dynamic_cast<QWidget *>(obj);
-            size = bt->size();
-            size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-            bt->resize(size);
-            rect = bt->geometry();
-            bt->move(scale(rect.left()), scale(rect.top()));
-        }
-        else if (name.startsWith("checkBox"))
-        {
-            QCheckBox *bt = dynamic_cast<QCheckBox *>(obj);
-            size = bt->size();
-            size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-            bt->resize(size);
-            rect = bt->geometry();
-            bt->move(scale(rect.left()), scale(rect.top()));
-        }
-        else if (name.startsWith("lineEdit"))
-        {
-            QLineEdit *bt = dynamic_cast<QLineEdit *>(obj);
-            size = bt->size();
-            size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-            bt->resize(size);
-            rect = bt->geometry();
-            bt->move(scale(rect.left()), scale(rect.top()));
-        }
-        else if (name.startsWith("spinBox"))
-        {
-            QSpinBox *bt = dynamic_cast<QSpinBox *>(obj);
-            size = bt->size();
-            size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-            bt->resize(size);
-            rect = bt->geometry();
-            bt->move(scale(rect.left()), scale(rect.top()));
-        }
-        else if (name.startsWith("label"))
-        {
-            QLabel *lb = dynamic_cast<QLabel *>(obj);
-            size = lb->size();
-            size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-            lb->resize(size);
-            rect = lb->geometry();
-            lb->move(scale(rect.left()), scale(rect.top()));
-        }
+        else if (name.startsWith("buttonBox"))
+            scaleObject(dynamic_cast<QDialogButtonBox *>(obj));
     }
 }
 
@@ -338,6 +397,17 @@ void TQtSettings::on_checkBox_Banner_toggled(bool checked)
 
     mSetChanged = true;
     TConfig::saveBanner(!checked);
+}
+
+void TQtSettings::on_checkBox_Toolbar_toggled(bool checked)
+{
+    DECL_TRACER("TQtSettings::on_checkBox_Toolbar_toggled(bool checked)");
+
+    if (TConfig::getToolbarForce() == checked)
+        return;
+
+    mSetChanged = true;
+    TConfig::saveToolbarForce(checked);
 }
 
 void TQtSettings::on_checkBox_Profiling_toggled(bool checked)
