@@ -6,13 +6,9 @@ Bargraphs
 Buttons
 =======
 * Add marquee function
-* ^RAF, ^RMF - Embedded codes
 
-Subpages
-========
-
-Other things
-============
+Missing features
+================
 * Add more commands
 * Implement TP5 commands where possible.
 * Implement SIP phone.
@@ -23,7 +19,10 @@ Other things
 Known errors
 ============
 * Fix lines containing a komma. They must not end at the comma.
-
+* On a mobile device the surface may become a destructive look if the app is
+  suspended and loose network connection. In this case a new connection is
+  established, which work, but the surface can't be drawn. This leads into loss
+  of graphics. Seen this on a Samsung tablet Galaxy A7.
 
 Documentation
 =============

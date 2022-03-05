@@ -3,6 +3,9 @@ ChangeLog
 
 Release: 1.3.0
 ===============================================================================
+2022-03-04 Fixed the look of the settings dialog on mobile devices.
+           Added a feature to force the toolbar to be visible.
+
 2022-03-02 Added a busy indicator which is shown when a file is downloaded.
 
 2022-03-01 Changed the settings dialog. Added input lines for FTP and SIP.
