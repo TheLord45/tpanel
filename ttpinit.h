@@ -19,6 +19,7 @@
 #define TTPINIT_H
 
 #include <string>
+#include <vector>
 #include <functional>
 
 class TTPInit
@@ -30,6 +31,9 @@ class TTPInit
         void setPath(const std::string& p) { mPath = p; }
         bool createDirectoryStructure();
         bool loadSurfaceFromController(bool force=false);
+        std::vector<std::string>& getFileList(const std::string& filter);
+        bool isSystemDefault();
+        bool isVirgin();
 
         int progressCallback(off64_t xfer);
         void regCallbackProcessEvents(std::function<void ()> pe) { _processEvents = pe; }
@@ -45,6 +49,7 @@ class TTPInit
         bool askPermissions();
 #endif
         std::string mPath;
+        std::vector<std::string> mDirList;
 };
 
 #endif // TTPINIT_H

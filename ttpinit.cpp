@@ -39,11 +39,36 @@
 #include "tconfig.h"
 #include "tfsfreader.h"
 #include "tdirectory.h"
+#include "tresources.h"
 
 using std::string;
 using std::vector;
 using std::ostream;
 using std::bind;
+using std::ifstream;
+
+#if __GNUC__ < 9 && !defined(__ANDROID__)
+#if __cplusplus < 201703L
+    #warning "Your C++ compiler seems to have no support for C++17 standard!"
+#endif
+    #include <experimental/filesystem>
+    namespace fs = std::experimental::filesystem;
+#else
+#  ifdef __ANDROID__
+#   if _LIBCPP_STD_VER >= 17
+#       include <filesystem>
+        namespace fs = std::__fs::filesystem;
+#   else
+#       include <experimental/filesystem>
+        namespace fs = std::__fs::filesystem;
+#   endif
+#  else
+#   include <filesystem>
+    namespace fs = std::filesystem;
+#  endif
+#endif
+
+#define SYSTEM_DEFAULT      "/.system"
 
 TTPInit::TTPInit()
 {
@@ -121,6 +146,20 @@ bool TTPInit::createPanelConfigs()
             err = true;
     }
 
+    // Mark files as system default files
+    try
+    {
+        string marker = mPath + SYSTEM_DEFAULT;
+        std::ofstream mark(marker);
+        time_t t = time(NULL);
+        mark.write((char *)&t, sizeof(time_t));
+        mark.close();
+    }
+    catch (std::exception& e)
+    {
+        MSG_ERROR("Error creating a marker file: " << e.what());
+        err = true;
+    }
 
     return err;
 }
@@ -344,9 +383,7 @@ bool TTPInit::loadSurfaceFromController(bool force)
 
     if (!force)
     {
-        QFile pan(target.c_str());
-
-        if (pan.exists() || TConfig::getFtpDownloadTime() > 0)
+        if (!isVirgin() || TConfig::getFtpDownloadTime() > 0)
             return false;
     }
 
@@ -387,9 +424,90 @@ bool TTPInit::loadSurfaceFromController(bool force)
         _processEvents();
 
     dir.dropFile(target);       // We remove our traces
+    dir.dropFile(mPath + SYSTEM_DEFAULT);   // No more system default files
     TConfig::saveFtpDownloadTime(time(NULL));
     TConfig::saveSettings();
     return true;
+}
+
+vector<string>& TTPInit::getFileList(const string& filter)
+{
+    DECL_TRACER("TTPInit::getFileList(const string& filter)");
+
+    ftplib *ftp = new ftplib();
+
+    if (TConfig::getFtpPassive())
+        ftp->SetConnmode(ftplib::pasv);
+    else
+        ftp->SetConnmode(ftplib::port);
+
+    string scon = TConfig::getController() + ":21";
+    MSG_DEBUG("Trying to connect to " << scon);
+
+    if (!ftp->Connect(scon.c_str()))
+    {
+        delete ftp;
+        return mDirList;
+    }
+
+    string sUser = TConfig::getFtpUser();
+    string sPass = TConfig::getFtpPassword();
+    MSG_DEBUG("Trying to login <" << sUser << ", " << sPass << ">");
+
+    if (!ftp->Login(sUser.c_str(), sPass.c_str()))
+    {
+        delete ftp;
+        return mDirList;
+    }
+
+    string tmpFile = std::tmpnam(nullptr);
+    MSG_DEBUG("Reading remote directory / into file " << tmpFile);
+    ftp->Nlst(tmpFile.c_str(), "/");
+    ftp->Quit();
+    delete ftp;
+    mDirList.clear();
+
+    try
+    {
+        char buffer[1024];
+        string uFilter = toUpper((std::string&)filter);
+
+        std::ifstream ifile(tmpFile);
+
+        while (ifile.getline(buffer, sizeof(buffer)))
+        {
+            string buf = buffer;
+            string fname = trim(buf);
+
+            if (!filter.empty())
+            {
+                if (endsWith(toUpper(buf), uFilter))
+                    mDirList.push_back(trim(fname));
+            }
+            else
+                mDirList.push_back(trim(fname));
+        }
+
+        ifile.close();
+    }
+    catch (std::exception& e)
+    {
+        MSG_ERROR("Error opening file " << tmpFile << ": " << e.what());
+    }
+
+    fs::remove(tmpFile);
+
+    if (mDirList.size() > 0)
+    {
+        vector<string>::iterator iter;
+
+        for (iter = mDirList.begin(); iter != mDirList.end(); ++iter)
+        {
+            MSG_DEBUG("File: " << *iter);
+        }
+    }
+
+    return mDirList;
 }
 
 int TTPInit::progressCallback(off64_t xfer)
@@ -400,6 +518,42 @@ int TTPInit::progressCallback(off64_t xfer)
         _processEvents();
 
     return 1;
+}
+
+bool TTPInit::isSystemDefault()
+{
+    DECL_TRACER("TTPInit::isSystemDefault()");
+
+    try
+    {
+        string marker = mPath + SYSTEM_DEFAULT;
+        return fs::exists(marker);
+    }
+    catch (std::exception& e)
+    {
+        MSG_ERROR("File system error: " << e.what())
+        return false;
+    }
+
+    return true;
+}
+
+bool TTPInit::isVirgin()
+{
+    DECL_TRACER("TTPInit::isVirgin()");
+
+    try
+    {
+        if (!fs::exists(mPath) || isSystemDefault())
+            return true;
+    }
+    catch (std::exception& e)
+    {
+        MSG_ERROR("File system error: " << e.what());
+        return true;
+    }
+
+    return false;
 }
 
 #ifdef __ANDROID__

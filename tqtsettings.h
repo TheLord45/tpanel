@@ -37,6 +37,7 @@ class TQtSettings : public QDialog
         void setScaleFactor(double sf) { mScaleFactor = sf; }
         void doResize();
         uint getLogLevel() { return mLogLevel; }
+        bool downloadForce() { return mDownloadForce; }
 
     private slots:
         // Logging
@@ -59,7 +60,8 @@ class TQtSettings : public QDialog
         void on_lineEdit_PType_textChanged(const QString &arg1);
         void on_lineEdit_FTPuser_textChanged(const QString &arg1);
         void on_lineEdit_FTPpassword_textChanged(const QString &arg1);
-        void on_lineEdit_FTPsurface_textChanged(const QString &arg1);
+        void on_comboBox_FTPsurface_currentIndexChanged(const QString &arg1);
+        void on_toolButton_Download_clicked();
         void on_checkBox_FTPpassive_toggled(bool checked);
         // SIP
         void on_lineEdit_SIPproxy_textChanged(const QString &arg1);
@@ -87,6 +89,7 @@ class TQtSettings : public QDialog
         double mScaleFactor{1.0};
         uint mLogLevel{0};
         bool mInitRun{false};
+        bool mDownloadForce{false};
 };
 
 #endif

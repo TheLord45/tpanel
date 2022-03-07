@@ -759,25 +759,47 @@ void MainWindow::settings()
 
         if (oldToolbar != TConfig::getToolbarForce())
         {
-            QMessageBox msgBox;
+            QMessageBox msgBox(this);
             msgBox.setText("The change for the visibility of the toolbar will be active on the next start of TPanel!");
             msgBox.exec();
         }
 
-        if (TConfig::getFtpSurface() != oldSurface)
+        if (TConfig::getFtpSurface() != oldSurface || dlg_settings->downloadForce())
         {
-            TTPInit tpinit;
-            tpinit.regCallbackProcessEvents(bind(&MainWindow::runEvents, this));
-            tpinit.setPath(TConfig::getProjectPath());
-            string msg = "Loading file <b>" + TConfig::getFtpSurface() + "</b>.<br>Please wait ...";
+            bool dlYes = true;
 
-            busyIndicator(msg, this);
+            if (!dlg_settings->downloadForce())
+            {
+                QMessageBox msgBox(this);
+                msgBox.setText(QString("Should the surface <b>") + TConfig::getFtpSurface().c_str() + "</b> be installed?");
+                msgBox.addButton(QMessageBox::Yes);
+                msgBox.addButton(QMessageBox::No);
+                int ret = msgBox.exec();
 
-            if (tpinit.loadSurfaceFromController(true))
-                rebootAnyway = true;
+                if (ret == QMessageBox::No)
+                    dlYes = false;
+            }
 
-            mBusyDialog->close();
-            mBusy = false;
+            if (dlYes)
+            {
+                TTPInit tpinit;
+                tpinit.regCallbackProcessEvents(bind(&MainWindow::runEvents, this));
+                tpinit.setPath(TConfig::getProjectPath());
+                string msg = "Loading file <b>" + TConfig::getFtpSurface() + "</b>.<br>Please wait ...";
+
+                busyIndicator(msg, this);
+
+                if (tpinit.loadSurfaceFromController(true))
+                    rebootAnyway = true;
+
+                mBusyDialog->close();
+                mBusy = false;
+            }
+            else
+            {
+                TConfig::saveFtpSurface(oldSurface);
+                writeSettings();
+            }
         }
 
         if (TConfig::getController() != oldHost ||

@@ -135,7 +135,7 @@
       <rect>
        <x>10</x>
        <y>40</y>
-       <width>70</width>
+       <width>131</width>
        <height>21</height>
       </rect>
      </property>
@@ -271,7 +271,7 @@
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>70</y>
+       <y>80</y>
        <width>121</width>
        <height>22</height>
       </rect>
@@ -356,7 +356,7 @@
       <rect>
        <x>10</x>
        <y>60</y>
-       <width>121</width>
+       <width>131</width>
        <height>22</height>
       </rect>
      </property>
@@ -381,7 +381,7 @@
       <rect>
        <x>10</x>
        <y>100</y>
-       <width>120</width>
+       <width>131</width>
        <height>22</height>
       </rect>
      </property>
@@ -527,7 +527,7 @@
       <rect>
        <x>10</x>
        <y>20</y>
-       <width>121</width>
+       <width>131</width>
        <height>22</height>
       </rect>
      </property>
@@ -552,7 +552,7 @@
       <rect>
        <x>10</x>
        <y>140</y>
-       <width>111</width>
+       <width>131</width>
        <height>22</height>
       </rect>
      </property>
@@ -577,7 +577,7 @@
       <rect>
        <x>10</x>
        <y>180</y>
-       <width>111</width>
+       <width>131</width>
        <height>22</height>
       </rect>
      </property>
@@ -602,7 +602,7 @@
       <rect>
        <x>10</x>
        <y>220</y>
-       <width>111</width>
+       <width>131</width>
        <height>22</height>
       </rect>
      </property>
@@ -627,7 +627,7 @@
       <rect>
        <x>10</x>
        <y>260</y>
-       <width>111</width>
+       <width>131</width>
        <height>22</height>
       </rect>
      </property>
@@ -652,7 +652,7 @@
       <rect>
        <x>10</x>
        <y>300</y>
-       <width>111</width>
+       <width>131</width>
        <height>22</height>
       </rect>
      </property>
@@ -731,45 +731,56 @@
       <enum>QLineEdit::Password</enum>
      </property>
     </widget>
-    <widget class="QLineEdit" name="lineEdit_FTPsurface">
-     <property name="geometry">
-      <rect>
-       <x>140</x>
-       <y>250</y>
-       <width>471</width>
-       <height>36</height>
-      </rect>
-     </property>
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-     <property name="minimumSize">
-      <size>
-       <width>141</width>
-       <height>36</height>
-      </size>
-     </property>
-     <property name="toolTip">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This is the name of a TP4 file on the disc of the controller. By default this is &lt;span style=&quot; font-weight:600;&quot;&gt;tpanel.tp4&lt;/span&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-     </property>
-     <property name="text">
-      <string>tpanel.tp4</string>
-     </property>
-    </widget>
     <widget class="QCheckBox" name="checkBox_FTPpassive">
      <property name="geometry">
       <rect>
        <x>140</x>
        <y>300</y>
-       <width>85</width>
+       <width>191</width>
        <height>21</height>
       </rect>
      </property>
      <property name="text">
       <string>Passiv</string>
+     </property>
+    </widget>
+    <widget class="QComboBox" name="comboBox_FTPsurface">
+     <property name="geometry">
+      <rect>
+       <x>140</x>
+       <y>250</y>
+       <width>421</width>
+       <height>36</height>
+      </rect>
+     </property>
+     <property name="editable">
+      <bool>true</bool>
+     </property>
+     <property name="currentText">
+      <string>tpanel.tp4</string>
+     </property>
+    </widget>
+    <widget class="QToolButton" name="toolButton_Download">
+     <property name="geometry">
+      <rect>
+       <x>570</x>
+       <y>250</y>
+       <width>41</width>
+       <height>38</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>...</string>
+     </property>
+     <property name="icon">
+      <iconset resource="tpanel.qrc">
+       <normaloff>:/images/download64.png</normaloff>:/images/download64.png</iconset>
+     </property>
+     <property name="iconSize">
+      <size>
+       <width>32</width>
+       <height>32</height>
+      </size>
      </property>
     </widget>
    </widget>
@@ -1082,7 +1093,7 @@
       <rect>
        <x>140</x>
        <y>260</y>
-       <width>85</width>
+       <width>201</width>
        <height>21</height>
       </rect>
      </property>
@@ -1125,7 +1136,7 @@
       <rect>
        <x>140</x>
        <y>10</y>
-       <width>101</width>
+       <width>311</width>
        <height>21</height>
       </rect>
      </property>
@@ -1153,7 +1164,7 @@
       <rect>
        <x>10</x>
        <y>10</y>
-       <width>111</width>
+       <width>121</width>
        <height>22</height>
       </rect>
      </property>
@@ -1178,7 +1189,7 @@
       <rect>
        <x>10</x>
        <y>40</y>
-       <width>111</width>
+       <width>121</width>
        <height>22</height>
       </rect>
      </property>
@@ -1203,7 +1214,7 @@
       <rect>
        <x>140</x>
        <y>40</y>
-       <width>111</width>
+       <width>251</width>
        <height>21</height>
       </rect>
      </property>
@@ -1214,68 +1225,12 @@
       <string>show banner</string>
      </property>
     </widget>
-    <widget class="QLabel" name="label_BannerExplain">
-     <property name="geometry">
-      <rect>
-       <x>260</x>
-       <y>40</y>
-       <width>231</width>
-       <height>22</height>
-      </rect>
-     </property>
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-     <property name="minimumSize">
-      <size>
-       <width>111</width>
-       <height>22</height>
-      </size>
-     </property>
-     <property name="frameShape">
-      <enum>QFrame::StyledPanel</enum>
-     </property>
-     <property name="text">
-      <string>&lt;i&gt;This works only on a desktop!&lt;/i&gt;</string>
-     </property>
-    </widget>
-    <widget class="QLabel" name="label_BannerExplain_2">
-     <property name="geometry">
-      <rect>
-       <x>260</x>
-       <y>10</y>
-       <width>231</width>
-       <height>22</height>
-      </rect>
-     </property>
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-     <property name="minimumSize">
-      <size>
-       <width>111</width>
-       <height>22</height>
-      </size>
-     </property>
-     <property name="frameShape">
-      <enum>QFrame::StyledPanel</enum>
-     </property>
-     <property name="text">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-style:italic;&quot;&gt;This works only on a mobile device!&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-     </property>
-    </widget>
     <widget class="QLabel" name="label_Toolbar">
      <property name="geometry">
       <rect>
        <x>10</x>
        <y>70</y>
-       <width>111</width>
+       <width>121</width>
        <height>22</height>
       </rect>
      </property>
@@ -1300,7 +1255,7 @@
       <rect>
        <x>140</x>
        <y>70</y>
-       <width>141</width>
+       <width>361</width>
        <height>21</height>
       </rect>
      </property>

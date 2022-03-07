@@ -47,14 +47,9 @@ bool TSettings::loadSettings(bool initial)
 
     if (!isValidFile())
     {
-        TTPInit init(TConfig::getProjectPath());
-
-        if (!isValidFile())
-        {
-            MSG_ERROR("Error: File " << fname << " doesn't exist or can't be opened!");
-            TError::setError();
-            return false;
-        }
+        MSG_ERROR("Error: File " << fname << " doesn't exist or can't be opened!");
+        TError::setError();
+        return false;
     }
 
     TExpat xml(fname);
@@ -150,8 +145,6 @@ bool TSettings::loadSettings(bool initial)
     if ((index = xml.getElementIndex("resourceList", &depth)) == TExpat::npos)
     {
         MSG_WARNING("Missing element \"resourceList\" in file!");
-//        TError::setError();
-//        return false;
     }
 
     string name, content;

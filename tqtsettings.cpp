@@ -16,6 +16,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
  */
 #include <QFileDialog>
+#include <QComboBox>
+#include <QMessageBox>
 
 #include <unistd.h>
 
@@ -31,6 +33,7 @@
 #endif
 
 #include "tconfig.h"
+#include "ttpinit.h"
 
 #define RLOG_INFO           0x00fe
 #define RLOG_WARNING        0x00fd
@@ -39,6 +42,9 @@
 #define RLOG_DEBUG          0x00ef
 #define RLOG_PROTOCOL       0x00f8
 #define RLOG_ALL            0x00e0
+
+using std::string;
+using std::vector;
 
 TQtSettings::TQtSettings(QWidget *parent)
 	: QDialog(parent),
@@ -56,7 +62,36 @@ TQtSettings::TQtSettings(QWidget *parent)
     ui->spinBox_Channel->setValue(TConfig::getChannel());
     ui->lineEdit_FTPuser->setText(TConfig::getFtpUser().c_str());
     ui->lineEdit_FTPpassword->setText(TConfig::getFtpPassword().c_str());
-    ui->lineEdit_FTPsurface->setText(TConfig::getFtpSurface().c_str());
+
+    TTPInit tinit;
+    tinit.setPath(TConfig::getProjectPath());
+    vector<string> list = tinit.getFileList(".tp4");
+    ui->comboBox_FTPsurface->clear();
+    string curSurface = TConfig::getFtpSurface();
+
+    if (list.size() == 0)
+        ui->comboBox_FTPsurface->addItem(curSurface.c_str());
+    else
+    {
+        ui->comboBox_FTPsurface->clear();
+        vector<string>::iterator iter;
+        int idx = 0;
+        int newIdx = -1;
+
+        for (iter = list.begin(); iter != list.end(); ++iter)
+        {
+            ui->comboBox_FTPsurface->addItem(iter->c_str());
+
+            if (iter->compare(curSurface) == 0)
+                newIdx = idx;
+
+            idx++;
+        }
+
+        if (newIdx != -1)
+            ui->comboBox_FTPsurface->setCurrentIndex(newIdx);
+    }
+
     ui->checkBox_FTPpassive->setCheckState((TConfig::getFtpPassive() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked));
 
     mLogLevel = TConfig::getLogLevelBits();
@@ -290,6 +325,8 @@ void TQtSettings::doResize()
                                 scaleObject(dynamic_cast<QLineEdit *>(on));
                             else if (n.startsWith("spinBox"))
                                 scaleObject(dynamic_cast<QSpinBox *>(on));
+                            else if (n.startsWith("comboBox"))
+                                scaleObject(dynamic_cast<QComboBox *>(on));
                             else if (n.startsWith("label"))
                             {
                                 scaleObject(dynamic_cast<QLabel *>(on));
@@ -658,15 +695,44 @@ void TQtSettings::on_lineEdit_FTPpassword_textChanged(const QString& arg1)
     TConfig::saveFtpPassword(arg1.toStdString());
 }
 
-void TQtSettings::on_lineEdit_FTPsurface_textChanged(const QString& arg1)
+void TQtSettings::on_comboBox_FTPsurface_currentIndexChanged(const QString& arg1)
 {
-    DECL_TRACER("TQtSettings::on_lineEdit_FTPsurface_textChanged(const QString& arg1)");
+    DECL_TRACER("TQtSettings::on_comboBox_FTPsurface_currentIndexChanged(const QString& arg1)");
 
     if (arg1.compare(TConfig::getFtpSurface().c_str()) == 0)
         return;
 
     mSetChanged = true;
     TConfig::saveFtpSurface(arg1.toStdString());
+    MSG_DEBUG("Surface was set to " << arg1.toStdString());
+}
+
+void TQtSettings::on_toolButton_Download_clicked()
+{
+    DECL_TRACER("TQtSettings::on_toolButton_Download_clicked()");
+
+    QMessageBox box(this);
+    QString text = ui->comboBox_FTPsurface->currentText();
+
+    box.setText("Do you realy want to download and install the surface <b>" + text + "</b>?");
+    box.addButton(QMessageBox::Yes);
+    box.addButton(QMessageBox::No);
+    int ret = box.exec();
+
+    if (ret == QMessageBox::Yes)
+    {
+        mDownloadForce = true;
+        QString qss = QString("background-color: rgba(250, 0, 0, 0.9)");
+        ui->toolButton_Download->setStyleSheet(qss);
+    }
+    else
+    {
+        mDownloadForce = false;
+        QString qss = QString("background-color: rgba(209, 209, 209, 0.9)");
+        ui->toolButton_Download->setStyleSheet(qss);
+    }
+
+    MSG_DEBUG("mDownloadForce=" << (mDownloadForce ? "YES" : "NO"));
 }
 
 void TQtSettings::on_checkBox_FTPpassive_toggled(bool checked)

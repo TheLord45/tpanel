@@ -35,6 +35,7 @@
 #include "tobject.h"
 #include "tsystemsound.h"
 #include "tvalidatefile.h"
+#include "ttpinit.h"
 
 using std::vector;
 using std::string;
@@ -141,6 +142,13 @@ TPageManager::TPageManager()
     DECL_TRACER("TPageManager::TPageManager()");
 
     gPageManager = this;
+    TTPInit *tinit = new TTPInit;
+    tinit->setPath(TConfig::getProjectPath());
+
+    if (tinit->isVirgin())
+        tinit->loadSurfaceFromController();
+
+    delete tinit;
     // Read the AMX panel settings.
     mTSettings = new TSettings(TConfig::getProjectPath());
 
@@ -150,6 +158,8 @@ TPageManager::TPageManager()
         surface_mutex.unlock();
         return;
     }
+
+    readMap();  // Start the initialisation of the AMX part.
 
     gPrjResources = new TPrjResources(mTSettings->getResourcesList());
     mPalette = new TPalette();

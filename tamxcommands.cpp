@@ -231,7 +231,6 @@ CMD_DEFINATIONS& findCmdDefines(const string& cmd)
 TAmxCommands::TAmxCommands()
 {
     DECL_TRACER("TAmxCommands::TAmxCommands()");
-    readMap();
 }
 
 TAmxCommands::~TAmxCommands()

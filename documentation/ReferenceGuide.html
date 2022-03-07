@@ -7,7 +7,7 @@
 	<meta name="author" content="Andreas Theofilu"/>
 	<meta name="created" content="2022-02-05T11:11:31.650719961"/>
 	<meta name="changedby" content="Andreas Theofilu"/>
-	<meta name="changed" content="2022-03-05T15:33:00.435278338"/>
+	<meta name="changed" content="2022-03-07T18:00:09.286315025"/>
 	<style type="text/css">
 		@page:first { margin: 2cm }
 		p { line-height: 115%; margin-bottom: 0.25cm; background: transparent }
@@ -92,7 +92,8 @@ guide</font></font></p>
 	<p style="line-height: 100%; margin-left: 0.5cm; margin-bottom: 0cm">
 	<a href="#__RefHeading___Toc1185_1462578860">Why AMX?	7</a></p>
 	<p style="line-height: 100%; margin-left: 1cm; margin-bottom: 0cm"><a href="#__RefHeading___Toc1187_1462578860">Old
-	<i>discontinued</i> equipment	7</a></p>
+	</a><a href="#__RefHeading___Toc1187_1462578860"><i>discontinued</i></a><a href="#__RefHeading___Toc1187_1462578860">
+	equipment	7</a></p>
 	<p style="line-height: 100%; margin-bottom: 0cm"><a href="#__RefHeading___Toc1189_1462578860">Programming	10</a></p>
 	<p style="line-height: 100%; margin-left: 0.5cm; margin-bottom: 0cm">
 	<a href="#__RefHeading___Toc1191_1462578860">Overview	10</a></p>
@@ -150,8 +151,8 @@ guide</font></font></p>
 	<p style="line-height: 100%; margin-left: 1.5cm; margin-bottom: 0cm">
 	<a href="#__RefHeading___Toc1215_1462578860">Scaling	16</a></p>
 	<p style="line-height: 100%; margin-left: 1.5cm; margin-bottom: 0cm">
-	<a href="#__RefHeading___Toc8929_1093679482"><span style="font-style: normal">S</span><span style="font-style: normal">tartup
-	banner</span>	16</a></p>
+	<span style="font-style: normal"><a href="#__RefHeading___Toc8929_1093679482">S</a><a href="#__RefHeading___Toc8929_1093679482">tartup
+	banner</a></span><a href="#__RefHeading___Toc8929_1093679482">	16</a></p>
 	<p style="line-height: 100%; margin-left: 1.5cm; margin-bottom: 0cm">
 	<a href="#__RefHeading___Toc8931_1093679482">Toolbar	17</a></p>
 	<p style="line-height: 100%; margin-left: 0.5cm; margin-bottom: 0cm">
@@ -855,10 +856,8 @@ There is the IP address the controller is listening on and you may
 define the FTP credentials to download TP4 files directly from the
 controller.</p>
 <p style="font-style: normal"><span id="Rahmen1" dir="ltr" style="float: left; width: 70%; border: none; padding: 0cm; background: #ffffff"><p style="line-height: 100%; margin-top: 0.21cm; margin-bottom: 0.21cm">
-	<img src="ReferenceGuide_html_37e3303e16ea0120.png" name="Bild2" align="left" width="100%" height="306">
-  <br clear="left"/>
-</img>
-<font size="3" style="font-size: 12pt"><i>Picture
+	<font size="3" style="font-size: 12pt"><i>P<img src="ReferenceGuide_html_a4e00c75dd15332c.png" name="Bild2" align="left" width="450" height="311" border="0"/>
+icture
 	<span style="background: #c0c0c0">2</span>: Controller settings</i></font></p>
 </span><br clear="left"><br/>
 <br/>
@@ -866,11 +865,13 @@ controller.</p>
 </p>
 <h4 class="western"><a name="__RefHeading___Toc8899_1093679482"></a>Downloading
 the surface from the controller</h4>
-<p>From version 1.3.0 on it is possible to put a normal TP4 file on
-the disc of the controller. The name of the file doesn’t matter,
-because it is configurable. By default <b>TPanel</b> is searching for
-a file called <font face="Bitstream Vera Sans Mono, monospace"><font size="2" style="font-size: 10pt">tpanel.tp4</font></font>.
-It is up to you to change this name in the settings dialog.</p>
+<p>From version 1.3.0 on it is possible to put one or more normal TP4
+files on the disc of the controller. The name of the files doesn’t
+matter, because the settings dialog is reading the directory on the
+controller and show all files found with an extension <i>TP4</i>. If
+no TP4 – file was found on the controller, the default file
+<font face="Bitstream Vera Sans Mono, monospace"><font size="2" style="font-size: 10pt">tpanel.tp4</font></font>
+is set in the settings dialog.</p>
 <p>If <b>TPanel</b> is started and there is no surface found, it
 tries to connect to the controller via FTP (File Transfer Protocol)
 with the credentials defined in the settings. If it succeeds and a
@@ -917,15 +918,47 @@ Set this to the password the controller expects.</p>
 <h4 class="western"><a name="__RefHeading___Toc8907_1093679482"></a>TP4
 file name</h4>
 <p style="font-style: normal">This defines the name of a TP4 file.
-Such a file can be downloaded automatically from TPanel. If the FTP
-credential (user name and password) are correct and there is a TP4
-file on the disc of the controller, then TPanel downloads the file,
-unpacks it and installs it. After an automatic restart the new
-surface is visible.</p>
-<p style="font-style: normal"><b>TPanel</b> looks for a TP4 file if
-this line contains some name and there is no surface installed or if
-this name changes in the settings and the new name is found on the
-controller.</p>
+Such a file can be downloaded automatically from <b>TPanel</b>. If
+the FTP credentials (user name and password) are correct and there is
+at least one TP4 file on the disc of the controller, then <b>TPanel</b>
+downloads the file, unpacks it and installs it. After an automatic
+restart the new surface is visible.</p>
+<p style="font-style: normal">This so called combo box is the
+combination of an edit line and a list. When the settings dialog is
+opened, <b>TPanel</b> tries to connect to the controller with the
+given FTP credentials. If it succeeds it reads the root directory of
+the controller. It puts each file with a file extension of TP4 into
+this element. When you click on the small arrow on the right end of
+the line, it opens up and shows the content, if any.</p>
+<p style="font-style: normal">If there were no TP4 files found on the
+controller then it contains only the default file name <font face="Bitstream Vera Sans Mono, monospace"><font size="2" style="font-size: 10pt">tpanel.tp4</font></font>.</p>
+<p style="font-style: normal">On the right end of this line is a
+button with a down arrow visible. If you click on it a dialog box
+opens.</p>
+<p style="font-style: normal">I<span id="Rahmen12" dir="ltr" style="float: left; width: 40%; border: none; padding: 0cm; background: #ffffff"><p style="line-height: 100%; margin-top: 0.21cm; margin-bottom: 0.21cm">
+	<img src="ReferenceGuide_html_47b92f0193dcc558.png" name="Bild14" align="left" width="100%" height="73">
+  <br clear="left"/>
+</img>
+<font size="3" style="font-size: 12pt"><i>Picture
+	<span style="background: #c0c0c0">3</span>: Question to download a
+	file.</i></font></p>
+</span><br clear="left">f you want to download this file click on
+YES. Otherwise on NO. If you select YES, then the force button gets a
+red background. This means that the download starts at the moment the
+settings dialog is closed.
+</p>
+<p style="font-style: normal">If you select another surface file and
+close the dialog, <b>TPanel</b> ask you if you want to download the
+new surface.</p>
+<p style="font-style: normal">I<span id="Rahmen13" dir="ltr" style="float: left; width: 29%; border: none; padding: 0cm; background: #ffffff"><p style="line-height: 100%; margin-top: 0.21cm; margin-bottom: 0.21cm">
+	<img src="ReferenceGuide_html_66114a2ed2433951.png" name="Bild15" align="left" width="95%" height="75">
+  <br clear="left"/>
+</img>
+<font size="3" style="font-size: 12pt"><i>Picture
+	<span style="background: #c0c0c0">4</span>: Install surface?</i></font></p>
+</span><br clear="left">f you click on YES the download starts.
+Otherwise nothing happens.
+</p>
 <h4 class="western"><a name="__RefHeading___Toc8909_1093679482"></a>FTP
 passive mode</h4>
 <p style="font-style: normal">The FTP protocol knows two different
@@ -953,7 +986,7 @@ settings do nothing!</i></p>
   <br clear="left"/>
 </img>
 <font size="3" style="font-size: 12pt"><i>Picture
-	<span style="background: #c0c0c0">3</span>: SIP settings</i></font></p>
+	<span style="background: #c0c0c0">5</span>: SIP settings</i></font></p>
 </span><br clear="left">roxy
 </h4>
 <p style="font-style: normal">The name or IP address of the SIP
@@ -982,7 +1015,7 @@ to select scaling or to force a toolbar to be displayed.</p>
   <br clear="left"/>
 </img>
 <font size="3" style="font-size: 12pt"><i>Picture
-	<span style="background: #c0c0c0">4</span>: Optical settings</i></font></p>
+	<span style="background: #c0c0c0">6</span>: Optical settings</i></font></p>
 </span><br clear="left">caling
 </h4>
 <p style="font-style: normal">On a desktop this is disabled by
@@ -1000,11 +1033,12 @@ a higher resolution and therefor the surface would look like very
 small.</span></p>
 <h4 class="western"><a name="__RefHeading___Toc8929_1093679482"></a><span style="font-style: normal">S</span><span style="font-style: normal">tartup
 banner</span></h4>
-<p><span style="font-style: normal">This makes sense only on a
-desktop. Therefor it is disabled on a mobile device.</span></p>
-<p><span style="font-style: normal">If this is checked, TPanel shows
-a small message on startup from the command line.</span></p>
-<p style="border: 1px solid #000000; padding: 0.05cm"><font color="#000000"><font face="Bitstream Vera Sans Mono, monospace"><font size="2" style="font-size: 10pt"><span style="font-style: normal"><span style="background: #ffffff">$
+<p style="font-style: normal">This makes sense only on a desktop.
+Therefor it is disabled on a mobile device.</p>
+<p style="font-style: normal">If this is checked, TPanel shows a
+small message on startup from the command line.</p>
+<p style="border: 1px solid #000000; padding: 0.05cm; background: #e6e6e6">
+<font color="#000000"><font face="Bitstream Vera Sans Mono, monospace"><font size="2" style="font-size: 10pt"><span style="font-style: normal"><span style="background: #ffffff">$
 </span></span></font></font></font><font color="#000000"><font face="Bitstream Vera Sans Mono, monospace"><font size="2" style="font-size: 10pt"><span style="font-style: normal"><b><span style="background: #ffffff">tpanel
 -c tpanel.cfg</span></b></span></font></font></font><font color="#000000"><font face="Bitstream Vera Sans Mono, monospace"><font size="2" style="font-size: 10pt"><span style="font-style: normal"><span style="background: #ffffff">
 &nbsp;</span></span></font></font></font><font face="Bitstream Vera Sans Mono, monospace"><font size="2" style="font-size: 10pt"><span style="font-style: normal"><br/>
@@ -1020,15 +1054,16 @@ program is under the terms of GPL version 3</span></font></font></p>
 <h4 class="western" style="page-break-before: always"><a name="__RefHeading___Toc8931_1093679482"></a>
 Toolbar</h4>
 <p>The toolbar simulates some hard buttons of a real panel. If we
-take the panel type MVP-5200i for example, we have round wheel on the
-right which is also 4 buttons. There is an additional button in the
-center of the wheel. This buttons are programmable with TPDesign4.</p>
+take the panel type MVP-5200i for example, we have a round wheel on
+the right which is also 4 buttons. There is an additional button in
+the center of the wheel. This buttons are programmable with
+TPDesign4.</p>
 <p>B<span id="Rahmen9" dir="ltr" style="float: left; width: 50%; border: none; padding: 0cm; background: #ffffff"><p style="line-height: 100%; margin-top: 0.21cm; margin-bottom: 0.21cm">
 	<img src="ReferenceGuide_html_feb8f09a633b84b9.png" name="Bild8" align="left" width="100%" height="70">
   <br clear="left"/>
 </img>
 <font size="3" style="font-size: 12pt"><i>Picture
-	<span style="background: #c0c0c0">5</span>: Navigation wheel on a
+	<span style="background: #c0c0c0">7</span>: Navigation wheel on a
 	MVP-5200i</i></font></p>
 </span><br clear="left">ecause such buttons are a practical shortcut
 for navigation, TPanel has a toolbar with some similar functions.
@@ -1065,16 +1100,17 @@ for navigation, TPanel has a toolbar with some similar functions.
 
 	</p>
 	<p style="line-height: 100%; margin-top: 0.21cm; margin-bottom: 0.21cm">
-	<font size="3" style="font-size: 12pt"><i>Picture <span style="background: #c0c0c0">6</span>:
+	<font size="3" style="font-size: 12pt"><i>Picture <span style="background: #c0c0c0">8</span>:
 	Toolbar of TPanel</i></font></p>
 </span><br clear="left">s you can see, there are navigation buttons
 into 4 directions and a select button. Then the toolbar offers 2
 buttons to control volume.
 </p>
-<p>Under the volume buttons you find 2 more buttons:</p>
+<p>Under the volume buttons you find 3 more buttons:</p>
 <p> <img src="ReferenceGuide_html_8c89810f80030f05.png" name="Bild10" align="left" width="5%" height="31" border="0"/>
 This
-opens the settings dialog.</p>
+opens the settings dialog (look at <span style="background: #c0c0c0">Setup Dialog</span>
+at page <span style="background: #c0c0c0">10</span>).</p>
 <p><br/>
 <br/>
 
@@ -1088,7 +1124,7 @@ T<span id="Rahmen11" dir="ltr" style="float: left; width: 50%; border: none; pad
   <br clear="left"/>
 </img>
 <font size="3" style="font-size: 12pt"><i>Picture
-	<span style="background: #c0c0c0">7</span>: About dialog on a mobile
+	<span style="background: #c0c0c0">9</span>: About dialog on a mobile
 	device</i></font></p>
 </span><br clear="left">his ends the program. If you press this
 button the application ends truly.
@@ -1122,7 +1158,7 @@ the following additional paths are searched:</span></span></p>
 <p><span lang="en-US"><span style="font-style: normal">I</span></span><span lang="en-US"><span style="font-style: normal">f
 </span></span><span lang="en-US"><span style="font-style: normal"><b>TPanel</b></span></span><span lang="en-US"><span style="font-style: normal">
 was not able to find a configuration file in one of the above
-locations and not command line parameter was given, a default
+locations and no command line parameter was given, a default
 configuration file and storage structure is created in the current
 directory. This is useful especially on a mobile device where the
 location of the data directory of the application is accessible only
@@ -1159,7 +1195,7 @@ SystemSoundFile=singleBeep.wav
 SystemSoundState=OFF
 SystemSingleBeep=singleBeep01.wav</pre><p style="line-height: 100%; margin-top: 0.21cm; margin-bottom: 0.21cm">
 	<font size="3" style="font-size: 12pt"><i>Text <span style="background: #c0c0c0">1</span>:
-	Example of a configuration file</i></font></p>
+	Example of a configuration file (shortened)</i></font></p>
 </span>The following section describes each of the possible
 configuration options.
 </p>
@@ -1173,7 +1209,7 @@ what information is logged. </span></span><span lang="en-US"><i><b>TPanel</b></i
 must have write permissions to the directory and the defined log
 file!</i></span></p>
 <p><span lang="en-US"><span style="font-style: normal"><b>Example</b></span></span><span lang="en-US"><span style="font-style: normal">:</span></span></p>
-<p style="font-style: normal"><font face="Bitstream Vera Sans Mono, monospace"><font size="2" style="font-size: 10pt">	LogFile=/home/me/logs/tpanel.log</font></font></p>
+<p style="font-style: normal"><font face="Bitstream Vera Sans Mono, monospace"><font size="2" style="font-size: 10pt">	LogFile=/home/user/logs/tpanel.log</font></font></p>
 <h3 class="western"><a name="__RefHeading___Toc5077_2469073641"></a>LogLevel</h3>
 <p style="font-style: normal">This defines the log levels. Each level
 is a level on it’s own and may be combined with any other level.
@@ -1408,7 +1444,7 @@ currently does not support panel to panel communication.</p>
   <br clear="left"/>
 </img>
 <font size="3" style="font-size: 12pt"><i>Picture
-	<span style="background: #c0c0c0">8</span>: TPDesign4 surface
+	<span style="background: #c0c0c0">10</span>: TPDesign4 surface
 	transfer (send to panel)</i></font></p>
 </span><br clear="left">xample</b>:
 </p>
@@ -1489,7 +1525,7 @@ certificate is invalid downloading from the source is refused.</p>
 <p>Enables scaling on mobile devices.</p>
 <p>On mobile devices this is set to true by default. On other devices
 this is ignored. Look at <span style="background: #c0c0c0">Scaling</span>
-on page <span style="background: #c0c0c0">16</span> for more
+on page <span style="background: #c0c0c0">17</span> for more
 information.</p>
 <p><b>Example</b>:</p>
 <pre class="western">	Scale=false</pre><h3 class="western">
@@ -1525,25 +1561,72 @@ SystemSingleBeep</h3>
 or <font face="Bitstream Vera Sans Mono, monospace"><font size="2" style="font-size: 10pt">BEEP</font></font>
 is received.</p>
 <p><b>Example</b>:</p>
-<pre class="western">	SystemSingleBeep=singleBeep01.wav</pre><p>
-SystemDoubleBeep</p>
+<pre class="western">	SystemSingleBeep=singleBeep01.wav</pre><h3 class="western">
+SystemDoubleBeep</h3>
 <p>Defines the sound file to play if the command A<font face="Bitstream Vera Sans Mono, monospace"><font size="2" style="font-size: 10pt">DBEEP</font></font>
 or <font face="Bitstream Vera Sans Mono, monospace"><font size="2" style="font-size: 10pt">DBEEP</font></font>
 is received.</p>
 <p><b>Example</b>:</p>
-<pre class="western">	SystemDoubleBeep=doubleBeep01.wav</pre><h1 class="western">
+<pre class="western">	SystemDoubleBeep=doubleBeep01.wav</pre><h3 class="western">
+FTPuser</h3>
+<p>Defines the FTP user on the controller. This is used to access the
+controller. By default this is set to <font face="Bitstream Vera Sans Mono, monospace"><font size="2" style="font-size: 10pt">administrator</font></font>.</p>
+<p><b>Example</b>:</p>
+<pre class="western">	FTPuser=administrator</pre><h3 class="western">
+FTPpassword</h3>
+<p>Defines the FTP password on the controller. This is used to access
+the controller. By default this is set to <font face="Bitstream Vera Sans Mono, monospace"><font size="2" style="font-size: 10pt">password</font></font>.</p>
+<p><b>Example</b>:</p>
+<pre class="western">	FTPpassword=password</pre><h3 class="western">
+FTPsurface</h3>
+<p>This defines the file name of a TP4 file on the disc of the
+controller. If the FTP credentials are correct configured, <b>TPanel</b>
+is able to download the surface directly from the controller. By
+default this is set to <font face="Bitstream Vera Sans Mono, monospace"><font size="2" style="font-size: 10pt">tpanel.tp4</font></font>.</p>
+<p><b>Example</b>:</p>
+<pre class="western">	FTPsurface=tpanel.tp4</pre><p>
+FTPpassive</p>
+<p>This defines the way the FTP connection of the data channel is
+done. If this is set to <font face="Bitstream Vera Sans Mono, monospace"><font size="2" style="font-size: 10pt">false</font></font>
+the normal connection over port 20 is established. This may not work
+if there is a firewall between the client and the controller. In this
+case this should be set to <font face="Bitstream Vera Sans Mono, monospace"><font size="2" style="font-size: 10pt">true</font></font>.
+Then the passive mode is used. By default this is set to <font face="Bitstream Vera Sans Mono, monospace"><font size="2" style="font-size: 10pt">true</font></font>.</p>
+<p><b>Example</b>:</p>
+<pre class="western">	FTPpassive=true</pre><h3 class="western">
 <br/>
 <br/>
 
-</h1>
+</h3>
+<h3 class="western" style="page-break-before: always">FTPdownloadTime</h3>
+<p>This is an internal used value and must not be set. <b>TPanel</b>
+sets it at the moment it could successfully download a surface file
+from the controller.</p>
+<p><b>Example</b>:</p>
+<pre class="western">	FTPdownloadTime=1646664837</pre><h3 class="western">
+SIP_DOMAIN</h3>
+<p>Currently not implemented</p>
+<h3 class="western">SIP_PROXY</h3>
+<p>Currently not implemented</p>
+<h3 class="western">SIP_PORT</h3>
+<p>Currently not implemented</p>
+<h3 class="western">SIP_STUN</h3>
+<p>Currently not implemented</p>
+<h3 class="western">SIP_USER</h3>
+<p>Currently not implemented</p>
+<h3 class="western">SIP_PASSWORD</h3>
+<p>Currently not implemented</p>
+<h3 class="western">SIP_ENABLED</h3>
+<p>Currently not implemented</p>
 <h1 class="western" style="page-break-before: always"><a name="__RefHeading___Toc5760_2469073641"></a>
 Using TPanel on a mobile device</h1>
 <p><b>TPanel</b> is currently not available in the <i>Play Store</i>
 of <i>Android</i>. Therefor it must be downloaded from my page at
-<a href="https://www.theosys.at/">https://www.theosys.at</a>. Get the
-latest version and copy it to a location on your mobile device. The
-device must run with <i><b>Android 10</b></i> or newer to be able to
-use the application.</p>
+<a href="https://www.theosys.at/download">https://www.theosys.at</a>.
+Get the latest version (<font face="Bitstream Vera Sans Mono, monospace"><font size="2" style="font-size: 10pt">tpanel_android_vX.X.X.apk</font></font>)
+and copy it to a location on your mobile device. The device must run
+with <i><b>Android 10</b></i> or newer to be able to use the
+application.</p>
 <h2 class="western"><a name="__RefHeading___Toc5762_2469073641"></a>Enable
 APK installs on non Samsung devices</h2>
 <ol>
@@ -1581,8 +1664,8 @@ scenarios may happen:</p>
 	<li><p><b>There is no TP4 file on the controller.</b><br/>
 After the
 	restart the previous surface (the green one) reappears. Open
-	<i>TPDesign4</i> and load your surface to <b>TPanel</b> as you would
-	do for a real panel. The transfer display occurs and shows the
+	<i>TPDesign4</i> and upload your surface to <b>TPanel</b> as you
+	would do for a real panel. The transfer display occurs and shows the
 	progress. At the moment the transfer finished, it takes up to 30
 	seconds until the new interface appears. Now you can use <b>TPanel</b>
 	the same way as a real panel.</p>
@@ -1642,7 +1725,7 @@ section may look like:</p>
 <p>
 Change the line 
 </p>
-<pre class="western"><span style="background: #e6e6e6">&lt;password encrypted=&quot;1&quot;&gt;2510F21D1E2BF361&lt;/password&gt;</span></pre><p>
+<pre class="western"><span style="background: #e6e6e6">&lt;password encrypted=&quot;1&quot;&gt;2312F21D0E2BA367&lt;/password&gt;</span></pre><p>
 into</p>
 <pre class="western"><span style="background: #e6e6e6">&lt;password encrypted=&quot;0&quot;&gt;password&lt;/password&gt;</span></pre><h4 class="western">
 <a name="__RefHeading___Toc6063_2469073641"></a>Panel to panel
@@ -5575,7 +5658,7 @@ and are case insensitive:</p>
 				Sets the Off state border color to 12 (Yellow). Colors can be set
 				by Color Numbers, Color name, R,G,B,alpha colors</p>
 				<p>(RRGGBBAA) and R, G &amp; B colors values (RRGGBB). Refer to
-				the RGB Triplets and Names For Basic 88 Colors table on page <span style="background: #c0c0c0">34</span>.</p>
+				the RGB Triplets and Names For Basic 88 Colors table on page <span style="background: #c0c0c0">36</span>.</p>
 			</td>
 		</tr>
 		<tr></tr>
@@ -5649,7 +5732,7 @@ and are case insensitive:</p>
 					= All states, for General buttons 1 = Off state and 2 = On
 					state).</p>
 					<li><p>color value = Refer to the RGB Triplets and Names For
-					Basic 88 Colors table on page <span style="background: #c0c0c0">34</span>
+					Basic 88 Colors table on page <span style="background: #c0c0c0">36</span>
 					for details.</p>
 				</ul>
 				<p><b>Example</b>:</p>
@@ -6152,7 +6235,7 @@ TEXT LENGTH = 0</pre>
 			<td width="91%" style="border-top: none; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000; padding-top: 0cm; padding-bottom: 0.1cm; padding-left: 0.1cm; padding-right: 0.1cm"><p>
 				Set a border to a specific border style associated with a border
 				value for those buttons with a defined address range. Refer to
-				the Border Styles and Programming Numbers table on page <span style="background: #c0c0c0">36</span>
+				the Border Styles and Programming Numbers table on page <span style="background: #c0c0c0">38</span>
 				for more information.</p>
 				<p><b>Syntax</b>:</p>
 				<pre class="western">&quot;'^BOR-&lt;vt addr range&gt;,&lt;border style name or border value&gt;'&quot;</pre><p>
@@ -6172,7 +6255,7 @@ TEXT LENGTH = 0</pre>
 				variable text range of 500-504 &amp; 510-515.</p>
 				<p>The border style is available through the TPDesign4
 				border-style drop-down list. Refer to the TPD4 Border Styles by
-				Name table on page <span style="background: #c0c0c0">36</span>
+				Name table on page <span style="background: #c0c0c0">38</span>
 				for more information.</p>
 			</td>
 		</tr>
@@ -6236,7 +6319,7 @@ TEXT LENGTH = 0</pre>
 				<pre class="western">   SEND_COMMAND Panel,&quot;'^BRD-500.504&amp;510.515,1&amp;2,Quad Line'&quot;</pre><p>
 				Sets the border by name (Quad Line) to those buttons with the
 				variable text range of 500-504 &amp; 510-515. Refer to the TPD4
-				Border Styles by Name table on page <span style="background: #c0c0c0">36</span>.</p>
+				Border Styles by Name table on page <span style="background: #c0c0c0">38</span>.</p>
 			</td>
 		</tr>
 		<tr></tr>
@@ -6690,7 +6773,7 @@ TEXT LENGTH = 0</pre>
 				<ul>
 					<li><p>variable text address range = 1 - 4000.</p>
 					<li><p>color value = Refer to the RGB Triplets and Names For
-					Basic 88 Colors table on page <span style="background: #c0c0c0">34</span>.</p>
+					Basic 88 Colors table on page <span style="background: #c0c0c0">36</span>.</p>
 				</ul>
 				<p><b>Example</b>:</p>
 				<pre class="western">   SEND_COMMAND Panel,&quot;'^GSC-500,12'&quot;</pre><p>
@@ -7258,7 +7341,7 @@ TEXT LENGTH = 0</pre>
 					= All states, for General buttons 1 = Off state and 2 = On
 					state).</p>
 					<li><p>color value = Refer to the RGB Triplets and Names For
-					Basic 88 Colors table on page <span style="background: #c0c0c0">34</span>.</p>
+					Basic 88 Colors table on page <span style="background: #c0c0c0">36</span>.</p>
 				</ul>
 				<p><b>Example</b>:</p>
 				<pre class="western">   SEND_COMMAND Panel,&quot;'^TEC-500.504&amp;510.515,1&amp;2,12'&quot;</pre><p>

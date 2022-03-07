@@ -3,6 +3,22 @@ ChangeLog
 
 Release: 1.3.0
 ===============================================================================
+2022-03-07 Changed the edit line "TP4 file name" into a comboBox and added
+           a button to force the download of a surface file.
+           The contents of the comboBox are feeded by a directory read on the
+           controller. Each file with the extension "TP4" (case insensitive)
+           is added as an item to the comboBox. The surface will now be
+           downloaded when the selection in the comboBox changed  or the force
+           button was clicked. The foce button gets a red background if the
+           user wants to download the surface in any way. To be sure the user is
+           asked whether the surface file should be downloaded or not.
+
+           The second way to download a surface file is when the directory with
+           the surface does not exist or contains the hidden file ".system".
+           Then, if the configuration file was already configured, the surface
+           is downloaded on startup of TPanel. When it finishes successfully
+           the program comes up with the new surface.
+
 2022-03-04 Fixed the look of the settings dialog on mobile devices.
            Added a feature to force the toolbar to be visible.
 
