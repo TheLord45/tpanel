@@ -30,6 +30,8 @@ include_directories(${EXPAT_INCLUDE_DIRS})
 link_directories(${EXPAT_LIBRARY_DIRS})
 set(LIBS ${LIBS} ${EXPAT_LIBRARIES})
 
+find_package(linphone)
+
 set(CMAKE_INSTALL_PREFIX /usr)
 set(QT_USE_QTMULTIMEDIA TRUE)
 set(QT_USE_QTMULTIMEDIAWIDGETS TRUE)
@@ -91,6 +93,7 @@ set(SOURCES tmain.cpp
 			tfsfreader.cpp
 			readtp4.cpp
 			expand.cpp
+			tsipclient.cpp
 			texcept.cpp
 			base64.cpp
 			texpat++.cpp
@@ -117,6 +120,6 @@ if(CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
 	target_link_libraries(tpanel stdc++fs)
 endif()
 
-target_link_libraries(tpanel m pthread ssl crypto ftp ${LIBS} ${LIBSKIA_LIBRARY} Qt5::Widgets Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Qml Qt5::QuickWidgets)
+target_link_libraries(tpanel m pthread ssl crypto ftp ${LIBS} ${LIBSKIA_LIBRARY} linphone Qt5::Widgets Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Qml Qt5::QuickWidgets)
 
 install(TARGETS tpanel RUNTIME DESTINATION bin)

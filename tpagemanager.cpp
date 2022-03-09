@@ -370,6 +370,7 @@ TPageManager::TPageManager()
     REG_CMD(doTKP, "^VKB");     // G5: Bring up a virtual keyboard.
 
     // Here the SIP commands will take place
+    REG_CMD(doPHN, "^PHN");     // SIP commands
 
     // State commands
     REG_CMD(doON, "ON");
@@ -378,6 +379,15 @@ TPageManager::TPageManager()
     REG_CMD(doBLINK, "BLINK");
 
     REG_CMD(doFTR, "#FTR");     // File transfer (virtual internal command)
+
+    // At least we must add the SIP client
+    mSIPClient = new TSIPClient;
+
+    if (TError::isError())
+    {
+        MSG_ERROR("Error initializing the SIP client!");
+        TConfig::setSIPstatus(false);
+    }
 
     TError::clear();
     surface_mutex.unlock();
@@ -2573,6 +2583,22 @@ void TPageManager::sendString(uint handle, const std::string& text)
         gAmxNet->sendCommand(scmd);
     else
         MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+}
+
+void TPageManager::sendPHNcommand(const std::string& cmd)
+{
+    DECL_TRACER("TPageManager::sendPHNcommand(const std::string& cmd)");
+
+    amx::ANET_SEND scmd;
+    scmd.port = 1;
+    scmd.channel = TConfig::getChannel();
+    scmd.msg = "^PHN-" + cmd;
+    scmd.MC = 0x008b;
+
+    if (gAmxNet)
+        gAmxNet->sendCommand(scmd);
+    else
+        MSG_WARNING("Missing global class TAmxNet. Can't send ^PHN command!");
 }
 
 void TPageManager::sendKeyStroke(char key)
@@ -6848,10 +6874,141 @@ void TPageManager::doTKP(int port, vector<int>& channels, vector<string>& pars)
 /**
  * Popup the virtual keyboard
  */
-void TPageManager::doVKB(int port, std::vector<int>& channels, std::vector<std::string>& pars)
+void TPageManager::doVKB(int port, vector<int>& channels, vector<string>& pars)
 {
-    DECL_TRACER("TPageManager::doVKB(int port, std::vector<int>& channels, std::vector<std::string>& pars)");
+    DECL_TRACER("TPageManager::doVKB(int port, vector<int>& channels, vector<string>& pars)");
 
     doAKP(port, channels, pars);
 }
 
+void TPageManager::sendPHN(vector<string>& cmds)
+{
+    DECL_TRACER("TPageManager::sendPHN(const vector<string>& cmds)");
+
+    vector<int> channels;
+    doPHN(-1, channels, cmds);
+}
+
+/**
+ * @brief Phone commands.
+ * The phone commands could come from the master or are send to the master.
+ * If the parameter \p port is less then 0 (zero) a command is send to the
+ * master. In any other case the command came from the mater.
+ */
+void TPageManager::doPHN(int port, vector<int>&, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doPHN(int port, vector<int>&, vector<string>& pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Expecting at least 1 parameter but got none! Ignoring command.");
+        return;
+    }
+
+    string sCommand;
+    string cmd = toUpper(pars[0]);
+
+    // Master to panel
+    if (port >= 0)
+    {
+        if (!mSIPClient)
+        {
+            MSG_ERROR("SIP client class was not initialized!")
+            return;
+        }
+
+        if (cmd == "ANSWER")
+        {
+            if (pars.size() >= 2)
+            {
+                // FIXME: Answer phone
+            }
+        }
+        else if (cmd == "AUTOANSWER")
+        {
+            if (pars.size() >= 2)
+            {
+                if (pars[1].at(0) == '0')
+                    mPHNautoanswer = false;
+                else
+                    mPHNautoanswer = true;
+            }
+        }
+        else if (cmd == "CALL")     // Initiate a call
+        {
+            if (pars.size() >= 2)
+                mSIPClient->call(pars[1]);
+        }
+        else if (cmd == "DTMF")     // Send tone modified codes
+        {
+            // FIXME: Is this possible with linphone?
+        }
+        else if (cmd == "HANGUP")   // terminate a call
+        {
+            mSIPClient->terminate();
+        }
+        else if (cmd == "HOLD")     // Hold the line
+        {
+            // FIXME:
+        }
+        else if (cmd == "PRIVACY")  // Set/unset "do not disturb"
+        {
+            // FIXME:
+        }
+        else if (cmd == "REDIAL")   // Redials the last number
+        {
+            // FIXME:
+        }
+        else if (cmd == "TRANSFER") // Transfer call to provided number
+        {
+            // FIXME
+        }
+        else if (cmd == "SETUP")    // Some temporary settings
+        {
+            if (pars.size() < 2)
+                return;
+
+            if (pars[1] == "DOMAIN" && pars.size() >= 3)
+                TConfig::setSIPdomain(pars[2]);
+            else if (pars[1] == "DTMFDURATION")
+            {
+                // FIXME: How to do this?
+                MSG_WARNING("Setting the DTMF duration is currently not implemented.");
+            }
+            else if (pars[1] == "ENABLE")   // (re)register user
+            {
+                TConfig::setSIPstatus(true);
+                mSIPClient->cleanUp();
+                mSIPClient->connectSIPProxy();
+            }
+            else if (pars[1] == "PASSWORD" && pars.size() >= 3)
+                TConfig::setSIPpassword(pars[2]);
+            else if (pars[1] == "PORT" && pars.size() != 3)
+                TConfig::setSIPport(atoi(pars[2].c_str()));
+            else if (pars[1] == "PROXYADDR" && pars.size() >= 3)
+                TConfig::setSIPproxy(pars[2]);
+            else if (pars[1] == "STUNADDR" && pars.size() >= 3)
+                TConfig::setSIPstun(pars[2]);
+            else if (pars[1] == "USERNAME" && pars.size() >= 3)
+                TConfig::setSIPuser(pars[2]);
+        }
+        else
+        {
+            MSG_ERROR("Unknown command ^PHN-" << cmd << " ignored!");
+        }
+    }
+    else   // Panel to master
+    {
+        vector<string>::iterator iter;
+
+        for (iter = pars.begin(); iter != pars.end(); ++iter)
+        {
+            if (!sCommand.empty())
+                sCommand += ",";
+
+            sCommand += *iter;
+        }
+
+        sendPHNcommand(sCommand);
+    }
+}

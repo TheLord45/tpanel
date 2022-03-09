@@ -35,6 +35,7 @@
 #include "tamxnet.h"
 #include "tamxcommands.h"
 #include "tsystemdraw.h"
+#include "tsipclient.h"
 
 #define REG_CMD(func, name)     registerCommand(bind(&TPageManager::func, this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),name)
 
@@ -225,6 +226,7 @@ class TPageManager : public TAmxCommands
         void sendKeyboard(const std::string& text);
         void sendKeypad(const std::string& text);
         void sendString(uint handle, const std::string& text);
+        void sendPHNcommand(const std::string& cmd);
         void sendKeyStroke(char key);
         /**
          * This starts the communication with the AMX controller. The method
@@ -255,6 +257,8 @@ class TPageManager : public TAmxCommands
         bool haveShutdown() { return _shutdown != nullptr; }
         void callSetupPage() { if (_callShowSetup) _callShowSetup(); }
         void callShutdown() { if (_shutdown) _shutdown(); }
+        bool getPHNautoanswer() { return mPHNautoanswer; }
+        void sendPHN(std::vector<std::string>& cmds);
 
     protected:
         PAGELIST_T findPage(const std::string& name);
@@ -448,6 +452,8 @@ class TPageManager : public TAmxCommands
         void doTKP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doVKB(int port, std::vector<int>& channels, std::vector<std::string>& pars);
 
+        void doPHN(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+
         int mActualPage{0};                             // The number of the actual visible page
         int mPreviousPage{0};                           // The number of the previous page
         int mFirstLeftPixel{0};                         // Pixels to add to left (x) mouse coordinate
@@ -471,6 +477,9 @@ class TPageManager : public TAmxCommands
         std::string mAkbText;                           // This is the text for the virtual keyboard (@AKB)
         std::string mAkpText;                           // This is the text for the virtual keyad (@AKP)
         bool mPassThrough{false};                       // Can ve set to true with the command ^KPS
+        // SIP
+        bool mPHNautoanswer{false};                     // The state of the SIP autoanswer
+        TSIPClient *mSIPClient{nullptr};                // Includes the SIP client
 #ifdef _SCALE_SKIA_
         double mScaleFactor{1.0};                       // The scale factor to zoom or shrink all components
         double mScaleFactorWidth{1.0};                  // The individual scale factor for the width
