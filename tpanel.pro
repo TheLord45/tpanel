@@ -47,6 +47,7 @@ HEADERS = \
    $$PWD/tqtbusy.h \
    $$PWD/texcept.h \
    $$PWD/tfsfreader.cpp \
+   $$PWD/tsipclient.cpp \
    $$PWD/timgcache.h \
    $$PWD/tsystemsound.h \
    $$PWD/tsystemdraw.h \
@@ -94,6 +95,7 @@ SOURCES = \
    $$PWD/tqkeypad.cpp \
    $$PWD/tqtbusy.cpp \
    $$PWD/tfsfreader.h \
+   $$PWD/tsipclient.h \
    $$PWD/texcept.cpp \
    $$PWD/timgcache.cpp \
    $$PWD/tsystemsound.cpp \
@@ -112,6 +114,7 @@ INCLUDEPATH = \
     $$PWD/. \
     $$PWD/ftplib \
     $$EXT_LIB_PATH/skia \
+    $$EXT_LIB_PATH/linphone/include \
     $$EXTRA_PATH/expat/include
 
 android: include($$SDK_PATH/android_openssl/openssl.pri)
@@ -120,6 +123,7 @@ equals(ANDROID_TARGET_ARCH,arm64-v8a) {
     INCLUDEPATH += $$EXT_LIB_PATH/openssl/arm64-v8a/include
 
     LIBS += $$EXT_LIB_PATH/skia/arm64/libskia.a \
+    -L$$EXT_LIB_PATH/linphone/libs/arm64-v8a \
     -L$$SDK_PATH/android_openssl/no-asm/latest/arm64
 }
 
@@ -127,6 +131,7 @@ equals(ANDROID_TARGET_ARCH,armeabi-v7a) {
     INCLUDEPATH += $$EXT_LIB_PATH/openssl/armeabi-v7a/include
 
     LIBS += $$EXT_LIB_PATH/skia/arm/libskia.a \
+    -L$$EXT_LIB_PATH/linphone/libs/armeabi-v7a \
     -L$$SDK_PATH/android_openssl/no-asm/latest/arm
 }
 
@@ -134,6 +139,7 @@ equals(ANDROID_TARGET_ARCH,x86) {
     INCLUDEPATH += $$EXT_LIB_PATH/openssl/x86/include
 
     LIBS += $$EXT_LIB_PATH/skia/x86/libskia.a \
+    -L$$EXT_LIB_PATH/linphone/libs/x86 \
     -L$$SDK_PATH/android_openssl/no-asm/latest/x86
 }
 
@@ -141,6 +147,7 @@ equals(ANDROID_TARGET_ARCH,x86_64) {
     INCLUDEPATH += $$EXT_LIB_PATH/openssl/x86_64/include
 
     LIBS += $$EXT_LIB_PATH/skia/x86_64/libskia.a \
+    -L$$EXT_LIB_PATH/linphone/libs/x86_64 \
     -L$$SDK_PATH/android_openssl/no-asm/latest/x86_64
 }
 
@@ -153,7 +160,7 @@ FORMS += \
     tqtsettings.ui \
     busy.ui
 
-LIBS += -lcrypto_1_1 -lssl_1_1 -lEGL -lGLESv2 -landroid -llog
+LIBS += -lcrypto_1_1 -lssl_1_1 -lEGL -lGLESv2 -landroid -llog -llinphone
 
 DISTFILES += \
     android/AndroidManifest.xml \

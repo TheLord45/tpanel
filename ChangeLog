@@ -3,6 +3,8 @@ ChangeLog
 
 Release: 1.3.1
 ===============================================================================
+2022-03-10 Added support for more than 1 phone line.
+
 2022-03-09 Added a new class to handle SIP commands and to abstract the
            linphone library.
            Started to add some ^PHN commands.

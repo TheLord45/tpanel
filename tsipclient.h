@@ -24,20 +24,37 @@
 
 #include <linphone/core.h>
 
+#define SIP_MAX_LINES   2
+
 class TSIPClient
 {
     public:
-        TSIPClient();
+        typedef enum SIP_STATE_t
+        {
+            SIP_NONE,
+            SIP_CONNECTED,
+            SIP_DISCONNECTED,
+            SIP_TRYING,
+            SIP_RINGING,
+            SIP_HOLD
+        }SIP_STATE_t;
+
+        TSIPClient(int id);
         ~TSIPClient();
 
         void cleanUp();
         bool connectSIPProxy();
         bool run();
         void stop() { mRunning = false; }
+        int getLineID() { return mLine; }
+        LinphoneCore *getCore() { return mCore; }
+        SIP_STATE_t getSIPState() { return mSIPState; }
 
         bool call(const std::string& dest); //<! Start a phone call
         bool pickup(LinphoneCall *call);    //<! Lift up if the phone is ringing
         bool terminate();                   //<! Terminate a call
+        bool hold();                        //<! Pause a call
+        bool resume();                      //<! Resume a paused call
         bool setOnline();
         bool setOffline();
 
@@ -56,10 +73,39 @@ class TSIPClient
         std::atomic<bool> mThreadRun{false};
         std::atomic<bool> mBellRun{false};
         std::atomic<bool> mBellThreadRun{false};
+        int mLine{0};
+        SIP_STATE_t mSIPState{SIP_NONE};
 
-        static LinphoneCore *mCore;
-        static LinphoneProxyConfig *mProxyCfg;
-        static LinphoneCall *mCall;
+        LinphoneCore *mCore;
+        LinphoneProxyConfig *mProxyCfg;
+        LinphoneCall *mCall;
+};
+
+class TSIPPhone
+{
+    public:
+        TSIPPhone();
+        ~TSIPPhone();
+
+        void cleanUp(int id);
+        bool connectSIPProxy(int id);
+        bool run(int id);
+        void stop(int id);
+        TSIPClient::SIP_STATE_t getSIPState(int id);
+
+        bool call(int id, const std::string& dest); //<! Start a phone call
+        bool pickup(int id);    //<! Lift up if the phone is ringing
+        bool terminate(int id);                   //<! Terminate a call
+        bool hold(int id);
+        bool resume(int id);
+        bool setOnline(int id);
+        bool setOffline(int id);
+
+        static int getId(LinphoneCore *lc);
+        static TSIPClient *getClient(int id);
+
+    private:
+        static TSIPClient *mClients[SIP_MAX_LINES];
 };
 
 #endif

@@ -381,7 +381,7 @@ TPageManager::TPageManager()
     REG_CMD(doFTR, "#FTR");     // File transfer (virtual internal command)
 
     // At least we must add the SIP client
-    mSIPClient = new TSIPClient;
+    mSIPClient = new TSIPPhone;
 
     if (TError::isError())
     {
@@ -6921,7 +6921,12 @@ void TPageManager::doPHN(int port, vector<int>&, vector<string>& pars)
         {
             if (pars.size() >= 2)
             {
-                // FIXME: Answer phone
+                int id = atoi(pars[1].c_str());
+
+                if (mSIPClient->getSIPState(id) == TSIPClient::SIP_HOLD)
+                    mSIPClient->resume(id);
+                else
+                    mSIPClient->pickup(id);
             }
         }
         else if (cmd == "AUTOANSWER")
@@ -6937,7 +6942,7 @@ void TPageManager::doPHN(int port, vector<int>&, vector<string>& pars)
         else if (cmd == "CALL")     // Initiate a call
         {
             if (pars.size() >= 2)
-                mSIPClient->call(pars[1]);
+                mSIPClient->call(-1, pars[1]);
         }
         else if (cmd == "DTMF")     // Send tone modified codes
         {
@@ -6945,11 +6950,19 @@ void TPageManager::doPHN(int port, vector<int>&, vector<string>& pars)
         }
         else if (cmd == "HANGUP")   // terminate a call
         {
-            mSIPClient->terminate();
+            if (pars.size() >= 2)
+            {
+                int id = atoi(pars[1].c_str());
+                mSIPClient->terminate(id);
+            }
         }
         else if (cmd == "HOLD")     // Hold the line
         {
-            // FIXME:
+            if (pars.size() >= 2)
+            {
+                int id = atoi(pars[1].c_str());
+                mSIPClient->hold(id);
+            }
         }
         else if (cmd == "PRIVACY")  // Set/unset "do not disturb"
         {
@@ -6978,8 +6991,10 @@ void TPageManager::doPHN(int port, vector<int>&, vector<string>& pars)
             else if (pars[1] == "ENABLE")   // (re)register user
             {
                 TConfig::setSIPstatus(true);
-                mSIPClient->cleanUp();
-                mSIPClient->connectSIPProxy();
+                mSIPClient->cleanUp(0);
+                mSIPClient->connectSIPProxy(0);
+                mSIPClient->cleanUp(1);
+                mSIPClient->connectSIPProxy(1);
             }
             else if (pars[1] == "PASSWORD" && pars.size() >= 3)
                 TConfig::setSIPpassword(pars[2]);

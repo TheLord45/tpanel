@@ -479,7 +479,7 @@ class TPageManager : public TAmxCommands
         bool mPassThrough{false};                       // Can ve set to true with the command ^KPS
         // SIP
         bool mPHNautoanswer{false};                     // The state of the SIP autoanswer
-        TSIPClient *mSIPClient{nullptr};                // Includes the SIP client
+        TSIPPhone *mSIPClient{nullptr};                 // Includes the SIP client
 #ifdef _SCALE_SKIA_
         double mScaleFactor{1.0};                       // The scale factor to zoom or shrink all components
         double mScaleFactorWidth{1.0};                  // The individual scale factor for the width
