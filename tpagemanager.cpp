@@ -6894,6 +6894,15 @@ void TPageManager::sendPHN(vector<string>& cmds)
  * The phone commands could come from the master or are send to the master.
  * If the parameter \p port is less then 0 (zero) a command is send to the
  * master. In any other case the command came from the mater.
+ *
+ * @param port  This is used to signal if the command was sent by the master
+ *              or generated from the panel. If ths is less then 0, then the
+ *              method was called because of an event happen in the panel.
+ *              If this is grater or equal 0, then the event is comming from
+ *              the master.
+ * @param pars  This are parameters. The first parameter defines the action
+ *              to be done. According to the command this parameter may have a
+ *              different number of arguments.
  */
 void TPageManager::doPHN(int port, vector<int>&, vector<string>& pars)
 {

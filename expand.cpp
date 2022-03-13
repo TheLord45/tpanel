@@ -26,7 +26,6 @@
 #include "expand.h"
 #include <assert.h>
 
-using namespace std;
 #if __GNUC__ < 9 && !defined(__ANDROID__)
    #if __cplusplus < 201703L
       #warning "Your C++ compiler seems to have no support for C++17 standard!"
@@ -47,6 +46,8 @@ using namespace std;
     namespace fs = std::filesystem;
 #  endif
 #endif
+
+using namespace std;
 
 void Expand::setFileName (const string &fn)
 {
@@ -97,7 +98,7 @@ int Expand::unzip()
 		zerr(ret);
 		fclose(source);
 		fclose(dest);
-		fs::remove(target);
+        fs::remove(target);
 		return ret;
 	}
 
@@ -111,7 +112,7 @@ int Expand::unzip()
 			cerr << "Error reading from file " << fname << "!" << endl;
 			fclose(source);
 			fclose(dest);
-			fs::remove(target);
+            fs::remove(target);
 			return Z_ERRNO;
 		}
 
@@ -137,7 +138,7 @@ int Expand::unzip()
 					(void)inflateEnd(&strm);
 					fclose(source);
 					fclose(dest);
-					fs::remove(target);
+                    fs::remove(target);
 					zerr(ret);
 					return ret;
 			}
@@ -150,7 +151,7 @@ int Expand::unzip()
 				cerr << "Error on writing to file " << target << "!" << endl;
 				fclose(source);
 				fclose(dest);
-				fs::remove(target);
+                fs::remove(target);
 				return Z_ERRNO;
 			}
 		}
@@ -161,10 +162,10 @@ int Expand::unzip()
 	// clean up and return
 	(void)inflateEnd(&strm);
 	fclose(source);
-	fclose(dest);
-	fs::remove(fname);
-	fs::rename(target, fname);
-	return ret == Z_STREAM_END ? Z_OK : Z_DATA_ERROR;
+    fclose(dest);
+    fs::remove(fname);
+    fs::rename(target, fname);
+    return ret == Z_STREAM_END ? Z_OK : Z_DATA_ERROR;
 }
 
 void Expand::zerr(int ret)

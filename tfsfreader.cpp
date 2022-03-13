@@ -43,6 +43,23 @@
 #include "tresources.h"
 #include "readtp4.h"
 
+#if __cplusplus < 201402L
+#   error "This module requires at least C++ 14 standard!"
+#else
+#   if __cplusplus < 201703L
+#       include <experimental/filesystem>
+        namespace fs = std::experimental::filesystem;
+#       warning "Support for C++14 and experimental filesystem will be removed in a future version!"
+#   else
+#       include <filesystem>
+#       ifdef __ANDROID__
+            namespace fs = std::__fs::filesystem;
+#       else
+            namespace fs = std::filesystem;
+#       endif
+#   endif
+#endif
+
 #define FTP_PORT    21
 
 #define FTP_CMD_USER    0
@@ -55,7 +72,7 @@
 using std::string;
 using std::vector;
 using std::bind;
-
+/*
 #if __GNUC__ < 9 && !defined(__ANDROID__)
    #if __cplusplus < 201703L
       #warning "Your C++ compiler seems to have no support for C++17 standard!"
@@ -76,6 +93,7 @@ using std::bind;
     namespace fs = std::filesystem;
 #  endif
 #endif
+*/
 
 std::function<int (off64_t xfered)> TFsfReader::_progress{nullptr};
 

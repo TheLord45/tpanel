@@ -46,8 +46,7 @@ HEADERS = \
    $$PWD/tqkeypad.h \
    $$PWD/tqtbusy.h \
    $$PWD/texcept.h \
-   $$PWD/tfsfreader.cpp \
-   $$PWD/tsipclient.cpp \
+   $$PWD/tsipclient.h \
    $$PWD/timgcache.h \
    $$PWD/tsystemsound.h \
    $$PWD/tsystemdraw.h \
@@ -94,8 +93,7 @@ SOURCES = \
    $$PWD/tqkeyboard.cpp \
    $$PWD/tqkeypad.cpp \
    $$PWD/tqtbusy.cpp \
-   $$PWD/tfsfreader.h \
-   $$PWD/tsipclient.h \
+   $$PWD/tsipclient.cpp \
    $$PWD/texcept.cpp \
    $$PWD/timgcache.cpp \
    $$PWD/tsystemsound.cpp \
@@ -116,6 +114,9 @@ INCLUDEPATH = \
     $$EXT_LIB_PATH/skia \
     $$EXT_LIB_PATH/linphone/include \
     $$EXTRA_PATH/expat/include
+
+QMAKE_CXXFLAGS += -std=c++17
+QMAKE_LFLAGS += -std=c++17
 
 android: include($$SDK_PATH/android_openssl/openssl.pri)
 
@@ -160,7 +161,7 @@ FORMS += \
     tqtsettings.ui \
     busy.ui
 
-LIBS += -lcrypto_1_1 -lssl_1_1 -lEGL -lGLESv2 -landroid -llog -llinphone
+LIBS += -llinphone -lcrypto_1_1 -lssl_1_1 -lEGL -landroid
 
 DISTFILES += \
     android/AndroidManifest.xml \

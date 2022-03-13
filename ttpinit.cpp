@@ -41,32 +41,28 @@
 #include "tdirectory.h"
 #include "tresources.h"
 
+#if __cplusplus < 201402L
+#   error "This module requires at least C++14 standard!"
+#else
+#   if __cplusplus < 201703L
+#       include <experimental/filesystem>
+        namespace fs = std::experimental::filesystem;
+#       warning "Support for C++14 and experimental filesystem will be removed in a future version!"
+#   else
+#       include <filesystem>
+#       ifdef __ANDROID__
+            namespace fs = std::__fs::filesystem;
+#       else
+            namespace fs = std::filesystem;
+#       endif
+#   endif
+#endif
+
 using std::string;
 using std::vector;
 using std::ostream;
 using std::bind;
 using std::ifstream;
-
-#if __GNUC__ < 9 && !defined(__ANDROID__)
-#if __cplusplus < 201703L
-    #warning "Your C++ compiler seems to have no support for C++17 standard!"
-#endif
-    #include <experimental/filesystem>
-    namespace fs = std::experimental::filesystem;
-#else
-#  ifdef __ANDROID__
-#   if _LIBCPP_STD_VER >= 17
-#       include <filesystem>
-        namespace fs = std::__fs::filesystem;
-#   else
-#       include <experimental/filesystem>
-        namespace fs = std::__fs::filesystem;
-#   endif
-#  else
-#   include <filesystem>
-    namespace fs = std::filesystem;
-#  endif
-#endif
 
 #define SYSTEM_DEFAULT      "/.system"
 

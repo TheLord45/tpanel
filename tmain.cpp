@@ -207,7 +207,11 @@ void banner(const string& pname)
  *
  * @return of success TRUE is returned. Otherwise FALSE.
  */
+#ifndef __ANDROID__
 bool _startUp(int oldArgc, int argc, char *argv[])
+#else
+bool _startUp(int, int argc, char *argv[])
+#endif
 {
     DECL_TRACER("_startUp(int oldArgc, int argc, char *argv[])");
 

@@ -27,6 +27,9 @@
 #include <iconv.h>
 #include <libgen.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+
 #include "tresources.h"
 #include "terror.h"
 #include "tconfig.h"

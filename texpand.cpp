@@ -18,23 +18,28 @@
 
 #include <iostream>
 #include <fstream>
-#if __GNUC__ < 9 && !defined(__ANDROID__)
-   #if __cplusplus < 201703L
-      #warning "Your C++ compiler seems to have no support for C++17 standard!"
-   #endif
-   #include <experimental/filesystem>
-   namespace fs = std::experimental::filesystem;
+
+#if __cplusplus < 201402L
+#   error "This module requires at least C++ 14 standard!"
 #else
-   #include <filesystem>
-#  ifdef __ANDROID__
-   namespace fs = std::__fs::filesystem;
-#  else
-   namespace fs = std::filesystem;
-#  endif
+#   if __cplusplus < 201703L
+#       include <experimental/filesystem>
+        namespace fs = std::experimental::filesystem;
+#       warning "Support for C++14 and experimental filesystem will be removed in a future version!"
+#   else
+#       include <filesystem>
+#       ifdef __ANDROID__
+            namespace fs = std::__fs::filesystem;
+#       else
+            namespace fs = std::filesystem;
+#       endif
+#   endif
 #endif
+
+#include <assert.h>
+
 #include "texpand.h"
 #include "terror.h"
-#include <assert.h>
 
 using namespace std;
 
@@ -90,7 +95,7 @@ int TExpand::unzip()
 		zerr(ret);
 		fclose(source);
 		fclose(dest);
-		fs::remove(target);
+        fs::remove(target);
 		return ret;
 	}
 
@@ -104,7 +109,7 @@ int TExpand::unzip()
 			MSG_ERROR("Error reading from file " << fname << "!");
 			fclose(source);
 			fclose(dest);
-			fs::remove(target);
+            fs::remove(target);
 			return Z_ERRNO;
 		}
 
@@ -130,7 +135,7 @@ int TExpand::unzip()
 					(void)inflateEnd(&strm);
 					fclose(source);
 					fclose(dest);
-					fs::remove(target);
+                    fs::remove(target);
 					zerr(ret);
 					return ret;
 			}
@@ -143,7 +148,7 @@ int TExpand::unzip()
 				MSG_ERROR("Error on writing to file " << target << "!");
 				fclose(source);
 				fclose(dest);
-				fs::remove(target);
+                fs::remove(target);
 				return Z_ERRNO;
 			}
 		}
@@ -155,8 +160,8 @@ int TExpand::unzip()
 	(void)inflateEnd(&strm);
 	fclose(source);
 	fclose(dest);
-	fs::remove(fname);
-	fs::rename(target, fname);
+    fs::remove(fname);
+    fs::rename(target, fname);
 	return ret == Z_STREAM_END ? Z_OK : Z_DATA_ERROR;
 }
 

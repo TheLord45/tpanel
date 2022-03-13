@@ -21,7 +21,6 @@
 #include <ctime>
 
 #include <linphone/linphonecore_utils.h>
-//#include <linphone/linphone_proxy_config.h>
 
 #include "tsipclient.h"
 #include "tconfig.h"
@@ -231,13 +230,13 @@ bool TSIPClient::connectSIPProxy()
         char *stun = nullptr;
 
         if (!TConfig::getSIPpassword().empty())
-            passwd = TConfig::getSIPpassword().data();
+            passwd = (char *)TConfig::getSIPpassword().data();
 
         if (!TConfig::getSIPdomain().empty())
-            domain = TConfig::getSIPdomain().data();
+            domain = (char *)TConfig::getSIPdomain().data();
 
         if (!TConfig::getSIPstun().empty())
-            stun = TConfig::getSIPstun().data();
+            stun = (char *)TConfig::getSIPstun().data();
 
         info = linphone_auth_info_new(linphone_address_get_username(from), NULL, passwd, NULL, stun, domain); // create authentication structure from identity
         linphone_core_add_auth_info(mCore, info);                   // add authentication info to LinphoneCore
@@ -264,8 +263,11 @@ bool TSIPClient::connectSIPProxy()
     linphone_address_unref(from);                                   // release resource
 
     linphone_core_add_proxy_config(mCore, mProxyCfg);               // add proxy config to linphone core
+#ifndef __ANDROID__
     linphone_core_set_default_proxy(mCore, mProxyCfg);              // set to default proxy
-
+#else
+    linphone_core_set_default_proxy_config(mCore, mProxyCfg);       // set to default proxy
+#endif
     return true;
 }
 
@@ -296,8 +298,13 @@ bool TSIPClient::pickup(LinphoneCall *call)
 
     if (call)
         linphone_call_accept(call);
-    else if (mCall && linphone_call_get_state(mCall) != LinphoneCallIncomingReceived)
-        linphone_call_accept(mCall);
+    else if (mCore)
+    {
+        LinphoneCall *cl = linphone_core_get_current_call(mCore);
+
+        if (cl)
+            linphone_call_accept(cl);
+    }
 
     return false;
 }
@@ -392,7 +399,7 @@ bool TSIPClient::setOffline()
     return true;
 }
 
-void TSIPClient::LinphoneCoreCbsRegistrationStateChanged(LinphoneCore* lc, LinphoneProxyConfig* cfg, LinphoneRegistrationState cstate, const char* message)
+void TSIPClient::LinphoneCoreCbsRegistrationStateChanged(LinphoneCore* /*lc*/, LinphoneProxyConfig* cfg, LinphoneRegistrationState cstate, const char* message)
 {
     DECL_TRACER("TSIPClient::LinphoneCoreCbsRegistrationStateChanged(LinphoneCore* lc, LinphoneProxyConfig* cfg, LinphoneRegistrationState cstate, const char* message)");
 
@@ -404,7 +411,7 @@ void TSIPClient::LinphoneCoreCbsRegistrationStateChanged(LinphoneCore* lc, Linph
         MSG_INFO(message);
 }
 
-void TSIPClient::LinphoneCoreCbsSubscriptionStateChanged(LinphoneCore* lc, LinphoneEvent* lev, LinphoneSubscriptionState state)
+void TSIPClient::LinphoneCoreCbsSubscriptionStateChanged(LinphoneCore* /*lc*/, LinphoneEvent* /*lev*/, LinphoneSubscriptionState /*state*/)
 {
     DECL_TRACER("TSIPClient::LinphoneCoreCbsSubscriptionStateChanged(LinphoneCore* lc, LinphoneEvent* lev, LinphoneSubscriptionState state)");
 }
