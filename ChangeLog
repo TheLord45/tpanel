@@ -3,6 +3,11 @@ ChangeLog
 
 Release: 1.3.1
 ===============================================================================
+2022-03-16 Added linphone libraries to android build.
+           Fixed the scaling for the download button in the settings dialog.
+           Fixed a bug on a fresh installation when no controller was
+           configured.
+
 2022-03-10 Added support for more than 1 phone line.
 
 2022-03-09 Added a new class to handle SIP commands and to abstract the

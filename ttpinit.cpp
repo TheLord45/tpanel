@@ -399,7 +399,12 @@ bool TTPInit::loadSurfaceFromController(bool force)
     }
 
     if (!reader.copyOverFTP(TConfig::getFtpSurface(), target))
+    {
+        if (TConfig::getFtpDownloadTime() == 0)
+            createPanelConfigs();
+
         return false;
+    }
 
     if (_processEvents)
         _processEvents();

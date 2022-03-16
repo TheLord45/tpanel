@@ -974,7 +974,8 @@ string TConfig::logLevelBitsToString(uint level)
 string TConfig::makeConfigDefault(const std::string& log, const std::string& project)
 {
     string content = "LogFile=" + log + "\n";
-    content += "LogLevel=NONE\n";
+    content += "LogLevel=ALL\n";
+//    content += "LogLevel=NONE\n";
     content += "ProjectPath=" + project + "\n";
     content += "LongFormat=false\n";
     content += "Address=0.0.0.0\n";

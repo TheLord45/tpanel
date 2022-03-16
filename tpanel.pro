@@ -178,3 +178,30 @@ ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
 
 # Add the ftp library
 DEPENDPATH += $$PWD/ftplib
+# Add openSSL library
+android: include($$SDK_PATH/android_openssl/openssl.pri)
+
+ANDROID_EXTRA_LIBS += $$EXT_LIB_PATH/linphone/libs/armeabi-v7a/liblinphone.so \
+    $$EXT_LIB_PATH/linphone/libs/armeabi-v7a/libbctoolbox.so \
+    $$EXT_LIB_PATH/linphone/libs/armeabi-v7a/libjsoncpp.so \
+    $$EXT_LIB_PATH/linphone/libs/armeabi-v7a/libmediastreamer.so \
+    $$EXT_LIB_PATH/linphone/libs/armeabi-v7a/libmsaaudio.so \
+    $$EXT_LIB_PATH/linphone/libs/armeabi-v7a/libortp.so \
+    $$EXT_LIB_PATH/linphone/libs/arm64-v8a/libbctoolbox.so \
+    $$EXT_LIB_PATH/linphone/libs/arm64-v8a/libjsoncpp.so \
+    $$EXT_LIB_PATH/linphone/libs/arm64-v8a/liblinphone.so \
+    $$EXT_LIB_PATH/linphone/libs/arm64-v8a/libmediastreamer.so \
+    $$EXT_LIB_PATH/linphone/libs/arm64-v8a/libmsaaudio.so \
+    $$EXT_LIB_PATH/linphone/libs/arm64-v8a/libortp.so \
+    $$EXT_LIB_PATH/linphone/libs/x86/libbctoolbox.so \
+    $$EXT_LIB_PATH/linphone/libs/x86/libjsoncpp.so \
+    $$EXT_LIB_PATH/linphone/libs/x86/liblinphone.so \
+    $$EXT_LIB_PATH/linphone/libs/x86/libmediastreamer.so \
+    $$EXT_LIB_PATH/linphone/libs/x86/libmsaaudio.so \
+    $$EXT_LIB_PATH/linphone/libs/x86/libortp.so \
+    $$EXT_LIB_PATH/linphone/libs/x86_64/libbctoolbox.so \
+    $$EXT_LIB_PATH/linphone/libs/x86_64/libjsoncpp.so \
+    $$EXT_LIB_PATH/linphone/libs/x86_64/liblinphone.so \
+    $$EXT_LIB_PATH/linphone/libs/x86_64/libmediastreamer.so \
+    $$EXT_LIB_PATH/linphone/libs/x86_64/libmsaaudio.so \
+    $$EXT_LIB_PATH/linphone/libs/x86_64/libortp.so

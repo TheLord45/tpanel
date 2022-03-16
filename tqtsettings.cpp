@@ -150,7 +150,7 @@ QPalette TQtSettings::qt_fusionPalette()
     QColor dark = backGround.darker(150);
     QColor darkDisabled = QColor(209, 209, 209).darker(110);
     QColor text = Qt::black;
-    QColor hightlightedText = Qt::white;
+    QColor hightlightedText = Qt::darkGray;
     QColor disabledText = QColor(190, 190, 190);
     QColor button = backGround;
     QColor shadow = dark.darker(135);
@@ -311,7 +311,7 @@ void TQtSettings::doResize()
                             QString n = tabIter.i->t()->objectName();
                             QObject *on = tabIter.i->t();
 
-                            if (n.startsWith("kiconbutton"))
+                            if (n.startsWith("kiconbutton") || n.startsWith("toolButton"))
                                 scaleObject(dynamic_cast<QToolButton *>(on));
                             else if (n.startsWith("checkBox"))
                             {

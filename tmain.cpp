@@ -304,6 +304,9 @@ int main(int argc, char *argv[])
 
     if (TError::isError())              // Exit if the previous command failed.
     {
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_ERROR, "tpanel", "%s", TError::getErrorMsg().c_str());
+#endif
         TError::displayMessage(TError::getErrorMsg());
         return 1;
     }
@@ -331,12 +334,18 @@ int main(int argc, char *argv[])
 
         if (!ret)
         {
+#ifdef __ANDROID__
+            __android_log_print(ANDROID_LOG_ERROR, "tpanel", "Terminating because of a previous fatal error!");
+#endif
             MSG_ERROR("Terminating because of a previous fatal error!");
             return 1;
         }
     }
     catch (std::exception& e)
     {
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_ERROR, "tpanel", "FATAL: %s", e.what());
+#endif
         MSG_ERROR("Fatal: " << e.what());
         return 1;
     }
