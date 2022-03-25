@@ -237,6 +237,8 @@ TPageManager::TPageManager()
 
     // Here are the commands supported by this emulation.
     MSG_INFO("Registering commands ...");
+//    REG_CMD(doAFP, "@AFP");     // Flips to a page with the specified page name using an animated transition.
+//    REG_CMD(doAFP, "^AFP");     // Flips to a page with the specified page name using an animated transition.
     REG_CMD(doAPG, "@APG");     // Add a specific popup page to a specified popup group.
     REG_CMD(doCPG, "@CPG");     // Clear all popup pages from specified popup group.
     REG_CMD(doDPG, "@DPG");     // Delete a specific popup page from specified popup group if it exists
@@ -371,17 +373,20 @@ TPageManager::TPageManager()
 
     // Here the SIP commands will take place
     REG_CMD(doPHN, "^PHN");     // SIP commands
+    REG_CMD(getPHN, "?PHN");    // SIP state commands
 
     // State commands
     REG_CMD(doON, "ON");
     REG_CMD(doOFF, "OFF");
     REG_CMD(doLEVEL, "LEVEL");
     REG_CMD(doBLINK, "BLINK");
+    REG_CMD(doVER, "^VER?");    // Return version string to master
+    REG_CMD(doWCN, "^WCN?");    // Return SIP phone number
 
     REG_CMD(doFTR, "#FTR");     // File transfer (virtual internal command)
 
     // At least we must add the SIP client
-    mSIPClient = new TSIPPhone;
+    mSIPClient = new TSIPClient;
 
     if (TError::isError())
     {
@@ -396,6 +401,12 @@ TPageManager::TPageManager()
 TPageManager::~TPageManager()
 {
     DECL_TRACER("TPageManager::~TPageManager()");
+
+    if (mSIPClient)
+    {
+        delete mSIPClient;
+        mSIPClient = nullptr;
+    }
 
     PCHAIN_T *p = mPchain;
     PCHAIN_T *next = nullptr;
@@ -2472,15 +2483,6 @@ void TPageManager::informPhoneState(bool call, const string &pnumber)
         MSG_WARNING("The network manager for the AMX controller is not initialized!");
         return;
     }
-
-    // If a call is in progress (in or out) then stop network connection to controller.
-    // TODO: Fix the stop and start of the network!
- /*
-    if (call)
-        gAmxNet->stop();
-    else
-        gAmxNet->Run();
-*/
 }
 #endif  // __ANDROID__
 
@@ -2593,7 +2595,8 @@ void TPageManager::sendPHNcommand(const std::string& cmd)
     scmd.port = 1;
     scmd.channel = TConfig::getChannel();
     scmd.msg = "^PHN-" + cmd;
-    scmd.MC = 0x008b;
+    scmd.MC = 0x008c;
+    MSG_DEBUG("Sending PHN command: ^PHN-" << cmd);
 
     if (gAmxNet)
         gAmxNet->sendCommand(scmd);
@@ -2616,13 +2619,12 @@ void TPageManager::sendKeyStroke(char key)
     scmd.port = 1;
     scmd.channel = 0;
     scmd.msg.assign(msg);
-    scmd.MC = 0x008b;
+    scmd.MC = 0x008c;
 
     if (gAmxNet)
         gAmxNet->sendCommand(scmd);
     else
         MSG_WARNING("Missing global class TAmxNet. Can't send message!");
-
 }
 
 /**
@@ -2669,6 +2671,25 @@ bool TPageManager::sendCustomEvent(int value1, int value2, int value3, const str
         MSG_WARNING("Missing global class TAmxNet. Can't send message!");
 
     return true;
+}
+
+string TPageManager::sipStateToString(TSIPClient::SIP_STATE_t s)
+{
+    DECL_TRACER("TPageManager::sipStateToString(TSIPClient::SIP_STATE_t s)");
+
+    switch(s)
+    {
+        case TSIPClient::SIP_CONNECTED:     return "CONNECTED";
+        case TSIPClient::SIP_DISCONNECTED:  return "DISCONNECTED";
+        case TSIPClient::SIP_HOLD:          return "HOLD";
+        case TSIPClient::SIP_RINGING:       return "RINGING";
+        case TSIPClient::SIP_TRYING:        return "TRYING";
+
+        default:
+            return "IDLE";
+    }
+
+    return "IDLE";
 }
 
 /****************************************************************************
@@ -2987,6 +3008,41 @@ void TPageManager::doBLINK(int, vector<int>&, vector<string>& pars)
         Button::TButton *bt = *mapIter;
         bt->setActive(0);
     }
+}
+
+void TPageManager::doVER(int, vector<int>&, vector<string>&)
+{
+    DECL_TRACER("TPageManager::doVER(int, vector<int>&, vector<string>&)");
+
+    amx::ANET_SEND scmd;
+    scmd.port = 1;
+    scmd.channel = 0;
+    scmd.msg.assign(string("^VER-")+VERSION_STRING());
+    scmd.MC = 0x008c;
+
+    if (gAmxNet)
+        gAmxNet->sendCommand(scmd);
+    else
+        MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+}
+
+void TPageManager::doWCN(int, vector<int>&, vector<string>&)
+{
+    DECL_TRACER("TPageManager::doWCN(int, vector<int>&, vector<string>&)");
+
+    if (!TConfig::getSIPstatus())
+        return;
+
+    amx::ANET_SEND scmd;
+    scmd.port = 1;
+    scmd.channel = 0;
+    scmd.msg.assign("^WCN-" + TConfig::getSIPuser());
+    scmd.MC = 0x008c;
+
+    if (gAmxNet)
+        gAmxNet->sendCommand(scmd);
+    else
+        MSG_WARNING("Missing global class TAmxNet. Can't send message!");
 }
 
 /**
@@ -6935,7 +6991,7 @@ void TPageManager::doPHN(int port, vector<int>&, vector<string>& pars)
                 if (mSIPClient->getSIPState(id) == TSIPClient::SIP_HOLD)
                     mSIPClient->resume(id);
                 else
-                    mSIPClient->pickup(id);
+                    mSIPClient->pickup(nullptr, id);
             }
         }
         else if (cmd == "AUTOANSWER")
@@ -6946,16 +7002,21 @@ void TPageManager::doPHN(int port, vector<int>&, vector<string>& pars)
                     mPHNautoanswer = false;
                 else
                     mPHNautoanswer = true;
+
+                vector<string> cmds;
+                cmds = { "AUTOANSWER", to_string(mPHNautoanswer ? 1 : 0) };
+                gPageManager->sendPHN(cmds);
             }
         }
         else if (cmd == "CALL")     // Initiate a call
         {
             if (pars.size() >= 2)
-                mSIPClient->call(-1, pars[1]);
+                mSIPClient->call(pars[1]);
         }
         else if (cmd == "DTMF")     // Send tone modified codes
         {
-            // FIXME: Is this possible with linphone?
+            if (pars.size() >= 2)
+                mSIPClient->sendDTMF(pars[1]);
         }
         else if (cmd == "HANGUP")   // terminate a call
         {
@@ -6972,6 +7033,10 @@ void TPageManager::doPHN(int port, vector<int>&, vector<string>& pars)
                 int id = atoi(pars[1].c_str());
                 mSIPClient->hold(id);
             }
+        }
+        else if (cmd == "LINESTATE")  // Set/unset "do not disturb"
+        {
+            // FIXME:
         }
         else if (cmd == "PRIVACY")  // Set/unset "do not disturb"
         {
@@ -7000,11 +7065,11 @@ void TPageManager::doPHN(int port, vector<int>&, vector<string>& pars)
             else if (pars[1] == "ENABLE")   // (re)register user
             {
                 TConfig::setSIPstatus(true);
-                mSIPClient->cleanUp(0);
-                mSIPClient->connectSIPProxy(0);
-                mSIPClient->cleanUp(1);
-                mSIPClient->connectSIPProxy(1);
+                mSIPClient->cleanUp();
+                mSIPClient->connectSIPProxy();
             }
+            else if (pars[1] == "DOMAIN" && pars.size() >= 3)
+                TConfig::setSIPdomain(pars[2]);
             else if (pars[1] == "PASSWORD" && pars.size() >= 3)
                 TConfig::setSIPpassword(pars[2]);
             else if (pars[1] == "PORT" && pars.size() != 3)
@@ -7034,5 +7099,48 @@ void TPageManager::doPHN(int port, vector<int>&, vector<string>& pars)
         }
 
         sendPHNcommand(sCommand);
+    }
+}
+
+void TPageManager::getPHN(int, vector<int>&, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::getPHN(int, vector<int>&, vector<string>& pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Invalid number of arguments!");
+        return;
+    }
+
+    string cmd = pars[0];
+
+    if (cmd == "AUTOANSWER")
+        sendPHNcommand(cmd + "," + (mPHNautoanswer ? "1" : "0"));
+    else if (cmd == "LINESTATE")
+    {
+        TSIPClient::SIP_STATE_t state1 = TSIPClient::SIP_NONE;
+        TSIPClient::SIP_STATE_t state2 = TSIPClient::SIP_NONE;
+
+        if (!mSIPClient)
+            return;
+
+        state1 = mSIPClient->getSIPState(0);
+        state2 = mSIPClient->getSIPState(1);
+
+        sendPHNcommand(cmd + ",0," + sipStateToString(state1) + ",1," + sipStateToString(state2));
+    }
+    else if (cmd == "MSGWAITING")
+    {
+        // Currently messages are not supported!
+        sendPHNcommand(cmd + ",0");
+    }
+    else if (cmd == "PRIVACY")
+    {
+        // FIXME
+        sendPHNcommand(cmd + ",0");
+    }
+    else
+    {
+        MSG_WARNING("Unknown command " << cmd << " found!");
     }
 }

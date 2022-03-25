@@ -116,10 +116,28 @@ TQtSettings::TQtSettings(QWidget *parent)
 
     ui->lineEdit_SIPproxy->setText(TConfig::getSIPproxy().c_str());
     ui->spinBox_SIPport->setValue(TConfig::getSIPport());
+    ui->spinBox_SIPportTLS->setValue(TConfig::getSIPportTLS());
     ui->lineEdit_SIPstun->setText(TConfig::getSIPstun().c_str());
     ui->lineEdit_SIPdomain->setText(TConfig::getSIPdomain().c_str());
     ui->lineEdit_SIPuser->setText(TConfig::getSIPuser().c_str());
     ui->lineEdit_SIPpassword->setText(TConfig::getSIPpassword().c_str());
+    ui->checkBox_SIPnetworkIPv4->setCheckState(TConfig::getSIPnetworkIPv4() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked);
+    ui->checkBox_SIPnetworkIPv6->setCheckState(TConfig::getSIPnetworkIPv6() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked);
+
+    int fwIdx = 0;
+
+    switch(TConfig::getSIPfirewall())
+    {
+        case TConfig::SIP_NO_FIREWALL:  fwIdx = 0; break;
+        case TConfig::SIP_STUN:         fwIdx = 1; break;
+        case TConfig::SIP_ICE:          fwIdx = 2; break;
+        case TConfig::SIP_UPNP:         fwIdx = 3; break;
+
+        default:
+            fwIdx = 0;
+    }
+
+    ui->comboBox_SIPfirewall->setCurrentIndex(fwIdx);
     ui->checkBox_SIPenabled->setCheckState((TConfig::getSIPstatus() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked));
 #ifdef __ANDROID__
     ui->tabWidget->setPalette(qt_fusionPalette());
@@ -768,6 +786,17 @@ void TQtSettings::on_spinBox_SIPport_valueChanged(int arg1)
     TConfig::setSIPport(arg1);
 }
 
+void TQtSettings::on_spinBox_SIPportTLS_valueChanged(int arg1)
+{
+    DECL_TRACER("TQtSettings::on_spinBoxTLS_SIPport_valueChanged(int arg1)");
+
+    if (TConfig::getSIPportTLS() == arg1)
+        return;
+
+    mSetChanged = true;
+    TConfig::setSIPportTLS(arg1);
+}
+
 void TQtSettings::on_lineEdit_SIPstun_textChanged(const QString& arg1)
 {
     DECL_TRACER("TQtSettings::on_lineEdit_SIPstun_textChanged(const QString& arg1)");
@@ -810,6 +839,52 @@ void TQtSettings::on_lineEdit_SIPpassword_textChanged(const QString& arg1)
 
     mSetChanged = true;
     TConfig::setSIPpassword(arg1.toStdString());
+}
+
+void TQtSettings::on_checkBox_SIPnetworkIPv4_toggled(bool checked)
+{
+    DECL_TRACER("TQtSettings::on_checkBox_SIPnetworkIPv4_toggled(bool checked)");
+
+    if (TConfig::getSIPnetworkIPv4() == checked)
+        return;
+
+    mSetChanged = true;
+    TConfig::setSIPnetworkIPv4(checked);
+}
+
+void TQtSettings::on_checkBox_SIPnetworkIPv6_toggled(bool checked)
+{
+    DECL_TRACER("TQtSettings::on_checkBox_SIPnetworkIPv6_toggled(bool checked)");
+
+    if (TConfig::getSIPnetworkIPv6() == checked)
+        return;
+
+    mSetChanged = true;
+    TConfig::setSIPnetworkIPv6(checked);
+}
+
+void TQtSettings::on_comboBox_SIPfirewall_currentIndexChanged(int index)
+{
+    DECL_TRACER("TQtSettings::on_comboBox_SIPfirewall_currentIndexChanged(const QString& arg1)");
+
+    TConfig::SIP_FIREWALL_t fw;
+
+    switch(index)
+    {
+        case 0: fw = TConfig::SIP_NO_FIREWALL; break;
+        case 1: fw = TConfig::SIP_STUN; break;
+        case 2: fw = TConfig::SIP_ICE; break;
+        case 3: fw = TConfig::SIP_UPNP; break;
+
+        default:
+            fw = TConfig::SIP_NO_FIREWALL;
+    }
+
+    if (TConfig::getSIPfirewall() == fw)
+        return;
+
+    mSetChanged = true;
+    TConfig::setSIPfirewall(fw);
 }
 
 void TQtSettings::on_checkBox_SIPenabled_toggled(bool checked)

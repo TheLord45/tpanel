@@ -1247,7 +1247,16 @@ bool TAmxNet::sendCommand(const ANET_SEND& s)
             com.data.message_string.length = len;
             strncpy((char *)&com.data.message_string.content[0], s.msg.c_str(), len);
             com.hlen = 0x0016 - 3 + 9 + len;
-            MSG_DEBUG("SEND: STRING-'" << s.msg << "'," << s.port << ":" << com.device2);
+
+            if (s.MC == 0x008b)
+            {
+                MSG_DEBUG("SEND: STRING-'" << s.msg << "'," << s.port << ":" << com.device2);
+            }
+            else
+            {
+                MSG_DEBUG("SEND: COMMAND-'" << s.msg << "'," << s.port << ":" << com.device2);
+            }
+
             comStack.push_back(com);
             mSendReady = true;
         break;
@@ -2143,6 +2152,12 @@ bool TAmxNet::isCommand(const string& cmd)
 
         i++;
     }
+
+    if (cmd.length() > 0 && (cmd[0] == '^' || cmd[0] == '@' || cmd[0] == '?'))
+        return true;
+
+    if (startsWith(cmd, "GET ") || startsWith(cmd, "SET "))
+        return true;
 
     return false;
 }

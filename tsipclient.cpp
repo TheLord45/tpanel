@@ -31,16 +31,36 @@ using std::string;
 using std::vector;
 using std::to_string;
 
-TSIPClient *TSIPPhone::mClients[SIP_MAX_LINES];
+TSIPClient *TSIPClient::mMyself{nullptr};
 
 extern TPageManager *gPageManager;
 
-TSIPClient::TSIPClient(int id)
+TSIPClient::TSIPClient()
 {
     DECL_TRACER("TSIPClient::TSIPClient()");
 
-    mLine = id;
+    mMyself = this;
+    mLine = 0;
+    // Install a log handler
+    LinphoneLoggingService *lserv = linphone_logging_service_get();
+    LinphoneLoggingServiceCbs *log = linphone_factory_create_logging_service_cbs(linphone_factory_get());
+    linphone_logging_service_cbs_set_log_message_written(log, this->loggingServiceCbs);
+    LinphoneLogLevel ll = LinphoneLogLevelFatal;
 
+    if (TStreamError::checkFilter(HLOG_DEBUG))
+        ll = LinphoneLogLevelDebug;
+    else if (TStreamError::checkFilter(HLOG_TRACE))
+        ll = LinphoneLogLevelTrace;
+    else if (TStreamError::checkFilter(HLOG_ERROR))
+        ll = LinphoneLogLevelError;
+    else if (TStreamError::checkFilter(HLOG_WARNING))
+        ll = LinphoneLogLevelWarning;
+    else if (TStreamError::checkFilter(HLOG_INFO))
+        ll = LinphoneLogLevelMessage;
+
+    linphone_logging_service_set_log_level(lserv, ll);
+    linphone_logging_service_add_callbacks(lserv, log);
+    // Start the SIP client
     if (TConfig::getSIPstatus())    // Is SIP enabled?
     {                               // Yes, try to connect to SIP proxy
         if (!connectSIPProxy())
@@ -53,6 +73,7 @@ TSIPClient::~TSIPClient()
     DECL_TRACER("TSIPClient::~TSIPClient()");
 
     cleanUp();
+    mMyself = nullptr;
 }
 
 void TSIPClient::cleanUp()
@@ -65,8 +86,13 @@ void TSIPClient::cleanUp()
         std::this_thread::sleep_for(std::chrono::milliseconds(150));
     }
 
-    if (mCall)
-        linphone_call_unref(mCall);
+    for (int i = 0; i < SIP_MAX_LINES; i++)
+    {
+        LinphoneCall *call = getCallbyID(i);
+
+        if (call)
+            linphone_call_unref(call);
+    }
 
     if (mProxyCfg)
         linphone_proxy_config_unref(mProxyCfg);
@@ -74,7 +100,6 @@ void TSIPClient::cleanUp()
     if (mCore)
         linphone_core_unref(mCore);
 
-    mCall = nullptr;
     mProxyCfg = nullptr;
     mCore = nullptr;
 }
@@ -114,65 +139,12 @@ void TSIPClient::start()
 
     while(mRunning && linphone_proxy_config_get_state(mProxyCfg) != LinphoneRegistrationCleared)
     {
-        linphone_core_iterate(mCore);   // to make sure we receive call backs before shutting down
-        long ms = 0;
-
-        while(mBellRun && ms < 50000)
-        {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            ms += 100;
-        }
+        linphone_core_iterate(mCore);   // to make sure we receive call backs
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
 
     mRunning = false;
     mThreadRun = false;
-}
-
-void TSIPClient::bell()
-{
-    DECL_TRACER("TSIPClient::bell()");
-
-    if (mBellThreadRun || !gPageManager)
-        return;
-
-    mBellThreadRun = true;
-    string rtone;
-    vector<string> slist = gPageManager->findSounds();
-
-    for (size_t i = 0; i < slist.size(); ++i)
-    {
-        if (slist[i].find("ringtone.wav"))
-        {
-            rtone = slist[i];
-            break;
-        }
-    }
-
-    if (rtone.empty())
-    {
-        MSG_ERROR("No ringtone found!");
-        mBellThreadRun = false;
-        return;
-    }
-
-    while (mBellRun)
-    {
-        if (gPageManager->havePlaySound())
-            gPageManager->getCallPlaySound()(rtone);
-        else
-            break;
-
-        long ms = 0;
-
-        while(mBellRun && ms < 12000)
-        {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            ms += 100;
-        }
-    }
-
-    mBellRun = false;
-    mBellThreadRun = false;
 }
 
 bool TSIPClient::connectSIPProxy()
@@ -184,9 +156,23 @@ bool TSIPClient::connectSIPProxy()
     LinphoneAuthInfo *info = nullptr;
     const char* server_addr;
 
-    identity = "sip:" + TConfig::getSIPuser() + "@" + TConfig::getSIPproxy();
+    if (TConfig::getSIPproxy().empty())
+    {
+        MSG_ERROR("No proxy defined!");
+        return false;
+    }
 
-    mCore = linphone_factory_create_core_3(linphone_factory_get(), NULL, NULL, NULL);
+    if (!TConfig::getSIPnetworkIPv4() && !TConfig::getSIPnetworkIPv6())
+    {
+        MSG_ERROR("Both network protocolls (IPv4 and IPv6) are disabled!")
+        return false;
+    }
+
+    // Create the Linphone core
+    identity = "sip:" + TConfig::getSIPuser() + "@" + TConfig::getSIPproxy();
+    string sipConfig = TConfig::getProjectPath() + "/sipconfig.cfg";
+    string sipFactory = TConfig::getProjectPath() + "/sipfactory.cfg";
+    mCore = linphone_factory_create_core_3(linphone_factory_get(), sipConfig.c_str(), sipFactory.c_str(), NULL);
 
     if (!mCore)
     {
@@ -200,6 +186,20 @@ bool TSIPClient::connectSIPProxy()
     linphone_core_cbs_set_subscription_state_changed(cbs, this->LinphoneCoreCbsSubscriptionStateChanged);
     linphone_core_cbs_set_call_state_changed(cbs, this->callStateChanged);
     linphone_core_add_callbacks(mCore, cbs);
+
+    // Define some basic values
+    linphone_core_set_max_calls(mCore, SIP_MAX_LINES);
+    string ringtone = TConfig::getProjectPath() + "/__system/graphics/sounds/ringtone.wav";
+    linphone_core_set_ring(mCore, ringtone.c_str());
+    string ringback = TConfig::getProjectPath() + "/__system/graphics/sounds/ringback.wav";
+    linphone_core_set_ringback(mCore, ringback.c_str());
+    string sipCallLogs = TConfig::getProjectPath() + "/sipcalls.db";
+    linphone_core_set_call_logs_database_path(mCore, sipCallLogs.c_str());
+
+    // STUN server (if any)
+    if (!TConfig::getSIPstun().empty())
+        linphone_core_set_stun_server(mCore, TConfig::getSIPstun().c_str());
+
     // create proxy config
     mProxyCfg = linphone_core_create_proxy_config(mCore);
 
@@ -210,6 +210,7 @@ bool TSIPClient::connectSIPProxy()
         mCore = nullptr;
         return false;
     }
+
     // parse identity
     from = linphone_address_new(identity.c_str());
 
@@ -227,7 +228,7 @@ bool TSIPClient::connectSIPProxy()
     {
         char *passwd = nullptr;
         char *domain = nullptr;
-        char *stun = nullptr;
+        char *proxy = nullptr;
 
         if (!TConfig::getSIPpassword().empty())
             passwd = (char *)TConfig::getSIPpassword().data();
@@ -235,10 +236,10 @@ bool TSIPClient::connectSIPProxy()
         if (!TConfig::getSIPdomain().empty())
             domain = (char *)TConfig::getSIPdomain().data();
 
-        if (!TConfig::getSIPstun().empty())
-            stun = (char *)TConfig::getSIPstun().data();
+        if (!TConfig::getSIPproxy().empty())
+            proxy = (char *)TConfig::getSIPproxy().data();
 
-        info = linphone_auth_info_new(linphone_address_get_username(from), NULL, passwd, NULL, stun, domain); // create authentication structure from identity
+        info = linphone_auth_info_new(linphone_address_get_username(from), NULL, passwd, NULL, proxy, domain); // create authentication structure from identity
         linphone_core_add_auth_info(mCore, info);                   // add authentication info to LinphoneCore
     }
 
@@ -248,6 +249,10 @@ bool TSIPClient::connectSIPProxy()
     {
         linphone_transports_set_udp_port(transport, TConfig::getSIPport());
         linphone_transports_set_tcp_port(transport, TConfig::getSIPport());
+
+        if (TConfig::getSIPportTLS() > 0)
+            linphone_transports_set_tls_port(transport, TConfig::getSIPportTLS());
+
         linphone_core_set_transports(mCore, transport);
     }
     else
@@ -268,19 +273,67 @@ bool TSIPClient::connectSIPProxy()
 #else
     linphone_core_set_default_proxy_config(mCore, mProxyCfg);       // set to default proxy
 #endif
+    if (!TConfig::getSIPnetworkIPv6())
+        linphone_core_enable_ipv6(mCore, 0);
+
+    LinphoneNatPolicy *nat = linphone_core_create_nat_policy(mCore);
+
+    if (nat)
+    {
+        switch(TConfig::getSIPfirewall())
+        {
+            case TConfig::SIP_STUN:
+                if (!TConfig::getSIPstun().empty())
+                {
+                    linphone_nat_policy_set_stun_server(nat, TConfig::getSIPstun().c_str());
+                    linphone_nat_policy_set_stun_server_username(nat, TConfig::getSIPuser().c_str());
+                    linphone_nat_policy_enable_stun(nat, true);
+                }
+            break;
+
+            case TConfig::SIP_ICE:  linphone_nat_policy_enable_ice(nat, 1); break;
+            case TConfig::SIP_UPNP: linphone_nat_policy_enable_upnp(nat, 1); break;
+
+            default:
+                if (TConfig::getSIPfirewall() != TConfig::SIP_NO_FIREWALL)
+                    linphone_nat_policy_enable_turn(nat, 1);
+        }
+
+        linphone_core_set_nat_policy(mCore, nat);
+    }
+
+    int lstat = linphone_core_start(mCore);
+
+    switch(lstat)
+    {
+        case -1: MSG_ERROR("Global failure starting linphone core!"); return false;
+        case -2: MSG_ERROR("Error connecting to linphone database!"); return false;
+    }
+
+    if (!mRunning)
+        run();
+
     return true;
 }
 
 bool TSIPClient::call(const string& dest)
 {
-    DECL_TRACER("TSIPClient::call(const string& dest)");
+    DECL_TRACER("TSIPClient::call(const string& dest, int)");
 
     if (dest.empty())
         return false;
 
-    mCall = linphone_core_invite(mCore, dest.c_str());
+    int numCalls = getNumberCalls();
 
-    if (!mCall)
+    if (numCalls >= 2)
+    {
+        MSG_ERROR("There are already " << numCalls << " active!");
+        return false;
+    }
+
+    LinphoneCall *call = linphone_core_invite(mCore, dest.c_str());
+
+    if (!call)
     {
         MSG_ERROR("Could not place call to " << dest);
         return false;
@@ -288,19 +341,19 @@ bool TSIPClient::call(const string& dest)
     else
         MSG_INFO("Call to " << dest << " is in progress...");
 
-    linphone_call_ref(mCall);
+    linphone_call_ref(call);
     return run();
 }
 
-bool TSIPClient::pickup(LinphoneCall *call)
+bool TSIPClient::pickup(LinphoneCall *call, int id)
 {
-    DECL_TRACER("TSIPClient::pickup()");
+    DECL_TRACER("TSIPClient::pickup(LinphoneCall *call, int)");
 
     if (call)
         linphone_call_accept(call);
-    else if (mCore)
+    else
     {
-        LinphoneCall *cl = linphone_core_get_current_call(mCore);
+        LinphoneCall *cl = getCallbyID(id);
 
         if (cl)
             linphone_call_accept(cl);
@@ -309,15 +362,17 @@ bool TSIPClient::pickup(LinphoneCall *call)
     return false;
 }
 
-bool TSIPClient::terminate()
+bool TSIPClient::terminate(int id)
 {
-    DECL_TRACER("TSIPClient::terminate()");
+    DECL_TRACER("TSIPClient::terminate(int)");
 
-    if (mCall && linphone_call_get_state(mCall) != LinphoneCallEnd)
+    LinphoneCall *call = getCallbyID(id);
+
+    if (call && linphone_call_get_state(call) != LinphoneCallEnd)
     {
         // terminate the call
         MSG_DEBUG("Terminating the call...");
-        linphone_call_terminate(mCall);
+        linphone_call_terminate(call);
         MSG_DEBUG("Call terminated.");
     }
     else
@@ -326,18 +381,20 @@ bool TSIPClient::terminate()
     return true;
 }
 
-bool TSIPClient::hold()
+bool TSIPClient::hold(int id)
 {
-    DECL_TRACER("TSIPClient::hold()");
+    DECL_TRACER("TSIPClient::hold(int id)");
 
-    if (mCall)
+    LinphoneCall *call = getCallbyID(id);
+
+    if (call)
     {
-        LinphoneStatus st = linphone_call_get_state(mCall);
+        LinphoneStatus st = linphone_call_get_state(call);
 
         if (st == LinphoneCallPausing || st == LinphoneCallPaused)
             return true;
 
-        st = linphone_call_pause(mCall);
+        st = linphone_call_pause(call);
 
         if (st == LinphoneCallPausing || st == LinphoneCallPaused)
             return true;
@@ -346,24 +403,49 @@ bool TSIPClient::hold()
     return false;
 }
 
-bool TSIPClient::resume()
+bool TSIPClient::resume(int id)
 {
-    DECL_TRACER("TSIPClient::resume()");
+    DECL_TRACER("TSIPClient::resume(int)");
 
-    if (mCall)
+    LinphoneCall *call = getCallbyID(id);
+
+    if (call)
     {
-        LinphoneStatus st = linphone_call_get_state(mCall);
+        LinphoneStatus st = linphone_call_get_state(call);
 
         if (st != LinphoneCallPausing && st != LinphoneCallPaused)
             return true;
 
-        st = linphone_call_resume(mCall);
+        st = linphone_call_resume(call);
 
         if (st == LinphoneCallPausing || st == LinphoneCallPaused)
             return true;
     }
 
     return false;
+}
+
+bool TSIPClient::sendDTMF(string& dtmf)
+{
+    DECL_TRACER("TSIPClient::sendDTMF(string& dtmf, int id)");
+
+    if (!mCore)
+        return false;
+
+    LinphoneCall *call = linphone_core_get_current_call(mCore);
+
+    if (!call)
+        return false;
+
+    int lstate = linphone_call_send_dtmfs(call, dtmf.c_str());
+
+    switch(lstate)
+    {
+        case -1: MSG_ERROR("No call or call is not ready!"); return false;
+        case -2: MSG_ERROR("A previous DTMF sequence is still in progress!"); return false;
+    }
+
+    return true;
 }
 
 bool TSIPClient::setOnline()
@@ -399,6 +481,85 @@ bool TSIPClient::setOffline()
     return true;
 }
 
+LinphoneCall *TSIPClient::getCallbyID(int id)
+{
+    DECL_TRACER("TSIPClient::getCallbyID(int id)");
+
+    if (!mCore)
+        return nullptr;
+
+    const bctbx_list_t *clist = linphone_core_get_calls(mCore);
+    bctbx_list_t *pos = (bctbx_list_t *)clist;
+    int idx = 0;
+
+    if (!clist)
+        return nullptr;
+
+    while(pos)
+    {
+        if (idx == id && pos->data)
+        {
+            LinphoneCall *call = (LinphoneCall *)pos->data;
+            return call;
+        }
+
+        pos = pos->next;
+        idx++;
+    }
+
+    return nullptr;
+}
+
+int TSIPClient::getCallId(LinphoneCall* call)
+{
+    DECL_TRACER("TSIPClient::getCallId(LinphoneCall* call)");
+
+    int id = 0;
+
+    if (!mCore || !call)
+        return 0;
+
+    const bctbx_list_t *clist = linphone_core_get_calls(mCore);
+    bctbx_list_t *pos = (bctbx_list_t *)clist;
+
+    if (!clist)
+        return 0;
+
+    while(pos)
+    {
+        if (pos->data && pos->data == call)
+            return id;
+
+        pos = pos->next;
+        id++;
+    }
+
+    return 0;
+}
+
+int TSIPClient::getNumberCalls()
+{
+    DECL_TRACER("TSIPClient::getNumberCalls()");
+
+    if (!mCore)
+        return 0;
+
+    const bctbx_list_t *clist = linphone_core_get_calls(mCore);
+    bctbx_list_t *pos = (bctbx_list_t *)clist;
+    int idx = 0;
+
+    if (!clist)
+        return 0;
+
+    while(pos)
+    {
+        idx++;
+        pos = pos->next;
+    }
+
+    return idx;
+}
+
 void TSIPClient::LinphoneCoreCbsRegistrationStateChanged(LinphoneCore* /*lc*/, LinphoneProxyConfig* cfg, LinphoneRegistrationState cstate, const char* message)
 {
     DECL_TRACER("TSIPClient::LinphoneCoreCbsRegistrationStateChanged(LinphoneCore* lc, LinphoneProxyConfig* cfg, LinphoneRegistrationState cstate, const char* message)");
@@ -424,10 +585,9 @@ void TSIPClient::callStateChanged(LinphoneCore *lc, LinphoneCall *call, Linphone
         return;
     }
 
-    int id = TSIPPhone::getId(lc);
-    TSIPClient *client = TSIPPhone::getClient(id);
+    int id = mMyself->getCallId(call);
 
-    if (!client)
+    if (!mMyself)
     {
         MSG_ERROR("Called for illegal ID " << id << "!");
         return;
@@ -438,55 +598,51 @@ void TSIPClient::callStateChanged(LinphoneCore *lc, LinphoneCall *call, Linphone
     switch(cstate)
     {
         case LinphoneCallStateIdle:
-            TSIPPhone::getClient(id)->mSIPState = SIP_NONE;
+            mMyself->mSIPState = SIP_NONE;
         break;
 
         case LinphoneCallStateIncomingReceived:
             MSG_INFO("Receiving incoming call!");
-            TSIPPhone::getClient(id)->mSIPState = SIP_RINGING;
+            mMyself->mSIPState = SIP_RINGING;
             // Ring the bell
-            try
+            if (gPageManager->getPHNautoanswer())
             {
-                if (gPageManager->getPHNautoanswer())
-                {
-                    LinphoneAddress const *addr = linphone_call_get_remote_address(call);
-                    const char *uname = linphone_address_get_username(addr);
-                    const char *dispname = linphone_address_get_display_name(addr);
-                    time_t t = time(nullptr);
-                    std::tm tm = *std::localtime(&t);
-                    std::ostringstream oss;
-                    oss << std::put_time(&tm, "%m/%d/%Y %H:%M:%S");
-                    cmds = { "INCOMING", dispname, uname, to_string(id), oss.str() };
-                    gPageManager->sendPHN(cmds);
-                    client->pickup(call);
-                }
-                else
-                {
-                    TSIPPhone::getClient(id)->mCall = call;
-                    std::thread thread = std::thread([=] { client->bell(); });
-                    thread.detach();
-                    cmds = { "CALL", "RINGING", to_string(id) };
-                    gPageManager->sendPHN(cmds);
-                }
+                LinphoneAddress const *addr = linphone_call_get_remote_address(call);
+                const char *uname = linphone_address_get_username(addr);
+                const char *dispname = linphone_address_get_display_name(addr);
+                time_t t = time(nullptr);
+                std::tm tm = *std::localtime(&t);
+                std::ostringstream oss;
+                oss << std::put_time(&tm, "%m/%d/%Y %H:%M:%S");
+                cmds = { "INCOMING", dispname, uname, to_string(id), oss.str() };
+                gPageManager->sendPHN(cmds);
+                mMyself->pickup(call, id);
             }
-            catch(std::exception& e)
+            else
             {
-                MSG_ERROR("Thread error: " << e.what());
+                int n = mMyself->getNumberCalls();
+
+                if (n < SIP_MAX_LINES)
+                    n++;
+
+                cmds = { "CALL", "RINGING", to_string(n) };
+                gPageManager->sendPHN(cmds);
             }
         break;
+
         case LinphoneCallOutgoingRinging:
             MSG_DEBUG("It is now ringing remotely !");
 
-            TSIPPhone::getClient(id)->mSIPState = SIP_TRYING;
+            mMyself->mSIPState = SIP_TRYING;
             cmds = { "CALL", "TRYING", to_string(id) };
             gPageManager->sendPHN(cmds);
         break;
+
         case LinphoneCallConnected:
             MSG_INFO("We are connected!");
 
-            TSIPPhone::getClient(id)->mSIPState = SIP_CONNECTED;
+            mMyself->mSIPState = SIP_CONNECTED;
             cmds = { "CALL", "CONNECTED", to_string(id) };
-            client->bellStop();
             gPageManager->sendPHN(cmds);
         break;
         case LinphoneCallStatePausing:
@@ -495,14 +651,14 @@ void TSIPClient::callStateChanged(LinphoneCore *lc, LinphoneCall *call, Linphone
         case LinphoneCallStatePaused:
             MSG_DEBUG("Call is paused.");
 
-            TSIPPhone::getClient(id)->mSIPState = SIP_HOLD;
+            mMyself->mSIPState = SIP_HOLD;
             cmds = { "CALL", "HOLD", to_string(id) };
             gPageManager->sendPHN(cmds);
         break;
         case LinphoneCallStateResuming:
             MSG_DEBUG("Resuming call");
 
-            TSIPPhone::getClient(id)->mSIPState = SIP_CONNECTED;
+            mMyself->mSIPState = SIP_CONNECTED;
             cmds = { "CALL", "CONNECTED", to_string(id) };
             gPageManager->sendPHN(cmds);
         break;
@@ -510,17 +666,17 @@ void TSIPClient::callStateChanged(LinphoneCore *lc, LinphoneCall *call, Linphone
         case LinphoneCallEnd:
             MSG_DEBUG("Call is terminated.");
 
-            TSIPPhone::getClient(id)->mSIPState = SIP_DISCONNECTED;
+            mMyself->mSIPState = SIP_DISCONNECTED;
             cmds = { "CALL", "DISCONNECTED", to_string(id) };
-            client->bellStop();
             gPageManager->sendPHN(cmds);
         break;
 
         case LinphoneCallError:
             MSG_DEBUG("Call failure!");
 
-            TSIPPhone::getClient(id)->mSIPState = SIP_NONE;
-            client->bellStop();
+            mMyself->mSIPState = SIP_NONE;
+            cmds = { "CALL", "IDLE", to_string(id) };
+            gPageManager->sendPHN(cmds);
         break;
 
         default:
@@ -531,171 +687,26 @@ void TSIPClient::callStateChanged(LinphoneCore *lc, LinphoneCall *call, Linphone
         MSG_DEBUG("Message: " << msg);
 }
 
-/**
- * Here starts the master class to manage more than one lines. It is possible
- * to connect more than once to a SIP server and have 2 or more line available.
- * Currently 2 lines are supported. This is to stay compatible to AMX panels
- * who doesn't support more than 2 lines.
- */
-
-TSIPPhone::TSIPPhone()
+void TSIPClient::loggingServiceCbs(LinphoneLoggingService *, const char *domain, LinphoneLogLevel level, const char *message)
 {
-    DECL_TRACER("TSIPPhone::TSIPPhone()");
+    //    DECL_TRACER("TSIPClient::loggingServiceCbs(LinphoneLoggingService *, const char *domain, LinphoneLogLevel level, const char *message)");
 
-    for (int i = 0; i < SIP_MAX_LINES; ++i)
-        mClients[i] = new TSIPClient(i);
+    if (level == LinphoneLogLevelDebug)
+        MSG_DEBUG(domain << ": " << message);
+
+    if (level == LinphoneLogLevelTrace)
+        MSG_TRACE(domain << ": " << message);
+
+    if (level == LinphoneLogLevelMessage)
+        MSG_INFO(domain << ": " << message);
+
+    if (level == LinphoneLogLevelWarning)
+        MSG_WARNING(domain << ": " << message);
+
+    if (level == LinphoneLogLevelError)
+        MSG_ERROR(domain << ": " << message);
+
+    if (level == LinphoneLogLevelFatal)
+        MSG_ERROR(domain << ": FATAL ERROR: " << message);
 }
 
-TSIPPhone::~TSIPPhone()
-{
-    DECL_TRACER("TSIPPhone::~TSIPPhone()");
-
-    for (int i = 0; i < SIP_MAX_LINES; ++i)
-    {
-        if (mClients[i])
-            delete mClients[i];
-    }
-}
-
-int TSIPPhone::getId(LinphoneCore *lc)
-{
-    DECL_TRACER("TSIPPhone::getId(LinphoneCore *lc)");
-
-    for (int i = 0; i < SIP_MAX_LINES; ++i)
-    {
-        if (mClients[i] && mClients[i]->getCore() == lc)
-            return i;
-    }
-
-    return -1;
-}
-
-TSIPClient *TSIPPhone::getClient(int id)
-{
-    DECL_TRACER("TSIPPhone::getClient(int id)");
-
-    if (id < 0 || id > SIP_MAX_LINES)
-        return nullptr;
-
-    return mClients[id];
-}
-
-bool TSIPPhone::call(int id, const string& dest)
-{
-    DECL_TRACER("TSIPPhone::call(int id, const string& dest)");
-
-    if (id < 0 || id > SIP_MAX_LINES)
-        return false;
-
-    return mClients[id]->call(dest);
-}
-
-void TSIPPhone::cleanUp(int id)
-{
-    DECL_TRACER("TSIPPhone::cleanUp(int id)");
-
-    if (id < 0 || id > SIP_MAX_LINES)
-        return;
-
-    mClients[id]->cleanUp();
-}
-
-bool TSIPPhone::connectSIPProxy(int id)
-{
-    DECL_TRACER("TSIPPhone::connectSIPProxy(int id)");
-
-    if (id < 0 || id > SIP_MAX_LINES)
-        return false;
-
-    return mClients[id]->connectSIPProxy();
-}
-
-bool TSIPPhone::pickup(int id)
-{
-    DECL_TRACER("TSIPPhone::pickup(int id, LinphoneCall* call)");
-
-    if (id < 0 || id > SIP_MAX_LINES)
-        return false;
-
-    return mClients[id]->pickup(nullptr);
-}
-
-bool TSIPPhone::run(int id)
-{
-    DECL_TRACER("TSIPPhone::run(int id)");
-
-    if (id < 0 || id > SIP_MAX_LINES)
-        return false;
-
-    return mClients[id]->run();
-}
-
-bool TSIPPhone::setOffline(int id)
-{
-    DECL_TRACER("TSIPPhone::setOffline(int id)");
-
-    if (id < 0 || id > SIP_MAX_LINES)
-        return false;
-
-    return mClients[id]->setOffline();
-}
-
-bool TSIPPhone::setOnline(int id)
-{
-    DECL_TRACER("TSIPPhone::setOnline(int id)");
-
-    if (id < 0 || id > SIP_MAX_LINES)
-        return false;
-
-    return mClients[id]->setOnline();
-}
-
-void TSIPPhone::stop(int id)
-{
-    DECL_TRACER("TSIPPhone::stop(int id)");
-
-    if (id < 0 || id > SIP_MAX_LINES)
-        return;
-
-    mClients[id]->stop();
-}
-
-TSIPClient::SIP_STATE_t TSIPPhone::getSIPState(int id)
-{
-    DECL_TRACER("TSIPPhone::getSIPState(int id)");
-
-    if (id < 0 || id > SIP_MAX_LINES)
-        return TSIPClient::SIP_NONE;
-
-    return mClients[id]->getSIPState();
-}
-
-bool TSIPPhone::terminate(int id)
-{
-    DECL_TRACER("TSIPPhone::terminate(int id)");
-
-    if (id < 0 || id > SIP_MAX_LINES)
-        return false;
-
-    return mClients[id]->terminate();
-}
-
-bool TSIPPhone::hold(int id)
-{
-    DECL_TRACER("TSIPPhone::hold(int id)");
-
-    if (id < 0 || id > SIP_MAX_LINES)
-        return false;
-
-    return mClients[id]->hold();
-}
-
-bool TSIPPhone::resume(int id)
-{
-    DECL_TRACER("TSIPPhone::resume(int id)");
-
-    if (id < 0 || id > SIP_MAX_LINES)
-        return false;
-
-    return mClients[id]->resume();
-}

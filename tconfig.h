@@ -59,6 +59,15 @@ class TConfig
             SOUNDS
         }SYSTEMRESOURCE_t;
 
+        typedef enum SIP_FIREWALL_t
+        {
+            SIP_NO_FIREWALL,
+            SIP_NAT_ADDRESS,    // Currently not configurable
+            SIP_STUN,
+            SIP_ICE,
+            SIP_UPNP
+        }SIP_FIREWALL_t;
+
         static void setProgName(const std::string& pname);
         static std::string& getProgName();
         static std::string& getConfigPath();
@@ -127,6 +136,8 @@ class TConfig
         static void setSIPproxy(const std::string& address);
         static int getSIPport();
         static void setSIPport(int port);
+        static int getSIPportTLS();
+        static void setSIPportTLS(int port);
         static std::string& getSIPstun();
         static void setSIPstun(const std::string& address);
         static std::string& getSIPdomain();
@@ -136,6 +147,13 @@ class TConfig
         static std::string& getSIPpassword();
         static void setSIPpassword(const std::string& pw);
         static bool getSIPstatus();
+        static bool getSIPnetworkIPv4();
+        static void setSIPnetworkIPv4(bool state);
+        static bool getSIPnetworkIPv6();
+        static void setSIPnetworkIPv6(bool state);
+        static SIP_FIREWALL_t getSIPfirewall();
+        static std::string getSIPfirewallStr();
+        static void setSIPfirewall(SIP_FIREWALL_t fw);
         static void setSIPstatus(bool state);
 
     protected:
@@ -144,6 +162,8 @@ class TConfig
     private:
         static uint logLevelStrToBits(const std::string& level);
         static std::string logLevelBitsToString(uint level);
+        static std::string sipFirewallToString(SIP_FIREWALL_t fw);
+        static SIP_FIREWALL_t sipFirewallStrToEnum(const std::string& str);
         bool findConfig();
         bool readConfig();
         std::vector<std::string> split(const std::string& str, const std::string& seps, const bool trimEmpty);

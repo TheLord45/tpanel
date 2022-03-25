@@ -343,6 +343,7 @@ class TPageManager : public TAmxCommands
         TPage *loadPage(PAGELIST_T& pl);
         void setButtonCallbacks(Button::TButton *bt);
         bool sendCustomEvent(int value1, int value2, int value3, const std::string& msg, int evType, int cp, int cn);
+        std::string sipStateToString(TSIPClient::SIP_STATE_t s);
 
         // List of command functions
         void doFTR(int port, std::vector<int>&, std::vector<std::string>& pars);
@@ -351,6 +352,8 @@ class TPageManager : public TAmxCommands
         void doOFF(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doLEVEL(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doBLINK(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doVER(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doWCN(int port, std::vector<int>& channels, std::vector<std::string>& pars);
 
         void doAPG(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doCPG(int port, std::vector<int>& channels, std::vector<std::string>& pars);
@@ -453,6 +456,7 @@ class TPageManager : public TAmxCommands
         void doVKB(int port, std::vector<int>& channels, std::vector<std::string>& pars);
 
         void doPHN(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void getPHN(int port, std::vector<int>& channels, std::vector<std::string>& pars);
 
         int mActualPage{0};                             // The number of the actual visible page
         int mPreviousPage{0};                           // The number of the previous page
@@ -479,7 +483,7 @@ class TPageManager : public TAmxCommands
         bool mPassThrough{false};                       // Can ve set to true with the command ^KPS
         // SIP
         bool mPHNautoanswer{false};                     // The state of the SIP autoanswer
-        TSIPPhone *mSIPClient{nullptr};                 // Includes the SIP client
+        TSIPClient *mSIPClient{nullptr};                // Includes the SIP client
 #ifdef _SCALE_SKIA_
         double mScaleFactor{1.0};                       // The scale factor to zoom or shrink all components
         double mScaleFactorWidth{1.0};                  // The individual scale factor for the width

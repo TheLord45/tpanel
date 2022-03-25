@@ -66,10 +66,14 @@ class TQtSettings : public QDialog
         // SIP
         void on_lineEdit_SIPproxy_textChanged(const QString &arg1);
         void on_spinBox_SIPport_valueChanged(int arg1);
+        void on_spinBox_SIPportTLS_valueChanged(int arg1);
         void on_lineEdit_SIPstun_textChanged(const QString &arg1);
         void on_lineEdit_SIPdomain_textChanged(const QString &arg1);
         void on_lineEdit_SIPuser_textChanged(const QString &arg1);
         void on_lineEdit_SIPpassword_textChanged(const QString &arg1);
+        void on_checkBox_SIPnetworkIPv4_toggled(bool checked);
+        void on_checkBox_SIPnetworkIPv6_toggled(bool checked);
+        void on_comboBox_SIPfirewall_currentIndexChanged(int index);
         void on_checkBox_SIPenabled_toggled(bool checked);
         // View
         void on_checkBox_Scale_toggled(bool checked);

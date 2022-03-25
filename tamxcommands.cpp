@@ -40,7 +40,9 @@ typedef struct CMD_DEFINATIONS
 CMD_DEFINATIONS cmdDefinations[] = {
     { "@WLD", false, true, ',' },
     { "@AFP", false, true, ',' },
+    { "^AFP", false, true, ',' },
     { "@GCE", false, true, ',' },
+    { "^GCE", false, true, ',' },
     { "@APG", false, true, ';' },
     { "@CPG", false, true, ',' },
     { "@DPG", false, true, ';' },
@@ -186,6 +188,7 @@ CMD_DEFINATIONS cmdDefinations[] = {
     { "^CAL", false, false, ',' },
     { "^KPS", false, true, ',' },
     { "^VKS", false, true, ',' },
+    { "^WCN?", false, true, ',' },
     { "@PWD", false, true, ',' },
     { "^PWD", false, true, ',' },
     { "^BBR", true, true, ',' },
@@ -194,11 +197,15 @@ CMD_DEFINATIONS cmdDefinations[] = {
     { "^RMF", false, true, ',' },
     { "^RSR", false, true, ',' },
     { "^MODEL?", false, false, ',' },
+    { "^MOD", false, false, ',' },
+    { "^VER?", false, false, ',' },
     { "^ICS", false, true, ',' },
     { "^ICE", false, false, ',' },
     { "^ICM", false, true, ',' },
     { "^PHN", false, true, ',' },
     { "?PHN", false, true, ',' },
+    { "GET ", false, false, ',' },
+    { "SET ", false, false, ',' },
     { "LEVON", false, false, ',' },
     { "RXON", false, false, ',' },
     { "ON", false, true, ',' },
@@ -559,8 +566,10 @@ bool TAmxCommands::parseCommand(int device, int port, const string& cmd)
 */
     vector<CMD_TABLE>::iterator iter;
     size_t pos = cmd.find_first_of("-");
+    int system = TConfig::getSystem();
+    string scmd = getCommand(cmd);
 
-    MSG_TRACE("Parsing for device <" << device << ":" << port << ":" << TConfig::getSystem() << "> the command: " << getCommand(cmd));
+    MSG_TRACE("Parsing for device <" << device << ":" << port << ":" << system << "> the command: " << scmd);
 
     if (pos != string::npos)    // Command with parameters
     {

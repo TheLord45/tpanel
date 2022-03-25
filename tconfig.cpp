@@ -89,10 +89,14 @@ struct SETTINGS
     // SIP settings
     string sip_proxy;           //!< The address of the SIP proxy
     int sip_port{5060};         //!< Initializes the port of the SIP proxy to 5060
+    int sip_portTLS{0};         //!< Initializes the TLS port of the SIP proxy to 0 (not used by default)
     string sip_stun;            //!< STUN address
     string sip_domain;          //!< Local domain
     string sip_user;            //!< The SIP user to connect.
     string sip_password;        //!< The SIP password to connect. Note: This password is saved in plain text!
+    bool sip_ipv4{true};        //!< Default: TRUE, Enables or disables IPv4.
+    bool sip_ipv6{true};        //!< Default: TRUE, Enables or disables IPv6. Has precedence over IPv4.
+    TConfig::SIP_FIREWALL_t sip_firewall{TConfig::SIP_NO_FIREWALL}; //!< Defines how to deal with a firewall.
     bool sip_enabled{false};    //!< By default SIP is disabled
 };
 
@@ -580,6 +584,20 @@ void TConfig::setSIPport(int port)
     localSettings.sip_port = port;
 }
 
+int TConfig::getSIPportTLS()
+{
+    DECL_TRACER("TConfig::getSIPportTLS()");
+
+    return localSettings.sip_portTLS;
+}
+
+void TConfig::setSIPportTLS(int port)
+{
+    DECL_TRACER("TConfig::setSIPportTLS(int port)");
+
+    localSettings.sip_portTLS = port;
+}
+
 std::string& TConfig::getSIPstun()
 {
     DECL_TRACER("TConfig::getSIPstun()");
@@ -643,6 +661,55 @@ bool TConfig::getSIPstatus()
     return localSettings.sip_enabled;
 }
 
+bool TConfig::getSIPnetworkIPv4()
+{
+    DECL_TRACER("TConfig::getSIPnetworkIPv4()");
+
+    return localSettings.sip_ipv4;
+}
+
+void TConfig::setSIPnetworkIPv4(bool state)
+{
+    DECL_TRACER("TConfig::setSIPnetworkIPv4(bool state)");
+
+    localSettings.sip_ipv4 = state;
+}
+
+bool TConfig::getSIPnetworkIPv6()
+{
+    DECL_TRACER("TConfig::getSIPnetworkIPv6()");
+
+    return localSettings.sip_ipv6;
+}
+
+void TConfig::setSIPnetworkIPv6(bool state)
+{
+    DECL_TRACER("TConfig::setSIPnetworkIPv6(bool state)");
+
+    localSettings.sip_ipv6 = state;
+}
+
+TConfig::SIP_FIREWALL_t TConfig::getSIPfirewall()
+{
+    DECL_TRACER("TConfig::getSIPfirewall()");
+
+    return localSettings.sip_firewall;
+}
+
+string TConfig::getSIPfirewallStr()
+{
+    DECL_TRACER("TConfig::getSIPfirewallStr()");
+
+    return sipFirewallToString(localSettings.sip_firewall);
+}
+
+void TConfig::setSIPfirewall(TConfig::SIP_FIREWALL_t fw)
+{
+    DECL_TRACER("TConfig::setSIPfirewall(TConfig::SIP_FIREWALL_t fw)")
+
+    localSettings.sip_firewall = fw;
+}
+
 void TConfig::setSIPstatus(bool state)
 {
     DECL_TRACER("TConfig::setSIPstatus(bool state)");
@@ -689,11 +756,15 @@ bool TConfig::saveSettings()
         lines += string("FTPdownloadTime=") + std::to_string(localSettings.ftpLastDownload) + "\n";
         // SIP settings
         lines += string("SIP_DOMAIN=") + localSettings.sip_domain + "\n";
-        lines += string("SIP_PROXY=") + localSettings.sip_password + "\n";
+        lines += string("SIP_PROXY=") + localSettings.sip_proxy + "\n";
         lines += string("SIP_PORT=") + std::to_string(localSettings.sip_port) + "\n";
+        lines += string("SIP_PORTTLS=") + std::to_string(localSettings.sip_portTLS) + "\n";
         lines += string("SIP_STUN=") + localSettings.sip_stun + "\n";
         lines += string("SIP_USER=") + localSettings.sip_user + "\n";
         lines += string("SIP_PASSWORD=") + localSettings.sip_password + "\n";
+        lines += string("SIP_IPV4=") + (localSettings.sip_ipv4 ? "true" : "false") + "\n";
+        lines += string("SIP_IPV6=") + (localSettings.sip_ipv6 ? "true" : "false") + "\n";
+        lines += "SIP_FIREWALL=" + sipFirewallToString(localSettings.sip_firewall) + "\n";
         lines += string("SIP_ENABLED=") + (localSettings.sip_enabled ? "true" : "false") + "\n";
         file.write(lines.c_str(), lines.size());
         file.close();
@@ -971,6 +1042,34 @@ string TConfig::logLevelBitsToString(uint level)
     return l;
 }
 
+string TConfig::sipFirewallToString(TConfig::SIP_FIREWALL_t fw)
+{
+    switch(fw)
+    {
+        case SIP_NO_FIREWALL:   return "SIP_NO_FIREWALL";
+        case SIP_NAT_ADDRESS:   return "SIP_NAT_ADDRESS";
+        case SIP_STUN:          return "SIP_STUN";
+        case SIP_ICE:           return "SIP_ICE";
+        case SIP_UPNP:          return "SIP_UPNP";
+    }
+}
+
+TConfig::SIP_FIREWALL_t TConfig::sipFirewallStrToEnum(const std::string& str)
+{
+    if (strCaseCompare(str, "SIP_NO_FIREWALL") == 0)
+        return SIP_NO_FIREWALL;
+    else if (strCaseCompare(str, "SIP_NAT_ADDRESS") == 0)
+        return SIP_NAT_ADDRESS;
+    else if (strCaseCompare(str, "SIP_STUN") == 0)
+        return SIP_STUN;
+    else if (strCaseCompare(str, "SIP_ICE") == 0)
+        return SIP_ICE;
+    else if (strCaseCompare(str, "SIP_UPNP") == 0)
+        return SIP_UPNP;
+
+    return SIP_NO_FIREWALL;
+}
+
 string TConfig::makeConfigDefault(const std::string& log, const std::string& project)
 {
     string content = "LogFile=" + log + "\n";
@@ -999,7 +1098,17 @@ string TConfig::makeConfigDefault(const std::string& log, const std::string& pro
     content += "FTPsurface=tpanel.tp4\n";
     content += "FTPpassive=true\n";
     content += "FTPdownloadTime=0\n";
+    content += "SIP_PROXY=" + localSettings.sip_proxy + "\n";
     content += "SIP_PORT=" + std::to_string(localSettings.sip_port) + "\n";
+    content += "SIP_PORTTLS=" + std::to_string(localSettings.sip_portTLS) + "\n";
+    content += "SIP_STUN=" + localSettings.sip_stun + "\n";
+    content += "SIP_DOMAIN=" + localSettings.sip_domain + "\n";
+    content += "SIP_USER=" + localSettings.sip_user + "\n";
+    content += "SIP_PASSWORD=" + localSettings.sip_password + "\n";
+    content += "SIP_IPV4=" + string(localSettings.sip_ipv4 ? "TRUE" : "FALSE") + "\n";
+    content += "SIP_IPV4=" + string(localSettings.sip_ipv6 ? "TRUE" : "FALSE") + "\n";
+    content += "SIP_FIREWALL=" + sipFirewallToString(localSettings.sip_firewall) + "\n";
+    content += "SIP_ENABLED=" + string(localSettings.sip_ipv6 ? "TRUE" : "FALSE") + "\n";
 
     return content;
 }
@@ -1209,7 +1318,8 @@ bool TConfig::readConfig()
     localSettings.ftpPassword = "password";
     localSettings.ftpSurface = "tpanel.tp4";
     localSettings.sip_port = 5060;
-#ifdef __ANDROID__
+    localSettings.sip_portTLS = 0;
+    #ifdef __ANDROID__
     localSettings.logLevel = SLOG_NONE;
     localSettings.logLevelBits = HLOG_NONE;
 #else
@@ -1341,6 +1451,8 @@ bool TConfig::readConfig()
                 localSettings.sip_proxy = right;
             else if (caseCompare(left, "SIP_PORT") == 0 && !right.empty())
                 localSettings.sip_port = atoi(right.c_str());
+            else if (caseCompare(left, "SIP_PORTTLS") == 0 && !right.empty())
+                localSettings.sip_portTLS = atoi(right.c_str());
             else if (caseCompare(left, "SIP_STUN") == 0 && !right.empty())
                 localSettings.sip_stun = right;
             else if (caseCompare(left, "SIP_DOMAIN") == 0 && !right.empty())
@@ -1349,6 +1461,12 @@ bool TConfig::readConfig()
                 localSettings.sip_user = right;
             else if (caseCompare(left, "SIP_PASSWORD") == 0 && !right.empty())
                 localSettings.sip_password = right;
+            else if (caseCompare(left, "SIP_IPV4") == 0 && !right.empty())
+                localSettings.sip_ipv4 = isTrue(right);
+            else if (caseCompare(left, "SIP_IPV6") == 0 && !right.empty())
+                localSettings.sip_ipv6 = isTrue(right);
+            else if (caseCompare(left, "SIP_FIREWALL") == 0 && !right.empty())
+                localSettings.sip_firewall = sipFirewallStrToEnum(right);
             else if (caseCompare(left, "SIP_ENABLED") == 0 && !right.empty())
                 localSettings.sip_enabled = isTrue(right);
         }
@@ -1389,6 +1507,16 @@ bool TConfig::readConfig()
         MSG_INFO("    FTP surface:  " << localSettings.ftpSurface);
         MSG_INFO("    FTP passive:  " << (localSettings.ftpPassive ? "YES" : "NO"));
         MSG_INFO("    FTP dl. time: " << localSettings.ftpLastDownload);
+        MSG_INFO("    SIP proxy:    " << localSettings.sip_proxy);
+        MSG_INFO("    SIP port:     " << localSettings.sip_port);
+        MSG_INFO("    SIP TLS port: " << localSettings.sip_portTLS);
+        MSG_INFO("    SIP STUN:     " << localSettings.sip_stun);
+        MSG_INFO("    SIP doamain:  " << localSettings.sip_domain);
+        MSG_INFO("    SIP user:     " << localSettings.sip_user);
+        MSG_INFO("    SIP IPv4:     " << (localSettings.sip_ipv4 ? "YES" : "NO"));
+        MSG_INFO("    SIP IPv6:     " << (localSettings.sip_ipv6 ? "YES" : "NO"));
+        MSG_INFO("    SIP firewall: " << sipFirewallToString(localSettings.sip_firewall));
+        MSG_INFO("    SIP enabled:  " << (localSettings.sip_enabled ? "YES" : "NO"));
     }
 
     return true;

@@ -31,15 +31,18 @@ class TSIPClient
     public:
         typedef enum SIP_STATE_t
         {
-            SIP_NONE,
-            SIP_CONNECTED,
-            SIP_DISCONNECTED,
-            SIP_TRYING,
-            SIP_RINGING,
-            SIP_HOLD
+            SIP_NONE,               // Undefined state (only valid on startup before initialisation)
+            SIP_IDLE,               // Initialized but no event
+            SIP_CONNECTED,          // Call is in progress
+            SIP_DISCONNECTED,       // Call has ended
+            SIP_TRYING,             // Trying to call someone
+            SIP_RINGING,            // Phone is ringing (incoming call)
+            SIP_HOLD,               // Active call is paused
+            SIP_REJECTED,           // Outgoing call was rejected
+            SIP_ERROR               // An error occured
         }SIP_STATE_t;
 
-        TSIPClient(int id);
+        TSIPClient();
         ~TSIPClient();
 
         void cleanUp();
@@ -48,64 +51,40 @@ class TSIPClient
         void stop() { mRunning = false; }
         int getLineID() { return mLine; }
         LinphoneCore *getCore() { return mCore; }
-        SIP_STATE_t getSIPState() { return mSIPState; }
+        SIP_STATE_t getSIPState(int) { return mSIPState; }
 
-        bool call(const std::string& dest); //<! Start a phone call
-        bool pickup(LinphoneCall *call);    //<! Lift up if the phone is ringing
-        bool terminate();                   //<! Terminate a call
-        bool hold();                        //<! Pause a call
-        bool resume();                      //<! Resume a paused call
+        bool call(const std::string& dest);         //<! Start a phone call
+        bool pickup(LinphoneCall *call, int id);    //<! Lift up if the phone is ringing
+        bool terminate(int id);                     //<! Terminate a call
+        bool hold(int id);                          //<! Pause a call
+        bool resume(int id);                        //<! Resume a paused call
+        bool sendDTMF(std::string& dtmf);           //<! Send a DTMF string
         bool setOnline();
         bool setOffline();
 
         static void LinphoneCoreCbsRegistrationStateChanged(LinphoneCore *lc, LinphoneProxyConfig *cfg, LinphoneRegistrationState cstate, const char *message);
         static void LinphoneCoreCbsSubscriptionStateChanged(LinphoneCore *lc, LinphoneEvent *lev, LinphoneSubscriptionState state);
         static void callStateChanged(LinphoneCore *lc, LinphoneCall *call, LinphoneCallState cstate, const char *msg);
+        static void loggingServiceCbs(LinphoneLoggingService *, const char *domain, LinphoneLogLevel level, const char *message);
 
     protected:
         void start();
-        void bell();
-        void bellStop() { mBellRun = false; }
 
     private:
+        LinphoneCall *getCallbyID(int id);
+        int getCallId(LinphoneCall *call);
+        int getNumberCalls();
+
         std::thread mThread;
         std::atomic<bool> mRunning{false};
         std::atomic<bool> mThreadRun{false};
-        std::atomic<bool> mBellRun{false};
-        std::atomic<bool> mBellThreadRun{false};
         int mLine{0};
         SIP_STATE_t mSIPState{SIP_NONE};
 
         LinphoneCore *mCore;
         LinphoneProxyConfig *mProxyCfg;
-        LinphoneCall *mCall;
-};
 
-class TSIPPhone
-{
-    public:
-        TSIPPhone();
-        ~TSIPPhone();
-
-        void cleanUp(int id);
-        bool connectSIPProxy(int id);
-        bool run(int id);
-        void stop(int id);
-        TSIPClient::SIP_STATE_t getSIPState(int id);
-
-        bool call(int id, const std::string& dest); //<! Start a phone call
-        bool pickup(int id);    //<! Lift up if the phone is ringing
-        bool terminate(int id);                   //<! Terminate a call
-        bool hold(int id);
-        bool resume(int id);
-        bool setOnline(int id);
-        bool setOffline(int id);
-
-        static int getId(LinphoneCore *lc);
-        static TSIPClient *getClient(int id);
-
-    private:
-        static TSIPClient *mClients[SIP_MAX_LINES];
+        static TSIPClient *mMyself;
 };
 
 #endif
