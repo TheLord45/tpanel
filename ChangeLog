@@ -3,6 +3,8 @@ ChangeLog
 
 Release: 1.3.1
 ===============================================================================
+2022-03-26 Completed the PHN commands.
+
 2022-03-25 Fixed the SIP client configuration.
            Added SIP configuration for network protocolls and to handle
            behavior behind a firewall.

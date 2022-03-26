@@ -52,6 +52,8 @@ class TSIPClient
         int getLineID() { return mLine; }
         LinphoneCore *getCore() { return mCore; }
         SIP_STATE_t getSIPState(int) { return mSIPState; }
+        LinphoneRegistrationState getRegState() { return mRegState; }
+        void setRegState(LinphoneRegistrationState s) { mRegState = s; }
 
         bool call(const std::string& dest);         //<! Start a phone call
         bool pickup(LinphoneCall *call, int id);    //<! Lift up if the phone is ringing
@@ -59,6 +61,10 @@ class TSIPClient
         bool hold(int id);                          //<! Pause a call
         bool resume(int id);                        //<! Resume a paused call
         bool sendDTMF(std::string& dtmf);           //<! Send a DTMF string
+        bool sendLinestate();                       //<! Queries the state of each of the connections used by the SIP device.
+        bool sendPrivate(bool state);               //<! Enables or disables the privacy feature on the phone (do not disturb).
+        bool redial();                              //<! Redial last number
+        bool transfer(int id, const std::string& num);  //<! transfer the current call
         bool setOnline();
         bool setOffline();
 
@@ -81,8 +87,9 @@ class TSIPClient
         int mLine{0};
         SIP_STATE_t mSIPState{SIP_NONE};
 
-        LinphoneCore *mCore;
-        LinphoneProxyConfig *mProxyCfg;
+        LinphoneCore *mCore{nullptr};
+        LinphoneProxyConfig *mProxyCfg{nullptr};
+        LinphoneRegistrationState mRegState{LinphoneRegistrationNone};
 
         static TSIPClient *mMyself;
 };

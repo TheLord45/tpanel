@@ -7005,7 +7005,7 @@ void TPageManager::doPHN(int port, vector<int>&, vector<string>& pars)
 
                 vector<string> cmds;
                 cmds = { "AUTOANSWER", to_string(mPHNautoanswer ? 1 : 0) };
-                gPageManager->sendPHN(cmds);
+                sendPHN(cmds);
             }
         }
         else if (cmd == "CALL")     // Initiate a call
@@ -7034,21 +7034,36 @@ void TPageManager::doPHN(int port, vector<int>&, vector<string>& pars)
                 mSIPClient->hold(id);
             }
         }
-        else if (cmd == "LINESTATE")  // Set/unset "do not disturb"
+        else if (cmd == "LINESTATE") // State of all line
         {
-            // FIXME:
+            mSIPClient->sendLinestate();
         }
         else if (cmd == "PRIVACY")  // Set/unset "do not disturb"
         {
-            // FIXME:
+            if (pars.size() >= 2)
+            {
+                bool state = (pars[1].at(0) == '1' ? true : false);
+                mSIPClient->sendPrivate(state);
+            }
         }
         else if (cmd == "REDIAL")   // Redials the last number
         {
-            // FIXME:
+            mSIPClient->redial();
         }
         else if (cmd == "TRANSFER") // Transfer call to provided number
         {
-            // FIXME
+            if (pars.size() >= 3)
+            {
+                int id = atoi(pars[1].c_str());
+                string num = pars[2];
+
+                if (mSIPClient->transfer(id, num))
+                {
+                    vector<string> cmds;
+                    cmds.push_back("TRANSFERRED");
+                    sendPHN(cmds);
+                }
+            }
         }
         else if (cmd == "SETUP")    // Some temporary settings
         {
