@@ -94,11 +94,11 @@ string cmdList[] =
 #define NUMBER_CMDS     144
 
 #ifndef __ANDROID__
-std::atomic<bool> killed = false;
-std::atomic<bool> _netRunning = false;
+std::atomic<bool> killed{false};
+std::atomic<bool> _netRunning{false};
 #else
-std::atomic<bool> killed;
-std::atomic<bool> _netRunning;
+std::atomic<bool> killed{false};
+std::atomic<bool> _netRunning{false};
 #endif
 amx::TAmxNet *gAmxNet = nullptr;
 static bool __CommValid = false;

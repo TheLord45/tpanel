@@ -24,6 +24,12 @@
 
 #include <linphone/core.h>
 
+#ifndef _LINPHONE_LOG_H_
+#warning "You need Linphone version 10 or newer to compile this code and because of this SIP was disabled!"
+#define _NOSIP_
+#endif
+
+#ifndef _NOSIP_
 #define SIP_MAX_LINES   2
 
 class TSIPClient
@@ -93,5 +99,5 @@ class TSIPClient
 
         static TSIPClient *mMyself;
 };
-
-#endif
+#endif  // _NOSIP_
+#endif  // __TSIPCLIENT_H__

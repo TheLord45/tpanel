@@ -257,9 +257,10 @@ class TPageManager : public TAmxCommands
         bool haveShutdown() { return _shutdown != nullptr; }
         void callSetupPage() { if (_callShowSetup) _callShowSetup(); }
         void callShutdown() { if (_shutdown) _shutdown(); }
+#ifndef _NOSIP_
         bool getPHNautoanswer() { return mPHNautoanswer; }
         void sendPHN(std::vector<std::string>& cmds);
-
+#endif
     protected:
         PAGELIST_T findPage(const std::string& name);
         PAGELIST_T findPage(int ID);
@@ -343,8 +344,9 @@ class TPageManager : public TAmxCommands
         TPage *loadPage(PAGELIST_T& pl);
         void setButtonCallbacks(Button::TButton *bt);
         bool sendCustomEvent(int value1, int value2, int value3, const std::string& msg, int evType, int cp, int cn);
+#ifndef _NOSIP_
         std::string sipStateToString(TSIPClient::SIP_STATE_t s);
-
+#endif
         // List of command functions
         void doFTR(int port, std::vector<int>&, std::vector<std::string>& pars);
 
@@ -454,10 +456,10 @@ class TPageManager : public TAmxCommands
         void doSOU(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doTKP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doVKB(int port, std::vector<int>& channels, std::vector<std::string>& pars);
-
+#ifndef _NOSIP_
         void doPHN(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void getPHN(int port, std::vector<int>& channels, std::vector<std::string>& pars);
-
+#endif
         int mActualPage{0};                             // The number of the actual visible page
         int mPreviousPage{0};                           // The number of the previous page
         int mFirstLeftPixel{0};                         // Pixels to add to left (x) mouse coordinate
@@ -482,8 +484,10 @@ class TPageManager : public TAmxCommands
         std::string mAkpText;                           // This is the text for the virtual keyad (@AKP)
         bool mPassThrough{false};                       // Can ve set to true with the command ^KPS
         // SIP
+#ifndef _NOSIP_
         bool mPHNautoanswer{false};                     // The state of the SIP autoanswer
         TSIPClient *mSIPClient{nullptr};                // Includes the SIP client
+#endif
 #ifdef _SCALE_SKIA_
         double mScaleFactor{1.0};                       // The scale factor to zoom or shrink all components
         double mScaleFactorWidth{1.0};                  // The individual scale factor for the width

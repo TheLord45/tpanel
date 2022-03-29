@@ -27,6 +27,8 @@
 #include "terror.h"
 #include "tpagemanager.h"
 
+#ifndef _NOSIP_
+
 using std::string;
 using std::vector;
 using std::to_string;
@@ -882,3 +884,4 @@ void TSIPClient::loggingServiceCbs(LinphoneLoggingService *, const char *domain,
         MSG_ERROR(domain << ": FATAL ERROR: " << message);
 }
 
+#endif  // _NOSIP_

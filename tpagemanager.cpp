@@ -370,11 +370,11 @@ TPageManager::TPageManager()
     REG_CMD(doTKP, "^TKP");     // G5: Bring up a telephone keypad.
     REG_CMD(doTKP, "@VKB");     // Present a virtual keyboard
     REG_CMD(doTKP, "^VKB");     // G5: Bring up a virtual keyboard.
-
+#ifndef _NOSIP_
     // Here the SIP commands will take place
     REG_CMD(doPHN, "^PHN");     // SIP commands
     REG_CMD(getPHN, "?PHN");    // SIP state commands
-
+#endif
     // State commands
     REG_CMD(doON, "ON");
     REG_CMD(doOFF, "OFF");
@@ -386,6 +386,7 @@ TPageManager::TPageManager()
     REG_CMD(doFTR, "#FTR");     // File transfer (virtual internal command)
 
     // At least we must add the SIP client
+#ifndef _NOSIP_
     mSIPClient = new TSIPClient;
 
     if (TError::isError())
@@ -393,7 +394,7 @@ TPageManager::TPageManager()
         MSG_ERROR("Error initializing the SIP client!");
         TConfig::setSIPstatus(false);
     }
-
+#endif
     TError::clear();
     surface_mutex.unlock();
 }
@@ -401,13 +402,13 @@ TPageManager::TPageManager()
 TPageManager::~TPageManager()
 {
     DECL_TRACER("TPageManager::~TPageManager()");
-
+#ifndef _NOSIP_
     if (mSIPClient)
     {
         delete mSIPClient;
         mSIPClient = nullptr;
     }
-
+#endif
     PCHAIN_T *p = mPchain;
     PCHAIN_T *next = nullptr;
 #ifdef __ANDROID__
@@ -2672,7 +2673,7 @@ bool TPageManager::sendCustomEvent(int value1, int value2, int value3, const str
 
     return true;
 }
-
+#ifndef _NOSIP_
 string TPageManager::sipStateToString(TSIPClient::SIP_STATE_t s)
 {
     DECL_TRACER("TPageManager::sipStateToString(TSIPClient::SIP_STATE_t s)");
@@ -2691,7 +2692,7 @@ string TPageManager::sipStateToString(TSIPClient::SIP_STATE_t s)
 
     return "IDLE";
 }
-
+#endif
 /****************************************************************************
  * The following functions implements one of the commands the panel accepts.
  ****************************************************************************/
@@ -6936,7 +6937,7 @@ void TPageManager::doVKB(int port, vector<int>& channels, vector<string>& pars)
 
     doAKP(port, channels, pars);
 }
-
+#ifndef _NOSIP_
 void TPageManager::sendPHN(vector<string>& cmds)
 {
     DECL_TRACER("TPageManager::sendPHN(const vector<string>& cmds)");
@@ -7159,3 +7160,4 @@ void TPageManager::getPHN(int, vector<int>&, vector<string>& pars)
         MSG_WARNING("Unknown command " << cmd << " found!");
     }
 }
+#endif  // _NOSIP_
