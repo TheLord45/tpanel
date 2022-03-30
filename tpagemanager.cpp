@@ -134,6 +134,16 @@ JNIEXPORT void JNICALL Java_org_qtproject_theosys_Logger_logger(JNIEnv *env, jcl
         __android_log_print(ANDROID_LOG_ERROR, "tpanel", "%s", e.what());
     }
 }
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_Orientation_informTPanelOrientation(JNIEnv */*env*/, jclass /*clazz*/, jint orientation)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Orientation_informTPanelOrientation(JNIEnv */*env*/, jclass /*clazz*/, jint orientation)");
+
+    MSG_PROTOCOL("Received android orientation " << orientation);
+
+    if (gPageManager && gPageManager->onOrientationChange())
+        gPageManager->onOrientationChange()(orientation);
+}
 #endif
 
 TPageManager::TPageManager()
@@ -679,6 +689,7 @@ void TPageManager::startUp()
         return;
 
 #ifdef __ANDROID__
+    initOrientation();
     initNetworkState();
 #endif
 }
@@ -2484,6 +2495,15 @@ void TPageManager::informPhoneState(bool call, const string &pnumber)
         MSG_WARNING("The network manager for the AMX controller is not initialized!");
         return;
     }
+}
+
+void TPageManager::initOrientation()
+{
+    DECL_TRACER("TPageManager::initOrientation()");
+
+    QAndroidJniObject activity = QtAndroid::androidActivity();
+    QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "Init", "(Landroid/app/Activity;)V", activity.object());
+    activity.callStaticMethod<void>("org/qtproject/theosys/Orientation", "InstallOrientationListener", "()V");
 }
 #endif  // __ANDROID__
 

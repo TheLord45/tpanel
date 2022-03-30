@@ -107,6 +107,7 @@ class TPageManager : public TAmxCommands
         void informTPanelNetwork(jboolean conn, jint level, jint type);
         void informBatteryStatus(jint level, jboolean charging, jint chargeType);
         void informPhoneState(bool call, const std::string& pnumber);
+        void initOrientation();
 #endif
         void regCallDropPage(std::function<void (ulong handle)> callDropPage) { _callDropPage = callDropPage; }
         void regCallDropSubPage(std::function<void (ulong handle)> callDropSubPage) { _callDropSubPage = callDropSubPage; }
@@ -124,7 +125,9 @@ class TPageManager : public TAmxCommands
         void regCallbackShutdown(std::function<void ()> shutdown) { _shutdown = shutdown; }
         void regCallbackPlaySound(std::function<void (const std::string& file)> playSound) { _playSound = playSound; }
         void regSendVirtualKeys(std::function<void (const std::string& str)> sendVirtualKeys) { _sendVirtualKeys = sendVirtualKeys; }
-
+#ifdef __ANDROID__
+        void regOnOrientationChange(std::function<void (int orientation)> orientationChange) { _onOrientationChange = orientationChange; }
+#endif
         /**
          * The following function must be called to start non graphics part
          * of the panel simulator. If everything worked well, it returns TRUE.
@@ -248,7 +251,9 @@ class TPageManager : public TAmxCommands
         std::function<void (ulong handle)> getCallDropSubPage() { return _callDropSubPage; }
         std::function<void (const std::string& file)> getCallPlaySound() { return _playSound; }
         std::function<void (const std::string& str)> sendVirtualKeys() { return _sendVirtualKeys; }
-
+#ifdef __ANDROID__
+        std::function<void (int orientation)> onOrientationChange() { return _onOrientationChange; }
+#endif
         bool havePlaySound() { return _playSound != nullptr; }
         TSystemDraw *getSystemDraw() { return mSystemDraw; }
         void reset();
@@ -294,7 +299,9 @@ class TPageManager : public TAmxCommands
         std::function<void ()> _shutdown{nullptr};
         std::function<void (const std::string& file)> _playSound{nullptr};
         std::function<void (const std::string& str)> _sendVirtualKeys{nullptr};
-
+#ifdef __ANDROID__
+        std::function<void (int orientation)> _onOrientationChange{nullptr};
+#endif
         /**
          * @brief doOverlap checks for overlapping objects
          *
@@ -506,6 +513,7 @@ extern "C" {
     JNIEXPORT void JNICALL Java_org_qtproject_theosys_BatteryState_informBatteryStatus(JNIEnv */*env*/, jclass /*clazz*/, jint level, jboolean charge, jint chargeType);
     JNIEXPORT void JNICALL Java_org_qtproject_theosys_PhoneCallState_informPhoneState(JNIEnv *env, jclass cl, jboolean call, jstring pnumber);
     JNIEXPORT void JNICALL Java_org_qtproject_theosys_Logger_logger(JNIEnv *env, jclass cl, jint mode, jstring msg);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_Orientation_informTPanelOrientation(JNIEnv */*env*/, jclass /*clazz*/, jint orientation);
 }
 #endif  // __ANDROID__
 

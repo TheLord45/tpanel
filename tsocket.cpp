@@ -74,7 +74,7 @@ bool TSocket::connect(bool encrypt)
     int on = 1;
     bool retry = true;
 
-    MSG_INFO("Trying to connect to host " << mHost << " at port " << mPort);
+    MSG_DEBUG("Trying to connect to host " << mHost << " at port " << mPort);
 
     if ((ainfo = lookup_host(mHost, mPort)) == nullptr)
         return false;
@@ -150,14 +150,14 @@ bool TSocket::connect(bool encrypt)
             }
             else
             {
-                MSG_INFO("[" << mHost << "] Connection is in progress ...");
+                MSG_DEBUG("[" << mHost << "] Connection is in progress ...");
                 mConnected = true;
                 break;
             }
         }
         else
         {
-            MSG_INFO("[" << mHost << "] Successfully connected.");
+            MSG_DEBUG("[" << mHost << "] Successfully connected.");
             mConnected = true;
             break;
         }
@@ -271,7 +271,7 @@ bool TSocket::connect(const string& host, int port, bool encrypt)
 
     if (mConnected && host == mHost && port == mPort)
     {
-        MSG_INFO("[" << mHost << "] Already connected.");
+        MSG_DEBUG("[" << mHost << "] Already connected.");
         return true;
     }
 

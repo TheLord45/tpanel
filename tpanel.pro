@@ -2,7 +2,7 @@
 # You may attempt to use it for building too, by modifying this file here.
 
 TARGET = tpanel
-QT = core gui widgets multimedia multimediawidgets qml quick quickwidgets androidextras
+QT = core gui widgets multimedia multimediawidgets sensors qml quick quickwidgets androidextras
 
 # The main application
 HEADERS = \
@@ -172,6 +172,7 @@ DISTFILES += \
     android/gradlew \
     android/gradlew.bat \
     android/res/values/libs.xml \
+    android/src/org/qtproject/theosys/Orientation.java \
     qrc/BusyIndicator.qml
 
 ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android

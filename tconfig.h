@@ -26,6 +26,7 @@
 #define V_MAJOR     1
 #define V_MINOR     3
 #define V_PATCH     1
+#define V_ADD       "b"
 
 /**
  * @def TPANEL_VERSION
@@ -35,7 +36,7 @@
 
 #define VERSION_STRING() _GET_X_VERSION(V_MAJOR, V_MINOR, V_PATCH)
 #define _GET_X_VERSION(a, b, c) _GET_VERSION(a, b, c)
-#define _GET_VERSION(a, b, c) ( #a "." #b "." #c)
+#define _GET_VERSION(a, b, c) ( #a "." #b "." #c V_ADD )
 
 /**
  * @brief The TConfig class manages the configurations.

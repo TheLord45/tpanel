@@ -47,6 +47,7 @@
 #include <QUrl>
 #include <QThread>
 #include <QSound>
+#include <QtSensors/QOrientationSensor>
 #ifdef __ANDROID__
 #include <QAndroidJniObject>
 #endif
@@ -135,6 +136,26 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
     // Set the orientation
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
     QScreen *screen = QGuiApplication::primaryScreen();
+    QOrientationReading::Orientation ori = QOrientationReading::Undefined;
+    Qt::ScreenOrientations mask = Qt::PrimaryOrientation;
+    QOrientationSensor qOri;
+    QOrientationReading *pORead = qOri.reading();
+
+    if (pORead)
+    {
+        ori = pORead->orientation();
+
+        switch(ori)
+        {
+            case QOrientationReading::LeftUp:   mask = Qt::InvertedLandscapeOrientation; break;
+            case QOrientationReading::RightUp:  mask = Qt::LandscapeOrientation; break;
+            case QOrientationReading::TopDown:  mask = Qt::InvertedPortraitOrientation; break;
+            default:
+                mask = Qt::PortraitOrientation;
+        }
+
+        MSG_PROTOCOL("Detected orientation: " << mask);
+    }
 
     if (!screen)
     {
@@ -145,12 +166,20 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
     if (pmanager->getSettings()->getRotate() == 1)  // portrait?
     {
         MSG_INFO("Orientation set to portrait mode.");
-        screen->setOrientationUpdateMask(Qt::PortraitOrientation);
+
+        if (mask == Qt::InvertedPortraitOrientation)
+            screen->setOrientationUpdateMask(Qt::InvertedPortraitOrientation);
+        else
+            screen->setOrientationUpdateMask(Qt::PortraitOrientation);
     }
     else
     {
         MSG_INFO("Orientation set to landscape mode.");
-        screen->setOrientationUpdateMask(Qt::LandscapeOrientation);
+
+        if (mask == Qt::InvertedLandscapeOrientation)
+            screen->setOrientationUpdateMask(Qt::InvertedLandscapeOrientation);
+        else
+            screen->setOrientationUpdateMask(Qt::LandscapeOrientation);
     }
 
     double scale = 1.0;
@@ -340,6 +369,9 @@ MainWindow::MainWindow()
     gPageManager->regCallbackPlaySound(bind(&MainWindow::_playSound, this, std::placeholders::_1));
     gPageManager->registerCBsetVisible(bind(&MainWindow::_setVisible, this, std::placeholders::_1, std::placeholders::_2));
     gPageManager->regSendVirtualKeys(bind(&MainWindow::_sendVirtualKeys, this, std::placeholders::_1));
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+    gPageManager->regOnOrientationChange(bind(&MainWindow::_orientationChanged, this, std::placeholders::_1));
+#endif
     gPageManager->deployCallbacks();
     createActions();
 
@@ -377,6 +409,10 @@ MainWindow::MainWindow()
         connect(this, &MainWindow::sigSetVisible, this, &MainWindow::SetVisible);
         connect(this, &MainWindow::sigSendVirtualKeys, this, &MainWindow::sendVirtualKeys);
         connect(qApp, &QGuiApplication::applicationStateChanged, this, &MainWindow::appStateChanged);
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+        QScreen *screen = QGuiApplication::primaryScreen();
+        connect(screen, &QScreen::orientationChanged, this, &MainWindow::onScreenOrientationChanged);
+#endif
     }
     catch (std::exception& e)
     {
@@ -461,6 +497,13 @@ void MainWindow::_signalState(Qt::ApplicationState state)
     std::this_thread::sleep_for(std::chrono::seconds(1));   // Wait a second
     appStateChanged(state);
 }
+
+void MainWindow::_orientationChanged(int orientation)
+{
+    DECL_TRACER("MainWindow::_orientationChanged(int orientation)");
+
+    MSG_PROTOCOL("_orientationChanged: " << orientation);
+}
 #endif
 
 /**
@@ -512,6 +555,10 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 
     if (event->type() == QEvent::Gesture)
         return gestureEvent(static_cast<QGestureEvent*>(event));
+    else if (event->type() == QEvent::OrientationChange)
+    {
+        MSG_TRACE("The orientation has changed!");
+    }
 
     return QMainWindow::eventFilter(obj, event);
 }
@@ -525,6 +572,10 @@ bool MainWindow::event(QEvent* event)
 {
     if (event->type() == QEvent::Gesture)
         return gestureEvent(static_cast<QGestureEvent*>(event));
+    else if (event->type() == QEvent::OrientationChange)
+    {
+        MSG_TRACE("The orientation has changed!");
+    }
 
     return QWidget::event(event);
 }
@@ -535,7 +586,7 @@ bool MainWindow::event(QEvent* event)
  * dialog is called. This exists for devices, where the left toolbox is not
  * visible.
  * @param event The guesture occured
- * @return TRUE
+ * @return FALSE
  */
 bool MainWindow::gestureEvent(QGestureEvent* event)
 {
@@ -568,6 +619,46 @@ bool MainWindow::gestureEvent(QGestureEvent* event)
     }
 
     return false;
+}
+
+/**
+ * @brief MainWindow::onScreenOrientationChanged sets invers or normal orientation.
+ * This method sets according to the actual set orientation the invers
+ * orientations or switches back to normal orientation.
+ * For example: When the orientation is set to portrait and the device is turned
+ * to top down, then the orientation is set to invers portrait.
+ * @param ori   The detected orientation
+ */
+void MainWindow::onScreenOrientationChanged(Qt::ScreenOrientation ori)
+{
+    DECL_TRACER("MainWindow::onScreenOrientationChanged(int ori)");
+
+    MSG_PROTOCOL("Orientation changed to " << ori);
+
+    if (mOrientation == Qt::PrimaryOrientation || mOrientation == ori)
+        return;
+
+    if ((mOrientation == Qt::LandscapeOrientation || mOrientation == Qt::InvertedLandscapeOrientation) &&
+            (ori == Qt::PortraitOrientation || ori == Qt::InvertedPortraitOrientation))
+        return;
+
+    if ((mOrientation == Qt::PortraitOrientation || mOrientation == Qt::InvertedPortraitOrientation) &&
+            (ori == Qt::LandscapeOrientation || ori == Qt::InvertedLandscapeOrientation))
+        return;
+
+    J_ORIENTATION jori = O_UNDEFINED;
+
+    switch(mOrientation)
+    {
+        case Qt::LandscapeOrientation:          jori = O_LANDSCAPE; break;
+        case Qt::InvertedLandscapeOrientation:  jori = O_REVERSE_LANDSCAPE; break;
+        case Qt::PortraitOrientation:           jori = O_PORTRAIT; break;
+        case Qt::InvertedPortraitOrientation:   jori = O_REVERSE_PORTRAIT; break;
+        default:
+            return;
+    }
+
+    _setOrientation(jori);
 }
 
 /**

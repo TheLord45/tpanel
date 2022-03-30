@@ -291,7 +291,7 @@ char *THTTPClient::tcall(size_t *size, const string& URL, const string& user, co
         return nullptr;
     }
 
-    MSG_PROTOCOL("[" << mURL.host << "] Read " << length << " bytes.");
+    MSG_DEBUG("[" << mURL.host << "] Read " << length << " bytes.");
 
     if (parseHeader(buffer, length) != 0)
     {

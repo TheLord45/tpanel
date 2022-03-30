@@ -3,6 +3,9 @@ ChangeLog
 
 Release: 1.3.1
 ===============================================================================
+2022-03-30 Added orientation sensor to turn from portrait to inverted portrait
+           or from landscape to inverted landscape and back.
+
 2022-03-26 Completed the PHN commands.
 
 2022-03-25 Fixed the SIP client configuration.

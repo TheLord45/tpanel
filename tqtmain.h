@@ -58,7 +58,9 @@ class MainWindow : public QMainWindow, TQManageQueue
         {
             O_UNDEFINED = -1,
             O_LANDSCAPE = 0,
-            O_PORTRAIT = 1
+            O_PORTRAIT = 1,
+            O_REVERSE_LANDSCAPE = 8,
+            O_REVERSE_PORTRAIT = 9
         }J_ORIENTATION;
 
         MainWindow();
@@ -116,6 +118,8 @@ class MainWindow : public QMainWindow, TQManageQueue
         void showSetup();
         void playSound(const std::string& file);
         void appStateChanged(Qt::ApplicationState state);
+        void onScreenOrientationChanged(Qt::ScreenOrientation ori);
+        // Slots for the toolbar buttons.
         void arrowLeft();
         void arrowRight();
         void arrowUp();
@@ -126,6 +130,7 @@ class MainWindow : public QMainWindow, TQManageQueue
         void volumeDownPressed();
         void volumeDownReleased();
 //        void volumeMute();
+        // Slots for widget actions and button element actions
         void animationFinished();
         void textChangedMultiLine();
         void textSingleLineReturn();
@@ -162,6 +167,7 @@ class MainWindow : public QMainWindow, TQManageQueue
         void _sendVirtualKeys(const std::string& str);
 #ifdef __ANDROID__
         void _signalState(Qt::ApplicationState state);
+        void _orientationChanged(int orientation);
 #endif
         void doReleaseButton();
 
@@ -184,6 +190,7 @@ class MainWindow : public QMainWindow, TQManageQueue
         // Mouse
         int mLastPressX{-1};                // Remember the last mouse press X coordinate
         int mLastPressY{-1};                // Remember the last mouse press Y coordinate
+        Qt::ScreenOrientations mOrientation{Qt::PrimaryOrientation};
 };
 
 #endif
