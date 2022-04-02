@@ -159,7 +159,7 @@ class InputParser
 void usage()
 {
 #ifndef __ANDROID__
-    cout << TConfig::getProgName() << " version " <<  V_MAJOR << "."  << V_MINOR << "." << V_PATCH << endl << endl;
+    cout << TConfig::getProgName() << " version " <<  VERSION_STRING() << endl << endl;
     cout << "Usage: tpanel [-c <config file>]" << endl;
     cout << "-c | --config-file <file> The path and name of the configuration file." << endl;
     cout << "                          This parameter is optional. If it is omitted," << endl;
@@ -186,7 +186,7 @@ void banner(const string& pname)
     if (!TConfig::showBanner())
         return;
 
-    cout << pname << " v" << V_MAJOR << "."  << V_MINOR << "." << V_PATCH << endl;
+    cout << pname << " v" << VERSION_STRING() << endl;
     cout << "(C) Andreas Theofilu <andreas@theosys.at>" << endl;
     cout << "This program is under the terms of GPL version 3" << endl << endl;
 }

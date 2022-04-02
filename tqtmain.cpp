@@ -1231,7 +1231,6 @@ void MainWindow::appStateChanged(Qt::ApplicationState state)
 #if defined(Q_OS_LINUX) || defined(Q_OS_UNIX)
         default:
             mHasFocus = true;
-            QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "resumeOrientationListener", "()V");
 #endif
     }
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
