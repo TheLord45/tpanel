@@ -3,6 +3,10 @@ ChangeLog
 
 Release: 1.3.1
 ===============================================================================
+2022-04-02 Added functions to pause the orientation sensor if the program is
+           inactive.
+           Added functions to calculate the orientation of the screen.
+
 2022-03-30 Added orientation sensor to turn from portrait to inverted portrait
            or from landscape to inverted landscape and back.
 

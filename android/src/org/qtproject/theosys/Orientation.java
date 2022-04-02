@@ -18,10 +18,7 @@
 package org.qtproject.theosys;
 
 import android.app.Activity;
-import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -33,17 +30,44 @@ import org.qtproject.theosys.Logger;
 
 public class Orientation extends Logger
 {
+    public static final int ORIENTATION_PORTRAIT = 1;
+    public static final int ORIENTATION_LANDSCAPE_REVERSE = 8;
+    public static final int ORIENTATION_LANDSCAPE = 0;
+    public static final int ORIENTATION_PORTRAIT_REVERSE = 9;
+
     static private Activity m_ActivityInstance = null;
-    static private OrientationEventListener mOrientationListener = null;
-    static private IntentFilter OrientationFilter = null;
-    static private BroadcastReceiver OrientationReceiver = null;
     static private SensorManager mSensorManager = null;
     static private Sensor mAccelerometer, mMagnetSensor;
+    static private SensorEventListener mListener = null;
     static private boolean mInitialized = false;
+    static private int mOrientation = ORIENTATION_PORTRAIT;
+    static private int mOldOrientation = 9999;
+    static private float mAveragePitch = 0;
+    static private float mAverageRoll = 0;
+    static private float[] mPitches;
+    static private float[] mRolls;
+    static private int mSmoothness = 5;     // Number of values to calculate average
+    static private boolean mPaused = false;
 
-    static public void Init(Activity act)
+    static public void Init(Activity act, int ori)
     {
         m_ActivityInstance = act;
+        mPitches = new float[mSmoothness];
+        mRolls = new float[mSmoothness];
+
+        if (ori == 0)   // Landscape
+            mOrientation = ORIENTATION_LANDSCAPE;
+        else
+            mOrientation = ORIENTATION_PORTRAIT;
+
+        if ((mSensorManager = (SensorManager)act.getSystemService(Context.SENSOR_SERVICE)) == null)
+        {
+            log(HLOG_ERROR, "Orientation: Can't get SENSOR_SERVICE!");
+            return;
+        }
+
+        mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        mMagnetSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
     }
 
     static public void destroyOrientationListener()
@@ -51,8 +75,37 @@ public class Orientation extends Logger
         if (!mInitialized)
             return;
 
-        m_ActivityInstance.unregisterReceiver(OrientationReceiver);
+        if (mSensorManager != null && mListener != null)
+            mSensorManager.unregisterListener(mListener);
+
         mInitialized = false;
+    }
+
+    static public void pauseOrientationListener()
+    {
+        if (mPaused || !mInitialized)
+            return;
+
+        if (mInitialized && mSensorManager != null && mListener != null)
+        {
+            mSensorManager.unregisterListener(mListener);
+            mPaused = true;
+            log(HLOG_INFO,"Orientation: Listener paused.");
+        }
+    }
+
+    static public void resumeOrientationListener()
+    {
+        if (!mPaused || !mInitialized)
+            return;
+
+        if (mSensorManager != null && mMagnetSensor != null && mAccelerometer != null)
+        {
+            mSensorManager.registerListener(mListener, mMagnetSensor, SensorManager.SENSOR_DELAY_UI);
+            mSensorManager.registerListener(mListener, mAccelerometer, SensorManager.SENSOR_DELAY_UI);
+            mPaused = false;
+            log(HLOG_INFO,"Orientation: Listener resumed.");
+        }
     }
 
     static public void InstallOrientationListener()
@@ -63,17 +116,10 @@ public class Orientation extends Logger
         mInitialized = true;
         log(HLOG_DEBUG, "Orientation: Initializing the orientation listener ...");
 
-
-        if (OrientationFilter == null)
-            OrientationFilter = new IntentFilter(Intent.ACTION_CONFIGURATION_CHANGED);
-
-        if (OrientationReceiver != null)
-        {
-            m_ActivityInstance.registerReceiver(OrientationReceiver, OrientationFilter);
+        if (mListener != null)
             return;
-        }
 
-        SensorEventListener listener = new SensorEventListener()
+        mListener = new SensorEventListener()
         {
             float[] accelerometerValues = new float[3];
             float[] magneticValues = new float[3];
@@ -83,60 +129,95 @@ public class Orientation extends Logger
             {
                 // Determine whether it is an acceleration sensor or a geomagnetic sensor
                 if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER)
-                {
-                    // Pay attention to call the clone() method when assigning
                     accelerometerValues = event.values.clone();
-                }
                 else if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD)
-                {
                     magneticValues = event.values.clone();
-                }
+                else
+                    return;
+
+                if (accelerometerValues == null || magneticValues == null)
+                    return;
 
                 float[] R = new float[9];
                 float[] values = new float[3];
 
-                SensorManager.getRotationMatrix(R, null, accelerometerValues, magneticValues);
+                boolean success = SensorManager.getRotationMatrix(R, null, accelerometerValues, magneticValues);
+
+                if (!success)
+                    return;
+
                 SensorManager.getOrientation(R, values);
-                int orientation = (int)Math.toDegrees(values[2]);
+                mAveragePitch = addValue(values[1], mPitches);
+                mAverageRoll = addValue(values[2], mRolls);
+                mOrientation = calculateOrientation();
 
-                int ori = -1;
+                if (mOrientation == mOldOrientation)
+                    return;
 
-                log(HLOG_INFO, "Orientation: " + String.valueOf(orientation));
-
-                if ((orientation >= 0 && orientation <= 45) || orientation >= 315)
-                    ori = 1;    // Portrait
-                else if (orientation > 45 && orientation < 136)
-                    ori = 8;    // Inverse landscape
-                else if (orientation > 135 && orientation < 226)
-                    ori = 9;    // Inverse portrait
-                else
-                    ori = 0;    // Landscape
-
-                informTPanelOrientation(ori);
+                mOldOrientation = mOrientation;
+                informTPanelOrientation(mOrientation);
             }
 
             @Override
             public void onAccuracyChanged(Sensor sensor, int accuracy)
             {
             }
-        };
 
-        OrientationReceiver = new BroadcastReceiver()
-        {
-            public void onReceive(Context context, Intent intent)
+
+            private int calculateOrientation()
             {
-                if (intent == null || intent.getExtras() == null)
-                    return;
+                // finding local orientation dip
+                if (((mOrientation == ORIENTATION_PORTRAIT || mOrientation == ORIENTATION_PORTRAIT_REVERSE)
+                        && (mAverageRoll > -30 && mAverageRoll < 30)))
+                {
+                    if (mAveragePitch > 0)
+                        return ORIENTATION_PORTRAIT_REVERSE;
+                    else
+                        return ORIENTATION_PORTRAIT;
+                }
+                else
+                {
+                    // divides between all orientations
+                    if (Math.abs(mAveragePitch) >= 30)
+                    {
+                        if (mAveragePitch > 0)
+                            return ORIENTATION_PORTRAIT_REVERSE;
+                        else
+                            return ORIENTATION_PORTRAIT;
+                    }
+                    else
+                    {
+                        if (mAverageRoll > 0)
+                            return ORIENTATION_LANDSCAPE_REVERSE;
+                        else
+                            return ORIENTATION_LANDSCAPE;
+                    }
+                }
+            }
 
-                mSensorManager = (SensorManager)context.getSystemService(Context.SENSOR_SERVICE);
-                mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-                mMagnetSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-                mSensorManager.registerListener(listener, mMagnetSensor, SensorManager.SENSOR_DELAY_NORMAL);
-                mSensorManager.registerListener(listener, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+            private float addValue(float value, float[] values)
+            {
+                value = (float) Math.round((Math.toDegrees(value)));
+                float average = 0;
+
+                for (int i = 1; i < mSmoothness; i++)
+                {
+                    values[i - 1] = values[i];
+                    average += values[i];
+                }
+
+                values[mSmoothness - 1] = value;
+                average = (average + value) / mSmoothness;
+                return average;
             }
         };
 
-        m_ActivityInstance.registerReceiver(OrientationReceiver, OrientationFilter);
+        if (mMagnetSensor != null && mAccelerometer != null)
+        {
+            mSensorManager.registerListener(mListener, mMagnetSensor, SensorManager.SENSOR_DELAY_UI);
+            mSensorManager.registerListener(mListener, mAccelerometer, SensorManager.SENSOR_DELAY_UI);
+        }
+
         log(HLOG_INFO, "Orientation: Orientation listener initialized.");
     }
 

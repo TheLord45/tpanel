@@ -1073,8 +1073,11 @@ TConfig::SIP_FIREWALL_t TConfig::sipFirewallStrToEnum(const std::string& str)
 string TConfig::makeConfigDefault(const std::string& log, const std::string& project)
 {
     string content = "LogFile=" + log + "\n";
-    content += "LogLevel=ALL\n";
-//    content += "LogLevel=NONE\n";
+#if defined(QT_DEBUG) || defined(NDEBUG)
+    content += "LogLevel=PROTOCOL\n";
+#else
+    content += "LogLevel=NONE\n";
+#endif
     content += "ProjectPath=" + project + "\n";
     content += "LongFormat=false\n";
     content += "Address=0.0.0.0\n";
@@ -1319,7 +1322,7 @@ bool TConfig::readConfig()
     localSettings.ftpSurface = "tpanel.tp4";
     localSettings.sip_port = 5060;
     localSettings.sip_portTLS = 0;
-    #ifdef __ANDROID__
+#ifdef __ANDROID__
     localSettings.logLevel = SLOG_NONE;
     localSettings.logLevelBits = HLOG_NONE;
 #else

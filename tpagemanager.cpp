@@ -2501,8 +2501,9 @@ void TPageManager::initOrientation()
 {
     DECL_TRACER("TPageManager::initOrientation()");
 
+    int rotate = getSettings()->getRotate();
     QAndroidJniObject activity = QtAndroid::androidActivity();
-    QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "Init", "(Landroid/app/Activity;)V", activity.object());
+    QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "Init", "(Landroid/app/Activity;I)V", activity.object(), rotate);
     activity.callStaticMethod<void>("org/qtproject/theosys/Orientation", "InstallOrientationListener", "()V");
 }
 #endif  // __ANDROID__

@@ -502,7 +502,21 @@ void MainWindow::_orientationChanged(int orientation)
 {
     DECL_TRACER("MainWindow::_orientationChanged(int orientation)");
 
-    MSG_PROTOCOL("_orientationChanged: " << orientation);
+    if (gPageManager && gPageManager->getSettings()->getRotate() == 1)  // portrait?
+    {
+        if (orientation == O_REVERSE_PORTRAIT && mOrientation != Qt::InvertedPortraitOrientation)
+            _setOrientation((J_ORIENTATION)orientation);
+        else if (orientation == O_PORTRAIT && mOrientation != Qt::PortraitOrientation)
+            _setOrientation((J_ORIENTATION)orientation);
+    }
+    else
+    {
+        if (orientation == O_REVERSE_LANDSCAPE && mOrientation != Qt::InvertedLandscapeOrientation)
+            _setOrientation((J_ORIENTATION)orientation);
+        else if (orientation == O_LANDSCAPE && mOrientation != Qt::LandscapeOrientation)
+            _setOrientation((J_ORIENTATION)orientation);
+    }
+
 }
 #endif
 
@@ -1180,16 +1194,21 @@ void MainWindow::appStateChanged(Qt::ApplicationState state)
         case Qt::ApplicationSuspended:              // Should not occure on a normal desktop
             MSG_INFO("Switched to mode SUSPEND");
             mHasFocus = false;
+#ifdef Q_OS_ANDROID
+            QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
+#endif
         break;
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)      // On a normal desktop we can ignore this signals
         case Qt::ApplicationInactive:
             MSG_INFO("Switched to mode INACTIVE");
             mHasFocus = false;
+            QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
         break;
 
         case Qt::ApplicationHidden:
             MSG_INFO("Switched to mode HIDDEN");
             mHasFocus = false;
+            QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
         break;
 #endif
         case Qt::ApplicationActive:
@@ -1205,10 +1224,14 @@ void MainWindow::appStateChanged(Qt::ApplicationState state)
             }
             else
                 playShowList();
+#ifdef Q_OS_ANDROID
+            QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "resumeOrientationListener", "()V");
+#endif
         break;
 #if defined(Q_OS_LINUX) || defined(Q_OS_UNIX)
         default:
             mHasFocus = true;
+            QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "resumeOrientationListener", "()V");
 #endif
     }
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
@@ -1510,6 +1533,17 @@ void MainWindow::_setOrientation(J_ORIENTATION ori)
                 ("setRequestedOrientation"  // method name
                  , "(I)V"                   // signature
                  , ori);
+
+        switch(ori)
+        {
+            case O_LANDSCAPE:           mOrientation = Qt::LandscapeOrientation; break;
+            case O_PORTRAIT:            mOrientation = Qt::PortraitOrientation; break;
+            case O_REVERSE_LANDSCAPE:   mOrientation = Qt::InvertedLandscapeOrientation; break;
+            case O_REVERSE_PORTRAIT:    mOrientation = Qt::InvertedPortraitOrientation; break;
+            default:
+                MSG_WARNING("Orientation is undefined!");
+                mOrientation = Qt::PrimaryOrientation;
+        }
     }
 #endif
 }
