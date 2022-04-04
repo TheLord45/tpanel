@@ -3,6 +3,14 @@ ChangeLog
 
 Release: 1.3.1
 ===============================================================================
+2022-04-04 Fixed the detection of the client IP address. TPanel reports now the
+           correct client IP address to the AMX controller.
+           Added a serial number. It consists of a date and the version number.
+           The serial number is visible on the command line of the controller
+           with the command "show device".
+
+2022-04-03 Added a few commands similar to the TPControl commands.
+
 2022-04-02 Added functions to pause the orientation sensor if the program is
            inactive.
            Added functions to calculate the orientation of the screen.

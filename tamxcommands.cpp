@@ -213,6 +213,8 @@ CMD_DEFINATIONS cmdDefinations[] = {
     { "LEVEL", false, true, ',' },
     { "BLINK", false, true, ',' },
     { "#FTR", false, true, ':' },
+    { "TPCCMD", false, true, ',' },
+    { "TPCACC", false, true, ',' },
     { "", false, false, '\0' }
 };
 

@@ -60,7 +60,9 @@ class MainWindow : public QMainWindow, TQManageQueue
             O_LANDSCAPE = 0,
             O_PORTRAIT = 1,
             O_REVERSE_LANDSCAPE = 8,
-            O_REVERSE_PORTRAIT = 9
+            O_REVERSE_PORTRAIT = 9,
+            O_FACE_UP = 15,
+            O_FACE_DOWN = 16
         }J_ORIENTATION;
 
         MainWindow();

@@ -516,7 +516,6 @@ void MainWindow::_orientationChanged(int orientation)
         else if (orientation == O_LANDSCAPE && mOrientation != Qt::LandscapeOrientation)
             _setOrientation((J_ORIENTATION)orientation);
     }
-
 }
 #endif
 
@@ -1523,6 +1522,9 @@ void MainWindow::_setOrientation(J_ORIENTATION ori)
 {
 #ifdef __ANDROID__
     DECL_TRACER("MainWindow::_setOriantation(J_ORIENTATION ori)");
+
+    if (ori == O_FACE_UP || ori == O_FACE_DOWN)
+        return;
 
     QAndroidJniObject activity = QAndroidJniObject::callStaticObjectMethod("org/qtproject/qt5/android/QtNative", "activity", "()Landroid/app/Activity;");
 

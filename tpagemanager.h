@@ -55,6 +55,17 @@ extern TPageManager *gPageManager;
 class TPageManager : public TAmxCommands
 {
     public:
+        typedef enum J_ORIENTATION
+        {
+            O_UNDEFINED = -1,
+            O_LANDSCAPE = 0,
+            O_PORTRAIT = 1,
+            O_REVERSE_LANDSCAPE = 8,
+            O_REVERSE_PORTRAIT = 9,
+            O_FACE_UP = 15,
+            O_FACE_DOWN = 16
+        }J_ORIENTATION;
+
         TPageManager();
         ~TPageManager();
 
@@ -229,6 +240,7 @@ class TPageManager : public TAmxCommands
         void sendKeyboard(const std::string& text);
         void sendKeypad(const std::string& text);
         void sendString(uint handle, const std::string& text);
+        void sendGlobalString(const std::string& text);
         void sendPHNcommand(const std::string& cmd);
         void sendKeyStroke(char key);
         /**
@@ -254,6 +266,10 @@ class TPageManager : public TAmxCommands
 #ifdef __ANDROID__
         std::function<void (int orientation)> onOrientationChange() { return _onOrientationChange; }
 #endif
+        int getOrientation() { return mOrientation; }
+        void setOrientation(int ori) { mOrientation = ori; }
+        bool getInformOrientation() { return mInformOrientation; }
+        void sendOrientation();
         bool havePlaySound() { return _playSound != nullptr; }
         TSystemDraw *getSystemDraw() { return mSystemDraw; }
         void reset();
@@ -467,6 +483,10 @@ class TPageManager : public TAmxCommands
         void doPHN(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void getPHN(int port, std::vector<int>& channels, std::vector<std::string>& pars);
 #endif
+        // Commands inherited from TPControl (Touch Panel Control)
+        void doTPCCMD(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doTPCACC(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+
         int mActualPage{0};                             // The number of the actual visible page
         int mPreviousPage{0};                           // The number of the previous page
         int mFirstLeftPixel{0};                         // Pixels to add to left (x) mouse coordinate
@@ -490,6 +510,8 @@ class TPageManager : public TAmxCommands
         std::string mAkbText;                           // This is the text for the virtual keyboard (@AKB)
         std::string mAkpText;                           // This is the text for the virtual keyad (@AKP)
         bool mPassThrough{false};                       // Can ve set to true with the command ^KPS
+        bool mInformOrientation{false};                 // TRUE = The actual screen orientation is reported to the controller if it change.
+        int mOrientation{0};                            // Contains the actual orientation.
         // SIP
 #ifndef _NOSIP_
         bool mPHNautoanswer{false};                     // The state of the SIP autoanswer

@@ -84,7 +84,7 @@ string cmdList[] =
     "@SOU-", "@TKP-", "TPAGEON", "TPAGEOFF", "@VKB", "WAKE", "^CAL", "^KPS-",
     "^VKS-", "@PWD-", "^PWD-", "^BBR-", "^RAF-", "^RFR-", "^RMF-", "^RSR-",
     "^MODEL?", "^ICS-", "^ICE-", "^ICM-", "^PHN-", "?PHN-", "LEVON", "RXON",
-    "BLINK",
+    "BLINK", "TPCCMD", "TPCACC",
     // G5 commands
     "^ABP", "^ADB", "^SOU", "^STP", "^TKP", "^PGE", "^PPA", "^PPF", "^PPG",
     "^PPK", "^PPM", "^PPN", "^PPT", "^PPX", "^UTF",
@@ -222,6 +222,10 @@ void TAmxNet::init()
     struct utsname kinfo;
     uname(&kinfo);
     strncpy(di.versionInfo, kinfo.release, sizeof(di.versionInfo));
+    char *ppos = strnstr(di.versionInfo, "-", sizeof(di.versionInfo));
+
+    if (ppos && (ppos - di.versionInfo) < 16)
+        *ppos = 0;
 #else
     strncpy(di.versionInfo, "4.00.00", 7);
 #endif

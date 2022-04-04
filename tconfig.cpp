@@ -23,9 +23,12 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #ifdef __ANDROID__
+#include <QUuid>
 #include <android/log.h>
 #include "tvalidatefile.h"
 #include "tvalidatefile.h"
+#else
+#include <uuid/uuid.h>
 #endif
 #include "ttpinit.h"
 #include "tconfig.h"
@@ -42,6 +45,7 @@ using std::cerr;
 using std::endl;
 
 bool TConfig::mInitialized{false};
+int TConfig::mChannel{0};
 
 /**
  * @struct SETTINGS
@@ -70,7 +74,7 @@ struct SETTINGS
     bool noBanner{false};       //!< Startup without showing a banner on the command line.
     bool certCheck{false};      //!< TRUE = Check certificate for SSL connection
     bool scale{false};          //!< TRUE = Images are scaled to fit the whole screen
-    bool tbforce{false};        //!< TRUE = The toolbar is forced to display
+    bool tbforce{true};         //!< TRUE = The toolbar is forced to display, FALSE = The toolbar is only visible if there is enough space left
     bool profiling{false};      //!< TRUE = The declaration traces meassure the time and write it to the log
     string password1;           //!< First panel password
     string password2;           //!< Second panel password
@@ -80,6 +84,8 @@ struct SETTINGS
     bool systemSoundState{false};   //!< TRUE = play systemsound on every touch
     string systemSingleBeep;    //!< name of the system sound file to play a single beep.
     string systemDoubleBeep;    //!< name of the system sound file to play a double beep.
+    bool systemRotationFix{false};  //!< TRUE = Rotation is blocked and orientation sensor is ignored.
+    string uuid;                //!< An UUID set automatically after first start.
     // FTP credentials
     string ftpUser;             //!< The username for FTP of the controller (default: administrator)
     string ftpPassword;         //!< The password for FTP of the controller (default: password)
@@ -168,6 +174,9 @@ std::string & TConfig::getProgName()
 int TConfig::getChannel()
 {
     DECL_TRACER("TConfig::getChannel()");
+
+    if (mChannel > 0 && mChannel != localSettings.ID)
+        return mChannel;
 
     return localSettings.ID;
 }
@@ -748,6 +757,8 @@ bool TConfig::saveSettings()
         lines += string("SystemSoundState=") + (localSettings.systemSoundState ? "ON" : "OFF") + "\n";
         lines += string("SystemSingleBeep=") + localSettings.systemSingleBeep + "\n";
         lines += string("SystemDoubleBeep=") + localSettings.systemDoubleBeep + "\n";
+        lines += string("SystemRotationFix=") + (localSettings.systemRotationFix ? "ON" : "OFF") + "\n";
+        lines += string("UUID=") + localSettings.uuid + "\n";
         // FTP credentials
         lines += string("FTPuser=") + localSettings.ftpUser + "\n";
         lines += string("FTPpassword=") + localSettings.ftpPassword + "\n";
@@ -876,6 +887,28 @@ bool TConfig::getSystemSoundState()
     return localSettings.systemSoundState;
 }
 
+bool TConfig::getRotationFixed()
+{
+    DECL_TRACER("TConfig::getRotationFixed()");
+
+    return localSettings.systemRotationFix;
+}
+
+void TConfig::setRotationFixed(bool fix)
+{
+    DECL_TRACER("TConfig::setRotationFixed(bool fix)");
+
+    localSettings.systemRotationFix = fix;
+}
+
+void TConfig::setSystemChannel(int ch)
+{
+    DECL_TRACER("TConfig::setSystemChannel(int ch)");
+
+    if (ch >= 10000 && ch < 30000)
+        mChannel = ch;
+}
+
 string& TConfig::getSingleBeepSound()
 {
     DECL_TRACER("TConfig::getSingleBeepSound()");
@@ -888,6 +921,13 @@ string& TConfig::getDoubleBeepSound()
     DECL_TRACER("TConfig::getDoubleBeepSound()");
 
     return localSettings.systemDoubleBeep;
+}
+
+string& TConfig::getUUID()
+{
+    DECL_TRACER("TConfig::getUUID()");
+
+    return localSettings.uuid;
 }
 
 string& TConfig::getFtpUser()
@@ -1086,7 +1126,7 @@ string TConfig::makeConfigDefault(const std::string& log, const std::string& pro
     content += "PanelType=Android\n";
     content += string("Firmware=") + VERSION_STRING() + "\n";
     content += "Scale=true\n";
-    content += "ToolbarForce=false\n";
+    content += "ToolbarForce=true\n";
     content += "Profiling=false\n";
     content += "Password1=1988\n";
     content += "Password2=1988\n";
@@ -1096,6 +1136,8 @@ string TConfig::makeConfigDefault(const std::string& log, const std::string& pro
     content += "SystemSoundState=ON\n";
     content += "SystemSingleBeep=singleBeep01.wav\n";
     content += "SystemDoubleBeep=doubleBeep01.wav\n";
+    content += "SystemRotationFix=" + string(localSettings.systemRotationFix ? "TRUE" : "FALSE") + "\n";
+    content += "UUID=" + localSettings.uuid + "\n";
     content += "FTPuser=administrator\n";
     content += "FTPpassword=password\n";
     content += "FTPsurface=tpanel.tp4\n";
@@ -1417,6 +1459,8 @@ bool TConfig::readConfig()
                     cerr << "TConfig::readConfig: Invalid port number " << right << endl;
                     localSettings.ID = 0;
                 }
+
+                mChannel = localSettings.ID;
             }
             else if (caseCompare(left, "Scale") == 0 && !right.empty())
                 localSettings.scale = isTrue(right);
@@ -1440,6 +1484,10 @@ bool TConfig::readConfig()
                 localSettings.systemSingleBeep = right;
             else if (caseCompare(left, "SystemDoubleBeep") == 0 && !right.empty())
                 localSettings.systemDoubleBeep = right;
+            else if (caseCompare(left, "SystemRotationFix") == 0 && !right.empty())
+                localSettings.systemRotationFix = isTrue(right);
+            else if (caseCompare(left, "UUID") == 0 && !right.empty())
+                localSettings.uuid = right;
             else if (caseCompare(left, "FTPuser") == 0 && !right.empty())       // FTP credentials
                 localSettings.ftpUser = right;
             else if (caseCompare(left, "FTPpassword") == 0 && !right.empty())
@@ -1480,6 +1528,21 @@ bool TConfig::readConfig()
     TStreamError::setLogLevel(localSettings.logLevel);
     TStreamError::setLogFile(localSettings.logFile);
 
+    if (localSettings.uuid.empty())
+    {
+#ifdef __ANDROID__
+        QUuid qUid = QUuid::createUuid();
+        localSettings.uuid = qUid.toString().toStdString();
+#else
+        uuid_t uuid;
+        char sUUID[256];
+
+        uuid_generate_random(uuid);
+        uuid_unparse_lower(uuid, sUUID);
+        localSettings.uuid.assign(sUUID);
+#endif
+        saveSettings();
+    }
     if (TStreamError::checkFilter(HLOG_DEBUG))
     {
         MSG_INFO("Selected Parameters:");
@@ -1505,6 +1568,8 @@ bool TConfig::readConfig()
         MSG_INFO("    Sound state:  " << (localSettings.systemSoundState ? "ACTIVATED" : "DEACTIVATED"));
         MSG_INFO("    Single beep:  " << localSettings.systemSingleBeep);
         MSG_INFO("    Double beep:  " << localSettings.systemDoubleBeep);
+        MSG_INFO("    Rotation:     " << (localSettings.systemRotationFix ? "LOCKED" : "UNLOCKED"));
+        MSG_INFO("    UUID:         " << localSettings.uuid);
         MSG_INFO("    FTP user:     " << localSettings.ftpUser);
         MSG_INFO("    FTP password: " << localSettings.ftpPassword);
         MSG_INFO("    FTP surface:  " << localSettings.ftpSurface);

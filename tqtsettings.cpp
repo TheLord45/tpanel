@@ -465,6 +465,17 @@ void TQtSettings::on_checkBox_Toolbar_toggled(bool checked)
     TConfig::saveToolbarForce(checked);
 }
 
+void TQtSettings::on_checkBox_Rotation_toggled(bool checked)
+{
+    DECL_TRACER("TQtSettings::on_checkBox_Rotation_toggled(bool checked)");
+
+    if (TConfig::getRotationFixed() == checked)
+        return;
+
+    mSetChanged = true;
+    TConfig::setRotationFixed(checked);
+}
+
 void TQtSettings::on_checkBox_Profiling_toggled(bool checked)
 {
     DECL_TRACER("TQtSettings::on_checkBox_Profiling_toggled(bool checked)");

@@ -26,7 +26,11 @@
 #define V_MAJOR     1
 #define V_MINOR     3
 #define V_PATCH     1
-#define V_ADD       "b"
+//#define V_ADD       "b"
+
+#ifndef V_SERIAL
+#define V_SERIAL    "20220401T131B"
+#endif
 
 /**
  * @def TPANEL_VERSION
@@ -36,7 +40,7 @@
 
 #define VERSION_STRING() _GET_X_VERSION(V_MAJOR, V_MINOR, V_PATCH)
 #define _GET_X_VERSION(a, b, c) _GET_VERSION(a, b, c)
-#define _GET_VERSION(a, b, c) ( #a "." #b "." #c V_ADD )
+#define _GET_VERSION(a, b, c) ( #a "." #b "." #c )
 
 /**
  * @brief The TConfig class manages the configurations.
@@ -89,6 +93,10 @@ class TConfig
         static std::string& getPassword4();
         static std::string& getSystemSound();
         static bool getSystemSoundState();
+        static bool getRotationFixed();
+        static void setRotationFixed(bool fix);
+        static void setSystemChannel(int ch);
+        static std::string& getUUID();
         static std::string& getSingleBeepSound();
         static std::string& getDoubleBeepSound();
         static std::string& getFtpUser();
@@ -175,6 +183,7 @@ class TConfig
         std::string mCFile;
         std::vector<std::string> mCfgPaths;
         static bool mInitialized;
+        static int mChannel;        // If the channel was changed by a command, this variable holds the new value.
 #ifdef __ANDROID__
         std::string mRoot;
 #endif

@@ -24,6 +24,10 @@
 #include <QtAndroid>
 #include <android/log.h>
 #endif
+#include <unistd.h>
+#ifndef __ANDROID__
+#include <fstab.h>
+#endif
 
 #include "tpagemanager.h"
 #include "tcolor.h"
@@ -141,8 +145,16 @@ JNIEXPORT void JNICALL Java_org_qtproject_theosys_Orientation_informTPanelOrient
 
     MSG_PROTOCOL("Received android orientation " << orientation);
 
-    if (gPageManager && gPageManager->onOrientationChange())
+    if (!gPageManager)
+        return;
+
+    if (gPageManager->onOrientationChange())
         gPageManager->onOrientationChange()(orientation);
+
+    gPageManager->setOrientation(orientation);
+
+    if (gPageManager->getInformOrientation())
+        gPageManager->sendOrientation();
 }
 #endif
 
@@ -392,7 +404,10 @@ TPageManager::TPageManager()
     REG_CMD(doBLINK, "BLINK");
     REG_CMD(doVER, "^VER?");    // Return version string to master
     REG_CMD(doWCN, "^WCN?");    // Return SIP phone number
-
+    // TPControl commands
+    REG_CMD(doTPCCMD, "TPCCMD");    // Profile related options
+    REG_CMD(doTPCACC, "TPCACC");    // Device orientation
+    // Virtual internal commands
     REG_CMD(doFTR, "#FTR");     // File transfer (virtual internal command)
 
     // At least we must add the SIP client
@@ -661,6 +676,7 @@ bool TPageManager::startComm()
             mAmxNet = new amx::TAmxNet();
             mAmxNet->setCallback(bind(&TPageManager::doCommand, this, std::placeholders::_1));
             mAmxNet->setPanelID(TConfig::getChannel());
+            mAmxNet->setSerialNum(V_SERIAL);
         }
 
         if (!mAmxNet->isNetRun())
@@ -2538,17 +2554,17 @@ void TPageManager::externalButton(extButtons_t bt, bool checked)
 
         if (checked)
             scmd.MC = 0x0084;   // push button
-            else
-                scmd.MC = 0x0085;   // release button
+        else
+            scmd.MC = 0x0085;   // release button
 
-                MSG_DEBUG("Sending to device <" << scmd.device << ":" << scmd.port << ":0> channel " << scmd.channel << " value 0x" << std::setw(2) << std::setfill('0') << std::hex << scmd.MC << " (" << (checked?"PUSH":"RELEASE") << ")");
+        MSG_DEBUG("Sending to device <" << scmd.device << ":" << scmd.port << ":0> channel " << scmd.channel << " value 0x" << std::setw(2) << std::setfill('0') << std::hex << scmd.MC << " (" << (checked?"PUSH":"RELEASE") << ")");
 
-            if (gAmxNet)
-                gAmxNet->sendCommand(scmd);
-            else
-            {
-                MSG_WARNING("Missing global class TAmxNet. Can't send a message!");
-            }
+        if (gAmxNet)
+            gAmxNet->sendCommand(scmd);
+        else
+        {
+            MSG_WARNING("Missing global class TAmxNet. Can't send a message!");
+        }
     }
 
 }
@@ -2601,6 +2617,25 @@ void TPageManager::sendString(uint handle, const std::string& text)
     scmd.port = bt->getAddressPort();
     scmd.channel = bt->getAddressChannel();
     scmd.msg = UTF8ToCp1250(text);
+    scmd.MC = 0x008b;
+
+    if (gAmxNet)
+        gAmxNet->sendCommand(scmd);
+    else
+        MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+}
+
+void TPageManager::sendGlobalString(const string& text)
+{
+    DECL_TRACER("TPageManager::sendGlobalString(const string& text)");
+
+    if (text.empty() || text.find("-") == string::npos)
+        return;
+
+    amx::ANET_SEND scmd;
+    scmd.port = 1;
+    scmd.channel = 0;
+    scmd.msg = text;
     scmd.MC = 0x008b;
 
     if (gAmxNet)
@@ -2714,6 +2749,25 @@ string TPageManager::sipStateToString(TSIPClient::SIP_STATE_t s)
     return "IDLE";
 }
 #endif
+void TPageManager::sendOrientation()
+{
+    string ori;
+
+    switch(mOrientation)
+    {
+        case O_PORTRAIT:            ori = "DeviceOrientationPortrait"; break;
+        case O_REVERSE_PORTRAIT:    ori = "DeviceOrientationPortraitUpsideDown"; break;
+        case O_LANDSCAPE:           ori = "DeviceOrientationLandscapeLeft"; break;
+        case O_REVERSE_LANDSCAPE:   ori = "DeviceOrientationLandscapeRight"; break;
+        case O_FACE_UP:             ori = "DeviceOrientationFaceUp"; break;
+        case O_FACE_DOWN:           ori = "DeviceOrientationFaceDown"; break;
+        default:
+            return;
+    }
+
+    sendGlobalString("TPCACC-" + ori);
+}
+
 /****************************************************************************
  * The following functions implements one of the commands the panel accepts.
  ****************************************************************************/
@@ -7182,3 +7236,137 @@ void TPageManager::getPHN(int, vector<int>&, vector<string>& pars)
     }
 }
 #endif  // _NOSIP_
+
+void TPageManager::doTPCCMD(int, vector<int>&, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doTPCCMD(int, vector<int>&, vector<string>& pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Too few arguments for TPCCMD!");
+        return;
+    }
+
+    string cmd = pars[0];
+
+    if (strCaseCompare(cmd, "LocalHost") == 0)
+    {
+        if (pars.size() < 2 || pars[1].empty())
+        {
+            MSG_ERROR("The command \"LocalHost\" requires an additional parameter!");
+            return;
+        }
+
+        TConfig::saveController(pars[1]);
+    }
+    else if (strCaseCompare(cmd, "LocalPort") == 0)
+    {
+        if (pars.size() < 2 || pars[1].empty())
+        {
+            MSG_ERROR("The command \"LocalPort\" requires an additional parameter!");
+            return;
+        }
+
+        int port = atoi(pars[1].c_str());
+
+        if (port > 0 && port < 65536)
+            TConfig::savePort(port);
+        else
+        {
+            MSG_ERROR("Invalid network port " << port);
+        }
+    }
+    else if (strCaseCompare(cmd, "DeviceID") == 0)
+    {
+        if (pars.size() < 2 || pars[1].empty())
+        {
+            MSG_ERROR("The command \"DeviceID\" requires an additional parameter!");
+            return;
+        }
+
+        int id = atoi(pars[1].c_str());
+
+        if (id >= 10000 && id < 30000)
+            TConfig::setSystemChannel(id);
+    }
+    else if (strCaseCompare(cmd, "ApplyProfile") == 0)
+    {
+        // We restart the network connection only
+        if (gAmxNet)
+            gAmxNet->reconnect();
+    }
+    else if (strCaseCompare(cmd, "QueryDeviceInfo") == 0)
+    {
+        string info = "DEVICEINFO-TPANELID," + TConfig::getPanelType();
+        info += ";HOSTNAME,";
+        char hostname[HOST_NAME_MAX];
+
+        if (gethostname(hostname, HOST_NAME_MAX) != 0)
+        {
+            MSG_ERROR("Can't get host name: " << strerror(errno));
+            return;
+        }
+
+        info.append(hostname);
+        info += ";UUID," + TConfig::getUUID();
+        sendGlobalString(info);
+    }
+    else if (strCaseCompare(cmd, "LockRotation") == 0)
+    {
+        if (pars.size() < 2 || pars[1].empty())
+        {
+            MSG_ERROR("The command \"LockRotation\" requires an additional parameter!");
+            return;
+        }
+
+        if (strCaseCompare(pars[1], "true") == 0)
+            TConfig::setRotationFixed(true);
+        else
+            TConfig::setRotationFixed(false);
+    }
+    else if (strCaseCompare(cmd, "ButtonHit") == 0)
+    {
+        if (pars.size() < 2 || pars[1].empty())
+        {
+            MSG_ERROR("The command \"ButtonHit\" requires an additional parameter!");
+            return;
+        }
+
+        if (strCaseCompare(pars[1], "true") == 0)
+            TConfig::saveSystemSoundState(true);
+        else
+            TConfig::saveSystemSoundState(false);
+    }
+    else if (strCaseCompare(cmd, "ReprocessTP4") == 0)
+    {
+        if (_resetSurface)
+            _resetSurface();
+    }
+}
+
+void TPageManager::doTPCACC(int, vector<int>&, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doTPCACC(int, vector<int>&, vector<string>& pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Too few arguments for TPCACC!");
+        return;
+    }
+
+    string cmd = pars[0];
+
+    if (strCaseCompare(cmd, "ENABLE") == 0)
+    {
+        mInformOrientation = true;
+        sendOrientation();
+    }
+    else if (strCaseCompare(cmd, "DISABLE") == 0)
+    {
+        mInformOrientation = false;
+    }
+    else if (strCaseCompare(cmd, "QUERY") == 0)
+    {
+        sendOrientation();
+    }
+}

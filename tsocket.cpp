@@ -91,26 +91,6 @@ bool TSocket::connect(bool encrypt)
         }
 
         MSG_DEBUG("[" << mHost << "] Socket successfully created.");
-        struct in_addr  *addr;
-
-        if (ainfo->ai_family == AF_INET)
-        {
-            struct sockaddr_in *ipv = (struct sockaddr_in *)ainfo->ai_addr;
-            addr = &(ipv->sin_addr);
-        }
-        else
-        {
-            struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)ainfo->ai_addr;
-            addr = (struct in_addr *) &(ipv6->sin6_addr);
-        }
-
-        char buffer[100];
-        // FIXME: This is the address where we connected to, but we need the
-        //        address of the local network interface where the connection
-        //        was initiated from.
-        inet_ntop(ainfo->ai_family, addr, buffer, sizeof(buffer));
-        mMyIP.assign(buffer);
-        MSG_DEBUG("Client IP: " << mMyIP);
 
         struct timeval tv;
 
@@ -162,6 +142,25 @@ bool TSocket::connect(bool encrypt)
             break;
         }
     }
+
+    if (ainfo->ai_family == AF_INET)
+    {
+        char str[INET_ADDRSTRLEN];
+        struct sockaddr_in addr;
+        socklen_t len = sizeof(addr);
+        getsockname(sock, (struct sockaddr *)&addr, &len);
+        mMyIP.assign(inet_ntop(AF_INET, &(addr.sin_addr), str, INET_ADDRSTRLEN));
+    }
+    else
+    {
+        char str[INET6_ADDRSTRLEN];
+        struct sockaddr_in6 addr;
+        socklen_t len = sizeof(addr);
+        getsockname(sock, (struct sockaddr *)&addr, &len);
+        mMyIP.assign(inet_ntop(AF_INET6, &(addr.sin6_addr), str, INET6_ADDRSTRLEN));
+    }
+
+    MSG_DEBUG("Client IP: " << mMyIP);
 
     if (ainfo == nullptr)
     {

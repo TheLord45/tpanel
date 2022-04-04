@@ -79,6 +79,7 @@ class TQtSettings : public QDialog
         void on_checkBox_Scale_toggled(bool checked);
         void on_checkBox_Banner_toggled(bool checked);
         void on_checkBox_Toolbar_toggled(bool checked);
+        void on_checkBox_Rotation_toggled(bool checked);
 
     private:
         int scale(int value);

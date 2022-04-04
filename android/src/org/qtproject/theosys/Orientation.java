@@ -34,6 +34,8 @@ public class Orientation extends Logger
     public static final int ORIENTATION_LANDSCAPE_REVERSE = 8;
     public static final int ORIENTATION_LANDSCAPE = 0;
     public static final int ORIENTATION_PORTRAIT_REVERSE = 9;
+    public static final int ORIENTATION_FACE_UP = 15;
+    public static final int ORIENTATION_FACE_DOWN = 16;
 
     static private Activity m_ActivityInstance = null;
     static private SensorManager mSensorManager = null;
@@ -166,6 +168,12 @@ public class Orientation extends Logger
 
             private int calculateOrientation()
             {
+                if (mAverageRoll < 20 && mAverageRoll > -20)
+                    return ORIENTATION_FACE_UP;
+
+                if (mAverageRoll > 160 || mAverageRoll < -160)
+                    return ORIENTATION_FACE_DOWN;
+
                 // finding local orientation dip
                 if (((mOrientation == ORIENTATION_PORTRAIT || mOrientation == ORIENTATION_PORTRAIT_REVERSE)
                         && (mAverageRoll > -30 && mAverageRoll < 30)))
