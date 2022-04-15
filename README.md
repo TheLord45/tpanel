@@ -25,6 +25,8 @@ To be able to compile the source you need the following credentials installed. M
 - Skia
   - Download and compile the source from [Skia](https://skia.org)
 - Qt 5.15
+- pjsip
+  - Download and compile the source from [pjsip](https://www.pjsip.org)
 - Expat
 - Freetype
 
@@ -35,21 +37,22 @@ If everything compiled successfull and installed, you should create a configurat
 ## Compile for Android
 For Android we need the [Android SDK](https://developer.android.com/). In case you've not intstalled it, do it now. Additionaly you need the following libraries compiled for Android:
 
-- Skia
-- Qt 5.15
-- openssl
+- [Skia](https://skia.org)
+- [Qt 5.15](https://doc.qt.io/qt-5/)
+- openssl (is part of NDK)
+- [pjsip](https://www.pjsip.org)
 
 You can download a ready package with all the necessary libraries and header files from my [server](https://www.theosys.at/download/android_dist.tar.bz2) (2.5Gb!). After you've downloaded this hugh file, unpack it into any directory. The file details are:
 
 - [`android_dist.tar.bz2`](https://www.theosys.at/download/android_dist.tar.bz2)
-- SHA256: `f9f604d93b4b66995fdbd25f3648dc1ef365eff66538b9288c19c21f33db7281`
+- SHA256: `c54634935c48cccd9e16e56827bdb24df5ffe9fdf572f1a7961d1230cc25c090`
 
 I developped **TPanel** with [QTCreator](https://www.qt.io/product/development-tools). Therefor I would recoment to use this tool to compile **TPanel**. All the following descriptions are for this tool.
 
 Start `QTCreator` and load the project file `tpanel.pro`. You must set some things to have the correct paths. Go to the build settings of the project. Define the path where you like the binary for Android, the APK-file, to be. Expand the **Build steps** and enter into the line **Additional arguments** the following definitions:
 
 - `SDK_PATH=</path/to/your/android/sdk>`
-- `EXT_LIB_PATH=</path/to/the/distribution>`
+- `EXT_LIB_PATH=</path/to/the/distribution>` (The self compiled libraries or the distribution downloaded from my [server](https://www.theosys.at/download/android_dist.tar.bz2) )
 - `EXTRA_PATH=</path/to/android/sdk/extras>`
 
 To make clear what this means I give you an example. We assume that the Android SDK was installed into the directory `/usr/share/android-sdk-linux`. The distribution from my server (the file containing all necessary binaries for Android) was unpacked into `/home/user/distribution`. Then the line **Additional arguments** must look like:
@@ -63,8 +66,8 @@ For **Build environment** check **Clear system environment**. Then click on **De
     ANDROID_NDK_PLATTFORM  android-29
     ANDROID_NDK_ROOT       /usr/share/android-sdk-linux/ndk/23.1.7779620
     ANDROID_SDK_ROOT       /usr/share/android-sdk-linux
-    JAVA_HOME              /usr/lib/jvm/java-8-openjdk-amd64
-    PATH                   /usr/lib/jvm/java-8-openjdk-amd64/bin:/home/user/distribution/qt/bin:/usr/share/android-sdk-linux/ndk/23.1.7779620/toolchains/llvm/prebuilt/linux-x86_64/bin:/bin:/usr/bin
+    JAVA_HOME              /usr/lib/jvm/java-11-openjdk-amd64
+    PATH                   /usr/lib/jvm/java-11-openjdk-amd64/bin:/home/user/distribution/qt/bin:/usr/share/android-sdk-linux/ndk/23.1.7779620/toolchains/llvm/prebuilt/linux-x86_64/bin:/bin:/usr/bin
     QTDIR                  /home/user/distribution/qt
 
 Your Java distribution may be in a differnet location. Set the variable `JAVA_HOME` to the location on your system. Don't forget to set this path also for the variable `PATH`.
