@@ -30,9 +30,20 @@ include_directories(${EXPAT_INCLUDE_DIRS})
 link_directories(${EXPAT_LIBRARY_DIRS})
 set(LIBS ${LIBS} ${EXPAT_LIBRARIES})
 
-find_package(Linphone REQUIRED)
-find_library(LINPHONE_LIBRARY NAMES linphone)
-set(LIBS ${LIBS} ${LINPHONE_LIBRARIES})
+# This is for telephone libraries PJSIP
+pkg_check_modules(PJSIP REQUIRED libpjproject)
+include_directories(${PJSIP_INCLUDE_DIRS})
+link_directories(${PJSIP_LIBRARY_DIRS})
+# Commented out to make sure no video is included (would require a lot more libs)
+#set(LIBS ${LIBS} ${PJSIP_LIBRARIES})
+# This are the phone libraries used/needed for PJSIP.
+set(LIBS ${LIBS} -L/usr/local/lib
+                 pjsua2 pjsua pjsip-ua pjsip-simple pjsip
+                 pjmedia-codec pjmedia pjmedia-audiodev
+                 pjmedia pjnath pjlib-util pj
+                 gsmcodec ilbccodec speex g7221codec
+                 srtp resample yuv webrtc
+                 opus asound)
 
 find_library(UUID_LIBRARY NAMES uuid)
 set(LIBS ${LIBS} ${UUID_LIBRARY})

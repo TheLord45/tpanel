@@ -168,10 +168,12 @@ public class Orientation extends Logger
 
             private int calculateOrientation()
             {
-                if (mAverageRoll < 20 && mAverageRoll > -20)
+                if (mAverageRoll < 20 && mAverageRoll > -20 &&
+                    mAveragePitch < 20 && mAveragePitch > -20)
                     return ORIENTATION_FACE_UP;
 
-                if (mAverageRoll > 160 || mAverageRoll < -160)
+                if ((mAverageRoll > 160 || mAverageRoll < -160) &&
+                    mAveragePitch < 20 && mAveragePitch > -20)
                     return ORIENTATION_FACE_DOWN;
 
                 // finding local orientation dip

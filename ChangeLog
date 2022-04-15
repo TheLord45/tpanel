@@ -3,6 +3,12 @@ ChangeLog
 
 Release: 1.3.1
 ===============================================================================
+2022-04-15 Removed Linphone from Android and replaced it by PJSIP.
+
+2022-04-07 Removed liblinphone completely because the java part necessary for
+           Android had a lot of dependencies who couldn't be resolved. I added
+           PJSIP instead.
+
 2022-04-04 Fixed the detection of the client IP address. TPanel reports now the
            correct client IP address to the AMX controller.
            Added a serial number. It consists of a date and the version number.

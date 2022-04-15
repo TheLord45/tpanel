@@ -7067,7 +7067,7 @@ void TPageManager::doPHN(int port, vector<int>&, vector<string>& pars)
                 if (mSIPClient->getSIPState(id) == TSIPClient::SIP_HOLD)
                     mSIPClient->resume(id);
                 else
-                    mSIPClient->pickup(nullptr, id);
+                    mSIPClient->pickup(id);
             }
         }
         else if (cmd == "AUTOANSWER")
@@ -7157,7 +7157,7 @@ void TPageManager::doPHN(int port, vector<int>&, vector<string>& pars)
             {
                 TConfig::setSIPstatus(true);
                 mSIPClient->cleanUp();
-                mSIPClient->connectSIPProxy();
+                mSIPClient->init();
             }
             else if (pars[1] == "DOMAIN" && pars.size() >= 3)
                 TConfig::setSIPdomain(pars[2]);
