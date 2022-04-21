@@ -509,6 +509,7 @@ int ftplib::Connect(const char *host)
     }
 
     mp_ftphandle->handle = sControl;
+    Log(LOG_DEBUG, string("Successfully connected to ") + host);
 
     if (readresp('2', mp_ftphandle) == 0)
     {
@@ -1956,6 +1957,7 @@ void ftplib::SetCallbackIdletime(int time)
 void ftplib::SetConnmode(connmode mode)
 {
     mp_ftphandle->cmode = mode;
+    Log(LOG_DEBUG, string("Mode was set to ") + (mode == pasv ? "PASSIVE" : "PORT"));
 }
 
 void ftplib::ClearHandle()
@@ -2002,13 +2004,13 @@ int ftplib::CorrectPasvResponse(unsigned char *v)
 ftphandle* ftplib::RawOpen(const char *path, accesstype type, transfermode mode)
 {
     int ret;
-    ftphandle* datahandle;
+    ftphandle* datahandle{nullptr};
     ret = FtpAccess(path, type, mode, mp_ftphandle, &datahandle);
 
     if (ret)
         return datahandle;
     else
-        return NULL;
+        return nullptr;
 }
 
 int ftplib::RawClose(ftphandle* handle)
@@ -2041,6 +2043,16 @@ void ftplib::errorHandler(const char* stub, int err, int line)
 
     if (mp_ftphandle && mp_ftphandle->errorcb)
         mp_ftphandle->errorcb(emsg, mp_ftphandle->cbarg, err);
+    else if (_Logging)
+        Log(LOG_ERROR, emsg);
     else
         std::cerr << emsg << std::endl;
+}
+
+void ftplib::Log(int level, const std::string& msg)
+{
+    if (!_Logging)
+        return;
+
+    _Logging(level, msg);
 }

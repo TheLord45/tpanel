@@ -2247,6 +2247,7 @@ bool TButton::buttonFill(SkBitmap* bm, int instance)
     }
 
     SkColor color = TColor::getSkiaColor(sr[instance].cf);
+    MSG_DEBUG("Fill color[" << instance << "]: " << sr[instance].cf << " (#" << std::setw(8) << std::setfill('0') << std::hex << color << ")");
     bm->eraseColor(color);
     return true;
 }
@@ -4172,6 +4173,7 @@ bool TButton::drawButton(int instance, bool show)
         return true;
     }
 
+    MSG_DEBUG("Drawing button " << bi << ", \"" << na << "\" at instance " << instance);
     ulong parent = mHandle & 0xffff0000;
     getDrawOrder(sr[instance]._do, (DRAW_ORDER *)&mDOrder);
 

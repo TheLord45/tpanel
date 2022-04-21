@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2022 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -131,7 +131,7 @@ namespace Expat
              *
              * @return On success it returns TRUE and FALSE otherwise.
              */
-            bool parse();
+            bool parse(bool debug=false);
 
             /**
              * Retrieves the first element with the name \p name at the depth

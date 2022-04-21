@@ -37,7 +37,10 @@ TColor::COLOR_T TColor::getAMXColor(const string& color)
     DECL_TRACER("TColor::getAMXColor(const string& color)");
 
     if (color.empty())
+    {
+        MSG_WARNING("Empty color name is ignored!");
         return TColor::COLOR_T();
+    }
 
     size_t pos = color.find('#');
 
@@ -55,6 +58,7 @@ TColor::COLOR_T TColor::getAMXColor(const string& color)
         if (!pd.name.empty())
             return splitColors(pd);
 
+        MSG_DEBUG("Color " << color << " not found in table!");
         return TColor::COLOR_T();
     }
 

@@ -355,6 +355,58 @@ bool TTPInit::copyFile(const std::string& fname)
     return err;
 }
 
+string TTPInit::getTmpFileName()
+{
+    DECL_TRACER("TTPInit::getTmpFileName()");
+
+    const string alphanum =
+            "0123456789"
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            "abcdefghijklmnopqrstuvwxyz";
+
+    size_t stringLength = alphanum.length() - 1;
+    std::string Str;
+    char *tmp = getenv("TMP");
+
+    if (!tmp)
+        tmp = getenv("TEMP");
+
+    if (!tmp)
+        tmp = getenv("HOME");
+    else
+        tmp = (char *)"/tmp";
+
+    Str.assign(tmp);
+    Str.append("/");
+
+    for(size_t i = 0; i < MAX_TMP_LEN; ++i)
+        Str += alphanum[rand() % stringLength];
+
+    // We create the file. YES, this is a security hole but in our case we have
+    // no real alternative for now.
+    try
+    {
+        std::ofstream tmpfile;
+        tmpfile.open(Str, std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
+
+        if (!tmpfile.is_open())
+        {
+            MSG_ERROR("Error opening a temporary file!");
+        }
+        else
+            tmpfile.flush();
+
+        tmpfile.close();
+    }
+    catch (std::exception& e)
+    {
+        MSG_ERROR("Couldn't create a temporary file: " << e.what());
+        return string();
+    }
+
+    return Str;
+}
+
 /**
  * This methods checks if there exists a previous downloaded TP4 file. If this
  * is the case, nothing happens.
@@ -436,6 +488,7 @@ vector<string>& TTPInit::getFileList(const string& filter)
     DECL_TRACER("TTPInit::getFileList(const string& filter)");
 
     ftplib *ftp = new ftplib();
+    ftp->regLogging(bind(&TTPInit::logging, this, std::placeholders::_1, std::placeholders::_2));
 
     if (TConfig::getFtpPassive())
         ftp->SetConnmode(ftplib::pasv);
@@ -461,7 +514,8 @@ vector<string>& TTPInit::getFileList(const string& filter)
         return mDirList;
     }
 
-    string tmpFile = std::tmpnam(nullptr);
+//    string tmpFile = std::tmpnam(nullptr);
+    string tmpFile = getTmpFileName();
     MSG_DEBUG("Reading remote directory / into file " << tmpFile);
     ftp->Nlst(tmpFile.c_str(), "/");
     ftp->Quit();
@@ -479,6 +533,7 @@ vector<string>& TTPInit::getFileList(const string& filter)
         {
             string buf = buffer;
             string fname = trim(buf);
+            MSG_DEBUG("FTP line: " << buf << " (" << fname << ")");
 
             if (!filter.empty())
             {
@@ -555,6 +610,18 @@ bool TTPInit::isVirgin()
     }
 
     return false;
+}
+
+void TTPInit::logging(int level, const std::string &msg)
+{
+    switch(level)
+    {
+        case LOG_INFO:      MSG_INFO(msg); break;
+        case LOG_WARNING:   MSG_WARNING(msg); break;
+        case LOG_ERROR:     MSG_ERROR(msg); break;
+        case LOG_TRACE:     MSG_TRACE(msg); break;
+        case LOG_DEBUG:     MSG_DEBUG(msg); break;
+    }
 }
 
 #ifdef __ANDROID__

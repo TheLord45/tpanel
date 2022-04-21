@@ -22,6 +22,8 @@
 #include <vector>
 #include <functional>
 
+#define MAX_TMP_LEN     10
+
 class TTPInit
 {
     public:
@@ -45,11 +47,13 @@ class TTPInit
         bool createSystemConfigs();
         bool _makeDir(const std::string& dir);
         bool copyFile(const std::string& fname);
+        std::string getTmpFileName();
 #ifdef __ANDROID__
         bool askPermissions();
 #endif
         std::string mPath;
         std::vector<std::string> mDirList;
+        void logging(int level, const std::string& msg);
 };
 
 #endif // TTPINIT_H

@@ -3,6 +3,11 @@ ChangeLog
 
 Release: 1.3.1
 ===============================================================================
+2022-04-21 Added a static color table which is used in case there is no palette
+           file.
+           Fixed a bug in reading the palette. Now the first color is also read.
+           Fixed the FTP download on Android devices.
+
 2022-04-15 Removed Linphone from Android and replaced it by PJSIP.
 
 2022-04-07 Removed liblinphone completely because the java part necessary for

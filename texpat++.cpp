@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2022 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -70,7 +70,7 @@ void TExpat::setEncoding(TENCODING_t enc)
     }
 }
 
-bool TExpat::parse()
+bool TExpat::parse(bool debug)
 {
     DECL_TRACER("TExpat::parse()");
 
@@ -132,11 +132,12 @@ bool TExpat::parse()
     }
 
     XML_ParserFree(parser);
-/*
-    if (TStreamError::checkFilter(HLOG_DEBUG))
+
+    if (TStreamError::checkFilter(HLOG_DEBUG) && debug && mElements.size() > 0)
     {
         // Print out the whole XML file formatted
         vector<_ELEMENT_t>::iterator iter;
+        size_t cnt = 0;
 
         for (iter = mElements.begin(); iter != mElements.end(); ++iter)
         {
@@ -145,40 +146,52 @@ bool TExpat::parse()
             for (int i = 0; i < iter->depth; i++)
                 sIndent += "   ";
 
+            string attrs;
+
+            if ((iter->eType == _ET_START || iter->eType == _ET_ATOMIC) && iter->attrs.size() > 0)
+            {
+                vector<ATTRIBUTE_t>::iterator atiter;
+
+                for (atiter = iter->attrs.begin(); atiter != iter->attrs.end(); ++atiter)
+                {
+                    if (!attrs.empty())
+                        attrs += " ";
+
+                    attrs += atiter->name + " = \"" + atiter->content + "\"";
+                }
+            }
+
             if (iter->eType == _ET_START)
             {
-                string attrs;
-
                 if (iter->attrs.size() > 0)
                 {
-                    vector<ATTRIBUTE_t>::iterator atiter;
-
-                    for (atiter = iter->attrs.begin(); atiter != iter->attrs.end(); ++atiter)
-                    {
-                        if (!attrs.empty())
-                            attrs += " ";
-
-                        attrs += atiter->name + " = \"" + atiter->content + "\"";
-                    }
-
-                    MSG_DEBUG("(" << iter->depth << ") " << sIndent << "<" << iter->name << " " << attrs << ">");
+                    MSG_DEBUG(std::setw(3) << std::setfill(' ') << "[" << cnt << "] (" << std::setw(0) << iter->depth << ") " << sIndent << "<" << iter->name << " " << attrs << ">");
                 }
                 else
                 {
-                    MSG_DEBUG("(" << iter->depth << ") " << sIndent << "<" << iter->name << ">");
+                    MSG_DEBUG(std::setw(3) << std::setfill(' ') << "[" << cnt << "] (" << std::setw(0) << iter->depth << ") " << sIndent << "<" << iter->name << ">");
                 }
             }
             else if (iter->eType == _ET_ATOMIC)
             {
-                MSG_DEBUG("(" << iter->depth << ") " << sIndent << "<" << iter->name << ">" << iter->content << "</" << iter->name << ">");
+                if (iter->attrs.size() > 0)
+                {
+                    MSG_DEBUG(std::setw(3) << std::setfill(' ') << "[" << cnt << "] (" << std::setw(0) << iter->depth << ") " << sIndent << "<" << iter->name << " " << attrs << ">" << iter->content << "</" << iter->name << ">");
+                }
+                else
+                {
+                    MSG_DEBUG(std::setw(3) << std::setfill(' ') << "[" << cnt << "] (" << std::setw(0) << iter->depth << ") " << sIndent << "<" << iter->name << ">" << iter->content << "</" << iter->name << ">");
+                }
             }
             else
             {
-                MSG_DEBUG("(" << iter->depth << ") " << sIndent << "</" << iter->name << ">");
+                MSG_DEBUG(std::setw(3) << std::setfill(' ') << "[" << cnt << "] (" << std::setw(0) << iter->depth << ") " << sIndent << "</" << iter->name << ">");
             }
+
+            cnt++;
         }
     }
-*/
+
     return true;
 }
 

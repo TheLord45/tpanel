@@ -50,6 +50,7 @@ class TFsfReader
     private:
         ftplib *mFtpLib{nullptr};
         static std::function<int (off64_t xfered)> _progress;
+        void logging(int level, const std::string& msg);
 };
 
 #endif

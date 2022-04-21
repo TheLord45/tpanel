@@ -119,6 +119,7 @@ bool TFsfReader::copyOverFTP(const string& fname, const string& target)
         delete mFtpLib;
 
     mFtpLib = new ftplib();
+    mFtpLib->regLogging(bind(&TFsfReader::logging, this, std::placeholders::_1, std::placeholders::_2));
 
     if (TConfig::getFtpPassive())
         mFtpLib->SetConnmode(ftplib::pasv);
@@ -238,4 +239,16 @@ int TFsfReader::callbackXfer(off64_t xfered, void*)
         return _progress(xfered);
 
     return 1;
+}
+
+void TFsfReader::logging(int level, const std::string &msg)
+{
+    switch(level)
+    {
+        case LOG_INFO:      MSG_INFO(msg); break;
+        case LOG_WARNING:   MSG_WARNING(msg); break;
+        case LOG_ERROR:     MSG_ERROR(msg); break;
+        case LOG_TRACE:     MSG_TRACE(msg); break;
+        case LOG_DEBUG:     MSG_DEBUG(msg); break;
+    }
 }

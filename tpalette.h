@@ -52,6 +52,7 @@ class TPalette : public TValidateFile
 
     private:
         bool havePalette(const std::string& name);
+        void addSystemColors();
 
         std::map<std::string, PDATA_T> mColors;
         std::vector<std::string> mPaletteNames;

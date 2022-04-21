@@ -25,6 +25,9 @@
 #ifndef FTPLIB_H
 #define FTPLIB_H
 
+#include <functional>
+#include <string>
+
 #include <unistd.h>
 #include <sys/time.h>
 
@@ -69,6 +72,11 @@ typedef void (*FtpCallbackError)(char *str, void* arg, int err);
 //SSL
 typedef bool (*FtpCallbackCert)(void *arg, X509 *cert);
 
+#define LOG_INFO        1
+#define LOG_WARNING     2
+#define LOG_ERROR       3
+#define LOG_TRACE       4
+#define LOG_DEBUG       5
 
 struct ftphandle
 {
@@ -178,6 +186,8 @@ class ftplib
         int SetDataEncryption(dataencryption enc);
         int NegotiateEncryption();
         void SetCallbackCertFunction(FtpCallbackCert pointer);
+        // Register callback for logging
+        void regLogging(std::function<void (int level, const std::string& msg)> Logging) { _Logging = Logging; }
 
     private:
         ftphandle* mp_ftphandle;
@@ -199,6 +209,10 @@ class ftplib
         void ClearHandle();
         int CorrectPasvResponse(unsigned char *v);
         void errorHandler(const char *stub, int err, int line);
+        // Logging
+        void Log(int level, const std::string& msg);
+        // Callback for logging
+        std::function<void (int level, const std::string& msg)> _Logging{nullptr};
     };
 
 #endif
