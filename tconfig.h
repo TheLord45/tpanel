@@ -25,8 +25,8 @@
 
 #define V_MAJOR     1
 #define V_MINOR     3
-#define V_PATCH     1
-//#define V_ADD       "b"
+#define V_PATCH     2
+#define V_ADD       "b"
 
 #ifndef V_SERIAL
 #define V_SERIAL    "20220401T131B"
@@ -40,7 +40,8 @@
 
 #define VERSION_STRING() _GET_X_VERSION(V_MAJOR, V_MINOR, V_PATCH)
 #define _GET_X_VERSION(a, b, c) _GET_VERSION(a, b, c)
-#define _GET_VERSION(a, b, c) ( #a "." #b "." #c )
+//#define _GET_VERSION(a, b, c) ( #a "." #b "." #c )          // Release version
+#define _GET_VERSION(a, b, c) ( #a "." #b "." #c V_ADD)     // Beta version
 
 /**
  * @brief The TConfig class manages the configurations.

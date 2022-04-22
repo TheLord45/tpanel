@@ -78,10 +78,11 @@ TSIPClient::TSIPClient()
         return;
 
     mMyself = this;
-    mLine = 0;
+    mLine = PJSUA_INVALID_ID;
+    mCurrentCall = PJSUA_INVALID_ID;
 
-    for (int i = 0; i < SIP_MAX_LINES; i++)
-        mCallIDs[i] = PJSUA_INVALID_ID;
+    for (int i = 0; i < PJSUA_MAX_CALLS; ++i)
+        mSIPState[i] = SIP_NONE;
 
     // Start the SIP client
     if (TConfig::getSIPstatus())    // Is SIP enabled?
@@ -617,49 +618,14 @@ void TSIPClient::cleanUp()
 
     pjsua_destroy();
     mAccountID = 0;
+    mLine = PJSUA_INVALID_ID;
+    mCurrentCall = PJSUA_INVALID_ID;
 
-    for (int i = 0; i < SIP_MAX_LINES; i++)
-        mCallIDs[i] = 0;
+    for (int i = 0; i < PJSUA_MAX_CALLS; ++i)
+        mSIPState[i] = SIP_NONE;
 
     mRegistered = false;
 }
-
-#ifdef __ANDROID__X
-JNIEnv* env{nullptr};
-
-JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void*)
-{
-    if (vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK)
-        return JNI_ERR;
-
-    return JNI_VERSION_1_6;
-}
-#endif
-
-#ifdef __ANDROID__X
-void* TSIPClient::getJNIContext()
-{
-    DECL_TRACER("TSIPClient::getJNIContext()");
-
-    if (!env)
-    {
-        MSG_ERROR("Environment is not initialized!");
-        return nullptr;
-    }
-
-    jclass activityThreadCls = env->FindClass("android/app/ActivityThread");
-    jmethodID currentActivityThread = env->GetStaticMethodID(activityThreadCls,
-                                                             "currentActivityThread",
-                                                             "()Landroid/app/ActivityThread;");
-    jobject activityThreadObj =
-            env->CallStaticObjectMethod(activityThreadCls, currentActivityThread);
-
-    jmethodID getApplication =
-            env->GetMethodID(activityThreadCls, "getApplication", "()Landroid/app/Application;");
-    jobject context = env->CallObjectMethod(activityThreadObj, getApplication);
-    return context;
-}
-#endif
 
 bool TSIPClient::call(const string& dest)
 {
@@ -706,16 +672,8 @@ bool TSIPClient::call(const string& dest)
         return false;
     }
 
-    for (int i = 0; i < SIP_MAX_LINES; i++)
-    {
-        if (mCallIDs[i] == PJSUA_INVALID_ID)
-        {
-            mCallIDs[i] = cid;
-            mLine = i;
-            break;
-        }
-    }
-
+    mLine = cid;
+    mLastCall = dest;
     sendConnectionStatus(SIP_TRYING, mLine);
     return true;
 }
@@ -744,6 +702,7 @@ bool TSIPClient::pickup(pjsua_call_id call)
         return false;
     }
 
+    mLine = call;
     return true;
 }
 
@@ -751,24 +710,22 @@ bool TSIPClient::terminate(int id)
 {
     DECL_TRACER("TSIPClient::terminate(int)");
 
-    if (mLine > 0)
-        mLine--;
-
-    pjsua_call_id cid = 0;
-
-    if (id < SIP_MAX_LINES)
-        cid = mCallIDs[id];
-    else
-        return false;
-
+    pjsua_call_id cid = id;
     REGISTER_THREAD();
-    // FIXME: Enter code to terminate a call
+
+    if (!pjsua_call_is_active(cid))
+    {
+        MSG_ERROR("No active call at call ID " << id << "!");
+        return false;
+    }
+
     if (pjsua_call_hangup(cid, 200, NULL, NULL) != PJ_SUCCESS)
     {
         MSG_ERROR("The call " << id << " can't be ended successfull!");
         return false;
     }
 
+    mLine = PJSUA_INVALID_ID;
     return true;
 }
 
@@ -776,14 +733,14 @@ bool TSIPClient::hold(int id)
 {
     DECL_TRACER("TSIPClient::hold(int id)");
 
-    pjsua_call_id cid = 0;
-
-    if (id < SIP_MAX_LINES)
-        cid = mCallIDs[id];
-    else
-        return false;
-
+    pjsua_call_id cid = id;
     REGISTER_THREAD();
+
+    if (!pjsua_call_is_active(cid))
+    {
+        MSG_ERROR("No active call at call ID " << id << "!");
+        return false;
+    }
 
     if (pjsua_call_set_hold(cid, NULL) != PJ_SUCCESS)
     {
@@ -791,6 +748,8 @@ bool TSIPClient::hold(int id)
         return false;
     }
 
+    sendConnectionStatus(SIP_HOLD, cid);
+    mLine = id;
     return false;
 }
 
@@ -798,75 +757,84 @@ bool TSIPClient::resume(int id)
 {
     DECL_TRACER("TSIPClient::resume(int)");
 
-    // FIXME: Enter code to resume a call
+    pjsua_call_id cid = id;
     REGISTER_THREAD();
-    return false;
+
+    if (!pjsua_call_is_active(cid))
+    {
+        MSG_ERROR("No active call at call ID " << id << "!");
+        return false;
+    }
+
+    if (pjsua_call_set_hold2(cid, PJSUA_CALL_UNHOLD, NULL) != PJ_SUCCESS)
+    {
+        MSG_ERROR("Call couldn't be resumed!");
+        return false;
+    }
+
+    sendConnectionStatus(SIP_CONNECTED, cid);
+    mLine = id;
+    return true;
 }
 
 bool TSIPClient::sendDTMF(string& dtmf)
 {
     DECL_TRACER("TSIPClient::sendDTMF(string& dtmf, int id)");
 
-    // FIXME: Enter code to sen DTMF signals
     REGISTER_THREAD();
-    return false;
+
+    if (!pjsua_call_get_count())    // Is there no call active?
+    {                               // Yes, then treat dtmf as a phone number and call
+        pj_str_t s = pj_str((char *)dtmf.c_str());
+
+        if (pjsua_call_dial_dtmf(0, &s) != PJ_SUCCESS)
+        {
+            MSG_ERROR("Error calling DTMF number " << dtmf << "!");
+            return false;
+        }
+
+        sendConnectionStatus(SIP_TRYING, 0);
+        mLine = 0;
+        return true;
+    }
+
+    mLine = getActiveCall();
+
+    pjsua_call_send_dtmf_param d;
+    d.duration = mDTMFduration;
+    d.method = PJSUA_DTMF_METHOD_RFC2833;
+    d.digits = pj_str((char *)dtmf.c_str());
+
+    if (pjsua_call_send_dtmf(mLine, &d) != PJ_SUCCESS)
+    {
+        MSG_ERROR("Error sendig DTMF sequence " << dtmf << "!");
+        return false;
+    }
+
+    return true;
 }
 
 bool TSIPClient::sendLinestate()
 {
     DECL_TRACER("TSIPClient::sendLinestate()");
 
+    uint_t maxCalls = pjsua_call_get_max_count();
     vector<string> cmds;
     cmds.push_back("LINESTATE");
 
-    if (getNumberCalls() == 0)
+    for (uint_t i = 0; i < maxCalls; ++i)
     {
-        cmds.push_back("0");
-        cmds.push_back("IDLE");
-        cmds.push_back("1");
-        cmds.push_back("IDLE");
+        cmds.push_back(to_string(i));
+
+        if (pjsua_call_is_active(i))
+            cmds.push_back("CONNECTED");
+        else
+            cmds.push_back("IDLE");
+    }
+
+    if (gPageManager)
         gPageManager->sendPHN(cmds);
-        return true;
-    }
-/*
-    for (int id = 0; id < SIP_MAX_LINES; id++)
-    {
-        LinphoneCall *call = getCallbyID(id);
 
-        if (call)
-        {
-            LinphoneCallState cs = linphone_call_get_state(call);
-
-            switch(cs)
-            {
-                case LinphoneCallStateIdle:
-                case LinphoneCallStateError:
-                    cmds.push_back(to_string(id));
-                    cmds.push_back("IDLE");
-                break;
-
-                case LinphoneCallStateConnected:
-                case LinphoneCallStateResuming:
-                    cmds.push_back(to_string(id));
-                    cmds.push_back("CONNECTED");
-                break;
-
-                case LinphoneCallStatePausing:
-                case LinphoneCallStatePaused:
-                case LinphoneCallStatePausedByRemote:
-                    cmds.push_back(to_string(id));
-                    cmds.push_back("HOLD");
-                break;
-
-                default:
-                    cmds.push_back(to_string(id));
-                    cmds.push_back("IDLE");
-            }
-        }
-    }
-
-    gPageManager->sendPHN(cmds);
-*/
     return true;
 }
 
@@ -874,7 +842,7 @@ bool TSIPClient::sendPrivate(bool state)
 {
     DECL_TRACER("TSIPClient::sendPrivate(bool state)");
 
-    // FIXME: Enter code to set privacy
+    // FIXME: Enter code to set privacy (DND - do not disturb)
     vector<string> cmds;
     cmds.push_back("PRIVACY");
 
@@ -884,6 +852,7 @@ bool TSIPClient::sendPrivate(bool state)
         cmds.push_back("0");
 
     gPageManager->sendPHN(cmds);
+    mDoNotDisturb = state;
     return true;
 }
 
@@ -891,8 +860,10 @@ bool TSIPClient::redial()
 {
     DECL_TRACER("TSIPClient::redial()");
 
-    REGISTER_THREAD();
-    return false;
+    if (mLastCall.empty())
+        return false;
+
+    return call(mLastCall);
 }
 
 bool TSIPClient::transfer(int id, const string& num)
@@ -900,19 +871,61 @@ bool TSIPClient::transfer(int id, const string& num)
     DECL_TRACER("TSIPClient::transfer(int id, const string& num)");
 
     REGISTER_THREAD();
-    return false;
+
+    if (id == PJSUA_INVALID_ID || !pjsua_call_is_active(id))
+    {
+        MSG_ERROR("Call ID " << id << " is not an active call!");
+        return false;
+    }
+
+    pj_str_t s = pj_str((char *)num.c_str());
+
+    if (pjsua_call_xfer(id, &s, NULL) != PJ_SUCCESS)
+    {
+        MSG_ERROR("Call ID " << id << " couldn't be transferred to " << num << "!");
+        return false;
+    }
+
+    return true;
+}
+
+bool TSIPClient::setDTMFduration(uint_t ms)
+{
+    DECL_TRACER("TSIPClient::setDTMFduration(uint_t ms)");
+
+    if (ms >= 100 && ms <= 3000)
+        mDTMFduration = ms;
+
+    return true;
 }
 
 int TSIPClient::getNumberCalls()
 {
     DECL_TRACER("TSIPClient::getNumberCalls()");
 
-    return mLine + 1;
+    return pjsua_call_get_count();
+}
+
+pjsua_call_id TSIPClient::getActiveCall()
+{
+    DECL_TRACER("TSIPClient::getActiveCall()");
+
+    uint_t maxCalls = pjsua_call_get_max_count();
+
+    for (uint_t i = 0; i < maxCalls; ++i)
+    {
+        if (pjsua_call_is_active(i))
+            return i;
+    }
+
+    return PJSUA_INVALID_ID;
 }
 
 void TSIPClient::sendConnectionStatus(SIP_STATE_t state, int id)
 {
     DECL_TRACER("TSIPClient::sendConnectionStatus(SIP_STATE_t state)");
+
+    mMyself->setSIPState(state, id);
 
     if (!gPageManager)
         return;
@@ -1081,7 +1094,6 @@ void TSIPClient::call_timeout_callback(pj_timer_heap_t *timer_heap, struct pj_ti
     MSG_WARNING("Duration (" << mAppConfig.duration << " seconds) has been exceeded for call " << call_id << ", disconnecting the call,");
     entry->id = PJSUA_INVALID_ID;
     pjsua_call_hangup(call_id, 200, NULL, &msg_data_);
-    mMyself->mSIPState = SIP_DISCONNECTED;
     sendConnectionStatus(SIP_DISCONNECTED, call_id);
 }
 
@@ -1095,7 +1107,8 @@ void TSIPClient::on_playfile_done(pjmedia_port *port, void *usr_data)
     PJ_UNUSED_ARG(usr_data);
 
     /* Just rewind WAV when it is played outside of call */
-    if (pjsua_call_get_count() == 0) {
+    if (pjsua_call_get_count() == 0)
+    {
         pjsua_player_set_pos(mAppConfig.wav_id, 0);
     }
 
@@ -1133,6 +1146,7 @@ void TSIPClient::on_incoming_call(pjsua_acc_id acc_id, pjsua_call_id call_id, pj
     pjsua_call_get_info(call_id, &ci);
 
     MSG_DEBUG("Incoming call from " << ci.remote_info.ptr);
+    sendConnectionStatus(SIP_RINGING, call_id);
 
     /* Automatically answer incoming calls with 200/OK */
     if (gPageManager && gPageManager->getPHNautoanswer() && mMyself)
@@ -1175,6 +1189,7 @@ void TSIPClient::on_call_state(pjsua_call_id call_id, pjsip_event *e)
             dbgMsg.assign(ci.last_status_text.ptr, ci.last_status_text.slen);
 
         MSG_DEBUG("Call " << call_id << " disconnected [reason: " << ci.last_status << " (" << dbgMsg << ")]");
+        sendConnectionStatus(SIP_DISCONNECTED, call_id);
 
         if (call_id == mCurrentCall)
         {
@@ -1205,9 +1220,12 @@ void TSIPClient::on_call_state(pjsua_call_id call_id, pjsip_event *e)
             /* This can only occur because of TX or RX message */
             pj_assert(e->type == PJSIP_EVENT_TSX_STATE);
 
-            if (e->body.tsx_state.type == PJSIP_EVENT_RX_MSG) {
+            if (e->body.tsx_state.type == PJSIP_EVENT_RX_MSG)
+            {
                 msg = e->body.tsx_state.src.rdata->msg_info.msg;
-            } else {
+            }
+            else
+            {
                 msg = e->body.tsx_state.src.tdata->msg;
             }
 
@@ -1311,6 +1329,12 @@ pjsip_redirect_op TSIPClient::call_on_redirected(pjsua_call_id call_id, const pj
             dbgMsg.assign(uristr, len);
 
         MSG_DEBUG("Call " << call_id << " is being redirected to " << dbgMsg << ".");
+        vector<string>cmds;
+        cmds.push_back("TRANSFERRED");
+        cmds.push_back(to_string(call_id));
+
+        if (gPageManager)
+            gPageManager->sendPHN(cmds);
     }
 
     return mAppConfig.redir_op;
@@ -1339,6 +1363,10 @@ void TSIPClient::on_call_transfer_status(pjsua_call_id call_id, int status_code,
             cmds.push_back("TRANSFERRED");
             cmds.push_back(to_string(call_id));
             gPageManager->sendPHN(cmds);
+            cmds.clear();
+            cmds.push_back("DISCONNECTED");
+            cmds.push_back(to_string(call_id));
+            gPageManager->sendPHN(cmds);
         }
     }
 }
@@ -1355,7 +1383,6 @@ void TSIPClient::on_transport_state(pjsip_transport *tp, pjsip_transport_state s
     {
         case PJSIP_TP_STATE_CONNECTED:
             MSG_DEBUG("SIP " << tp->type_name << " transport is connected to " << host_port);
-            mMyself->mSIPState = SIP_CONNECTED;
         break;
 
         case PJSIP_TP_STATE_DISCONNECTED:
@@ -1366,7 +1393,6 @@ void TSIPClient::on_transport_state(pjsip_transport *tp, pjsip_transport_state s
             len = pj_ansi_snprintf(buf, sizeof(buf), "SIP %s transport is disconnected from %s", tp->type_name, host_port);
             PJ_CHECK_TRUNC_STR(len, buf, sizeof(buf));
             MSG_ERROR(buf << " (" << info->status << ")");
-            mMyself->mSIPState = SIP_DISCONNECTED;
         }
         break;
 

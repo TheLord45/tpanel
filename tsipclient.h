@@ -70,7 +70,7 @@ class TSIPClient
 
         void cleanUp();
         int getLineID() { return mLine; }
-        SIP_STATE_t getSIPState(int) { return mSIPState; }
+        SIP_STATE_t getSIPState(pjsua_call_id id) { if (id >= 0 && id < PJSUA_MAX_CALLS) return mSIPState[id]; else return SIP_NONE; }
         bool isRegistered() { return mRegistered; }
 
         bool call(const std::string& dest);         //<! Start a phone call
@@ -83,6 +83,8 @@ class TSIPClient
         bool sendPrivate(bool state);               //<! Enables or disables the privacy feature on the phone (do not disturb).
         bool redial();                              //<! Redial last number
         bool transfer(int id, const std::string& num);  //<! transfer the current call
+        bool setDTMFduration(uint_t ms);            //<! Set the DTMF duration in ms.
+        bool getPrivate() { return mDoNotDisturb; } //<! Returns the current private mode.
 
     protected:
         void start();
@@ -110,17 +112,18 @@ class TSIPClient
         static pjsip_module mod_default_handler;
 
         int getNumberCalls();
+        pjsua_call_id getActiveCall();
+        void setSIPState(SIP_STATE_t s, pjsua_call_id id) { if (id >= 0 && id < PJSUA_MAX_CALLS) mSIPState[id] = s; }
 
         static void sendConnectionStatus(SIP_STATE_t state, int id);
-#ifdef __ANDROID__X
-        static void* getJNIContext();
-#endif
+
         int mLine{0};
         bool mRegistered{false};
-        SIP_STATE_t mSIPState{SIP_NONE};
+        SIP_STATE_t mSIPState[PJSUA_MAX_CALLS];
         pjsua_acc_id mAccountID{0};
-        pjsua_call_id mCallIDs[SIP_MAX_LINES];
         std::string mLastCall;
+        uint_t mDTMFduration{PJSUA_CALL_SEND_DTMF_DURATION_DEFAULT};
+        bool mDoNotDisturb{false};
 
         static TSIPClient *mMyself;
         static pjsua_call_id mCurrentCall;

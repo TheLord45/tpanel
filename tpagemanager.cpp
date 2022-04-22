@@ -7150,8 +7150,8 @@ void TPageManager::doPHN(int port, vector<int>&, vector<string>& pars)
                 TConfig::setSIPdomain(pars[2]);
             else if (pars[1] == "DTMFDURATION")
             {
-                // FIXME: How to do this?
-                MSG_WARNING("Setting the DTMF duration is currently not implemented.");
+                unsigned int ms = atoi(pars[2].c_str());
+                mSIPClient->setDTMFduration(ms);
             }
             else if (pars[1] == "ENABLE")   // (re)register user
             {
@@ -7209,16 +7209,10 @@ void TPageManager::getPHN(int, vector<int>&, vector<string>& pars)
         sendPHNcommand(cmd + "," + (mPHNautoanswer ? "1" : "0"));
     else if (cmd == "LINESTATE")
     {
-        TSIPClient::SIP_STATE_t state1 = TSIPClient::SIP_NONE;
-        TSIPClient::SIP_STATE_t state2 = TSIPClient::SIP_NONE;
-
         if (!mSIPClient)
             return;
 
-        state1 = mSIPClient->getSIPState(0);
-        state2 = mSIPClient->getSIPState(1);
-
-        sendPHNcommand(cmd + ",0," + sipStateToString(state1) + ",1," + sipStateToString(state2));
+        mSIPClient->sendLinestate();
     }
     else if (cmd == "MSGWAITING")
     {
@@ -7227,8 +7221,10 @@ void TPageManager::getPHN(int, vector<int>&, vector<string>& pars)
     }
     else if (cmd == "PRIVACY")
     {
-        // FIXME
-        sendPHNcommand(cmd + ",0");
+        if (mSIPClient->getPrivate())
+            sendPHNcommand(cmd + ",1");
+        else
+            sendPHNcommand(cmd + ",0");
     }
     else
     {
