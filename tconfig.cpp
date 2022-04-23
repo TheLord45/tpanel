@@ -102,6 +102,7 @@ struct SETTINGS
     string sip_password;        //!< The SIP password to connect. Note: This password is saved in plain text!
     bool sip_ipv4{true};        //!< Default: TRUE, Enables or disables IPv4.
     bool sip_ipv6{true};        //!< Default: TRUE, Enables or disables IPv6. Has precedence over IPv4.
+    bool sip_iphone{false};     //!< Default: FALSE, if enabled and SIP is enabled then the internal phone dialog is used.
     TConfig::SIP_FIREWALL_t sip_firewall{TConfig::SIP_NO_FIREWALL}; //!< Defines how to deal with a firewall.
     bool sip_enabled{false};    //!< By default SIP is disabled
 };
@@ -698,6 +699,20 @@ void TConfig::setSIPnetworkIPv6(bool state)
     localSettings.sip_ipv6 = state;
 }
 
+void TConfig::setSIPiphone(bool state)
+{
+    DECL_TRACER("TConfig::setSIPiphone(bool state)");
+
+    localSettings.sip_iphone = state;
+}
+
+bool TConfig::getSIPiphone()
+{
+    DECL_TRACER("TConfig::getSIPiphone()");
+
+    return localSettings.sip_iphone;
+}
+
 TConfig::SIP_FIREWALL_t TConfig::getSIPfirewall()
 {
     DECL_TRACER("TConfig::getSIPfirewall()");
@@ -775,6 +790,7 @@ bool TConfig::saveSettings()
         lines += string("SIP_PASSWORD=") + localSettings.sip_password + "\n";
         lines += string("SIP_IPV4=") + (localSettings.sip_ipv4 ? "true" : "false") + "\n";
         lines += string("SIP_IPV6=") + (localSettings.sip_ipv6 ? "true" : "false") + "\n";
+        lines += string("SIP_IPHONE=") + (localSettings.sip_iphone ? "true" : "false") + "\n";
         lines += "SIP_FIREWALL=" + sipFirewallToString(localSettings.sip_firewall) + "\n";
         lines += string("SIP_ENABLED=") + (localSettings.sip_enabled ? "true" : "false") + "\n";
         file.write(lines.c_str(), lines.size());
@@ -1151,7 +1167,8 @@ string TConfig::makeConfigDefault(const std::string& log, const std::string& pro
     content += "SIP_USER=" + localSettings.sip_user + "\n";
     content += "SIP_PASSWORD=" + localSettings.sip_password + "\n";
     content += "SIP_IPV4=" + string(localSettings.sip_ipv4 ? "TRUE" : "FALSE") + "\n";
-    content += "SIP_IPV4=" + string(localSettings.sip_ipv6 ? "TRUE" : "FALSE") + "\n";
+    content += "SIP_IPV6=" + string(localSettings.sip_ipv6 ? "TRUE" : "FALSE") + "\n";
+    content += "SIP_IPHONE=" + string(localSettings.sip_iphone ? "TRUE" : "FALSE") + "\n";
     content += "SIP_FIREWALL=" + sipFirewallToString(localSettings.sip_firewall) + "\n";
     content += "SIP_ENABLED=" + string(localSettings.sip_ipv6 ? "TRUE" : "FALSE") + "\n";
 
@@ -1516,6 +1533,8 @@ bool TConfig::readConfig()
                 localSettings.sip_ipv4 = isTrue(right);
             else if (caseCompare(left, "SIP_IPV6") == 0 && !right.empty())
                 localSettings.sip_ipv6 = isTrue(right);
+            else if (caseCompare(left, "SIP_IPHONE") == 0 && !right.empty())
+                localSettings.sip_iphone = isTrue(right);
             else if (caseCompare(left, "SIP_FIREWALL") == 0 && !right.empty())
                 localSettings.sip_firewall = sipFirewallStrToEnum(right);
             else if (caseCompare(left, "SIP_ENABLED") == 0 && !right.empty())
@@ -1583,6 +1602,7 @@ bool TConfig::readConfig()
         MSG_INFO("    SIP user:     " << localSettings.sip_user);
         MSG_INFO("    SIP IPv4:     " << (localSettings.sip_ipv4 ? "YES" : "NO"));
         MSG_INFO("    SIP IPv6:     " << (localSettings.sip_ipv6 ? "YES" : "NO"));
+        MSG_INFO("    SIP Int.Phone:" << (localSettings.sip_iphone ? "YES" : "NO"));
         MSG_INFO("    SIP firewall: " << sipFirewallToString(localSettings.sip_firewall));
         MSG_INFO("    SIP enabled:  " << (localSettings.sip_enabled ? "YES" : "NO"));
     }

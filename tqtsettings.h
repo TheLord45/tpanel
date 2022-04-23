@@ -75,6 +75,7 @@ class TQtSettings : public QDialog
         void on_checkBox_SIPnetworkIPv6_toggled(bool checked);
         void on_comboBox_SIPfirewall_currentIndexChanged(int index);
         void on_checkBox_SIPenabled_toggled(bool checked);
+        void on_checkBox_SIPiphone_toggled(bool checked);
         // View
         void on_checkBox_Scale_toggled(bool checked);
         void on_checkBox_Banner_toggled(bool checked);

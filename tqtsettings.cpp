@@ -908,3 +908,14 @@ void TQtSettings::on_checkBox_SIPenabled_toggled(bool checked)
     mSetChanged = true;
     TConfig::setSIPstatus(checked);
 }
+
+void TQtSettings::on_checkBox_SIPiphone_toggled(bool checked)
+{
+    DECL_TRACER("TQtSettings::on_checkBox_SIPiphone_toggled(bool checked)");
+
+    if (TConfig::getSIPiphone() == checked)
+        return;
+
+    mSetChanged = true;
+    TConfig::setSIPiphone(checked);
+}

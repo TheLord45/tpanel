@@ -165,6 +165,8 @@ class TConfig
         static std::string getSIPfirewallStr();
         static void setSIPfirewall(SIP_FIREWALL_t fw);
         static void setSIPstatus(bool state);
+        static void setSIPiphone(bool state);
+        static bool getSIPiphone();
 
     protected:
         static bool isTrue(const std::string& boolean);

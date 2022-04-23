@@ -44,6 +44,7 @@ HEADERS = \
    $$PWD/tqemitqueue.h \
    $$PWD/tqkeyboard.h \
    $$PWD/tqkeypad.h \
+   $$PWD/tqtphone.h \
    $$PWD/tqtbusy.h \
    $$PWD/texcept.h \
    $$PWD/tsipclient.h \
@@ -92,6 +93,7 @@ SOURCES = \
    $$PWD/tqemitqueue.cpp \
    $$PWD/tqkeyboard.cpp \
    $$PWD/tqkeypad.cpp \
+   $$PWD/tqtphone.cpp \
    $$PWD/tqtbusy.cpp \
    $$PWD/tsipclient.cpp \
    $$PWD/texcept.cpp \

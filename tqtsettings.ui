@@ -1266,6 +1266,22 @@
       </property>
      </item>
     </widget>
+    <widget class="QCheckBox" name="checkBox_SIPenabled_2">
+     <property name="geometry">
+      <rect>
+       <x>390</x>
+       <y>300</y>
+       <width>201</width>
+       <height>21</height>
+      </rect>
+     </property>
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If this is checked, the SIP settings are activated.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+     <property name="text">
+      <string>Use integrated phone</string>
+     </property>
+    </widget>
    </widget>
    <widget class="QWidget" name="tabView">
     <attribute name="title">

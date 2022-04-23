@@ -94,6 +94,7 @@ set(SOURCES tmain.cpp
 			tqtsettings.cpp
 			tqkeyboard.cpp
 			tqkeypad.cpp
+			tqtphone.cpp
 			tqemitqueue.cpp
 			tamxnet.cpp
 			tamxcommands.cpp
