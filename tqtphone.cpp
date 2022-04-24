@@ -21,8 +21,16 @@
 #include <QLabel>
 
 #include "tqtphone.h"
+#include "tpagemanager.h"
 #include "terror.h"
 #include "ui_tqtphone.h"
+
+using std::vector;
+using std::string;
+using std::map;
+using std::pair;
+
+extern TPageManager *gPageManager;              //!< The pointer to the global defined main class.
 
 TQtPhone::TQtPhone(QWidget* parent)
     : QDialog(parent),
@@ -170,15 +178,60 @@ void TQtPhone::on_pushButton_Exit_clicked()
 {
     DECL_TRACER("TQtPhone::on_pushButton_Exit_clicked()");
 
-    // FIXME: Enter code to close the dialog
+    if (mSIPstate.size() > 0)
+    {
+        map<unsigned int, SIP_STATE_t>::iterator iter;
+
+        for (iter = mSIPstate.begin(); iter != mSIPstate.end(); ++iter)
+        {
+            if (iter->second == SIP_CONNECTED)
+            {
+                if (gPageManager)
+                {
+                    vector<string>cmds;
+                    cmds.push_back("HANGUP");
+                    cmds.push_back(std::to_string(iter->first));
+                    gPageManager->sendPHN(cmds);
+                }
+            }
+        }
+    }
+
     close();
 }
 
 void TQtPhone::on_toolButton_Call_Clicked()
 {
-    DECL_TRACER("TQtPhone::on_pushButton_0_clicked()");
+    DECL_TRACER("TQtPhone::on_pushButton_Call_clicked()");
 
-    // FIXME: Add code to call a number
+    if (!gPageManager)
+        return;
+
+    if (mLastState == SIP_RINGING)
+    {
+        map<unsigned int, SIP_STATE_t>::iterator iter;
+        int id = -1;
+
+        for (iter = mSIPstate.begin(); iter != mSIPstate.end(); ++iter)
+        {
+            if (iter->second == SIP_RINGING)
+            {
+                id = iter->first;
+                break;
+            }
+        }
+
+        gPageManager->phonePickup(id);
+        return;
+    }
+    else if (mNumber.isEmpty())
+        return;
+
+    vector<string>cmds;
+    cmds.push_back("CALL");
+    cmds.push_back(mNumber.toStdString());
+    gPageManager->sendPHN(cmds);
+    ui->toolButton_Call->setIcon(QIcon(":images/hangup.png"));
 }
 
 void TQtPhone::doResize()
@@ -225,6 +278,78 @@ void TQtPhone::doResize()
             y2 = scale(ln->y2());
             ln->setLine(x1, y1, x2, y2);
         }
+    }
+}
+
+void TQtPhone::setPhoneNumber(const std::string& number)
+{
+    DECL_TRACER("TQtPhone::setPhoneNumber(const std::string& number)");
+
+    ui->label_Number->setText(number.c_str());
+}
+
+void TQtPhone::setPhoneStatus(const std::string& msg)
+{
+    DECL_TRACER("TQtPhone::setPhoneStatus(const std::string& msg)");
+
+    ui->label_Status->setText(msg.c_str());
+}
+
+void TQtPhone::setPhoneState(int state, int id)
+{
+    DECL_TRACER("TQtPhone::setPhoneState(int state)");
+
+    if (id < 0 || id > 4)
+    {
+        MSG_ERROR("Invalid call ID " << id << "!");
+        return;
+    }
+
+    if (state >= 0 && state <= SIP_ERROR)
+    {
+        mSIPstate.insert_or_assign(id, (SIP_STATE_t)state);
+        mLastState = (SIP_STATE_t)state;
+    }
+    else
+    {
+        MSG_WARNING("Unknown state " << state << " for call id " << id << "!");
+    }
+
+    switch(state)
+    {
+        case SIP_TRYING:
+            ui->label_Status->setText("Line: " + QString(id) + " - TRYING");
+            ui->toolButton_Call->setIcon(QIcon(":images/hangup.png"));
+        break;
+
+        case SIP_CONNECTED:
+            ui->label_Status->setText("Line: " + QString(id) + " - CONNECTED");
+            ui->toolButton_Call->setIcon(QIcon(":images/hangup.png"));
+        break;
+
+        case SIP_DISCONNECTED:
+            ui->label_Status->setText("Line: " + QString(id) + " - DISCONNECTED");
+            ui->toolButton_Call->setIcon(QIcon(":images/pickup.png"));
+        break;
+
+        case SIP_REJECTED:
+            ui->label_Status->setText("Line: " + QString(id) + " - REJECTED");
+            ui->toolButton_Call->setIcon(QIcon(":images/pickup.png"));
+        break;
+
+        case SIP_RINGING:
+            ui->label_Status->setText("Line: " + QString(id) + " - RINGING");
+            ui->toolButton_Call->setIcon(QIcon(":images/pickup.png"));
+        break;
+
+        case SIP_ERROR:
+            ui->label_Status->setText("Line: " + QString(id) + " - ERROR");
+            ui->toolButton_Call->setIcon(QIcon(":images/pickup.png"));
+        break;
+
+        default:
+            ui->toolButton_Call->setIcon(QIcon(":images/pickup.png"));
+            ui->label_Status->setText("");
     }
 }
 

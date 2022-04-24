@@ -7021,6 +7021,28 @@ void TPageManager::sendPHN(vector<string>& cmds)
     doPHN(-1, channels, cmds);
 }
 
+void TPageManager::phonePickup(int id)
+{
+    DECL_TRACER("TPageManager::phonePickup(int id)");
+
+    if (id < 0 || id >= 4)
+        return;
+
+    if (mSIPClient)
+        mSIPClient->pickup(id);
+}
+
+void TPageManager::phoneHangup(int id)
+{
+    DECL_TRACER("TPageManager::phoneHangup(int id)");
+
+    if (id < 0 || id >= 4)
+        return;
+
+    if (mSIPClient)
+        mSIPClient->terminate(id);
+}
+
 /**
  * @brief Phone commands.
  * The phone commands could come from the master or are send to the master.

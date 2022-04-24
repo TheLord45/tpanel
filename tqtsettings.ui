@@ -1266,7 +1266,7 @@
       </property>
      </item>
     </widget>
-    <widget class="QCheckBox" name="checkBox_SIPenabled_2">
+    <widget class="QCheckBox" name="checkBox_SIPiphone">
      <property name="geometry">
       <rect>
        <x>390</x>
@@ -1276,7 +1276,7 @@
       </rect>
      </property>
      <property name="toolTip">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If this is checked, the SIP settings are activated.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If this is checked, the internal phone dialog is used when the phone is ringing.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="text">
       <string>Use integrated phone</string>

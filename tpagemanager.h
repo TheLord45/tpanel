@@ -136,6 +136,10 @@ class TPageManager : public TAmxCommands
         void regCallbackShutdown(std::function<void ()> shutdown) { _shutdown = shutdown; }
         void regCallbackPlaySound(std::function<void (const std::string& file)> playSound) { _playSound = playSound; }
         void regSendVirtualKeys(std::function<void (const std::string& str)> sendVirtualKeys) { _sendVirtualKeys = sendVirtualKeys; }
+        void regShowPhoneDialog(std::function<void (bool state)> showPhoneDialog) { _showPhoneDialog = showPhoneDialog; }
+        void regSetPhoneNumber(std::function<void (const std::string& number)> setPhoneNumber) { _setPhoneNumber = setPhoneNumber; }
+        void regSetPhoneStatus(std::function<void (const std::string& msg)> setPhoneStatus) { _setPhoneStatus = setPhoneStatus; }
+        void regSetPhoneState(std::function<void (int state, int id)> setPhoneState) { _setPhoneState = setPhoneState; }
 #ifdef __ANDROID__
         void regOnOrientationChange(std::function<void (int orientation)> orientationChange) { _onOrientationChange = orientationChange; }
 #endif
@@ -263,6 +267,10 @@ class TPageManager : public TAmxCommands
         std::function<void (ulong handle)> getCallDropSubPage() { return _callDropSubPage; }
         std::function<void (const std::string& file)> getCallPlaySound() { return _playSound; }
         std::function<void (const std::string& str)> sendVirtualKeys() { return _sendVirtualKeys; }
+        std::function<void (bool state)> getShowPhoneDialog() { return _showPhoneDialog; }
+        std::function<void (const std::string& number)> getSetPhoneNumber() { return _setPhoneNumber; }
+        std::function<void (const std::string& msg)> getSetPhoneStatus() { return _setPhoneStatus; }
+        std::function<void (int state, int id)> getSetPhoneState() { return _setPhoneState; }
 #ifdef __ANDROID__
         std::function<void (int orientation)> onOrientationChange() { return _onOrientationChange; }
 #endif
@@ -281,6 +289,8 @@ class TPageManager : public TAmxCommands
 #ifndef _NOSIP_
         bool getPHNautoanswer() { return mPHNautoanswer; }
         void sendPHN(std::vector<std::string>& cmds);
+        void phonePickup(int id);
+        void phoneHangup(int id);
 #endif
     protected:
         PAGELIST_T findPage(const std::string& name);
@@ -315,6 +325,10 @@ class TPageManager : public TAmxCommands
         std::function<void ()> _shutdown{nullptr};
         std::function<void (const std::string& file)> _playSound{nullptr};
         std::function<void (const std::string& str)> _sendVirtualKeys{nullptr};
+        std::function<void (bool state)> _showPhoneDialog{nullptr};
+        std::function<void (const std::string& number)> _setPhoneNumber{nullptr};
+        std::function<void (const std::string& msg)> _setPhoneStatus{nullptr};
+        std::function<void (int state, int id)> _setPhoneState{nullptr};
 #ifdef __ANDROID__
         std::function<void (int orientation)> _onOrientationChange{nullptr};
 #endif

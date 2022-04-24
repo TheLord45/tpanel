@@ -669,6 +669,7 @@ bool TSIPClient::call(const string& dest)
     if (pjsua_call_make_call(mAccountID, &uri, &call_opt, NULL, NULL, &cid) != PJ_SUCCESS)
     {
         MSG_ERROR("Error calling " << dest << "!");
+        sendConnectionStatus(SIP_ERROR, cid);
         return false;
     }
 
@@ -699,9 +700,11 @@ bool TSIPClient::pickup(pjsua_call_id call)
     if (pjsua_call_answer(call, 200, NULL, NULL) != PJ_SUCCESS)
     {
         MSG_ERROR("Couldn't answer with call ID " << call);
+        sendConnectionStatus(SIP_ERROR, call);
         return false;
     }
 
+    sendConnectionStatus(SIP_CONNECTED, call);
     mLine = call;
     return true;
 }
@@ -722,9 +725,11 @@ bool TSIPClient::terminate(int id)
     if (pjsua_call_hangup(cid, 200, NULL, NULL) != PJ_SUCCESS)
     {
         MSG_ERROR("The call " << id << " can't be ended successfull!");
+        sendConnectionStatus(SIP_ERROR, cid);
         return false;
     }
 
+    sendConnectionStatus(SIP_DISCONNECTED, cid);
     mLine = PJSUA_INVALID_ID;
     return true;
 }
@@ -745,6 +750,7 @@ bool TSIPClient::hold(int id)
     if (pjsua_call_set_hold(cid, NULL) != PJ_SUCCESS)
     {
         MSG_ERROR("Error setting line " << id << " on hold!");
+        sendConnectionStatus(SIP_ERROR, cid);
         return false;
     }
 
@@ -769,6 +775,7 @@ bool TSIPClient::resume(int id)
     if (pjsua_call_set_hold2(cid, PJSUA_CALL_UNHOLD, NULL) != PJ_SUCCESS)
     {
         MSG_ERROR("Call couldn't be resumed!");
+        sendConnectionStatus(SIP_ERROR, cid);
         return false;
     }
 
@@ -883,9 +890,11 @@ bool TSIPClient::transfer(int id, const string& num)
     if (pjsua_call_xfer(id, &s, NULL) != PJ_SUCCESS)
     {
         MSG_ERROR("Call ID " << id << " couldn't be transferred to " << num << "!");
+        sendConnectionStatus(SIP_ERROR, id);
         return false;
     }
 
+    sendConnectionStatus(SIP_IDLE, id);
     return true;
 }
 
@@ -930,8 +939,10 @@ void TSIPClient::sendConnectionStatus(SIP_STATE_t state, int id)
     if (!gPageManager)
         return;
 
-    vector<string> cmds;
+    if (state == SIP_RINGING && TConfig::getSIPiphone() && gPageManager->getShowPhoneDialog())
+        gPageManager->getShowPhoneDialog()(true);
 
+    vector<string> cmds;
     cmds.push_back("CALL");
 
     switch(state)
@@ -941,13 +952,20 @@ void TSIPClient::sendConnectionStatus(SIP_STATE_t state, int id)
         case SIP_HOLD:          cmds.push_back("HOLD"); break;
         case SIP_RINGING:       cmds.push_back("RINGING"); break;
         case SIP_TRYING:        cmds.push_back("TRYING"); break;
+        case SIP_IDLE:          cmds.push_back("IDLE"); break;
 
         default:
+            if (gPageManager->getSetPhoneState())
+                gPageManager->getSetPhoneState()(state, id);
+
             return;
     }
 
     cmds.push_back(to_string(id));
     gPageManager->sendPHN(cmds);
+
+    if (gPageManager->getSetPhoneState())
+        gPageManager->getSetPhoneState()(state, id);
 }
 
 /*******************************************************************************
@@ -1236,6 +1254,7 @@ void TSIPClient::on_call_state(pjsua_call_id call_id, pjsip_event *e)
             if (ci.role == PJSIP_ROLE_UAC && code == 180 && msg->body == NULL && ci.media_status == PJSUA_CALL_MEDIA_NONE)
             {
                 ringback_start(call_id);
+                sendConnectionStatus(SIP_RINGING, call_id);
             }
 
             string dbgMsg;
@@ -1329,12 +1348,15 @@ pjsip_redirect_op TSIPClient::call_on_redirected(pjsua_call_id call_id, const pj
             dbgMsg.assign(uristr, len);
 
         MSG_DEBUG("Call " << call_id << " is being redirected to " << dbgMsg << ".");
-        vector<string>cmds;
-        cmds.push_back("TRANSFERRED");
-        cmds.push_back(to_string(call_id));
 
         if (gPageManager)
+        {
+            vector<string>cmds;
+            cmds.push_back("TRANSFERRED");
+            cmds.push_back(to_string(call_id));
             gPageManager->sendPHN(cmds);
+            sendConnectionStatus(SIP_IDLE, call_id);
+        }
     }
 
     return mAppConfig.redir_op;

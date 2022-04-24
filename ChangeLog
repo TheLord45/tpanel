@@ -3,6 +3,9 @@ ChangeLog
 
 Release: 1.3.2
 ===============================================================================
+2022-04-24 Completed the internal phone dialog. If internal phone is enabled
+           and if it's ringing the dialog box appears.
+
 2022-04-23 Added a new phone dialog to have an integrated small phone.
            Added a new checkbox to settings to enable an automatic internal
            phone.

@@ -1108,6 +1108,8 @@ string TConfig::sipFirewallToString(TConfig::SIP_FIREWALL_t fw)
         case SIP_ICE:           return "SIP_ICE";
         case SIP_UPNP:          return "SIP_UPNP";
     }
+
+    return string();
 }
 
 TConfig::SIP_FIREWALL_t TConfig::sipFirewallStrToEnum(const std::string& str)

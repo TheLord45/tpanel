@@ -66,6 +66,7 @@
 #include "texcept.h"
 #include "ttpinit.h"
 #include "tqtbusy.h"
+#include "tqtphone.h"
 
 /**
  * @def THREAD_WAIT
@@ -369,6 +370,10 @@ MainWindow::MainWindow()
     gPageManager->regCallbackPlaySound(bind(&MainWindow::_playSound, this, std::placeholders::_1));
     gPageManager->registerCBsetVisible(bind(&MainWindow::_setVisible, this, std::placeholders::_1, std::placeholders::_2));
     gPageManager->regSendVirtualKeys(bind(&MainWindow::_sendVirtualKeys, this, std::placeholders::_1));
+    gPageManager->regShowPhoneDialog(bind(&MainWindow::_showPhoneDialog, this, std::placeholders::_1));
+    gPageManager->regSetPhoneNumber(bind(&MainWindow::_setPhoneNumber, this, std::placeholders::_1));
+    gPageManager->regSetPhoneStatus(bind(&MainWindow::_setPhoneStatus, this, std::placeholders::_1));
+    gPageManager->regSetPhoneState(bind(&MainWindow::setPhoneState, this, std::placeholders::_1, std::placeholders::_2));
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
     gPageManager->regOnOrientationChange(bind(&MainWindow::_orientationChanged, this, std::placeholders::_1));
 #endif
@@ -408,6 +413,9 @@ MainWindow::MainWindow()
         connect(this, &MainWindow::sigDropButton, this, &MainWindow::dropButton);
         connect(this, &MainWindow::sigSetVisible, this, &MainWindow::SetVisible);
         connect(this, &MainWindow::sigSendVirtualKeys, this, &MainWindow::sendVirtualKeys);
+        connect(this, &MainWindow::sigShowPhoneDialog, this, &MainWindow::showPhoneDialog);
+        connect(this, &MainWindow::sigSetPhoneNumber, this, &MainWindow::setPhoneNumber);
+        connect(this, &MainWindow::sigSetPhoneStatus, this, &MainWindow::setPhoneStatus);
         connect(qApp, &QGuiApplication::applicationStateChanged, this, &MainWindow::appStateChanged);
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         QScreen *screen = QGuiApplication::primaryScreen();
@@ -672,6 +680,87 @@ void MainWindow::onScreenOrientationChanged(Qt::ScreenOrientation ori)
     }
 
     _setOrientation(jori);
+}
+
+/**
+ * @brief Displays or hides a phone dialog window.
+ * This method creates and displays a phone dialog window containing everything
+ * a simple phone needs. Depending on the parameter \p state the dialog is
+ * created or an exeisting dialog is closed.
+ * @param state     If TRUE the dialog is created or if it is not visible
+ * brought to front and is made visible.
+ * If this is FALSE an existing dialog window is destroid and disappears. If
+ * the window didn't exist nothing happens.
+ */
+void MainWindow::showPhoneDialog(bool state)
+{
+    DECL_TRACER("MainWindow::showPhoneDialog(bool state)");
+
+    if (mPhoneDialog)
+    {
+        if (!state)
+        {
+            mPhoneDialog->close();
+            delete mPhoneDialog;
+            mPhoneDialog = nullptr;
+            return;
+        }
+
+        if (!mPhoneDialog->isVisible())
+            mPhoneDialog->setVisible(true);
+
+        return;
+    }
+
+    if (!state)
+        return;
+
+    mPhoneDialog = new TQtPhone(this);
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+    // On mobile devices we set the scale factor always because otherwise the
+    // dialog will be unusable.
+    mPhoneDialog->setScaleFactor(gScale);
+    mPhoneDialog->doResize();
+#endif
+    mPhoneDialog->open();
+}
+
+/**
+ * Displays a phone number (can also be an URL) on a label in the phone dialog
+ * window.
+ * @param number    The string contains the phone number to display.
+ */
+void MainWindow::setPhoneNumber(const std::string& number)
+{
+    DECL_TRACER("MainWindow::setPhoneNumber(const std::string& number)");
+
+    if (!mPhoneDialog)
+        return;
+
+    mPhoneDialog->setPhoneNumber(number);
+}
+
+/**
+ * Displays a message in the status line on the bottom of the phone dialog
+ * window.
+ * @param msg   The string conaining a message.
+ */
+void MainWindow::setPhoneStatus(const std::string& msg)
+{
+    DECL_TRACER("MainWindow::setPhoneStatus(const std::string& msg)");
+
+    if (!mPhoneDialog)
+        return;
+
+    mPhoneDialog->setPhoneStatus(msg);
+}
+
+void MainWindow::setPhoneState(int state, int id)
+{
+    DECL_TRACER("MainWindow::setPhoneState(int state)");
+
+    if (mPhoneDialog)
+        mPhoneDialog->setPhoneState(state, id);
 }
 
 /**
@@ -1554,6 +1643,27 @@ void MainWindow::_sendVirtualKeys(const string& str)
     DECL_TRACER("MainWindow::_sendVirtualKeys(const string& str)");
 
     emit sigSendVirtualKeys(str);
+}
+
+void MainWindow::_showPhoneDialog(bool state)
+{
+    DECL_TRACER("MainWindow::_showPhoneDialog(bool state)");
+
+    emit sigShowPhoneDialog(state);
+}
+
+void MainWindow::_setPhoneNumber(const std::string& number)
+{
+    DECL_TRACER("MainWindow::_setPhoneNumber(const std::string& number)");
+
+    emit sigSetPhoneNumber(number);
+}
+
+void MainWindow::_setPhoneStatus(const std::string& msg)
+{
+    DECL_TRACER("MainWindow::_setPhoneStatus(const std::string& msg)");
+
+    emit sigSetPhoneStatus(msg);
 }
 
 void MainWindow::doReleaseButton()

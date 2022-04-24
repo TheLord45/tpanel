@@ -36,6 +36,9 @@ class TQtPhone : public QDialog
 
         void setScaleFactor(double sf) { mScaleFactor = sf; }
         void doResize();
+        void setPhoneNumber(const std::string& number);
+        void setPhoneStatus(const std::string& msg);
+        void setPhoneState(int state, int id);
 
     private slots:
         void on_pushButton_0_clicked();
@@ -55,6 +58,19 @@ class TQtPhone : public QDialog
         void on_toolButton_Call_Clicked();
 
     private:
+        typedef enum SIP_STATE_t
+        {
+            SIP_NONE,               // Undefined state (only valid on startup before initialisation)
+            SIP_IDLE,               // Initialized but no event
+            SIP_CONNECTED,          // Call is in progress
+            SIP_DISCONNECTED,       // Call has ended
+            SIP_TRYING,             // Trying to call someone
+            SIP_RINGING,            // Phone is ringing (incoming call)
+            SIP_HOLD,               // Active call is paused
+            SIP_REJECTED,           // Outgoing call was rejected
+            SIP_ERROR               // An error occured
+        }SIP_STATE_t;
+
         int scale(int value);
         template <typename T>
         void scaleObject(T *obj);
@@ -62,6 +78,8 @@ class TQtPhone : public QDialog
         Ui::TQtPhone *ui{nullptr};
         double mScaleFactor{1.0};
         QString mNumber;
+        std::map<unsigned int, SIP_STATE_t>mSIPstate;   // <CALL ID, SIP STATE>
+        SIP_STATE_t mLastState{SIP_NONE};
 };
 
 #endif

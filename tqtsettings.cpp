@@ -123,6 +123,7 @@ TQtSettings::TQtSettings(QWidget *parent)
     ui->lineEdit_SIPpassword->setText(TConfig::getSIPpassword().c_str());
     ui->checkBox_SIPnetworkIPv4->setCheckState(TConfig::getSIPnetworkIPv4() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked);
     ui->checkBox_SIPnetworkIPv6->setCheckState(TConfig::getSIPnetworkIPv6() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked);
+    ui->checkBox_SIPiphone->setCheckState(TConfig::getSIPiphone() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked);
 
     int fwIdx = 0;
 

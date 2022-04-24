@@ -43,6 +43,7 @@ class TQtSettings;
 class TQKeyboard;
 class TQKeypad;
 class TQBusy;
+class TQtPhone;
 QT_END_NAMESPACE
 
 Q_DECLARE_METATYPE(size_t)
@@ -89,6 +90,9 @@ class MainWindow : public QMainWindow, TQManageQueue
         void sigShowSetup();
         void sigPlaySound(const std::string& file);
         void sigSendVirtualKeys(const std::string& str);
+        void sigShowPhoneDialog(bool state);
+        void sigSetPhoneNumber(const std::string& number);
+        void sigSetPhoneStatus(const std::string& msg);
 
     protected:
         bool event(QEvent *event) override;
@@ -121,6 +125,10 @@ class MainWindow : public QMainWindow, TQManageQueue
         void playSound(const std::string& file);
         void appStateChanged(Qt::ApplicationState state);
         void onScreenOrientationChanged(Qt::ScreenOrientation ori);
+        // Slots for the phone dialog
+        void showPhoneDialog(bool state);
+        void setPhoneNumber(const std::string& number);
+        void setPhoneStatus(const std::string& msg);
         // Slots for the toolbar buttons.
         void arrowLeft();
         void arrowRight();
@@ -167,6 +175,10 @@ class MainWindow : public QMainWindow, TQManageQueue
         void _playSound(const std::string& file);
         void _setOrientation(J_ORIENTATION ori);
         void _sendVirtualKeys(const std::string& str);
+        void _showPhoneDialog(bool state);
+        void _setPhoneNumber(const std::string& number);
+        void _setPhoneStatus(const std::string& msg);
+        void setPhoneState(int state, int id);
 #ifdef __ANDROID__
         void _signalState(Qt::ApplicationState state);
         void _orientationChanged(int orientation);
@@ -189,6 +201,7 @@ class MainWindow : public QMainWindow, TQManageQueue
 //        std::thread mThreadBusy;            // The thread of the busy indicator.
         bool mKeyboard{false};              // TRUE = keyboard is visible
         bool mKeypad{false};                // TRUE = keypad is visible
+        TQtPhone *mPhoneDialog{nullptr};    // Points to the internal phone dialog
         // Mouse
         int mLastPressX{-1};                // Remember the last mouse press X coordinate
         int mLastPressY{-1};                // Remember the last mouse press Y coordinate
