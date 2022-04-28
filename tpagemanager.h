@@ -135,6 +135,8 @@ class TPageManager : public TAmxCommands
         void regCallbackResetSurface(std::function<void ()> resetSurface) { _resetSurface = resetSurface; }
         void regCallbackShutdown(std::function<void ()> shutdown) { _shutdown = shutdown; }
         void regCallbackPlaySound(std::function<void (const std::string& file)> playSound) { _playSound = playSound; }
+        void regCallbackStopSound(std::function<void ()> stopSound) { _stopSound = stopSound; }
+        void regCallbackMuteSound(std::function<void (bool state)> muteSound) { _muteSound = muteSound; }
         void regSendVirtualKeys(std::function<void (const std::string& str)> sendVirtualKeys) { _sendVirtualKeys = sendVirtualKeys; }
         void regShowPhoneDialog(std::function<void (bool state)> showPhoneDialog) { _showPhoneDialog = showPhoneDialog; }
         void regSetPhoneNumber(std::function<void (const std::string& number)> setPhoneNumber) { _setPhoneNumber = setPhoneNumber; }
@@ -266,6 +268,8 @@ class TPageManager : public TAmxCommands
         std::function<void (ulong handle)> getCallDropPage() { return _callDropPage; }
         std::function<void (ulong handle)> getCallDropSubPage() { return _callDropSubPage; }
         std::function<void (const std::string& file)> getCallPlaySound() { return _playSound; }
+        std::function<void ()> getCallStopSound() { return _stopSound; }
+        std::function<void (bool state)> getCallMuteSound() { return _muteSound; }
         std::function<void (const std::string& str)> sendVirtualKeys() { return _sendVirtualKeys; }
         std::function<void (bool state)> getShowPhoneDialog() { return _showPhoneDialog; }
         std::function<void (const std::string& number)> getSetPhoneNumber() { return _setPhoneNumber; }
@@ -289,6 +293,7 @@ class TPageManager : public TAmxCommands
 #ifndef _NOSIP_
         bool getPHNautoanswer() { return mPHNautoanswer; }
         void sendPHN(std::vector<std::string>& cmds);
+        void actPHN(std::vector<std::string>& cmds);
         void phonePickup(int id);
         void phoneHangup(int id);
 #endif
@@ -324,6 +329,8 @@ class TPageManager : public TAmxCommands
         std::function<void ()> _resetSurface{nullptr};
         std::function<void ()> _shutdown{nullptr};
         std::function<void (const std::string& file)> _playSound{nullptr};
+        std::function<void ()> _stopSound{nullptr};
+        std::function<void (bool state)> _muteSound{nullptr};
         std::function<void (const std::string& str)> _sendVirtualKeys{nullptr};
         std::function<void (bool state)> _showPhoneDialog{nullptr};
         std::function<void (const std::string& number)> _setPhoneNumber{nullptr};

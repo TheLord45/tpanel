@@ -46,6 +46,7 @@ using std::endl;
 
 bool TConfig::mInitialized{false};
 int TConfig::mChannel{0};
+bool TConfig::mMute{false};
 
 /**
  * @struct SETTINGS
@@ -80,10 +81,6 @@ struct SETTINGS
     string password2;           //!< Second panel password
     string password3;           //!< Third panel password
     string password4;           //!< Fourth panel password
-    string systemSound;         //!< name of the set system sound played on every touch.
-    bool systemSoundState{false};   //!< TRUE = play systemsound on every touch
-    string systemSingleBeep;    //!< name of the system sound file to play a single beep.
-    string systemDoubleBeep;    //!< name of the system sound file to play a double beep.
     bool systemRotationFix{false};  //!< TRUE = Rotation is blocked and orientation sensor is ignored.
     string uuid;                //!< An UUID set automatically after first start.
     // FTP credentials
@@ -105,6 +102,13 @@ struct SETTINGS
     bool sip_iphone{false};     //!< Default: FALSE, if enabled and SIP is enabled then the internal phone dialog is used.
     TConfig::SIP_FIREWALL_t sip_firewall{TConfig::SIP_NO_FIREWALL}; //!< Defines how to deal with a firewall.
     bool sip_enabled{false};    //!< By default SIP is disabled
+    // Sound settings
+    string systemSound;         //!< name of the set system sound played on every touch.
+    bool systemSoundState{false};   //!< TRUE = play systemsound on every touch
+    string systemSingleBeep;    //!< name of the system sound file to play a single beep.
+    string systemDoubleBeep;    //!< name of the system sound file to play a double beep.
+    int systemVolume{100};      //!< The set volume to use [0 ... 100]
+    int systemGain{100};        //!< The set microphone level to use [0 ... 100]
 };
 
 typedef struct SETTINGS settings_t;
@@ -531,6 +535,40 @@ void TConfig::saveSystemSoundState(bool state)
     localSettings.systemSoundState = state;
 }
 
+void TConfig::saveSingleBeepFile(const std::string& snd)
+{
+    DECL_TRACER("TConfig::saveSingleBeepFile(const std::string& snd)");
+
+    localSettings.systemSingleBeep = snd;
+}
+
+void TConfig::saveDoubleBeepFile(const std::string& snd)
+{
+    DECL_TRACER("TConfig::saveDoubleBeepFile(const std::string& snd)");
+
+    localSettings.systemDoubleBeep = snd;
+}
+
+void TConfig::saveSystemVolume(int volume)
+{
+    DECL_TRACER("TConfig::saveSystemVolume(int volume)");
+
+    if (volume < 0 || volume > 100)
+        return;
+
+    localSettings.systemVolume = volume;
+}
+
+void TConfig::saveSystemGain(int gain)
+{
+    DECL_TRACER("TConfig::saveSystemGain(int gain)");
+
+    if (gain < 0 || gain > 100)
+        return;
+
+    localSettings.systemGain = gain;
+}
+
 void TConfig::saveFtpUser(const string& user)
 {
     DECL_TRACER("TConfig::saveFtpUser(const string& user)");
@@ -772,6 +810,8 @@ bool TConfig::saveSettings()
         lines += string("SystemSoundState=") + (localSettings.systemSoundState ? "ON" : "OFF") + "\n";
         lines += string("SystemSingleBeep=") + localSettings.systemSingleBeep + "\n";
         lines += string("SystemDoubleBeep=") + localSettings.systemDoubleBeep + "\n";
+        lines += "SystemVolume=" + std::to_string(localSettings.systemVolume) + "\n";
+        lines += "SystemGain=" + std::to_string(localSettings.systemGain) + "\n";
         lines += string("SystemRotationFix=") + (localSettings.systemRotationFix ? "ON" : "OFF") + "\n";
         lines += string("UUID=") + localSettings.uuid + "\n";
         // FTP credentials
@@ -901,6 +941,20 @@ bool TConfig::getSystemSoundState()
     DECL_TRACER("TConfig::getSystemSoundState()");
 
     return localSettings.systemSoundState;
+}
+
+int TConfig::getSystemVolume()
+{
+    DECL_TRACER("TConfig::getSystemVolume()");
+
+    return localSettings.systemVolume;
+}
+
+int TConfig::getSystemGain()
+{
+    DECL_TRACER("TConfig::getSystemGain()");
+
+    return localSettings.systemGain;
 }
 
 bool TConfig::getRotationFixed()
@@ -1503,6 +1557,28 @@ bool TConfig::readConfig()
                 localSettings.systemSingleBeep = right;
             else if (caseCompare(left, "SystemDoubleBeep") == 0 && !right.empty())
                 localSettings.systemDoubleBeep = right;
+            else if (caseCompare(left, "SystemVolume") == 0 && !right.empty())
+            {
+                int volume = atoi(right.c_str());
+
+                if (volume < 0)
+                    volume = 0;
+                else if (volume > 100)
+                    volume = 100;
+
+                localSettings.systemVolume = volume;
+            }
+            else if (caseCompare(left, "SystemGain") == 0 && !right.empty())
+            {
+                int gain = atoi(right.c_str());
+
+                if (gain < 0)
+                    gain = 0;
+                else if (gain > 100)
+                    gain = 100;
+
+                localSettings.systemGain = gain;
+            }
             else if (caseCompare(left, "SystemRotationFix") == 0 && !right.empty())
                 localSettings.systemRotationFix = isTrue(right);
             else if (caseCompare(left, "UUID") == 0 && !right.empty())
@@ -1589,6 +1665,8 @@ bool TConfig::readConfig()
         MSG_INFO("    Sound state:  " << (localSettings.systemSoundState ? "ACTIVATED" : "DEACTIVATED"));
         MSG_INFO("    Single beep:  " << localSettings.systemSingleBeep);
         MSG_INFO("    Double beep:  " << localSettings.systemDoubleBeep);
+        MSG_INFO("    Volume:       " << localSettings.systemVolume);
+        MSG_INFO("    Gain:         " << localSettings.systemGain);
         MSG_INFO("    Rotation:     " << (localSettings.systemRotationFix ? "LOCKED" : "UNLOCKED"));
         MSG_INFO("    UUID:         " << localSettings.uuid);
         MSG_INFO("    FTP user:     " << localSettings.ftpUser);

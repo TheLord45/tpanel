@@ -222,6 +222,7 @@ FORMS += \
     keyboard.ui \
     keypad.ui \
     tqtsettings.ui \
+    tqtphone.ui \
     busy.ui
 
 LIBS += -lcrypto_1_1 -lssl_1_1 -lEGL -landroid -lmediandk

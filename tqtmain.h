@@ -39,6 +39,8 @@ class QByteArray;
 class QMouseEvent;
 class QMoveEvent;
 class QEvent;
+class QSound;
+class QMediaPlayer;
 class TQtSettings;
 class TQKeyboard;
 class TQKeypad;
@@ -89,10 +91,13 @@ class MainWindow : public QMainWindow, TQManageQueue
         void sigResetKeyboard();
         void sigShowSetup();
         void sigPlaySound(const std::string& file);
+        void sigStopSound();
+        void sigMuteSound(bool state);
         void sigSendVirtualKeys(const std::string& str);
         void sigShowPhoneDialog(bool state);
         void sigSetPhoneNumber(const std::string& number);
         void sigSetPhoneStatus(const std::string& msg);
+        void sigSetPhoneState(int state, int id);
 
     protected:
         bool event(QEvent *event) override;
@@ -123,12 +128,15 @@ class MainWindow : public QMainWindow, TQManageQueue
         void resetKeyboard();
         void showSetup();
         void playSound(const std::string& file);
+        void stopSound();
+        void muteSound(bool state);
         void appStateChanged(Qt::ApplicationState state);
         void onScreenOrientationChanged(Qt::ScreenOrientation ori);
         // Slots for the phone dialog
         void showPhoneDialog(bool state);
         void setPhoneNumber(const std::string& number);
         void setPhoneStatus(const std::string& msg);
+        void setPhoneState(int state, int id);
         // Slots for the toolbar buttons.
         void arrowLeft();
         void arrowRight();
@@ -173,17 +181,20 @@ class MainWindow : public QMainWindow, TQManageQueue
         void _resetSurface();
         void _shutdown();
         void _playSound(const std::string& file);
+        void _stopSound();
+        void _muteSound(bool state);
         void _setOrientation(J_ORIENTATION ori);
         void _sendVirtualKeys(const std::string& str);
         void _showPhoneDialog(bool state);
         void _setPhoneNumber(const std::string& number);
         void _setPhoneStatus(const std::string& msg);
-        void setPhoneState(int state, int id);
+        void _setPhoneState(int state, int id);
 #ifdef __ANDROID__
         void _signalState(Qt::ApplicationState state);
         void _orientationChanged(int orientation);
 #endif
         void doReleaseButton();
+        int calcVolume(int value);
 
         TQtSettings *mSettings{nullptr};    // The pointer to the settings dialog
         bool settingsChanged{false};        // true = settings have changed
@@ -206,6 +217,7 @@ class MainWindow : public QMainWindow, TQManageQueue
         int mLastPressX{-1};                // Remember the last mouse press X coordinate
         int mLastPressY{-1};                // Remember the last mouse press Y coordinate
         Qt::ScreenOrientations mOrientation{Qt::PrimaryOrientation};
+        QMediaPlayer *mMediaPlayer{nullptr};// Class to play sound files.
 };
 
 #endif

@@ -40,27 +40,15 @@ TQtPhone::TQtPhone(QWidget* parent)
 
     ui->setupUi(this);
 
-    ui->label_Number->setText("");
+    ui->label_Number->setText(mNumber);
     ui->label_Status->setText("");
     ui->toolButton_Call->setText("");
     ui->toolButton_Call->setIcon(QIcon(":images/pickup.png"));
 
-    connect(ui->pushButton_0, SIGNAL(pressed()), this, SLOT(on_pushButton_0_clicked()));
-    connect(ui->pushButton_1, SIGNAL(pressed()), this, SLOT(on_pushButton_1_clicked()));
-    connect(ui->pushButton_2, SIGNAL(pressed()), this, SLOT(on_pushButton_2_clicked()));
-    connect(ui->pushButton_3, SIGNAL(pressed()), this, SLOT(on_pushButton_3_clicked()));
-    connect(ui->pushButton_4, SIGNAL(pressed()), this, SLOT(on_pushButton_4_clicked()));
-    connect(ui->pushButton_5, SIGNAL(pressed()), this, SLOT(on_pushButton_5_clicked()));
-    connect(ui->pushButton_6, SIGNAL(pressed()), this, SLOT(on_pushButton_6_clicked()));
-    connect(ui->pushButton_7, SIGNAL(pressed()), this, SLOT(on_pushButton_7_clicked()));
-    connect(ui->pushButton_8, SIGNAL(pressed()), this, SLOT(on_pushButton_8_clicked()));
-    connect(ui->pushButton_9, SIGNAL(pressed()), this, SLOT(on_pushButton_9_clicked()));
-    connect(ui->pushButton_Star, SIGNAL(pressed()), this, SLOT(on_pushButton_Star_clicked()));
-    connect(ui->pushButton_Hash, SIGNAL(pressed()), this, SLOT(on_pushButton_Hash_clicked()));
-    connect(ui->pushButton_Clear, SIGNAL(pressed()), this, SLOT(on_pushButton_Clear_clicked()));
-    connect(ui->toolButton_Call, SIGNAL(pressed()), this, SLOT(on_toolButton_Call_Clicked()));
+    connect(ui->pushButton_Clear, &QAbstractButton::pressed, this, &TQtPhone::on_pushButton_Clear_clicked);
+    connect(ui->toolButton_Call, &QAbstractButton::pressed, this, &TQtPhone::on_toolButton_Call_Clicked);
 
-    connect(ui->pushButton_Exit, SIGNAL(pressed()), this, SLOT(on_pushButton_Exit_clicked()));
+    connect(ui->pushButton_Exit, &QAbstractButton::pressed, this, &TQtPhone::on_pushButton_Exit_clicked);
 }
 
 TQtPhone::~TQtPhone()
@@ -174,10 +162,72 @@ void TQtPhone::on_pushButton_Clear_clicked()
     ui->label_Number->setText(mNumber);
 }
 
+void TQtPhone::on_toolButton_Call_Clicked()
+{
+    DECL_TRACER("TQtPhone::on_pushButton_Call_clicked()");
+
+    if (!gPageManager)
+        return;
+
+    string ss = stateToString(mLastState);
+    MSG_DEBUG("Current state: " << ss);
+
+    if (mLastState == SIP_RINGING)
+    {
+        map<unsigned int, SIP_STATE_t>::iterator iter;
+        int id = -1;
+
+        for (iter = mSIPstate.begin(); iter != mSIPstate.end(); ++iter)
+        {
+            if (iter->second == SIP_RINGING)
+            {
+                id = iter->first;
+                break;
+            }
+        }
+#ifndef _NOSIP_
+        MSG_DEBUG("Picking up line " << id);
+        gPageManager->phonePickup(id);
+#endif
+        return;
+    }
+    else if (mLastState == SIP_CONNECTED || mLastState == SIP_TRYING)
+    {
+        map<unsigned int, SIP_STATE_t>::iterator iter;
+        int id = -1;
+
+        for (iter = mSIPstate.begin(); iter != mSIPstate.end(); ++iter)
+        {
+            if (iter->second == SIP_CONNECTED || iter->second == SIP_TRYING)
+            {
+                id = iter->first;
+                break;
+            }
+        }
+#ifndef _NOSIP_
+        MSG_DEBUG("Hanging up line " << id);
+        gPageManager->phoneHangup(id);
+#endif
+        return;
+    }
+    else if (mNumber.isEmpty())
+    {
+        MSG_DEBUG("No phone number to dial.");
+        return;
+    }
+#ifndef _NOSIP_
+    vector<string>cmds;
+    cmds.push_back("CALL");
+    cmds.push_back(mNumber.toStdString());
+    gPageManager->actPHN(cmds);
+    ui->toolButton_Call->setIcon(QIcon(":images/hangup.png"));
+#endif
+}
+
 void TQtPhone::on_pushButton_Exit_clicked()
 {
     DECL_TRACER("TQtPhone::on_pushButton_Exit_clicked()");
-
+    #ifndef _NOSIP_
     if (mSIPstate.size() > 0)
     {
         map<unsigned int, SIP_STATE_t>::iterator iter;
@@ -196,42 +246,8 @@ void TQtPhone::on_pushButton_Exit_clicked()
             }
         }
     }
-
+    #endif
     close();
-}
-
-void TQtPhone::on_toolButton_Call_Clicked()
-{
-    DECL_TRACER("TQtPhone::on_pushButton_Call_clicked()");
-
-    if (!gPageManager)
-        return;
-
-    if (mLastState == SIP_RINGING)
-    {
-        map<unsigned int, SIP_STATE_t>::iterator iter;
-        int id = -1;
-
-        for (iter = mSIPstate.begin(); iter != mSIPstate.end(); ++iter)
-        {
-            if (iter->second == SIP_RINGING)
-            {
-                id = iter->first;
-                break;
-            }
-        }
-
-        gPageManager->phonePickup(id);
-        return;
-    }
-    else if (mNumber.isEmpty())
-        return;
-
-    vector<string>cmds;
-    cmds.push_back("CALL");
-    cmds.push_back(mNumber.toStdString());
-    gPageManager->sendPHN(cmds);
-    ui->toolButton_Call->setIcon(QIcon(":images/hangup.png"));
 }
 
 void TQtPhone::doResize()
@@ -305,51 +321,65 @@ void TQtPhone::setPhoneState(int state, int id)
         return;
     }
 
+    string ss;
+
     if (state >= 0 && state <= SIP_ERROR)
     {
         mSIPstate.insert_or_assign(id, (SIP_STATE_t)state);
         mLastState = (SIP_STATE_t)state;
+        ss = stateToString((SIP_STATE_t)state);
     }
     else
     {
         MSG_WARNING("Unknown state " << state << " for call id " << id << "!");
+        ss = "??";
     }
+
+    MSG_DEBUG("Setting line " << id << " to state " << ss);
 
     switch(state)
     {
         case SIP_TRYING:
-            ui->label_Status->setText("Line: " + QString(id) + " - TRYING");
+            ui->label_Status->setText(QString("Line: %1 - TRYING").arg(id));
             ui->toolButton_Call->setIcon(QIcon(":images/hangup.png"));
         break;
 
         case SIP_CONNECTED:
-            ui->label_Status->setText("Line: " + QString(id) + " - CONNECTED");
+            ui->label_Status->setText(QString("Line: %1 - CONNECTED").arg(id));
             ui->toolButton_Call->setIcon(QIcon(":images/hangup.png"));
         break;
 
         case SIP_DISCONNECTED:
-            ui->label_Status->setText("Line: " + QString(id) + " - DISCONNECTED");
+            ui->label_Status->setText(QString("Line: %1 - DISCONNECTED").arg(id));
             ui->toolButton_Call->setIcon(QIcon(":images/pickup.png"));
+            mNumber.clear();
+            ui->label_Number->setText(mNumber);
         break;
 
         case SIP_REJECTED:
-            ui->label_Status->setText("Line: " + QString(id) + " - REJECTED");
+            ui->label_Status->setText(QString("Line: %1 - REJECTED").arg(id));
             ui->toolButton_Call->setIcon(QIcon(":images/pickup.png"));
         break;
 
         case SIP_RINGING:
-            ui->label_Status->setText("Line: " + QString(id) + " - RINGING");
+            ui->label_Status->setText(QString("Line: %1 - RINGING").arg(id));
             ui->toolButton_Call->setIcon(QIcon(":images/pickup.png"));
+            mNumber.clear();
+            ui->label_Number->setText(mNumber);
         break;
 
         case SIP_ERROR:
-            ui->label_Status->setText("Line: " + QString(id) + " - ERROR");
+            ui->label_Status->setText(QString("Line: %1 - ERROR").arg(id));
             ui->toolButton_Call->setIcon(QIcon(":images/pickup.png"));
+            mNumber.clear();
+            ui->label_Number->setText(mNumber);
         break;
 
         default:
             ui->toolButton_Call->setIcon(QIcon(":images/pickup.png"));
             ui->label_Status->setText("");
+            mNumber.clear();
+            ui->label_Number->setText(mNumber);
     }
 }
 
@@ -371,4 +401,22 @@ int TQtPhone::scale(int value)
         return value;
 
     return (int)((double)value * mScaleFactor);
+}
+
+string TQtPhone::stateToString(SIP_STATE_t state)
+{
+    DECL_TRACER("TQtPhone::stateToString(SIP_STATE_t state)");
+
+    switch(state)
+    {
+        case SIP_CONNECTED:     return "CONNECTED";
+        case SIP_DISCONNECTED:  return "DISCONNECTED";
+        case SIP_ERROR:         return "ERROR";
+        case SIP_HOLD:          return "HOLD";
+        case SIP_IDLE:          return "IDLE";
+        case SIP_NONE:          return "NONE";
+        case SIP_REJECTED:      return "REJECTED";
+        case SIP_RINGING:       return "RINGING";
+        case SIP_TRYING:        return "TRYING";
+    }
 }

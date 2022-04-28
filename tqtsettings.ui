@@ -1444,7 +1444,7 @@
       <string>Rotation</string>
      </property>
     </widget>
-    <widget class="QCheckBox" name="checkBox_Toolbar_2">
+    <widget class="QCheckBox" name="checkBox_Rotation">
      <property name="geometry">
       <rect>
        <x>140</x>
@@ -1458,6 +1458,329 @@
      </property>
      <property name="text">
       <string>Lock rotation</string>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="tabSound">
+    <attribute name="title">
+     <string>Sound</string>
+    </attribute>
+    <widget class="QLabel" name="label_SingleBeep">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>60</y>
+       <width>121</width>
+       <height>22</height>
+      </rect>
+     </property>
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>111</width>
+       <height>22</height>
+      </size>
+     </property>
+     <property name="text">
+      <string>Single peep</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_DoubleBeep">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>100</y>
+       <width>121</width>
+       <height>22</height>
+      </rect>
+     </property>
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>111</width>
+       <height>22</height>
+      </size>
+     </property>
+     <property name="text">
+      <string>Double peep</string>
+     </property>
+    </widget>
+    <widget class="QComboBox" name="comboBox_SingleBeep">
+     <property name="geometry">
+      <rect>
+       <x>150</x>
+       <y>50</y>
+       <width>411</width>
+       <height>36</height>
+      </rect>
+     </property>
+    </widget>
+    <widget class="QComboBox" name="comboBox_DoubleBeep">
+     <property name="geometry">
+      <rect>
+       <x>150</x>
+       <y>90</y>
+       <width>411</width>
+       <height>36</height>
+      </rect>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_TestSound">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>250</y>
+       <width>121</width>
+       <height>22</height>
+      </rect>
+     </property>
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>111</width>
+       <height>22</height>
+      </size>
+     </property>
+     <property name="text">
+      <string>Play test sound</string>
+     </property>
+    </widget>
+    <widget class="QToolButton" name="toolButton_TestSound">
+     <property name="geometry">
+      <rect>
+       <x>150</x>
+       <y>240</y>
+       <width>51</width>
+       <height>38</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>...</string>
+     </property>
+     <property name="icon">
+      <iconset resource="tpanel.qrc">
+       <normaloff>:/images/note.png</normaloff>:/images/note.png</iconset>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_Volume">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>180</y>
+       <width>121</width>
+       <height>22</height>
+      </rect>
+     </property>
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>111</width>
+       <height>22</height>
+      </size>
+     </property>
+     <property name="text">
+      <string>Volume</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_Gain">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>210</y>
+       <width>121</width>
+       <height>22</height>
+      </rect>
+     </property>
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>111</width>
+       <height>22</height>
+      </size>
+     </property>
+     <property name="text">
+      <string>Gain</string>
+     </property>
+    </widget>
+    <widget class="QSlider" name="horizontalSlider_Volume">
+     <property name="geometry">
+      <rect>
+       <x>150</x>
+       <y>180</y>
+       <width>461</width>
+       <height>20</height>
+      </rect>
+     </property>
+     <property name="maximum">
+      <number>100</number>
+     </property>
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+    </widget>
+    <widget class="QSlider" name="horizontalSlider_Gain">
+     <property name="geometry">
+      <rect>
+       <x>150</x>
+       <y>210</y>
+       <width>461</width>
+       <height>20</height>
+      </rect>
+     </property>
+     <property name="maximum">
+      <number>100</number>
+     </property>
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+    </widget>
+    <widget class="QToolButton" name="toolButton_SingleBeep">
+     <property name="geometry">
+      <rect>
+       <x>570</x>
+       <y>50</y>
+       <width>51</width>
+       <height>38</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>...</string>
+     </property>
+     <property name="icon">
+      <iconset resource="tpanel.qrc">
+       <normaloff>:/images/note.png</normaloff>:/images/note.png</iconset>
+     </property>
+    </widget>
+    <widget class="QToolButton" name="toolButton_DoubleBeep">
+     <property name="geometry">
+      <rect>
+       <x>570</x>
+       <y>90</y>
+       <width>51</width>
+       <height>38</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>...</string>
+     </property>
+     <property name="icon">
+      <iconset resource="tpanel.qrc">
+       <normaloff>:/images/note.png</normaloff>:/images/note.png</iconset>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_TestSound_2">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>140</y>
+       <width>121</width>
+       <height>22</height>
+      </rect>
+     </property>
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>111</width>
+       <height>22</height>
+      </size>
+     </property>
+     <property name="text">
+      <string>System sound</string>
+     </property>
+    </widget>
+    <widget class="QCheckBox" name="checkBox_SystemSound">
+     <property name="geometry">
+      <rect>
+       <x>150</x>
+       <y>140</y>
+       <width>301</width>
+       <height>26</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Play system sound</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_SystemSound">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>20</y>
+       <width>121</width>
+       <height>22</height>
+      </rect>
+     </property>
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>111</width>
+       <height>22</height>
+      </size>
+     </property>
+     <property name="text">
+      <string>System sound</string>
+     </property>
+    </widget>
+    <widget class="QComboBox" name="comboBox_SystemSound">
+     <property name="geometry">
+      <rect>
+       <x>150</x>
+       <y>10</y>
+       <width>411</width>
+       <height>36</height>
+      </rect>
+     </property>
+    </widget>
+    <widget class="QToolButton" name="toolButton_SystemSound">
+     <property name="geometry">
+      <rect>
+       <x>570</x>
+       <y>10</y>
+       <width>51</width>
+       <height>38</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>...</string>
+     </property>
+     <property name="icon">
+      <iconset resource="tpanel.qrc">
+       <normaloff>:/images/note.png</normaloff>:/images/note.png</iconset>
      </property>
     </widget>
    </widget>

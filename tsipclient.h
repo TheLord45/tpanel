@@ -72,6 +72,7 @@ class TSIPClient
         int getLineID() { return mLine; }
         SIP_STATE_t getSIPState(pjsua_call_id id) { if (id >= 0 && id < PJSUA_MAX_CALLS) return mSIPState[id]; else return SIP_NONE; }
         bool isRegistered() { return mRegistered; }
+        static TSIPClient *getSIPClient() { return mMyself; }
 
         bool call(const std::string& dest);         //<! Start a phone call
         bool pickup(pjsua_call_id call);            //<! Lift up if the phone is ringing
@@ -87,7 +88,7 @@ class TSIPClient
         bool getPrivate() { return mDoNotDisturb; } //<! Returns the current private mode.
 
     protected:
-        void start();
+        void runRinger();                           //<! Plays a ring tone if a call is coming.
 
         static void _log_call(int level, const char *data, int len);
         static void on_incoming_call(pjsua_acc_id acc_id, pjsua_call_id call_id, pjsip_rx_data *rdata);
@@ -116,6 +117,9 @@ class TSIPClient
         void setSIPState(SIP_STATE_t s, pjsua_call_id id) { if (id >= 0 && id < PJSUA_MAX_CALLS) mSIPState[id] = s; }
 
         static void sendConnectionStatus(SIP_STATE_t state, int id);
+        static void init_ringtone_player();
+        static pj_status_t start_ring_tone();
+        static pj_status_t stop_ring_tone();
 
         int mLine{0};
         bool mRegistered{false};
@@ -128,6 +132,7 @@ class TSIPClient
         static TSIPClient *mMyself;
         static pjsua_call_id mCurrentCall;
         static std::atomic<bool> mRefreshRun;
+        static bool mPhoneRingInit;
         // Here is the configuration for the PJSUA library
         typedef struct app_call_data
         {
@@ -135,6 +140,14 @@ class TSIPClient
             pj_bool_t           ringback_on{PJ_FALSE};
             pj_bool_t           ring_on{PJ_FALSE};
         } app_call_data;
+
+        typedef struct ringtone_port_info_t
+        {
+            pj_bool_t ring_on{PJ_FALSE};
+            int ring_slot{0};
+            pjmedia_port *ring_port{nullptr};
+            pj_pool_t *pool{nullptr};
+        } ringtone_port_info_t;
 
         typedef struct pjsua_app_config
         {
@@ -167,7 +180,7 @@ class TSIPClient
             uint_t              codec_dis_cnt{0};
             pj_str_t            codec_dis[32];
             pj_bool_t           null_audio{PJ_FALSE};
-            uint_t              wav_count;
+            uint_t              wav_count{0};
             pj_str_t            wav_files[32];
             uint_t              tone_count{0};
             pjmedia_tone_desc   tones[32];
@@ -184,9 +197,9 @@ class TSIPClient
             pjsua_recorder_id   rec_id{0};
             pjsua_conf_port_id  rec_port{0};
             unsigned            auto_answer{0};
-            unsigned            duration{0};
-            float               mic_level{0.0};
-            float               speaker_level{0.0};
+            unsigned            duration{36000};
+            float               mic_level{100.0};
+            float               speaker_level{100.0};
 
             int                 capture_dev{0};
             int                 playback_dev{0};
@@ -205,6 +218,7 @@ class TSIPClient
         }pjsua_app_config;
 
         static pjsua_app_config mAppConfig;
+        static ringtone_port_info_t mRingtonePortInfo;
 };
 #endif  // _NOSIP_
 #endif  // __TSIPCLIENT_H__

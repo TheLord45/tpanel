@@ -368,12 +368,14 @@ MainWindow::MainWindow()
     gPageManager->regCallbackResetSurface(bind(&MainWindow::_resetSurface, this));
     gPageManager->regCallbackShutdown(bind(&MainWindow::_shutdown, this));
     gPageManager->regCallbackPlaySound(bind(&MainWindow::_playSound, this, std::placeholders::_1));
+    gPageManager->regCallbackStopSound(bind(&MainWindow::_stopSound, this));
+    gPageManager->regCallbackMuteSound(bind(&MainWindow::_muteSound, this, std::placeholders::_1));
     gPageManager->registerCBsetVisible(bind(&MainWindow::_setVisible, this, std::placeholders::_1, std::placeholders::_2));
     gPageManager->regSendVirtualKeys(bind(&MainWindow::_sendVirtualKeys, this, std::placeholders::_1));
     gPageManager->regShowPhoneDialog(bind(&MainWindow::_showPhoneDialog, this, std::placeholders::_1));
     gPageManager->regSetPhoneNumber(bind(&MainWindow::_setPhoneNumber, this, std::placeholders::_1));
     gPageManager->regSetPhoneStatus(bind(&MainWindow::_setPhoneStatus, this, std::placeholders::_1));
-    gPageManager->regSetPhoneState(bind(&MainWindow::setPhoneState, this, std::placeholders::_1, std::placeholders::_2));
+    gPageManager->regSetPhoneState(bind(&MainWindow::_setPhoneState, this, std::placeholders::_1, std::placeholders::_2));
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
     gPageManager->regOnOrientationChange(bind(&MainWindow::_orientationChanged, this, std::placeholders::_1));
 #endif
@@ -416,6 +418,7 @@ MainWindow::MainWindow()
         connect(this, &MainWindow::sigShowPhoneDialog, this, &MainWindow::showPhoneDialog);
         connect(this, &MainWindow::sigSetPhoneNumber, this, &MainWindow::setPhoneNumber);
         connect(this, &MainWindow::sigSetPhoneStatus, this, &MainWindow::setPhoneStatus);
+        connect(this, &MainWindow::sigSetPhoneState, this, &MainWindow::setPhoneState);
         connect(qApp, &QGuiApplication::applicationStateChanged, this, &MainWindow::appStateChanged);
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         QScreen *screen = QGuiApplication::primaryScreen();
@@ -469,6 +472,9 @@ MainWindow::~MainWindow()
 
     killed = true;
     prg_stopped = true;
+
+    if (mMediaPlayer)
+        delete mMediaPlayer;
 
     if (gAmxNet && !gAmxNet->isStopped())
         gAmxNet->stop();
@@ -1607,6 +1613,20 @@ void MainWindow::_playSound(const string& file)
     emit sigPlaySound(file);
 }
 
+void MainWindow::_stopSound()
+{
+    DECL_TRACER("MainWindow::_stopSound()");
+
+    emit sigStopSound();
+}
+
+void MainWindow::_muteSound(bool state)
+{
+    DECL_TRACER("MainWindow::_muteSound(bool state)");
+
+    emit muteSound(state);
+}
+
 void MainWindow::_setOrientation(J_ORIENTATION ori)
 {
 #ifdef __ANDROID__
@@ -1666,6 +1686,13 @@ void MainWindow::_setPhoneStatus(const std::string& msg)
     emit sigSetPhoneStatus(msg);
 }
 
+void MainWindow::_setPhoneState(int state, int id)
+{
+    DECL_TRACER("MainWindow::_setPhoneState(int state, int id)");
+
+    emit sigSetPhoneState(state, id);
+}
+
 void MainWindow::doReleaseButton()
 {
     DECL_TRACER("MainWindow::doReleaseButton()");
@@ -1686,6 +1713,18 @@ void MainWindow::doReleaseButton()
     }
 
     mLastPressX = mLastPressY = -1;
+}
+
+int MainWindow::calcVolume(int value)
+{
+    DECL_TRACER("TQtSettings::calcVolume(int value)");
+
+    // volumeSliderValue is in the range [0..100]
+    qreal linearVolume = QAudio::convertVolume(value / qreal(100.0),
+                                               QAudio::LogarithmicVolumeScale,
+                                               QAudio::LinearVolumeScale);
+
+    return qRound(linearVolume * 100);
 }
 
 /******************* Draw elements *************************/
@@ -2532,7 +2571,32 @@ void MainWindow::playSound(const string& file)
     DECL_TRACER("MainWindow::playSound(const string& file)");
 
     MSG_DEBUG("Playing file " << file);
-    QSound::play(file.c_str());
+
+    if (TConfig::getMuteState())
+        return;
+
+    if (!mMediaPlayer)
+        mMediaPlayer = new QMediaPlayer;
+
+    mMediaPlayer->setMedia(QUrl::fromLocalFile(file.c_str()));
+    mMediaPlayer->setVolume(calcVolume(TConfig::getSystemVolume()));
+    mMediaPlayer->play();
+}
+
+void MainWindow::stopSound()
+{
+    DECL_TRACER("MainWindow::stopSound()");
+
+    if (mMediaPlayer)
+        mMediaPlayer->stop();
+}
+
+void MainWindow::muteSound(bool state)
+{
+    DECL_TRACER("MainWindow::muteSound(bool state)");
+
+    if (mMediaPlayer)
+        mMediaPlayer->setMuted(state);
 }
 
 void MainWindow::playShowList()

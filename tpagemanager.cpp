@@ -7021,6 +7021,14 @@ void TPageManager::sendPHN(vector<string>& cmds)
     doPHN(-1, channels, cmds);
 }
 
+void TPageManager::actPHN(vector<string>& cmds)
+{
+    DECL_TRACER("TPageManager::actPHN(const vector<string>& cmds)");
+
+    vector<int> channels;
+    doPHN(1, channels, cmds);
+}
+
 void TPageManager::phonePickup(int id)
 {
     DECL_TRACER("TPageManager::phonePickup(int id)");

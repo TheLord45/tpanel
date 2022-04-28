@@ -132,6 +132,7 @@ SYSBORDER_t sysBorders[] = {
 
 SYSBUTTONS_t sysButtons[] = {
     {    8, MULTISTATE_BARGRAPH,  12, 0,  11 },  // Connection status
+    {    9, BARGRAPH,              2, 0, 100 },  // System volume
     {   17, GENERAL,               2, 0,   0 },  // Button sounds on/off
     {   73, GENERAL,               2, 0,   0 },  // Enter setup page
     {   80, GENERAL,               2, 0,   0 },  // Shutdown program
@@ -150,6 +151,7 @@ SYSBUTTONS_t sysButtons[] = {
     {  156, GENERAL,               2, 0,   0 },  // Date month dd, yyyy
     {  157, GENERAL,               2, 0,   0 },  // Date dd month, yyyy
     {  158, GENERAL,               2, 0,   0 },  // Date yyyy-mm-dd
+    {  173, GENERAL,               2, 0,   0 },  // Sytem mute toggle
     {  199, TEXT_INPUT,            2, 0,   0 },  // Technical name of panel
     {  234, GENERAL,               2, 0,   0 },  // Battery charging/not charging
     {  242, BARGRAPH,              2, 0, 100 },  // Battery level
@@ -759,6 +761,8 @@ bool TButton::makeElement(int instance)
 
     if (type == MULTISTATE_GENERAL && ar == 1)
         return drawButtonMultistateAni();
+    else if (type == BARGRAPH && isSystemButton() && lv == 9)   // System volume button
+        return drawBargraph(inst, TConfig::getSystemVolume());
     else if (type == BARGRAPH)
         return drawBargraph(inst, mLastLevel);
     else if (type == MULTISTATE_BARGRAPH)
@@ -773,6 +777,15 @@ bool TButton::makeElement(int instance)
     else if (isSystemButton() && ch == 17)  // System button sound ON/OFF
     {
         if (TConfig::getSystemSoundState())
+            inst = mActInstance = 1;
+        else
+            inst = mActInstance = 0;
+
+        return drawButton(inst);
+    }
+    else if (isSystemButton() && ch == 173) // System mute setting
+    {
+        if (TConfig::getMuteState())
             inst = mActInstance = 1;
         else
             inst = mActInstance = 0;
@@ -5778,6 +5791,26 @@ bool TButton::doClick(int x, int y, bool pressed)
                     gPageManager->callShutdown();
             }
         }
+        else if (isSystem && ch == 173)     // System mute
+        {
+            if (pressed)
+            {
+                bool mute = TConfig::getMuteState();
+
+                if (mute)
+                    mActInstance = instance = 0;
+                else
+                    mActInstance = instance = 1;
+
+                TConfig::setMuteState(!mute);
+
+                if (gPageManager && gPageManager->getCallMuteSound())
+                    gPageManager->getCallMuteSound()(!mute);
+
+                drawButton(mActInstance, false);
+                showLastButton();
+            }
+        }
         else if (fb == FB_MOMENTARY)
         {
             if (pressed)
@@ -5800,9 +5833,9 @@ bool TButton::doClick(int x, int y, bool pressed)
             if (gPageManager)
             {
                 if (pressed && gPageManager->havePlaySound() && !sr[0].sd.empty())
-                    gPageManager->getCallPlaySound()(TConfig::getConfigPath() + "/sounds/" + sr[0].sd);
+                    gPageManager->getCallPlaySound()(TConfig::getProjectPath() + "/sounds/" + sr[0].sd);
                 else if (!pressed && gPageManager->havePlaySound() && !sr[1].sd.empty())
-                    gPageManager->getCallPlaySound()(TConfig::getConfigPath() + "/sounds/" + sr[1].sd);
+                    gPageManager->getCallPlaySound()(TConfig::getProjectPath() + "/sounds/" + sr[1].sd);
             }
 
             if (pushFunc.empty())   // Don't draw the button if it has a push function defined
@@ -5848,9 +5881,9 @@ bool TButton::doClick(int x, int y, bool pressed)
             if (gPageManager)
             {
                 if (pressed && gPageManager->havePlaySound() && !sr[1].sd.empty())
-                    gPageManager->getCallPlaySound()(TConfig::getConfigPath() + "/sounds/" + sr[1].sd);
+                    gPageManager->getCallPlaySound()(TConfig::getProjectPath() + "/sounds/" + sr[1].sd);
                 else if (!pressed && gPageManager->havePlaySound() && !sr[0].sd.empty())
-                    gPageManager->getCallPlaySound()(TConfig::getConfigPath() + "/sounds/" + sr[0].sd);
+                    gPageManager->getCallPlaySound()(TConfig::getProjectPath() + "/sounds/" + sr[0].sd);
             }
         }
         else if (fb == FB_ALWAYS_ON)
@@ -5869,7 +5902,7 @@ bool TButton::doClick(int x, int y, bool pressed)
 
             // Play sound, if one is defined
             if (pressed && gPageManager && gPageManager->havePlaySound() && !sr[1].sd.empty())
-                gPageManager->getCallPlaySound()(TConfig::getConfigPath() + "/sounds/" + sr[1].sd);
+                gPageManager->getCallPlaySound()(TConfig::getProjectPath() + "/sounds/" + sr[1].sd);
         }
 
         if ((cp && ch) || !op.empty())
@@ -5907,7 +5940,7 @@ bool TButton::doClick(int x, int y, bool pressed)
     {
         // Play sound, if one is defined
         if (pressed && gPageManager && gPageManager->havePlaySound() && !sr[mActInstance].sd.empty())
-            gPageManager->getCallPlaySound()(TConfig::getConfigPath() + "/sounds/" + sr[mActInstance].sd);
+            gPageManager->getCallPlaySound()(TConfig::getProjectPath() + "/sounds/" + sr[mActInstance].sd);
 
         if ((cp && ch) || !op.empty())
         {
@@ -5961,7 +5994,12 @@ bool TButton::doClick(int x, int y, bool pressed)
             return false;
 
         // Handle click
-        if ((cp && ch) || !op.empty())
+        if (isSystemButton() && lv == 9)    // System volume button
+        {
+            TConfig::saveSystemVolume(level);
+            TConfig::saveSettings();
+        }
+        else if ((cp && ch) || !op.empty())
         {
             scmd.device = TConfig::getChannel();
             scmd.port = cp;
@@ -6266,6 +6304,8 @@ bool TButton::isSystemButton()
     while (sysButtons[i].channel)
     {
         if (sysButtons[i].type == MULTISTATE_BARGRAPH && lp == 0 && lv == sysButtons[i].channel)
+            return true;
+        else if (sysButtons[i].type == BARGRAPH && lp == 0 && lv == sysButtons[i].channel)
             return true;
         else if (ap == 0 && ad == sysButtons[i].channel)
             return true;

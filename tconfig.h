@@ -94,6 +94,8 @@ class TConfig
         static std::string& getPassword4();
         static std::string& getSystemSound();
         static bool getSystemSoundState();
+        static int getSystemVolume();
+        static int getSystemGain();
         static bool getRotationFixed();
         static void setRotationFixed(bool fix);
         static void setSystemChannel(int ch);
@@ -114,6 +116,8 @@ class TConfig
         static std::string& getFirmVersion();
         static bool certCheck();
         static bool isInitialized() { return mInitialized; }
+        static bool getMuteState() { return mMute; }
+        static void setMuteState(bool state) { mMute = state; }
 
         static bool saveProjectPath(const std::string& path);
         static bool saveLogFile(const std::string& file);
@@ -135,6 +139,10 @@ class TConfig
         static void savePassword4(const std::string& pw);
         static void saveSystemSoundFile(const std::string& snd);
         static void saveSystemSoundState(bool state);
+        static void saveSingleBeepFile(const std::string& snd);
+        static void saveDoubleBeepFile(const std::string& snd);
+        static void saveSystemVolume(int volume);
+        static void saveSystemGain(int gain);
         static void saveFtpUser(const std::string& user);
         static void saveFtpPassword(const std::string& pw);
         static void saveFtpSurface(const std::string& fname);
@@ -187,6 +195,7 @@ class TConfig
         std::vector<std::string> mCfgPaths;
         static bool mInitialized;
         static int mChannel;        // If the channel was changed by a command, this variable holds the new value.
+        static bool mMute;          // Holds the mute status. This is temporary!
 #ifdef __ANDROID__
         std::string mRoot;
 #endif

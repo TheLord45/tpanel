@@ -34,33 +34,7 @@
 #       endif
 #   endif
 #endif
-/*
-#if __GNUC__ < 9 && !defined(__ANDROID__)
-#if __cplusplus < 201703L
-    #warning "Your C++ compiler seems to have no support for C++17 standard!"
-#endif
-    #include <experimental/filesystem>
-    namespace fs = std::experimental::filesystem;
-#else
-#  ifdef __ANDROID__
-#   if _LIBCPP_STD_VER >= 17
-#       include <filesystem>
-//        namespace fs = std::__fs::filesystem;
-//#warning "NAMESPACE: fs = std::__fs::filesystem;"
-namespace fs = std::filesystem;
-#warning "NAMESPACE: fs = std::filesystem;"
-#   else
-#       include <experimental/filesystem>
-        namespace fs = std::__fs::filesystem;
-#warning "NAMESPACE: fs = std::__fs::filesystem;"
-#   endif
-#  else
-#   include <filesystem>
-    namespace fs = std::filesystem;
-#warning "NAMESPACE: fs = std::filesystem;"
-#  endif
-#endif
-*/
+
 #include "tconfig.h"
 #include "terror.h"
 #include "tdirectory.h"

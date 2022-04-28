@@ -19,6 +19,7 @@
         <file>images/download64.png</file>
         <file>images/pickup.png</file>
         <file>images/hangup.png</file>
+        <file>images/note.png</file>
         <file>qrc/BusyIndicator.qml</file>
         <file>ressources/_main.xml</file>
         <file>ressources/_setup.xml</file>

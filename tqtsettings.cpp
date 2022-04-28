@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020, 2022 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,11 +18,16 @@
 #include <QFileDialog>
 #include <QComboBox>
 #include <QMessageBox>
+#include <QAudioOutput>
 
 #include <unistd.h>
 
 #include "tqtsettings.h"
+#include "tdirectory.h"
+#include "tresources.h"
+#include "tpagemanager.h"
 #include "terror.h"
+#include "tqtplaysound.h"
 #include "ui_tqtsettings.h"
 
 #ifdef __ANDROID__
@@ -45,6 +50,9 @@
 
 using std::string;
 using std::vector;
+using std::sort;
+
+extern TPageManager *gPageManager;
 
 TQtSettings::TQtSettings(QWidget *parent)
 	: QDialog(parent),
@@ -140,6 +148,97 @@ TQtSettings::TQtSettings(QWidget *parent)
 
     ui->comboBox_SIPfirewall->setCurrentIndex(fwIdx);
     ui->checkBox_SIPenabled->setCheckState((TConfig::getSIPstatus() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked));
+
+    // Sound settings
+    string sySound = TConfig::getSystemSound();
+    size_t pos = sySound.find_last_of(".");
+    int numpos;
+
+    if (pos != string::npos)
+        numpos = atoi(sySound.substr(pos - 2, 2).c_str());
+
+    dir::TDirectory dir;
+    int num = dir.readDir(TConfig::getProjectPath() + "/__system/graphics/sounds");
+    vector<string> tmpFiles;
+
+    for (int i = 0; i < num; i++)
+    {
+        dir::DFILES_T entry = dir.getEntry(i);
+        pos = entry.name.find_last_of("/");
+        string file;
+
+        if (pos != string::npos)
+            file = entry.name.substr(pos + 1);
+
+        if ((pos = file.find_last_of(".")) != string::npos)
+            file = file.substr(0, pos);
+
+        if (startsWith(file, "singleBeep"))
+            tmpFiles.push_back(file);
+    }
+
+    sort(tmpFiles.begin(), tmpFiles.end());
+    vector<string>::iterator iter;
+
+    for (iter = tmpFiles.begin(); iter != tmpFiles.end(); ++iter)
+        ui->comboBox_SystemSound->addItem(iter->c_str());
+
+    ui->comboBox_SystemSound->setCurrentIndex(numpos);
+
+    string siBeep = TConfig::getSingleBeepSound();
+    pos = siBeep.find_last_of(".");
+
+    if (pos != string::npos)
+    {
+        int num = atoi(siBeep.substr(pos - 2, 2).c_str());
+
+        if (num > 0)
+            siBeep = "Single Beep " + std::to_string(num);
+    }
+
+    int sel = 0;
+
+    for (int i = 1; i <= 10; i++)
+    {
+        QString e = QString("Single Beep %1").arg(i);
+        ui->comboBox_SingleBeep->addItem(e);
+
+        if (e == QString(siBeep.c_str()))
+            sel = i - 1;
+    }
+
+    ui->comboBox_SingleBeep->setCurrentIndex(sel);
+
+    string siDBeep = TConfig::getDoubleBeepSound();
+    pos = siDBeep.find_last_of(".");
+
+    if (pos != string::npos)
+    {
+        int num = atoi(siDBeep.substr(pos - 2, 2).c_str());
+
+        if (num > 0)
+            siBeep = "Double Beep " + std::to_string(num);
+    }
+
+    sel = 0;
+
+    for (int i = 1; i <= 10; i++)
+    {
+        QString e = QString("Double Beep %1").arg(i);
+        ui->comboBox_DoubleBeep->addItem(e);
+
+        if (e == QString(siBeep.c_str()))
+            sel = i - 1;
+    }
+
+    ui->comboBox_DoubleBeep->setCurrentIndex(sel);
+    ui->checkBox_SystemSound->setCheckState((TConfig::getSystemSoundState() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked));
+
+    int volume = TConfig::getSystemVolume();
+    int gain = TConfig::getSystemGain();
+    ui->horizontalSlider_Volume->setValue(volume);
+    ui->horizontalSlider_Gain->setValue(gain);
+
 #ifdef __ANDROID__
     ui->tabWidget->setPalette(qt_fusionPalette());
     ui->tabCtrl->setPalette(qt_fusionPalette());
@@ -346,6 +445,8 @@ void TQtSettings::doResize()
                                 scaleObject(dynamic_cast<QSpinBox *>(on));
                             else if (n.startsWith("comboBox"))
                                 scaleObject(dynamic_cast<QComboBox *>(on));
+                            else if (n.startsWith("horizontalSlider") || n.startsWith("verticalSlider"))
+                                scaleObject(dynamic_cast<QSlider *>(on));
                             else if (n.startsWith("label"))
                             {
                                 scaleObject(dynamic_cast<QLabel *>(on));
@@ -919,4 +1020,186 @@ void TQtSettings::on_checkBox_SIPiphone_toggled(bool checked)
 
     mSetChanged = true;
     TConfig::setSIPiphone(checked);
+}
+
+void TQtSettings::on_comboBox_SystemSound_currentIndexChanged(const QString& arg1)
+{
+    DECL_TRACER("TQtSettings::on_comboBox_SystemSound_currentIndexChanged(const QString& arg1)");
+
+    if (arg1.compare(TConfig::getSystemSound().c_str()) == 0)
+        return;
+
+    mSetChanged = true;
+    TConfig::saveSystemSoundFile(arg1.toStdString() + ".wav");
+}
+
+void TQtSettings::on_toolButton_SystemSound_clicked()
+{
+    DECL_TRACER("TQtSettings::on_toolButton_SystemSound_clicked()");
+
+    QString selected = ui->comboBox_SystemSound->currentText();
+    string file = TConfig::getProjectPath() + "/__system/graphics/sounds/" + selected.toStdString() + ".wav";
+
+    if (gPageManager)
+        gPageManager->getCallPlaySound()(file);
+}
+
+void TQtSettings::on_comboBox_SingleBeep_currentIndexChanged(const QString& arg1)
+{
+    DECL_TRACER("TQtSettings::on_comboBox_SingleBeep_currentIndexChanged(const QString& arg1)");
+
+    if (arg1.compare(TConfig::getSingleBeepSound().c_str()) == 0)
+        return;
+
+    string file = arg1.toStdString();
+    size_t pos = file.find_last_of(" ");
+
+    if (pos != string::npos)
+    {
+        int num = atoi(file.substr(pos).c_str());
+        file = "singleBeep";
+
+        if (num > 0)
+        {
+            if (num < 10)
+                file += "0" + std::to_string(num);
+            else
+                file += std::to_string(num);
+        }
+
+        file += ".wav";
+    }
+
+    mSetChanged = true;
+    TConfig::saveSingleBeepFile(file);
+}
+
+void TQtSettings::on_toolButton_SingleBeep_clicked()
+{
+    DECL_TRACER("TQtSettings::on_toolButton_SingleBeep_clicked()");
+
+    QString selected = ui->comboBox_SingleBeep->currentText();
+    string file = selected.toStdString();
+    size_t pos = file.find_last_of(" ");
+
+    if (pos != string::npos)
+    {
+        int num = atoi(file.substr(pos).c_str());
+        file = TConfig::getProjectPath() + "/__system/graphics/sounds/singleBeep";
+
+        if (num > 0)
+        {
+            if (num < 10)
+                file += "0" + std::to_string(num);
+            else
+                file += std::to_string(num);
+        }
+
+        file += ".wav";
+    }
+
+//    playFile(file);
+
+    if (gPageManager)
+        gPageManager->getCallPlaySound()(file);
+}
+
+void TQtSettings::on_comboBox_DoubleBeep_currentIndexChanged(const QString& arg1)
+{
+    DECL_TRACER("TQtSettings::on_comboBox_DoubleBeep_currentIndexChanged(const QString& arg1)");
+
+    if (arg1.compare(TConfig::getDoubleBeepSound().c_str()) == 0)
+        return;
+
+    string file = arg1.toStdString();
+    size_t pos = file.find_last_of(" ");
+
+    if (pos != string::npos)
+    {
+        int num = atoi(file.substr(pos).c_str());
+        file = "doubleBeep";
+
+        if (num > 0)
+        {
+            if (num < 10)
+                file += "0" + std::to_string(num);
+            else
+                file += std::to_string(num);
+        }
+
+        file += ".wav";
+    }
+
+    mSetChanged = true;
+    TConfig::saveDoubleBeepFile(file);
+}
+
+void TQtSettings::on_toolButton_DoubleBeep_clicked()
+{
+    DECL_TRACER("TQtSettings::on_toolButton_DoubleBeep_clicked()");
+
+    QString selected = ui->comboBox_DoubleBeep->currentText();
+    string file = selected.toStdString();
+    size_t pos = file.find_last_of(" ");
+
+    if (pos != string::npos)
+    {
+        int num = atoi(file.substr(pos).c_str());
+        file = TConfig::getProjectPath() + "/__system/graphics/sounds/doubleBeep";
+
+        if (num > 0)
+        {
+            if (num < 10)
+                file += "0" + std::to_string(num);
+            else
+                file += std::to_string(num);
+        }
+
+        file += ".wav";
+    }
+
+
+//    playFile(file);
+
+    if (gPageManager)
+        gPageManager->getCallPlaySound()(file);
+}
+
+void TQtSettings::on_checkBox_SystemSound_toggled(bool checked)
+{
+    DECL_TRACER("TQtSettings::on_checkBox_SystemSound_toggled(bool checked)");
+
+    if (TConfig::getSystemSoundState() == checked)
+        return;
+
+    mSetChanged = true;
+    TConfig::saveSystemSoundState(checked);
+}
+
+void TQtSettings::on_toolButton_TestSound_clicked()
+{
+    DECL_TRACER("TQtSettings::on_toolButton_TestSound_clicked()");
+
+    if (gPageManager)
+        gPageManager->getCallPlaySound()(TConfig::getProjectPath() + "/__system/graphics/sounds/audioTest.wav");
+}
+
+void TQtSettings::on_horizontalSlider_Volume_valueChanged(int value)
+{
+    DECL_TRACER("TQtSettings::on_horizontalSlider_Volume_valueChanged(int value)");
+
+    if (TConfig::getSystemVolume() == value)
+        return;
+
+    TConfig::saveSystemVolume(value);
+}
+
+void TQtSettings::on_horizontalSlider_Gain_valueChanged(int value)
+{
+    DECL_TRACER("TQtSettings::on_horizontalSlider_Gain_valueChanged(int value)");
+
+    if (TConfig::getSystemGain() == value)
+        return;
+
+    TConfig::saveSystemGain(value);
 }

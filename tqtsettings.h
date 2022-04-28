@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020, 2022 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,11 +20,14 @@
 #define __TQTSETTINGS_H__
 
 #include <QDialog>
+#include <QAudio>
 
 namespace Ui
 {
 	class TQtSettings;
 }
+
+class QAudioOutput;
 
 class TQtSettings : public QDialog
 {
@@ -81,9 +84,21 @@ class TQtSettings : public QDialog
         void on_checkBox_Banner_toggled(bool checked);
         void on_checkBox_Toolbar_toggled(bool checked);
         void on_checkBox_Rotation_toggled(bool checked);
+        // Sound
+        void on_comboBox_SystemSound_currentIndexChanged(const QString& arg1);
+        void on_toolButton_SystemSound_clicked();
+        void on_comboBox_SingleBeep_currentIndexChanged(const QString& arg1);
+        void on_toolButton_SingleBeep_clicked();
+        void on_comboBox_DoubleBeep_currentIndexChanged(const QString& arg1);
+        void on_toolButton_DoubleBeep_clicked();
+        void on_checkBox_SystemSound_toggled(bool checked);
+        void on_toolButton_TestSound_clicked();
+        void on_horizontalSlider_Volume_valueChanged(int value);
+        void on_horizontalSlider_Gain_valueChanged(int value);
 
     private:
         int scale(int value);
+
 #ifdef __ANDROID__
         QPalette qt_fusionPalette();
 #endif

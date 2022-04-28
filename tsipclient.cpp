@@ -39,15 +39,35 @@ if(!pj_thread_is_registered()) {\
     pj_thread_register(NULL, _desc_, &_thread_);\
 }
 
+#if __cplusplus < 201402L
+#   error "This module requires at least C++14 standard!"
+#else
+#   if __cplusplus < 201703L
+#       include <experimental/filesystem>
+        namespace fs = std::experimental::filesystem;
+#       warning "Support for C++14 and experimental filesystem will be removed in a future version!"
+#   else
+#       include <filesystem>
+#       ifdef __ANDROID__
+            namespace fs = std::__fs::filesystem;
+#       else
+            namespace fs = std::filesystem;
+#       endif
+#   endif
+#endif
+
 using std::string;
 using std::vector;
 using std::to_string;
 using std::atomic;
+using std::thread;
 
 TSIPClient *TSIPClient::mMyself{nullptr};
 TSIPClient::pjsua_app_config TSIPClient::mAppConfig;
 pjsua_call_id TSIPClient::mCurrentCall{PJSUA_INVALID_ID};
 atomic<bool> TSIPClient::mRefreshRun{false};
+bool TSIPClient::mPhoneRingInit{false};
+TSIPClient::ringtone_port_info_t TSIPClient::mRingtonePortInfo;
 
 // The module instance.
 pjsip_module TSIPClient::mod_default_handler =
@@ -616,6 +636,13 @@ void TSIPClient::cleanUp()
 {
     DECL_TRACER("TSIPClient::cleanUp()");
 
+    if (mPhoneRingInit && mRingtonePortInfo.pool)
+    {
+        pj_pool_release(mRingtonePortInfo.pool);
+        mRingtonePortInfo.pool = nullptr;
+        mPhoneRingInit = false;
+    }
+
     pjsua_destroy();
     mAccountID = 0;
     mLine = PJSUA_INVALID_ID;
@@ -657,6 +684,10 @@ bool TSIPClient::call(const string& dest)
         sUri = "sip:";
 
     sUri += dest;
+
+    if (sUri.find("@") == string::npos)
+        sUri += "@" + TConfig::getSIPproxy();
+
     pj_str_t uri = pj_str((char *)sUri.c_str());
     REGISTER_THREAD();
     pjsua_call_id cid = PJSUA_INVALID_ID;
@@ -675,7 +706,6 @@ bool TSIPClient::call(const string& dest)
 
     mLine = cid;
     mLastCall = dest;
-    sendConnectionStatus(SIP_TRYING, mLine);
     return true;
 }
 
@@ -704,7 +734,6 @@ bool TSIPClient::pickup(pjsua_call_id call)
         return false;
     }
 
-    sendConnectionStatus(SIP_CONNECTED, call);
     mLine = call;
     return true;
 }
@@ -779,7 +808,6 @@ bool TSIPClient::resume(int id)
         return false;
     }
 
-    sendConnectionStatus(SIP_CONNECTED, cid);
     mLine = id;
     return true;
 }
@@ -940,7 +968,37 @@ void TSIPClient::sendConnectionStatus(SIP_STATE_t state, int id)
         return;
 
     if (state == SIP_RINGING && TConfig::getSIPiphone() && gPageManager->getShowPhoneDialog())
+    {
+        pjsua_call_info ci;
+
         gPageManager->getShowPhoneDialog()(true);
+        pjsua_call_get_info(id, &ci);
+        string number;
+        number.assign(ci.remote_info.ptr, ci.remote_info.slen);
+        size_t pos;
+
+        if ((pos = number.find("\"")) != string::npos)
+        {
+            size_t pos2 = number.find("\"", pos + 1);
+
+            if (pos2 != string::npos)
+                number = number.substr(pos + 1, pos2 - pos - 1);
+            else
+                number = number.substr(pos + 1);
+        }
+        else if ((pos = number.find("sip:")) != string::npos)
+        {
+            size_t pos2 = number.find("@");
+
+            if (pos2 != string::npos && pos2 > pos)
+                number = number.substr(pos + 4, pos2 - (pos + 4));
+            else
+                number = number.substr(pos + 4);
+        }
+
+        gPageManager->getSetPhoneNumber()(number);
+        gPageManager->getSetPhoneState()(SIP_RINGING, id);
+    }
 
     vector<string> cmds;
     cmds.push_back("CALL");
@@ -966,6 +1024,117 @@ void TSIPClient::sendConnectionStatus(SIP_STATE_t state, int id)
 
     if (gPageManager->getSetPhoneState())
         gPageManager->getSetPhoneState()(state, id);
+}
+
+void TSIPClient::runRinger()
+{
+    DECL_TRACER("TSIPClient::runRinger()");
+
+    init_ringtone_player();
+
+    if (start_ring_tone() != PJ_SUCCESS)
+    {
+        //FIXME:: Add code to free the pool
+        return;
+    }
+}
+
+void TSIPClient::init_ringtone_player()
+{
+    DECL_TRACER("TSIPClient::init_ringtone_player()");
+
+    int file_slot;
+    pj_pool_t *pool;
+    pjmedia_port *file_port;
+    pj_status_t status;
+
+    if (mPhoneRingInit)
+        return;
+
+    string tone = TConfig::getProjectPath() + "/__system/graphics/sounds/ringtone.wav";
+    MSG_DEBUG("Testing for sound file: " << tone);
+
+    if (!fs::exists(tone))
+    {
+        tone = TConfig::getProjectPath() + "/sounds/ringtone.wav";
+        MSG_DEBUG("Testing for sound file: " << tone);
+
+        if (!fs::exists(tone))
+        {
+            MSG_ERROR("Couldn't find any ringtone sound file!");
+            return;
+        }
+    }
+
+    pool = pjsua_pool_create("wav", 4000, 4000);
+    status = pjmedia_wav_player_port_create(pool, tone.c_str(), 0, 0, 0, &file_port);
+
+    if (status != PJ_SUCCESS)
+    {
+        MSG_ERROR("Error creating WAV player port: " << status);
+        return;
+    }
+
+    status = pjsua_conf_add_port(pool, file_port, &file_slot);
+
+    if (status != PJ_SUCCESS) {
+        MSG_ERROR("Error adding port to conference: " << status);
+        return;
+    }
+
+    mRingtonePortInfo.ring_on = PJ_FALSE;
+    mRingtonePortInfo.ring_slot = file_slot;
+    mRingtonePortInfo.ring_port = file_port;
+    mRingtonePortInfo.pool = pool;
+    mPhoneRingInit = true;
+}
+
+pj_status_t TSIPClient::start_ring_tone()
+{
+    DECL_TRACER("TSIPClient::start_ring_tone() ");
+
+    pj_status_t status;
+
+    if (mRingtonePortInfo.ring_on)
+    {
+        MSG_DEBUG("Ringtone port already connected");
+        return PJ_SUCCESS;
+    }
+
+    MSG_DEBUG("Starting ringtone");
+    status = pjsua_conf_connect(mRingtonePortInfo.ring_slot, 0);
+    mRingtonePortInfo.ring_on = PJ_TRUE;
+
+    if (status != PJ_SUCCESS)
+    {
+        MSG_ERROR("Error connecting ringtone port: " << status);
+    }
+
+    return status;
+}
+
+pj_status_t TSIPClient::stop_ring_tone()
+{
+    DECL_TRACER("TSIPClient::stop_ring_tone()");
+
+    pj_status_t status;
+
+    if (!mRingtonePortInfo.ring_on)
+    {
+        MSG_DEBUG("Ringtone port already disconnected");
+        return PJ_SUCCESS;
+    }
+
+    MSG_DEBUG("Stopping ringtone");
+    status = pjsua_conf_disconnect(mRingtonePortInfo.ring_slot, 0);
+    mRingtonePortInfo.ring_on = PJ_FALSE;
+
+    if (status != PJ_SUCCESS)
+    {
+        MSG_ERROR("Error disconnecting ringtone port" << status);
+    }
+
+    return status;
 }
 
 /*******************************************************************************
@@ -999,7 +1168,7 @@ void TSIPClient::ringback_start(pjsua_call_id call_id)
 
     mAppConfig.call_data[call_id].ringback_on = PJ_TRUE;
 
-    if (++mAppConfig.ringback_cnt==1 && mAppConfig.ringback_slot!=PJSUA_INVALID_ID)
+    if (++mAppConfig.ringback_cnt == 1 && mAppConfig.ringback_slot != PJSUA_INVALID_ID)
     {
         pjsua_conf_connect(mAppConfig.ringback_slot, 0);
     }
@@ -1029,7 +1198,7 @@ void TSIPClient::ring_stop(pjsua_call_id call_id)
     {
         mAppConfig.call_data[call_id].ring_on = PJ_FALSE;
 
-        pj_assert(mAppConfig.ring_cnt>0);
+        pj_assert(mAppConfig.ring_cnt > 0);
 
         if (--mAppConfig.ring_cnt == 0 && mAppConfig.ring_slot != PJSUA_INVALID_ID)
         {
@@ -1051,7 +1220,7 @@ void TSIPClient::ring_start(pjsua_call_id call_id)
 
     mAppConfig.call_data[call_id].ring_on = PJ_TRUE;
 
-    if (++mAppConfig.ring_cnt==1 && mAppConfig.ring_slot != PJSUA_INVALID_ID)
+    if (++mAppConfig.ring_cnt == 1 && mAppConfig.ring_slot != PJSUA_INVALID_ID)
     {
         pjsua_conf_connect(mAppConfig.ring_slot, 0);
     }
@@ -1169,6 +1338,8 @@ void TSIPClient::on_incoming_call(pjsua_acc_id acc_id, pjsua_call_id call_id, pj
     /* Automatically answer incoming calls with 200/OK */
     if (gPageManager && gPageManager->getPHNautoanswer() && mMyself)
         mMyself->pickup(call_id);
+    else if (mMyself)
+        mMyself->runRinger();
 }
 
 /* Callback called by the library when call's state has changed */
@@ -1184,6 +1355,9 @@ void TSIPClient::on_call_state(pjsua_call_id call_id, pjsip_event *e)
     {
         /* Stop all ringback for this call */
         ring_stop(call_id);
+
+        if (mPhoneRingInit)
+            stop_ring_tone();
 
         /* Cancel duration timer, if any */
         if (mAppConfig.call_data[call_id].timer.id != PJSUA_INVALID_ID)
@@ -1254,7 +1428,6 @@ void TSIPClient::on_call_state(pjsua_call_id call_id, pjsip_event *e)
             if (ci.role == PJSIP_ROLE_UAC && code == 180 && msg->body == NULL && ci.media_status == PJSUA_CALL_MEDIA_NONE)
             {
                 ringback_start(call_id);
-                sendConnectionStatus(SIP_RINGING, call_id);
             }
 
             string dbgMsg;
@@ -1276,6 +1449,20 @@ void TSIPClient::on_call_state(pjsua_call_id call_id, pjsip_event *e)
                 dbgMsg.assign(ci.state_text.ptr, ci.state_text.slen);
 
             MSG_DEBUG("Call " << call_id << " state changed to " << dbgMsg);
+
+            if (ci.state == PJSIP_INV_STATE_CONNECTING || ci.state == PJSIP_INV_STATE_CALLING)
+                sendConnectionStatus(SIP_TRYING, call_id);
+            else if (ci.state == PJSIP_INV_STATE_INCOMING)
+                sendConnectionStatus(SIP_RINGING, call_id);
+            else if (ci.state == PJSIP_INV_STATE_CONFIRMED)
+            {
+                ring_stop(call_id);
+
+                if (mPhoneRingInit)
+                    stop_ring_tone();
+
+                sendConnectionStatus(SIP_CONNECTED, call_id);
+            }
         }
 
         if (mCurrentCall == PJSUA_INVALID_ID)

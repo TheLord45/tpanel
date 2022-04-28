@@ -274,6 +274,15 @@ WXYZ</string>
    <property name="text">
     <string>Exit</string>
    </property>
+   <property name="autoDefault">
+    <bool>true</bool>
+   </property>
+   <property name="default">
+    <bool>false</bool>
+   </property>
+   <property name="flat">
+    <bool>false</bool>
+   </property>
   </widget>
  </widget>
  <resources/>

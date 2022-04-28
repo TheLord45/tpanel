@@ -74,6 +74,7 @@ class TQtPhone : public QDialog
         int scale(int value);
         template <typename T>
         void scaleObject(T *obj);
+        std::string stateToString(SIP_STATE_t state);
 
         Ui::TQtPhone *ui{nullptr};
         double mScaleFactor{1.0};
