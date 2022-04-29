@@ -45,10 +45,10 @@ TQtPhone::TQtPhone(QWidget* parent)
     ui->toolButton_Call->setText("");
     ui->toolButton_Call->setIcon(QIcon(":images/pickup.png"));
 
-    connect(ui->pushButton_Clear, &QAbstractButton::pressed, this, &TQtPhone::on_pushButton_Clear_clicked);
-    connect(ui->toolButton_Call, &QAbstractButton::pressed, this, &TQtPhone::on_toolButton_Call_Clicked);
+//    connect(ui->pushButton_Clear, &QAbstractButton::pressed, this, &TQtPhone::on_pushButton_Clear_clicked);
+//    connect(ui->toolButton_Call, &QAbstractButton::pressed, this, &TQtPhone::on_toolButton_Call_clicked);
 
-    connect(ui->pushButton_Exit, &QAbstractButton::pressed, this, &TQtPhone::on_pushButton_Exit_clicked);
+//    connect(ui->pushButton_Exit, &QAbstractButton::pressed, this, &TQtPhone::on_pushButton_Exit_clicked);
 }
 
 TQtPhone::~TQtPhone()
@@ -162,7 +162,7 @@ void TQtPhone::on_pushButton_Clear_clicked()
     ui->label_Number->setText(mNumber);
 }
 
-void TQtPhone::on_toolButton_Call_Clicked()
+void TQtPhone::on_toolButton_Call_clicked()
 {
     DECL_TRACER("TQtPhone::on_pushButton_Call_clicked()");
 
@@ -285,15 +285,7 @@ void TQtPhone::doResize()
         else if (name.startsWith("label"))
             scaleObject(dynamic_cast<QLabel *>(obj));
         else if (name.startsWith("line"))
-        {
-            QLine *ln = dynamic_cast<QLine *>(obj);
-            int x1, y1, x2, y2;
-            x1 = scale(ln->x1());
-            y1 = scale(ln->y1());
-            x2 = scale(ln->x2());
-            y2 = scale(ln->y2());
-            ln->setLine(x1, y1, x2, y2);
-        }
+            scaleObject(dynamic_cast<QFrame *>(obj));
     }
 }
 
@@ -386,7 +378,7 @@ void TQtPhone::setPhoneState(int state, int id)
 template<typename T>
 void TQtPhone::scaleObject(T *obj)
 {
-    DECL_TRACER("TQtPhone::scaleObject(T *obj)");
+    DECL_TRACER("TQtPhone::scaleObject(T *obj): " + obj->objectName().toStdString());
 
     QSize size = obj->size();
     size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);

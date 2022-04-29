@@ -55,7 +55,7 @@ unsigned int TStreamError::mLogLevel = HLOG_PROTOCOL;
 class androidbuf : public std::streambuf
 {
     public:
-        enum { bufsize = 512 };
+        enum { bufsize = 1024 };
         androidbuf() { this->setp(buffer, buffer + bufsize - 1); }
 
     private:

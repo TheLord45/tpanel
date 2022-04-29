@@ -3051,6 +3051,71 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
         paint.setBlendMode(SkBlendMode::kSrc);
         can_bm.drawBitmap(image1, 0, 0, &paint);
         paint.setBlendMode(SkBlendMode::kSrcATop);
+        can_bm.drawBitmap(img_bar, 0, 0, &paint);       // Draw the above created image over the 0% image
+    }
+    else if (sr[0].bm.empty() && !sr[1].bm.empty())     // Only one bitmap in the second instance
+    {
+        MSG_TRACE("Drawing second image " << sr[1].bm << " ...");
+        map<int, IMAGE_t>::iterator iterImages = mImages.find(sr[1].number);   // State when level = 100%
+        SkBitmap image = iterImages->second.imageBm;    // 100%
+        SkCanvas can_bm(*bm, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+
+        if (image.empty())
+        {
+            MSG_ERROR("Error creating the image \"" << sr[1].bm << "\"!");
+            TError::setError();
+            return false;
+        }
+
+        int width = sr[1].bm_width;
+        int height = sr[1].bm_height;
+        int startX = 0;
+        int startY = 0;
+
+        // Calculation: width / <effective pixels> * level
+        // Calculation: height / <effective pixels> * level
+        if (dr.compare("horizontal") == 0)
+            width = (int)((double)width / ((double)rh - (double)rl) * (double)level);
+        else
+            height = (int)((double)height / ((double)rh - (double)rl) * (double)level);
+
+        if (ri && dr.compare("horizontal") == 0)     // range inverted?
+        {
+            startX = sr[1].mi_width - width;
+            width = sr[1].mi_width;
+        }
+        else if (dr.compare("horizontal") != 0)
+        {
+            startY = sr[1].mi_height - height;
+            height = sr[1].mi_height;
+        }
+
+        MSG_DEBUG("dr=" << dr << ", startX=" << startX << ", startY=" << startY << ", width=" << width << ", height=" << height << ", level=" << level);
+        MSG_TRACE("Creating bargraph ...");
+        SkBitmap img_bar;
+        img_bar.allocPixels(SkImageInfo::MakeN32Premul(sr[1].bm_width, sr[1].bm_height));
+        img_bar.eraseColor(SK_ColorTRANSPARENT);
+        SkCanvas bar(img_bar, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+        SkPaint pt;
+
+        for (int ix = 0; ix < sr[1].bm_width; ix++)
+        {
+            for (int iy = 0; iy < sr[1].bm_height; iy++)
+            {
+                SkColor pixel;
+
+                if (ix >= startX && ix < width && iy >= startY && iy < height)
+                    pixel = image.getColor(ix, iy);
+                else
+                    pixel = SK_ColorTRANSPARENT;
+
+                pt.setColor(pixel);
+                bar.drawPoint(ix, iy, pt);
+            }
+        }
+
+        SkPaint paint;
+        paint.setBlendMode(SkBlendMode::kSrcOver);
         can_bm.drawBitmap(img_bar, 0, 0, &paint);      // Draw the above created image over the 0% image
     }
     else

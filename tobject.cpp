@@ -266,6 +266,43 @@ TObject::OBJECT_t * TObject::getNextMarkedRemove(TObject::OBJECT_t* object)
     return nullptr;
 }
 
+TObject::OBJECT_t *TObject::findFirstWindow()
+{
+    DECL_TRACER("TObject::getFirstWindow()");
+
+    OBJECT_t *obj = mObject;
+
+    while (obj)
+    {
+        if (obj->type == OBJ_SUBPAGE)
+            return obj;
+
+        obj = obj->next;
+    }
+
+    return nullptr;
+}
+
+TObject::OBJECT_t *TObject::findNextWindow(TObject::OBJECT_t *obj)
+{
+    DECL_TRACER("TObject::findNextWindow()");
+
+    if (!obj || !obj->next)
+        return nullptr;
+
+    OBJECT_t *o = obj->next;
+
+    while (o)
+    {
+        if (o->type == OBJ_SUBPAGE)
+            return o;
+
+        o = o->next;
+    }
+
+    return nullptr;
+}
+
 void TObject::removeObject(ulong handle)
 {
     DECL_TRACER("TObject::removeObject(ulong handle)");

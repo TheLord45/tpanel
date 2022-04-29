@@ -379,6 +379,8 @@ MainWindow::MainWindow()
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
     gPageManager->regOnOrientationChange(bind(&MainWindow::_orientationChanged, this, std::placeholders::_1));
 #endif
+    gPageManager->regRepaintWindows(bind(&MainWindow::_repaintWindows, this));
+
     gPageManager->deployCallbacks();
     createActions();
 
@@ -419,6 +421,7 @@ MainWindow::MainWindow()
         connect(this, &MainWindow::sigSetPhoneNumber, this, &MainWindow::setPhoneNumber);
         connect(this, &MainWindow::sigSetPhoneStatus, this, &MainWindow::setPhoneStatus);
         connect(this, &MainWindow::sigSetPhoneState, this, &MainWindow::setPhoneState);
+        connect(this, &MainWindow::sigRepaintWindows, this, &MainWindow::repaintWindows);
         connect(qApp, &QGuiApplication::applicationStateChanged, this, &MainWindow::appStateChanged);
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         QScreen *screen = QGuiApplication::primaryScreen();
@@ -533,6 +536,12 @@ void MainWindow::_orientationChanged(int orientation)
 }
 #endif
 
+void MainWindow::_repaintWindows()
+{
+    DECL_TRACER("MainWindow::_repaintWindows()");
+
+    emit repaintWindows();
+}
 /**
  * @brief MainWindow::closeEvent called when the application receives an exit event.
  *
@@ -1048,7 +1057,7 @@ void MainWindow::about()
     msg.append("(C) Copyright 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>\n");
     msg.append("This program is under the terms of GPL version 3");
 
-    QMessageBox::about(this, tr(std::string("About ").append(TConfig::getProgName()).c_str()),
+    QMessageBox::about(this, tr("About TPanel"),
                        tr(msg.c_str()));
 }
 
@@ -1269,6 +1278,14 @@ void MainWindow::textSingleLineReturn()
         gPageManager->setTextToButton(obj->handle, text.toStdString());
 }
 
+void MainWindow::repaintWindows()
+{
+    DECL_TRACER("MainWindow::repaintWindows()");
+
+    if (mWasInactive)
+        mDoRepaint = true;
+}
+
 /**
  * @brief MainWindow::appStateChanged - Is called whenever the state of the app changes.
  * This callback method is called whenever the state of the application
@@ -1296,6 +1313,7 @@ void MainWindow::appStateChanged(Qt::ApplicationState state)
         case Qt::ApplicationInactive:
             MSG_INFO("Switched to mode INACTIVE");
             mHasFocus = false;
+            mWasInactive = true;
             QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
         break;
 
@@ -1315,9 +1333,18 @@ void MainWindow::appStateChanged(Qt::ApplicationState state)
                 gPageManager->startUp();
                 gPageManager->run();
                 isRunning = true;
+                mWasInactive = false;
             }
             else
+            {
                 playShowList();
+
+                if (mDoRepaint && mWasInactive)
+                    repaintObjects();
+
+                mDoRepaint = false;
+                mWasInactive = false;
+            }
 #ifdef Q_OS_ANDROID
             QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "resumeOrientationListener", "()V");
 #endif
@@ -1713,6 +1740,41 @@ void MainWindow::doReleaseButton()
     }
 
     mLastPressX = mLastPressY = -1;
+}
+
+/**
+ * @brief MainWindow::repaintObjects
+ * On a mobile device it is possible that the content, mostly the background, of
+ * a window becomes destroyed and it is not repainted. This may be the case at
+ * the moment where the device was disconnected from the controller and
+ * reconnected while the application was inactive. In such a case usualy the
+ * surface is completely repainted. But because of inactivity this was not
+ * possible and some components may look destroyed. They are still functional
+ * allthough.
+ */
+void MainWindow::repaintObjects()
+{
+    DECL_TRACER("MainWindow::repaintObjects()");
+
+    if (!gObject)
+    {
+        MSG_ERROR(_NO_OBJECT);
+        return;
+    }
+
+    draw_mutex.lock();
+
+    TObject::OBJECT_t *obj = gObject->findFirstWindow();
+
+    while (obj)
+    {
+        if (!obj->remove && obj->object.widget)
+            obj->object.widget->repaint();
+
+        obj = gObject->findNextWindow(obj);
+    }
+
+    draw_mutex.unlock();
 }
 
 int MainWindow::calcVolume(int value)

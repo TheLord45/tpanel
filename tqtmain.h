@@ -98,6 +98,7 @@ class MainWindow : public QMainWindow, TQManageQueue
         void sigSetPhoneNumber(const std::string& number);
         void sigSetPhoneStatus(const std::string& msg);
         void sigSetPhoneState(int state, int id);
+        void sigRepaintWindows();
 
     protected:
         bool event(QEvent *event) override;
@@ -152,6 +153,7 @@ class MainWindow : public QMainWindow, TQManageQueue
         void animationFinished();
         void textChangedMultiLine();
         void textSingleLineReturn();
+        void repaintWindows();
 
     private:
         bool gestureEvent(QGestureEvent *event);
@@ -193,9 +195,13 @@ class MainWindow : public QMainWindow, TQManageQueue
         void _signalState(Qt::ApplicationState state);
         void _orientationChanged(int orientation);
 #endif
+        void _repaintWindows();
         void doReleaseButton();
+        void repaintObjects();
         int calcVolume(int value);
 
+        bool mWasInactive{false};           // If the application was inactive this is set to true until everything was repainted.
+        bool mDoRepaint{false};             // This is set to TRUE whenever a reconnection to the controller happened.
         TQtSettings *mSettings{nullptr};    // The pointer to the settings dialog
         bool settingsChanged{false};        // true = settings have changed
         QWidget *mBackground{nullptr};      // The background of the visible page

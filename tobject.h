@@ -86,6 +86,8 @@ class TObject
         OBJECT_t *findNextChild(ulong handle);
         OBJECT_t *getMarkedRemove();
         OBJECT_t *getNextMarkedRemove(OBJECT_t *obj);
+        OBJECT_t *findFirstWindow();
+        OBJECT_t *findNextWindow(OBJECT_t *obj);
         void cleanMarked();
         void removeAllChilds(ulong handle);
         void removeObject(ulong handle);

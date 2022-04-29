@@ -55,7 +55,7 @@ class TQtPhone : public QDialog
         void on_pushButton_Hash_clicked();
         void on_pushButton_Clear_clicked();
         void on_pushButton_Exit_clicked();
-        void on_toolButton_Call_Clicked();
+        void on_toolButton_Call_clicked();
 
     private:
         typedef enum SIP_STATE_t

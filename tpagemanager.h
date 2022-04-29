@@ -145,6 +145,8 @@ class TPageManager : public TAmxCommands
 #ifdef __ANDROID__
         void regOnOrientationChange(std::function<void (int orientation)> orientationChange) { _onOrientationChange = orientationChange; }
 #endif
+        void regRepaintWindows(std::function<void ()> repaintWindows) { _repaintWindows = repaintWindows; }
+
         /**
          * The following function must be called to start non graphics part
          * of the panel simulator. If everything worked well, it returns TRUE.
@@ -278,6 +280,7 @@ class TPageManager : public TAmxCommands
 #ifdef __ANDROID__
         std::function<void (int orientation)> onOrientationChange() { return _onOrientationChange; }
 #endif
+        std::function<void ()> getRepaintWindows() { return _repaintWindows; }
         int getOrientation() { return mOrientation; }
         void setOrientation(int ori) { mOrientation = ori; }
         bool getInformOrientation() { return mInformOrientation; }
@@ -336,6 +339,7 @@ class TPageManager : public TAmxCommands
         std::function<void (const std::string& number)> _setPhoneNumber{nullptr};
         std::function<void (const std::string& msg)> _setPhoneStatus{nullptr};
         std::function<void (int state, int id)> _setPhoneState{nullptr};
+        std::function<void ()> _repaintWindows{nullptr};
 #ifdef __ANDROID__
         std::function<void (int orientation)> _onOrientationChange{nullptr};
 #endif

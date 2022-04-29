@@ -57,6 +57,7 @@
 #include "texpand.h"
 #include "tsocket.h"
 #include "texcept.h"
+#include "tpagemanager.h"
 
 using namespace amx;
 using namespace std;
@@ -104,6 +105,8 @@ amx::TAmxNet *gAmxNet = nullptr;
 static bool __CommValid = false;
 std::map<ulong, FUNC_NETWORK_t> mFuncsNetwork;
 std::map<ulong, FUNC_TIMER_t> mFuncsTimer;
+
+extern TPageManager *gPageManager;
 
 TAmxNet::TAmxNet()
 {
@@ -372,6 +375,10 @@ void TAmxNet::start()
             break;
 
         sendAllFuncNetwork(NSTATE_ONLINE);
+
+        if (__CommValid && isRunning() && gPageManager && gPageManager->getRepaintWindows())
+            gPageManager->getRepaintWindows()();
+
         handle_connect();
         std::this_thread::sleep_for(std::chrono::seconds(mWaitTime));
         setWaitTime(WAIT_RESET);
