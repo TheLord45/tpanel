@@ -2649,7 +2649,7 @@ void TPageManager::sendPHNcommand(const std::string& cmd)
     DECL_TRACER("TPageManager::sendPHNcommand(const std::string& cmd)");
 
     amx::ANET_SEND scmd;
-    scmd.port = 1;
+    scmd.port = mTSettings->getSettings().voipCommandPort;
     scmd.channel = TConfig::getChannel();
     scmd.msg = "^PHN-" + cmd;
     scmd.MC = 0x008c;
@@ -7171,6 +7171,25 @@ void TPageManager::doPHN(int port, vector<int>&, vector<string>& pars)
                 }
             }
         }
+        else if (cmd == "IM")
+        {
+            if (pars.size() < 3)
+                return;
+
+            string to = pars[1];
+            string msg = pars[2];
+            string toUri;
+
+            if (to.find("sip:") == string::npos)
+                toUri = "sip:";
+
+            toUri += to;
+
+            if (to.find("@") == string::npos)
+                toUri += "@" + TConfig::getSIPproxy();
+
+            mSIPClient->sendIM(toUri, msg);
+        }
         else if (cmd == "SETUP")    // Some temporary settings
         {
             if (pars.size() < 2)
@@ -7246,8 +7265,8 @@ void TPageManager::getPHN(int, vector<int>&, vector<string>& pars)
     }
     else if (cmd == "MSGWAITING")
     {
-        // Currently messages are not supported!
-        sendPHNcommand(cmd + ",0");
+        size_t num = mSIPClient->getNumberMessages();
+        sendPHNcommand(cmd + "," + (num > 0 ? "1" : "0") + "," + std::to_string(num) + "0,0,0");
     }
     else if (cmd == "PRIVACY")
     {
@@ -7255,6 +7274,13 @@ void TPageManager::getPHN(int, vector<int>&, vector<string>& pars)
             sendPHNcommand(cmd + ",1");
         else
             sendPHNcommand(cmd + ",0");
+    }
+    else if (cmd == "REDIAL")
+    {
+        if (pars.size() < 2)
+            return;
+
+        sendPHNcommand(cmd + "," + pars[1]);
     }
     else
     {

@@ -170,6 +170,7 @@ bool TSIPClient::init()
     // Global configuration
     string idUri = "sip:" + TConfig::getSIPuser() + "@" + sipProxy;
     string regUri = "sip:" + sipProxy + ":" + to_string(TConfig::getSIPport());
+    pjsua_config_default(&mAppConfig.cfg);
     mAppConfig.cfg.outbound_proxy_cnt = 1;
     mAppConfig.cfg.outbound_proxy[0] = pj_str((char *)regUri.c_str());
     mAppConfig.cfg.max_calls = SIP_MAX_LINES;
@@ -183,9 +184,8 @@ bool TSIPClient::init()
             mAppConfig.cfg.stun_try_ipv6 = PJ_TRUE;
     }
 
-    string uAgent = string("TPanel v") + VERSION_STRING();
+    string uAgent = string("TPanel v") + VERSION_STRING() + "/" + PJ_OS_NAME;
     mAppConfig.cfg.user_agent = pj_str((char *)uAgent.c_str());
-
     // Define main account
     mAppConfig.acc_cnt = 1;
     pjsua_acc_config_default(&mAppConfig.acc_cfg[0]);
@@ -203,7 +203,6 @@ bool TSIPClient::init()
     /* Init pjsua */
     pjsua_logging_config log_cfg;
 
-    pjsua_config_default(&mAppConfig.cfg);
     mAppConfig.cfg.cb.on_incoming_call = &on_incoming_call;
     mAppConfig.cfg.cb.on_call_media_state = &on_call_media_state;
     mAppConfig.cfg.cb.on_call_state = &on_call_state;
@@ -212,6 +211,10 @@ bool TSIPClient::init()
     mAppConfig.cfg.cb.on_call_transfer_status = &on_call_transfer_status;
     mAppConfig.cfg.cb.on_transport_state = &on_transport_state;
     mAppConfig.cfg.cb.on_ip_change_progress = &on_ip_change_progress;
+    mAppConfig.cfg.cb.on_pager2 = &on_pager2;
+    mAppConfig.cfg.cb.on_buddy_state = &on_buddy_state;
+    mAppConfig.cfg.cb.on_buddy_evsub_state = &on_buddy_evsub_state;
+    mAppConfig.cfg.cb.on_mwi_info = &on_mwi_info;
 
     pjsua_logging_config_default(&log_cfg);
     log_cfg.console_level = 4;
@@ -605,6 +608,19 @@ bool TSIPClient::init()
         pjsua_acc_set_online_status(current_acc, PJ_TRUE);
     }
 
+    // Boddy for IM
+    mAppConfig.buddy_cnt = 1;
+    pjsua_buddy_config_default(mAppConfig.buddy_cfg);
+    mAppConfig.buddy_cfg->uri = pj_str((char *)idUri.c_str());
+    mAppConfig.buddy_cfg->subscribe = PJ_FALSE;
+    pjsua_buddy_id bid;
+
+    if (pjsua_buddy_add(mAppConfig.buddy_cfg, &bid) != PJ_SUCCESS)
+    {
+        MSG_ERROR("Couldn't create a new buddy for IM (SMS)!");
+        mAppConfig.buddy_cnt = 0;
+    }
+
     /* Init call setting */
     pjsua_call_setting call_opt;
     pjsua_call_setting_default(&call_opt);
@@ -936,6 +952,61 @@ bool TSIPClient::setDTMFduration(uint_t ms)
     return true;
 }
 
+bool TSIPClient::sendIM(const string& target, const string& msg)
+{
+    DECL_TRACER("TSIPClient::sendIM(const string& target, const string& msg)");
+
+    pj_str_t mime = pj_str((char *)"text/plain");
+    pj_str_t to, content;
+    pjsua_acc_id aid = PJSUA_INVALID_ID;
+    REGISTER_THREAD();
+
+    if (!target.empty() && !msg.empty())
+    {
+        to = pj_str((char *)target.c_str());
+        content = pj_str((char *)msg.c_str());
+        MSG_DEBUG("Sending instant message to: " << to.ptr << " [" << content.ptr << "]");
+
+        if ((aid = pjsua_acc_find_for_outgoing(&to)) == PJSUA_INVALID_ID)
+        {
+            MSG_ERROR("No account found to send a message from!");
+            return false;
+        }
+    }
+    else if (!msg.empty())
+    {
+        pjsua_call_id cid = getActiveCall();
+
+        if (cid == PJSUA_INVALID_ID)
+        {
+            MSG_ERROR("No active call. Can not send a messge!");
+            return false;
+        }
+
+        pjsua_call_info cinfo;
+
+        if (pjsua_call_get_info(cid, &cinfo) != PJ_SUCCESS)
+        {
+            MSG_ERROR("Error getting call information!");
+            return false;
+        }
+
+        aid = cinfo.acc_id;
+        content = pj_str((char *)msg.c_str());
+        to = cinfo.remote_info;
+    }
+    else
+        return false;
+
+    if (pjsua_im_send(aid, &to, &mime, &content, NULL, NULL) != PJ_SUCCESS)
+    {
+        MSG_ERROR("Couldn't send a message to " << to.ptr << " (" << msg << ")");
+        return false;
+    }
+
+    return true;
+}
+
 int TSIPClient::getNumberCalls()
 {
     DECL_TRACER("TSIPClient::getNumberCalls()");
@@ -967,6 +1038,8 @@ void TSIPClient::sendConnectionStatus(SIP_STATE_t state, int id)
     if (!gPageManager)
         return;
 
+    // If there is an incoming call and the internal phone is activated, this
+    // opens the phone dialog and shows the state.
     if (state == SIP_RINGING && TConfig::getSIPiphone() && gPageManager->getShowPhoneDialog())
     {
         pjsua_call_info ci;
@@ -1000,6 +1073,8 @@ void TSIPClient::sendConnectionStatus(SIP_STATE_t state, int id)
         gPageManager->getSetPhoneState()(SIP_RINGING, id);
     }
 
+    // Here we set the actual state. This is send to the controller, if there
+    // is one configured.
     vector<string> cmds;
     cmds.push_back("CALL");
 
@@ -1035,6 +1110,9 @@ void TSIPClient::runRinger()
     if (start_ring_tone() != PJ_SUCCESS)
     {
         //FIXME:: Add code to free the pool
+        pj_pool_release(mRingtonePortInfo.pool);
+        mRingtonePortInfo.pool = nullptr;
+        mPhoneRingInit = false;
         return;
     }
 }
@@ -1085,6 +1163,10 @@ void TSIPClient::init_ringtone_player()
     mRingtonePortInfo.ring_on = PJ_FALSE;
     mRingtonePortInfo.ring_slot = file_slot;
     mRingtonePortInfo.ring_port = file_port;
+
+    if (mRingtonePortInfo.pool)
+        pj_pool_release(mRingtonePortInfo.pool);
+
     mRingtonePortInfo.pool = pool;
     mPhoneRingInit = true;
 }
@@ -1135,6 +1217,111 @@ pj_status_t TSIPClient::stop_ring_tone()
     }
 
     return status;
+}
+
+pjsua_buddy_id TSIPClient::addBuddy(const string& rsipurl)
+{
+    DECL_TRACER("TSIPClient::addBuddy(const string& rsipurl)");
+
+    // Boddy for IM
+    uint_t bcnt = mAppConfig.buddy_cnt + 1;
+
+    if (bcnt >= PJSUA_MAX_BUDDIES)
+        return PJSUA_INVALID_ID;
+
+    pj_str_t uri = pj_str((char *)rsipurl.c_str());
+
+    if (pjsua_verify_sip_url(rsipurl.c_str()) != PJ_SUCCESS)
+    {
+        MSG_ERROR("Invalid SIP URI: " << rsipurl);
+        return PJSUA_INVALID_ID;
+    }
+
+    pjsua_buddy_config *cfg = &mAppConfig.buddy_cfg[bcnt];
+    pjsua_buddy_config_default(cfg);
+    cfg->uri = uri;
+    cfg->subscribe = PJ_FALSE;
+    pjsua_buddy_id bid;
+
+    if (pjsua_buddy_add(mAppConfig.buddy_cfg, &bid) != PJ_SUCCESS)
+    {
+        MSG_ERROR("Couldn't create a new buddy for URL " << rsipurl << "!");
+        return PJSUA_INVALID_ID;
+    }
+
+    mAppConfig.buddy_cnt = bcnt;
+    return bid;
+}
+
+TSIPClient::_uri_t TSIPClient::parseUri(const string& uri)
+{
+    DECL_TRACER("TSIPClient::parseUri(const string& uri)");
+
+    size_t pos1, pos2;
+    _uri_t u;
+
+    pos1 = uri.find("\"");
+
+    if (pos1 != string::npos)
+    {
+        pos2 = uri.find("\"", pos1 + 1);
+
+        if (pos2 != string::npos)
+            u.name = uri.substr(pos1 + 1, pos2 - pos1 - 1);
+    }
+
+    pos1 = uri.find("<");
+
+    if (pos1 != string::npos)
+    {
+        pos2 = uri.find(":");
+
+        if (pos2 != string::npos)
+            u.scheme = uri.substr(pos1 + 1, pos2 - pos1 - 1);
+        else
+        {
+            pos2 = uri.find("@");
+
+            if (pos2 != string::npos)
+                u.user = uri.substr(pos1 + 1, pos2 - pos1 - 1);
+            else
+            {
+                pos2 = uri.find(">");
+
+                if (pos2 != string::npos)
+                    u.server = uri.substr(pos1, pos2 - pos1 - 1);
+
+                return u;
+            }
+
+            return u;
+        }
+
+        pos1 = pos2;
+        pos2 = uri.find("@");
+
+        if (pos2 != string::npos)
+            u.user = uri.substr(pos1 + 1, pos2 - pos1 - 1);
+        else
+        {
+            pos2 = uri.find(">");
+
+            if (pos2 != string::npos)
+                u.server = uri.substr(pos1, pos2 - pos1 - 1);
+            else
+                return u;
+        }
+
+        pos1 = pos2;
+        pos2 = uri.find(">");
+
+        if (pos2 != string::npos)
+            u.server = uri.substr(pos1 + 1, pos2 - pos1 - 1);
+        else
+            u.server = uri.substr(pos1 + 1);
+    }
+
+    return u;
 }
 
 /*******************************************************************************
@@ -1335,11 +1522,10 @@ void TSIPClient::on_incoming_call(pjsua_acc_id acc_id, pjsua_call_id call_id, pj
     MSG_DEBUG("Incoming call from " << ci.remote_info.ptr);
     sendConnectionStatus(SIP_RINGING, call_id);
 
-    /* Automatically answer incoming calls with 200/OK */
     if (gPageManager && gPageManager->getPHNautoanswer() && mMyself)
-        mMyself->pickup(call_id);
+        mMyself->pickup(call_id);   // Automatically answer incoming calls with 200/OK
     else if (mMyself)
-        mMyself->runRinger();
+        mMyself->runRinger();       // Start the ring tone
 }
 
 /* Callback called by the library when call's state has changed */
@@ -1685,11 +1871,137 @@ void TSIPClient::on_ip_change_progress(pjsua_ip_change_op op, pj_status_t status
     }
 }
 
+void TSIPClient::on_pager2(pjsua_call_id call_id, const pj_str_t* from, const pj_str_t* to, const pj_str_t* contact, const pj_str_t* mime_type, const pj_str_t* body, pjsip_rx_data* rdata, pjsua_acc_id acc_id)
+{
+    DECL_TRACER("TSIPClient::on_pager2(pjsua_call_id call_id, const pj_str_t* from, const pj_str_t* to, const pj_str_t* contact, const pj_str_t* mime_type, const pj_str_t* body, pjsip_rx_data* rdata, pjsua_acc_id acc_id)");
+
+    PJ_UNUSED_ARG(contact);
+    PJ_UNUSED_ARG(rdata);
+
+    string sFrom(from->ptr, from->slen);
+    string sTo(to->ptr, to->slen);
+    string mime(mime_type->ptr, mime_type->slen);
+    string bdy(body->ptr, body->slen);
+
+    MSG_DEBUG("Received message for ID " << call_id << " from " << sFrom << ", to " << sTo << " (" << acc_id << ") with mime type " << mime << ": " << bdy);
+
+    if (acc_id == PJSUA_INVALID_ID)
+    {
+        MSG_ERROR("Invalid account ID: " << acc_id);
+        return;
+    }
+
+    if (mime != "text/plain")
+    {
+        MSG_ERROR("Unknown mime type " << mime);
+        return;
+    }
+
+    _uri_t u = parseUri(from->ptr);
+
+    vector<string> cmds;
+    cmds.push_back("IM");
+    cmds.push_back(u.user + "@" + u.server);
+
+    if (bdy.length() > 256)
+        bdy = bdy.substr(0, 256);
+
+    cmds.push_back(bdy);
+
+    if (gPageManager)
+        gPageManager->sendPHN(cmds);
+}
+
+void TSIPClient::on_buddy_state(pjsua_buddy_id buddy_id)
+{
+    DECL_TRACER("TSIPClient::on_buddy_state(pjsua_buddy_id buddy_id)");
+
+    pjsua_buddy_info binfo;
+
+    if (pjsua_buddy_get_info(buddy_id, &binfo) != PJ_SUCCESS)
+    {
+        MSG_ERROR("Error retrieving buddy information for buddy ID " << buddy_id);
+        return;
+    }
+
+    switch(binfo.status)
+    {
+        case PJSUA_BUDDY_STATUS_ONLINE:
+            MSG_DEBUG("Buddy " << buddy_id << ": " << binfo.contact.ptr << " is online.");
+        break;
+
+        case PJSUA_BUDDY_STATUS_OFFLINE:
+            MSG_DEBUG("Buddy " << buddy_id << ": " << binfo.contact.ptr << " is offline.");
+        break;
+
+        default:
+            MSG_DEBUG("Buddy " << buddy_id << ": " << binfo.contact.ptr << " is unknown.");
+    }
+}
+void TSIPClient::on_buddy_evsub_state(pjsua_buddy_id buddy_id, pjsip_evsub* sub, pjsip_event* event)
+{
+    DECL_TRACER("TSIPClient::on_buddy_evsub_state(pjsua_buddy_id buddy_id, pjsip_evsub* sub, pjsip_event* event)");
+
+    char event_info[80];
+
+    if (event->type == PJSIP_EVENT_RX_MSG)
+    {
+        pjsip_rx_data *rdata = event->body.tsx_state.src.rdata;
+        snprintf(event_info, sizeof(event_info), " (RX %s)", pjsip_rx_data_get_info(rdata));
+        MSG_DEBUG("Budyy event for ID " << buddy_id << ":" << event_info);
+    }
+    else
+        event_info[0] = 0;
+
+    MSG_DEBUG("Buddy " << buddy_id << ": subscription state: " << pjsip_evsub_get_state_name(sub) << " (event: " << pjsip_event_str(event->type) << event_info << ")");
+}
+
+void TSIPClient::on_mwi_info(pjsua_acc_id acc_id, pjsua_mwi_info* mwi_info)
+{
+    DECL_TRACER("TSIPClient::on_mwi_info(pjsua_acc_id acc_id, pjsua_mwi_info* mwi_info)");
+
+    MSG_INFO("Received MWI for acc " << acc_id);
+    vector<string>cmds;
+    cmds.push_back("IM");
+
+    if (mwi_info->rdata->msg_info.ctype)
+    {
+        const pjsip_ctype_hdr *ctype = mwi_info->rdata->msg_info.ctype;
+        string msg(ctype->media.subtype.ptr, ctype->media.subtype.slen);
+        MSG_INFO("Content-Type: " << ctype->media.type.ptr << "/" << msg);
+        const pjsip_from_hdr *from = mwi_info->rdata->msg_info.from;
+
+        cmds.push_back((char *)pjsip_uri_get_uri(from->uri));
+    }
+    else
+        cmds.push_back("sip:?@" + TConfig::getSIPproxy());
+
+    if (!mwi_info->rdata->msg_info.msg->body)
+    {
+        MSG_INFO("No message body!");
+        return;
+    }
+
+    string body((char *)mwi_info->rdata->msg_info.msg->body->data, mwi_info->rdata->msg_info.msg->body->len);
+
+    if (body.length() > 256)
+        cmds.push_back(body.substr(0, 256));
+    else
+        cmds.push_back(body);
+
+    MSG_INFO("Body:" << std::endl << body);
+
+    if (gPageManager)
+        gPageManager->sendPHN(cmds);
+}
+
 /*
  * A simple registrar, invoked by default_mod_on_rx_request()
  */
 void TSIPClient::simple_registrar(pjsip_rx_data *rdata)
 {
+    DECL_TRACER("TSIPClient::simple_registrar(pjsip_rx_data *rdata)");
+
     pjsip_tx_data *tdata;
     const pjsip_expires_hdr *exp;
     const pjsip_hdr *h;
@@ -1752,6 +2064,8 @@ void TSIPClient::simple_registrar(pjsip_rx_data *rdata)
 /* Notification on incoming request */
 pj_bool_t TSIPClient::default_mod_on_rx_request(pjsip_rx_data *rdata)
 {
+    DECL_TRACER("TSIPClient::default_mod_on_rx_request(pjsip_rx_data *rdata)");
+
     pjsip_tx_data *tdata;
     pjsip_status_code status_code;
     pj_status_t status;
@@ -1806,7 +2120,8 @@ pj_bool_t TSIPClient::default_mod_on_rx_request(pjsip_rx_data *rdata)
         const pj_str_t USER_AGENT = { (char *)"User-Agent", 10};
         pjsip_hdr *h;
 
-        pj_ansi_snprintf(tmp, sizeof(tmp), "PJSUA v%s/%s", pj_get_version(), PJ_OS_NAME);
+//        pj_ansi_snprintf(tmp, sizeof(tmp), "PJSUA v%s/%s", pj_get_version(), PJ_OS_NAME);
+        pj_ansi_snprintf(tmp, sizeof(tmp), "TPanel v%s/%s", VERSION_STRING(), PJ_OS_NAME);
         pj_strdup2_with_null(tdata->pool, &user_agent, tmp);
 
         h = (pjsip_hdr*) pjsip_generic_string_hdr_create(tdata->pool, &USER_AGENT, &user_agent);
@@ -1815,7 +2130,9 @@ pj_bool_t TSIPClient::default_mod_on_rx_request(pjsip_rx_data *rdata)
 
     status = pjsip_endpt_send_response2(pjsua_get_pjsip_endpt(), rdata, tdata, NULL, NULL);
 
-    if (status != PJ_SUCCESS) pjsip_tx_data_dec_ref(tdata);
+    if (status != PJ_SUCCESS)
+        pjsip_tx_data_dec_ref(tdata);
+
     return PJ_TRUE;
 }
 

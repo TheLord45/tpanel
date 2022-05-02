@@ -3,6 +3,11 @@ ChangeLog
 
 Release: 1.3.2
 ===============================================================================
+2022-05-02 Honors now the VOIP channel setting for SIP.
+           Added the "User-Agent" header to the SIP client.
+           Added a new command IM (instant message) to send instant messages
+           over a SIP server.
+
 2022-04-29 Fixed a crash on Android when a phone call was detected and the
            internal phone dialog is displayed.
            Fixed the bargraph to draw the second image if there is no first

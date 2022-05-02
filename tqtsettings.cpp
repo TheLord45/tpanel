@@ -27,7 +27,6 @@
 #include "tresources.h"
 #include "tpagemanager.h"
 #include "terror.h"
-#include "tqtplaysound.h"
 #include "ui_tqtsettings.h"
 
 #ifdef __ANDROID__

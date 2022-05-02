@@ -86,6 +86,8 @@ class TSIPClient
         bool transfer(int id, const std::string& num);  //<! transfer the current call
         bool setDTMFduration(uint_t ms);            //<! Set the DTMF duration in ms.
         bool getPrivate() { return mDoNotDisturb; } //<! Returns the current private mode.
+        bool sendIM(const std::string& target, const std::string& msg); //<! Send an IM to somebody or to the peer of the current call
+        size_t getNumberMessages() { return mMessages.size(); }
 
     protected:
         void runRinger();                           //<! Plays a ring tone if a call is coming.
@@ -108,8 +110,24 @@ class TSIPClient
         static void call_timeout_callback(pj_timer_heap_t *timer_heap, struct pj_timer_entry *entry);
         static void on_playfile_done(pjmedia_port *port, void *usr_data);
         static void hangup_timeout_callback(pj_timer_heap_t *timer_heap, struct pj_timer_entry *entry);
+        static void on_pager2(pjsua_call_id call_id, const pj_str_t *from,
+                              const pj_str_t *to, const pj_str_t *contact,
+                              const pj_str_t *mime_type, const pj_str_t *body,
+                              pjsip_rx_data *rdata, pjsua_acc_id acc_id);
+        static void on_buddy_state(pjsua_buddy_id buddy_id);
+        static void on_buddy_evsub_state(pjsua_buddy_id buddy_id, pjsip_evsub *sub, pjsip_event *event);
+        static void on_mwi_info(pjsua_acc_id acc_id, pjsua_mwi_info *mwi_info);
 
     private:
+        typedef struct _uri_t
+        {
+            std::string name;           //!< The name coming in double quotes (optional)
+            std::string scheme;         //!< The scheme (e.g. sip)
+            std::string user;           //!< The user name / telephone number
+            std::string server;         //!< The IP address or FQDN of the server
+            int port;                   //!< An optional port number
+        }_uri_t;
+
         static pjsip_module mod_default_handler;
 
         int getNumberCalls();
@@ -120,6 +138,8 @@ class TSIPClient
         static void init_ringtone_player();
         static pj_status_t start_ring_tone();
         static pj_status_t stop_ring_tone();
+        static pjsua_buddy_id addBuddy(const std::string& rsipurl);
+        static _uri_t parseUri(const std::string& uri);
 
         int mLine{0};
         bool mRegistered{false};
@@ -128,6 +148,7 @@ class TSIPClient
         std::string mLastCall;
         uint_t mDTMFduration{PJSUA_CALL_SEND_DTMF_DURATION_DEFAULT};
         bool mDoNotDisturb{false};
+        std::vector<std::string>mMessages;      // Holds all received messages
 
         static TSIPClient *mMyself;
         static pjsua_call_id mCurrentCall;
