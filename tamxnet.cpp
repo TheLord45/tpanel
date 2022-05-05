@@ -17,25 +17,7 @@
  */
 
 #include <sys/utsname.h>
-/*
-#ifdef __APPLE__
-#include <boost/asio/buffer.hpp>
-#include <boost/asio/io_context.hpp>
-#include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/read_until.hpp>
-#include <boost/asio/steady_timer.hpp>
-#include <boost/asio/write.hpp>
-#include <boost/asio/read.hpp>
-#else
-#include <asio/buffer.hpp>
-#include <asio/io_context.hpp>
-#include <asio/ip/tcp.hpp>
-#include <asio/read_until.hpp>
-#include <asio/steady_timer.hpp>
-#include <asio/write.hpp>
-#include <asio/read.hpp>
-#endif
-*/
+
 #include <functional>
 #include <iostream>
 #include <fstream>
@@ -362,6 +344,14 @@ void TAmxNet::start()
     {
         initSend = false;
         ready = false;
+
+        if (__CommValid && TConfig::getController() == "0.0.0.0")
+        {
+            MSG_INFO("Refusing to connect to invalid controller " << TConfig::getController());
+            sendAllFuncNetwork(NSTATE_OFFLINE);
+            std::this_thread::sleep_for(std::chrono::seconds(10));  // Wait 10 seconds before next try
+            continue;
+        }
 
         if (__CommValid && mSocket && !mSocket->connect(TConfig::getController(), TConfig::getPort()))
         {

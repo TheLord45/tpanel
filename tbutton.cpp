@@ -364,6 +364,10 @@ size_t TButton::initialize(TExpat *xml, size_t index)
             lv = xml->convertElementToInt(content);
         else if (ename.compare("dr") == 0)
             dr = content;
+        else if (ename.compare("co") == 0)
+            co = xml->convertElementToInt(content);
+        else if (ename.compare("cm") == 0)
+            cm = content;
         else if (ename.compare("va") == 0)
             va = xml->convertElementToInt(content);
         else if (ename.compare("rm") == 0)
@@ -5502,7 +5506,7 @@ bool TButton::isClickable()
 {
     DECL_TRACER("TButton::isClickable()");
 
-    if (mEnabled && ((cp != 0 && ch != 0) || (lp != 0 && lv != 0) || !op.empty() || !pushFunc.empty() || isSystemButton()) && hs.compare("passThru") != 0)
+    if (mEnabled && ((cp != 0 && ch != 0) || (lp != 0 && lv != 0) || !cm.empty() || !op.empty() || !pushFunc.empty() || isSystemButton()) && hs.compare("passThru") != 0)
         return true;
 
     return false;
@@ -6207,6 +6211,34 @@ bool TButton::doClick(int x, int y, bool pressed)
                 MSG_WARNING("Unknown page flip command " << iter->pfType);
             }
         }
+    }
+
+    if (!cm.empty() && co == 0 && pressed)      // Feed command to ourself?
+    {                                           // Yes, then feed it into command queue.
+        MSG_DEBUG("Button has a self feed command: " << cm);
+
+        if (gPageManager)
+        {
+            amx::ANET_COMMAND cmd;
+            cmd.MC = 0x000c;
+            cmd.device1 = TConfig::getChannel();
+            cmd.port1 = co;
+            cmd.data.chan_state.port = co;
+            cmd.data.chan_state.channel = 0;
+            cmd.data.chan_state.device = TConfig::getChannel();
+            cmd.data.chan_state.system = 0;
+            cmd.data.message_string.length = cm.length();
+            memset(&cmd.data.message_string.content, 0, sizeof(cmd.data.message_string.content));
+            strncpy((char *)&cmd.data.message_string.content, cm.c_str(), sizeof(cmd.data.message_string.content));
+            gPageManager->doCommand(cmd);
+        }
+    }
+    else if (!cm.empty() && pressed)
+    {
+        MSG_DEBUG("Button sends a command on port " << co << ": " << cm);
+
+        if (gPageManager)
+            gPageManager->sendCommandString(co, cm);
     }
 
     return true;

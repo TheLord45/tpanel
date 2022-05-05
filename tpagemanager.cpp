@@ -259,8 +259,8 @@ TPageManager::TPageManager()
 
     // Here are the commands supported by this emulation.
     MSG_INFO("Registering commands ...");
-//    REG_CMD(doAFP, "@AFP");     // Flips to a page with the specified page name using an animated transition.
-//    REG_CMD(doAFP, "^AFP");     // Flips to a page with the specified page name using an animated transition.
+    REG_CMD(doAFP, "@AFP");     // Flips to a page with the specified page name using an animated transition.
+    REG_CMD(doAFP, "^AFP");     // Flips to a page with the specified page name using an animated transition.
     REG_CMD(doAPG, "@APG");     // Add a specific popup page to a specified popup group.
     REG_CMD(doCPG, "@CPG");     // Clear all popup pages from specified popup group.
     REG_CMD(doDPG, "@DPG");     // Delete a specific popup page from specified popup group if it exists
@@ -1115,6 +1115,10 @@ bool TPageManager::setPage(int PageID)
         return false;
 
     mActualPage = PageID;
+
+    if (_setPage)
+        _setPage((mActualPage << 16) & 0xffff0000, pg->getWidth(), pg->getHeight());
+
     pg->show();
     return true;
 }
@@ -1141,6 +1145,10 @@ bool TPageManager::setPage(const string& name)
         return false;
 
     mActualPage = pg->getNumber();
+
+    if (_setPage)
+        _setPage((mActualPage << 16) & 0xffff0000, pg->getWidth(), pg->getHeight());
+
     pg->show();
     return true;
 }
@@ -2653,6 +2661,25 @@ void TPageManager::sendGlobalString(const string& text)
         MSG_WARNING("Missing global class TAmxNet. Can't send message!");
 }
 
+void TPageManager::sendCommandString(int port, const string& cmd)
+{
+    DECL_TRACER("TPageManager::sendGlobalString(const string& text)");
+
+    if (cmd.empty())
+        return;
+
+    amx::ANET_SEND scmd;
+    scmd.port = port;
+    scmd.channel = 0;
+    scmd.msg = cmd;
+    scmd.MC = 0x008c;
+
+    if (gAmxNet)
+        gAmxNet->sendCommand(scmd);
+    else
+        MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+}
+
 void TPageManager::sendPHNcommand(const std::string& cmd)
 {
     DECL_TRACER("TPageManager::sendPHNcommand(const std::string& cmd)");
@@ -3128,6 +3155,34 @@ void TPageManager::doWCN(int, vector<int>&, vector<string>&)
         gAmxNet->sendCommand(scmd);
     else
         MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+}
+
+/**
+ * Flip to specified page using the named animation.
+ * FIXME: Implement animation for pages.
+ */
+void TPageManager::doAFP(int, vector<int>&, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doAFP(int, vector<int>&, vector<string>& pars)");
+
+    if (pars.size() < 4)
+    {
+        MSG_ERROR("Less than 4 parameters!");
+        return;
+    }
+
+    TError::clear();
+    string pname = pars[0];
+//    string ani = pars[1];
+//    int origin = atoi(pars[2].c_str());
+//    int duration = atoi(pars[3].c_str());
+
+    // FIXME: Animation of pages is currently not implemented.
+
+    if (!pname.empty())
+        setPage(pname);
+    else if (mPreviousPage)
+        setPage(mPreviousPage);
 }
 
 /**

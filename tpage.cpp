@@ -29,6 +29,7 @@
 #include "tpage.h"
 #include "tdrawimage.h"
 #include "texpat++.h"
+#include "tobject.h"
 
 using std::string;
 using std::vector;
@@ -1273,10 +1274,22 @@ void TPage::drop()
 
     PAGECHAIN_T *pc = mSubPages;
 
+    // remove all subpages, if there are any
     while (pc)
     {
+        MSG_DEBUG("Dropping popup " << pc->subpage->getNumber() << ": " << pc->subpage->getName());
         pc->subpage->drop();
         pc = pc->next;
+    }
+
+    // remove all buttons, if there are any
+    BUTTONS_T *bt = mButtons;
+
+    while (bt)
+    {
+        MSG_DEBUG("Dropping button " << TObject::handleToString(bt->button->getHandle()));
+        bt->button->hide(true);
+        bt = bt->next;
     }
 
     mZOrder = ZORDER_INVALID;

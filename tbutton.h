@@ -945,6 +945,8 @@ namespace Button
             int cp{1};              // Channel port (default: 1)
             int lp{1};              // Level port (default: 1)
             int lv{0};              // Level code
+            int co{0};              // Command port
+            std::string cm;         // Command to send on each button hit
             std::string dr;         // Level "horizontal" or "vertical"
             int va{0};
             int stateCount{0};      // State count with multistate buttons

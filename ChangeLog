@@ -3,6 +3,13 @@ ChangeLog
 
 Release: 1.3.2
 ===============================================================================
+2022-05-05 Added command ^AFP rudimentary. The command is missing the
+           animation effects.
+           Added self feed commands.
+           Added command send on button hit to controller.
+           Fixed switching pages: The open popups are closed and buttons are
+           removed from page. Then the new page is initialized.
+
 2022-05-04 Fixed color search when a color was defined as an index number.
            Fixed page size setting and calculation of a potential hight
            oversize.

@@ -251,6 +251,7 @@ class TPageManager : public TAmxCommands
         void sendGlobalString(const std::string& text);
         void sendPHNcommand(const std::string& cmd);
         void sendKeyStroke(char key);
+        void sendCommandString(int port, const std::string& cmd);
         /**
          * This starts the communication with the AMX controller. The method
          * registers the callbacks and starts a thread. This thread runs as
@@ -258,6 +259,17 @@ class TPageManager : public TAmxCommands
          * end by a command.
          */
         void startUp();
+        /**
+         * Callback function for the AMX controller part. This function must
+         * be registered to the class TAmxNet and is called from this module
+         * every time an event occured from the controller.
+         * This method handles the commands comming from the controller and
+         * draws the necessary elements before they are sent to the GUI.
+         *
+         * @param cmd
+         * An ANET_COMMAND structure containing the received command.
+         */
+        void doCommand(const amx::ANET_COMMAND& cmd);
 
         // Callbacks who will be registered by the graphical surface.
         std::function<void (ulong handle, ulong parent, unsigned char *buffer, int width, int height, int pixline, int left, int top)> getCallbackDB() { return _displayButton; }
@@ -358,17 +370,6 @@ class TPageManager : public TAmxCommands
          */
         bool doOverlap(RECT_T r1, RECT_T r2);
         /**
-         * Callback function for the AMX controller part. This function must
-         * be registered to the class TAmxNet and is called from this module
-         * every time an event occured from the controller.
-         * This method handles the commands comming from the controller and
-         * draws the necessary elements before they are sent to the GUI.
-         *
-         * @param cmd
-         * An ANET_COMMAND structure containing the received command.
-         */
-        void doCommand(const amx::ANET_COMMAND& cmd);
-        /**
          * The following function is used internaly. It searches in the map
          * table for the button corresponding to the port and channel number
          * and puts the result into a chain of buttons. This chain is returned.
@@ -405,6 +406,7 @@ class TPageManager : public TAmxCommands
         void doVER(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doWCN(int port, std::vector<int>& channels, std::vector<std::string>& pars);
 
+        void doAFP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doAPG(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doCPG(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doDPG(int port, std::vector<int>& channels, std::vector<std::string>& pars);
