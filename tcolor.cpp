@@ -42,6 +42,20 @@ TColor::COLOR_T TColor::getAMXColor(const string& color)
         return TColor::COLOR_T();
     }
 
+    // Check if we've an index number
+    if (color.length() <= 2 && isdigit(color[0]))
+    {
+        int idx = atoi(color.c_str());
+
+        if (idx >= 0 && idx <= 88)
+        {
+            PDATA_T pd = mPalette->findColor(idx);
+
+            if (!pd.name.empty())
+                return splitColors(pd);
+        }
+    }
+
     size_t pos = color.find('#');
 
     if (pos == string::npos)
@@ -59,22 +73,6 @@ TColor::COLOR_T TColor::getAMXColor(const string& color)
             return splitColors(pd);
 
         MSG_DEBUG("Color " << color << " not found in table!");
-        return TColor::COLOR_T();
-    }
-
-    // Check if we've an index number
-    if (color.length() <= 2 && isdigit(color[0]))
-    {
-        int idx = atoi(color.c_str());
-
-        if (idx < 0 || idx > 88)
-            return TColor::COLOR_T();
-
-        PDATA_T pd = mPalette->findColor(idx);
-
-        if (!pd.name.empty())
-            return splitColors(pd);
-
         return TColor::COLOR_T();
     }
 

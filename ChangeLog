@@ -3,6 +3,13 @@ ChangeLog
 
 Release: 1.3.2
 ===============================================================================
+2022-05-04 Fixed color search when a color was defined as an index number.
+           Fixed page size setting and calculation of a potential hight
+           oversize.
+           Added the scPanel command to the button functions.
+           Fixed the sToggle button command. Now it loads a page and shows it
+           if it is not in the internal cache.
+
 2022-05-02 Honors now the VOIP channel setting for SIP.
            Added the "User-Agent" header to the SIP client.
            Added a new command IM (instant message) to send instant messages

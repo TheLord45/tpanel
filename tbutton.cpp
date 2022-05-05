@@ -5790,7 +5790,7 @@ bool TButton::stretchImageHeight(SkBitmap *bm, int height)
  */
 bool TButton::doClick(int x, int y, bool pressed)
 {
-    DECL_TRACER("TButton::doClick(bool pressed)");
+    DECL_TRACER("TButton::doClick(int x, int y, bool pressed)");
     amx::ANET_SEND scmd;
     int instance = 0;
     int sx = x, sy = y;
@@ -6126,23 +6126,24 @@ bool TButton::doClick(int x, int y, bool pressed)
         for (iter = pushFunc.begin(); iter != pushFunc.end(); ++iter)
         {
             MSG_DEBUG("Testing for function " << iter->pfType);
+            string pfType = toUpper(iter->pfType);
 
-            if (iter->pfType == "sShow")            // show popup
+            if (pfType == "SSHOW")            // show popup
             {
                 if (gPageManager)
                     gPageManager->showSubPage(iter->pfName);
             }
-            else if (iter->pfType == "sHide")       // hide popup
+            else if (pfType == "SHIDE")       // hide popup
             {
                 if (gPageManager)
                     gPageManager->hideSubPage(iter->pfName);
             }
-            else if (iter->pfType == "scGroup")     // hide group
+            else if (pfType == "SCGROUP")     // hide group
             {
                 if (gPageManager)
                     gPageManager->closeGroup(iter->pfName);
             }
-            else if (iter->pfType == "Stan")        // Flip to standard page
+            else if (pfType == "STAN")        // Flip to standard page
             {
                 if (gPageManager)
                 {
@@ -6160,7 +6161,7 @@ bool TButton::doClick(int x, int y, bool pressed)
                         gPageManager->setPage(settings->getPowerUpPage());
                 }
             }
-            else if (iter->pfType == "Prev")        // Flip to previous page
+            else if (pfType == "PREV")        // Flip to previous page
             {
                 if (gPageManager)
                 {
@@ -6170,17 +6171,40 @@ bool TButton::doClick(int x, int y, bool pressed)
                         gPageManager->setPage(old);
                 }
             }
-            else if (iter->pfType == "sToggle")     // Toggle popup state
+            else if (pfType == "STOGGLE")     // Toggle popup state
             {
-                if (gPageManager)
+                if (!iter->pfName.empty() && gPageManager)
                 {
                     TSubPage *page = gPageManager->getSubPage(iter->pfName);
 
-                    if (page && page->isVisible())
+                    if (!page)      // Is the page not in cache?
+                    {               // No, then load it
+                        gPageManager->showSubPage(iter->pfName);
+                        return true;
+                    }
+
+                    if (page->isVisible())
                         gPageManager->hideSubPage(iter->pfName);
-                    else if (page)
+                    else
                         gPageManager->showSubPage(iter->pfName);
                 }
+            }
+            else if (pfType == "SCPANEL")   // Hide all popups
+            {
+                if (gPageManager)
+                {
+                    TSubPage *page = gPageManager->getFirstSubPage();
+
+                    while (page)
+                    {
+                        page->drop();
+                        page = gPageManager->getNextSubPage();
+                    }
+                }
+            }
+            else
+            {
+                MSG_WARNING("Unknown page flip command " << iter->pfType);
             }
         }
     }

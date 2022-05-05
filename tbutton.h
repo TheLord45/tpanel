@@ -844,6 +844,11 @@ namespace Button
              * @return The font style.
              */
             FONT_STYLE getFontStyle();
+            /**
+             * Tests the button if it is clickable.
+             * @return TRUE if it is clickable, FALSE otherwise.
+             */
+            bool isClickable();
 
         protected:
             BUTTONTYPE getButtonType(const std::string& bt);
@@ -894,7 +899,6 @@ namespace Button
             bool buttonIcon(SkBitmap *bm, int instance);
             bool buttonText(SkBitmap *bm, int instance);
             bool buttonBorder(SkBitmap *bm, int instance);
-            bool isClickable();
             bool isPixelTransparent(int x, int y);
             bool barLevel(SkBitmap *bm, int instance, int level);
             bool makeElement(int instance=-1);

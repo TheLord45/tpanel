@@ -1176,6 +1176,7 @@ TSubPage *TPageManager::getSubPage(const std::string& name)
         p = p->next;
     }
 
+    MSG_DEBUG("Page " << name << " not found in cache.");
     return nullptr;
 }
 
@@ -1986,6 +1987,12 @@ Button::TButton *TPageManager::getCoordMatchPage(int x, int y)
         {
             MSG_DEBUG("Button: " << bt->getButtonIndex() << ", l: " << bt->getLeftPosition() << ", t: " << bt->getTopPosition() << ", w: " << bt->getWidth() << ", h: " << bt->getHeight() << ", x: " << x << ", y: " << y);
 
+            if (!bt->isClickable())
+            {
+                bt = page->getNextButton();
+                continue;
+            }
+
             if (bt->getLeftPosition() <= x && (bt->getLeftPosition() + bt->getWidth()) >= x &&
                 bt->getTopPosition() <= y && (bt->getTopPosition() + bt->getHeight()) >= y)
             {
@@ -2270,13 +2277,15 @@ void TPageManager::mouseEvent(int x, int y, bool pressed)
         realY = (int)((double)realY / mScaleFactor);
         MSG_DEBUG("Scaled coordinates: x=" << realX << ", y=" << realY);
     }
+#else
+    MSG_DEBUG("Using real coordinates x=" << realX << ", y=" << realY);
 #endif
 
     TSubPage *subPage = getCoordMatch(realX, realY);
 
     if (!subPage)
     {
-        Button::TButton *bt = getCoordMatchPage(x, y);
+        Button::TButton *bt = getCoordMatchPage(realX, realY);
 
         if (bt)
         {

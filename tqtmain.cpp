@@ -2005,18 +2005,21 @@ void MainWindow::setPage(ulong handle, int width, int height)
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         mBackground->setFixedSize(obj->width, obj->height);
 #else
-        QRect rectBack = mBackground->geometry();
+//        QRect rectBack = mBackground->geometry();
         QRect rectMain = this->geometry();
 
         QSize icSize =  this->iconSize();
         int width = rectMain.width() + icSize.width() + 16;
         rectMain.setWidth(width);
         setGeometry(rectMain);
+        MSG_DEBUG("Height of main window:  " << rectMain.height());
+        MSG_DEBUG("Height of panel screen: " << height);
         // If our first top pixel is not 0, maybe because of a menu, window
         // decorations or a toolbar, we must add this extra height to the
         // positions of widgets and mouse presses.
-        int avHeight = rectMain.height() - rectBack.height();
-        MSG_DEBUG("avHeight=" << avHeight);
+        int avHeight = rectMain.height() - height;
+        MSG_DEBUG("Difference in height:   " << avHeight);
+//        MSG_DEBUG("avHeight=" << avHeight);
         gPageManager->setFirstTopPixel(avHeight);
 #endif
         newBackground = true;
