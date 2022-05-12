@@ -367,7 +367,7 @@ size_t TButton::initialize(TExpat *xml, size_t index)
         else if (ename.compare("co") == 0)
             co = xml->convertElementToInt(content);
         else if (ename.compare("cm") == 0)
-            cm = content;
+            cm.push_back(content);
         else if (ename.compare("va") == 0)
             va = xml->convertElementToInt(content);
         else if (ename.compare("rm") == 0)
@@ -1015,7 +1015,23 @@ bool TButton::setFeedback(FEEDBACK feedback)
 {
     DECL_TRACER("TButton::setFeedback(FEEDBACK feedback)");
 
+    int oldFB = fb;
     fb = feedback;
+
+    if (mEnabled && !hd)
+    {
+        if ((feedback == FB_ALWAYS_ON || feedback == FB_INV_CHANNEL) && mActInstance != 1)
+        {
+            mActInstance = 1;
+            makeElement(1);
+        }
+        else if (oldFB == FB_ALWAYS_ON && feedback != FB_ALWAYS_ON && feedback != FB_INV_CHANNEL && mActInstance == 1)
+        {
+            mActInstance = 0;
+            makeElement(0);
+        }
+    }
+
     return true;
 }
 
@@ -1023,20 +1039,21 @@ bool TButton::setBorderStyle(const string& style, int instance)
 {
     DECL_TRACER("TButton::setBorderStyle(const string& style, int instance)");
 
-    if (instance == 0 || (size_t)instance >= sr.size())
+    if ((size_t)instance >= sr.size())
     {
         MSG_ERROR("Instance " << instance << " does not exist!");
         return false;
     }
 
-    int inst = (instance > 0) ? (instance - 1) : instance;
-
     if (strCaseCompare(style, "None") == 0)     // Clear the border?
     {
-        if (inst < 0)
+        if (instance < 0)
             bs.clear();
         else
-            sr[inst].bs.clear();
+            sr[instance].bs.clear();
+
+        if (mEnabled && !hd)
+            makeElement(instance);
 
         return true;
     }
@@ -1046,10 +1063,13 @@ bool TButton::setBorderStyle(const string& style, int instance)
     {
         if (gPageManager->getSystemDraw()->existBorder(style))
         {
-            if (inst < 0)
+            if (instance < 0)
                 bs = style;
             else
-                sr[inst].bs = style;
+                sr[instance].bs = style;
+
+            if (mEnabled && !hd)
+                makeElement(instance);
 
             return true;
         }
@@ -1063,10 +1083,13 @@ bool TButton::setBorderStyle(const string& style, int instance)
     {
         if (strCaseCompare(sysBorders[i].name, style) == 0)
         {
-            if (inst < 0)
+            if (instance < 0)
                 bs = sysBorders[i].name;
             else
-                sr[inst].bs = sysBorders[i].name;
+                sr[instance].bs = sysBorders[i].name;
+
+            if (mEnabled && !hd)
+                makeElement(instance);
 
             return true;
         }
@@ -1132,6 +1155,32 @@ bool TButton::setBargraphSliderColor(const string& color)
 
     if (visible)
         refresh();
+
+    return true;
+}
+
+bool TButton::setFontFileName(const string& name, int size, int inst)
+{
+    DECL_TRACER("TButton::setFontFileName(const string& name, int size)");
+
+    if (name.empty() || !mFonts)
+        return false;
+
+    if ((size_t)inst >= sr.size())
+        return false;
+
+    int id = mFonts->getFontIDfromFile(name);
+
+    if (id == -1)
+        return false;
+
+    if (inst < 0)
+    {
+        sr[0].fi = id;
+        sr[1].fi = id;
+    }
+    else
+        sr[inst].fi = id;
 
     return true;
 }
@@ -1348,6 +1397,31 @@ void TButton::setLeftTop(int left, int top)
     makeElement(mActInstance);
 }
 
+void TButton::setRectangle(int left, int top, int right, int bottom)
+{
+    DECL_TRACER("setRectangle(int left, int top, int right, int bottom)");
+
+    if (!gPageManager)
+        return;
+
+    int screenWidth = gPageManager->getSettings()->getWith();
+    int screenHeight = gPageManager->getSettings()->getHeight();
+    int width = right - left;
+    int height = bottom - top;
+
+    if (left >= 0 && right > left && (left + width) < screenWidth)
+        lt = left;
+
+    if (top >= 0 && bottom > top && (top + height) < screenHeight)
+        tp = top;
+
+    if (left >= 0 && right > left)
+        wt = width;
+
+    if (top >= 0 && bottom > top)
+        ht = height;
+}
+
 void TButton::setResourceName(const string& name, int instance)
 {
     DECL_TRACER("TButton::setResourceName(const string& name, int instance)");
@@ -1496,7 +1570,7 @@ void TButton::setTextJustification(int j, int x, int y, int instance)
 {
     DECL_TRACER("TButton::setTextJustification(int j, int x, int y, int instance)");
 
-    if (j < 0 || j > 9 || instance < 0 || instance >= (int)sr.size())
+    if (j < 0 || j > 9 || instance >= (int)sr.size())
         return;
 
     if (instance < 0)
@@ -1822,10 +1896,26 @@ bool TButton::startAnimation(int start, int end, int time)
 {
     DECL_TRACER("TButton::startAnimation(int start, int end, int time)");
 
-    if (start >= end || start < 0 || (size_t)end >= sr.size() || time <= 0)
+    if (start > end || start < 0 || (size_t)end > sr.size() || time < 0)
     {
         MSG_ERROR("Invalid parameter: start=" << start << ", end=" << end << ", time=" << time);
         return false;
+    }
+
+    if (time == 0)
+    {
+        int inst = end - 1;
+
+        if (inst >= 0 && (size_t)inst < sr.size())
+        {
+            if (mActInstance != inst)
+            {
+                mActInstance = inst;
+                drawButton(inst);
+            }
+        }
+
+        return true;
     }
 
     if (mAniRunning || mThrAni.joinable())
@@ -4250,7 +4340,7 @@ bool TButton::drawButton(int instance, bool show)
     {
         bool db = (_displayButton != nullptr);
         MSG_DEBUG("Button " << bi << ", \"" << na << "\" at instance " << instance << " is not to draw!");
-        MSG_DEBUG("Visible: " << (visible ? "YES" : "NO") << ", Instance/actual instance: " << instance << "/" << mActInstance << ", callback: " << (db ? "PRESENT" : "N/A"));
+        MSG_DEBUG("Visible: " << (visible ? "YES" : "NO") << ", Hidden: " << (hd ? "YES" : "NO") << ", Instance/actual instance: " << instance << "/" << mActInstance << ", callback: " << (db ? "PRESENT" : "N/A"));
         mutex_button.unlock();
         return true;
     }
@@ -5506,7 +5596,9 @@ bool TButton::isClickable()
 {
     DECL_TRACER("TButton::isClickable()");
 
-    if (mEnabled && ((cp != 0 && ch != 0) || (lp != 0 && lv != 0) || !cm.empty() || !op.empty() || !pushFunc.empty() || isSystemButton()) && hs.compare("passThru") != 0)
+    MSG_DEBUG("Enabled: " << (mEnabled ? "YES" : "NO") << ", HS: " << hs);
+
+    if (mEnabled && /*((cp != 0 && ch != 0) || (lp != 0 && lv != 0) || !cm.empty() || !op.empty() || !pushFunc.empty() || isSystemButton()) &&*/ hs.compare("passThru") != 0)
         return true;
 
     return false;
@@ -5889,9 +5981,7 @@ bool TButton::doClick(int x, int y, bool pressed)
 
             MSG_DEBUG("Flavor FB_MOMENTARY, instance=" << instance);
             mActInstance = instance;
-            // we ignore the state of the method, because it doesn't matter
-            // for the message to the controller.
-            drawButton(instance, false);
+            drawButton(instance);
             // If there is nothing in "hs", then it depends on the pixel of the
             // layer. Only if the pixel the coordinates point to are not
             // transparent, the button takes the click.
@@ -6215,30 +6305,45 @@ bool TButton::doClick(int x, int y, bool pressed)
 
     if (!cm.empty() && co == 0 && pressed)      // Feed command to ourself?
     {                                           // Yes, then feed it into command queue.
-        MSG_DEBUG("Button has a self feed command: " << cm);
+        MSG_DEBUG("Button has a self feed command");
+
+        int channel = TConfig::getChannel();
+        int system = TConfig::getSystem();
 
         if (gPageManager)
         {
             amx::ANET_COMMAND cmd;
             cmd.MC = 0x000c;
-            cmd.device1 = TConfig::getChannel();
-            cmd.port1 = co;
-            cmd.data.chan_state.port = co;
-            cmd.data.chan_state.channel = 0;
-            cmd.data.chan_state.device = TConfig::getChannel();
-            cmd.data.chan_state.system = 0;
-            cmd.data.message_string.length = cm.length();
-            memset(&cmd.data.message_string.content, 0, sizeof(cmd.data.message_string.content));
-            strncpy((char *)&cmd.data.message_string.content, cm.c_str(), sizeof(cmd.data.message_string.content));
-            gPageManager->doCommand(cmd);
+            cmd.device1 = channel;
+            cmd.port1 = ap;
+            cmd.system = system;
+            cmd.data.message_string.device = channel;
+            cmd.data.message_string.port = ap;  // Must be the address port of button
+            cmd.data.message_string.system = system;
+            cmd.data.message_string.type = 1;   // 8 bit char string
+
+            vector<string>::iterator iter;
+
+            for (iter = cm.begin(); iter != cm.end(); ++iter)
+            {
+                cmd.data.message_string.length = iter->length();
+                memset(&cmd.data.message_string.content, 0, sizeof(cmd.data.message_string.content));
+                strncpy((char *)&cmd.data.message_string.content, iter->c_str(), sizeof(cmd.data.message_string.content));
+                gPageManager->doCommand(cmd);
+            }
         }
     }
     else if (!cm.empty() && pressed)
     {
-        MSG_DEBUG("Button sends a command on port " << co << ": " << cm);
+        MSG_DEBUG("Button sends a command on port " << co);
 
         if (gPageManager)
-            gPageManager->sendCommandString(co, cm);
+        {
+            vector<string>::iterator iter;
+
+            for (iter = cm.begin(); iter != cm.end(); ++iter)
+                gPageManager->sendCommandString(co, *iter);
+        }
     }
 
     return true;

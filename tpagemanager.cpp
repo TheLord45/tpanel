@@ -305,9 +305,10 @@ TPageManager::TPageManager()
     REG_CMD(getBCT, "?BCT");    // Get the current text color.
     REG_CMD(doBDO, "^BDO");     // Set the button draw order
     REG_CMD(doBFB, "^BFB");     // Set the feedback type of the button.
-    REG_CMD(doBMC, "^BMC");    // Button copy command.
+    REG_CMD(doBMC, "^BMC");     // Button copy command.
+    REG_CMD(doBMF, "^BMF");     // Button Modify Command - Set any/all button parameters by sending embedded codes and data.
 //    REG_CMD(doBMI, "^BMI");    // Set the button mask image.
-    REG_CMD(doBML, "^BML");    // Set the maximum length of the text area button.
+    REG_CMD(doBML, "^BML");     // Set the maximum length of the text area button.
     REG_CMD(doBMP, "^BMP");     // Assign a picture to those buttons with a defined addressrange.
     REG_CMD(getBMP, "?BMP");    // Get the current bitmap name.
     REG_CMD(doBOP, "^BOP");     // Set the button opacity.
@@ -350,6 +351,7 @@ TPageManager::TPageManager()
     REG_CMD(getTXT, "?TXT");    // Get the current text information.
     REG_CMD(doUNI, "^UNI");     // Set Unicode text.
     REG_CMD(doUTF, "^UTF");     // G5: Set button state text using UTF-8 text command.
+    REG_CMD(doVTP, "^VTP");     // Simulates a touch/release/pulse at the given coordinate
 
 //    REG_CMD(doLPC, "^LPC");     // Clear all users from the User Access Passwords list on the Password Setup page.
 //    REG_CMD(doLPR, "^LPR");     // Remove a given user from the User Access Passwords list on the Password Setup page.
@@ -407,6 +409,7 @@ TPageManager::TPageManager()
     // TPControl commands
     REG_CMD(doTPCCMD, "TPCCMD");    // Profile related options
     REG_CMD(doTPCACC, "TPCACC");    // Device orientation
+    REG_CMD(doTPCSIP, "TPCSIP");    // Show the built in SIP phone
     // Virtual internal commands
     REG_CMD(doFTR, "#FTR");     // File transfer (virtual internal command)
 
@@ -797,7 +800,7 @@ void TPageManager::doCommand(const amx::ANET_COMMAND& cmd)
                 else
                     com.assign(cp1250ToUTF8((char *)&msg.content));
 
-                parseCommand(bef.device1, bef.data.chan_state.port, com);
+                parseCommand(bef.device1, msg.port, com);
                 mCmdBuffer.clear();
             }
             break;
@@ -1221,7 +1224,7 @@ TSubPage *TPageManager::deliverSubPage(const string& name, TPage **pg)
             return nullptr;
         }
 
-        page->addSubPage(subPage);
+//        page->addSubPage(subPage);
     }
 
     return subPage;
@@ -1717,6 +1720,38 @@ bool TPageManager::destroyAll()
     return true;
 }
 
+bool TPageManager::overlap(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int h2)
+{
+    DECL_TRACER("TPageManager::overlap(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int h2)");
+
+    struct point
+    {
+        int x;
+        int y;
+    };
+
+    struct point l1, r1, l2, r2;
+
+    l1.x = x1;
+    l1.y = y1;
+    r1.x = x1 + w1;
+    r1.y = y1 + h1;
+
+    l2.x = x2;
+    l2.y = y2;
+    r2.x = x2 + w2;
+    r2.y = y2 + h2;
+
+    if (l1.x == r1.x || l1.y == r1.y || l2.x == r2.x || l2.y == r2.y)
+    {
+        // the line cannot have positive overlap
+        return false;
+    }
+
+    return std::max(l1.x, l2.x) < std::min(r1.x, r2.x) &
+           std::max(l1.y, l2.y) < std::min(r1.y, r2.y);
+}
+
 Button::TButton *TPageManager::findButton(ulong handle)
 {
     DECL_TRACER("TPageManager::findButton(ulong handle)");
@@ -1955,7 +1990,10 @@ TSubPage *TPageManager::getCoordMatch(int x, int y)
     while (pg)
     {
         if (pg->isVisible())
+        {
+            MSG_DEBUG("Adding subpage (Z: " << pg->getZOrder() << "): " << pg->getNumber() << ", " << pg->getName());
             zOrder.insert(pair<int, TSubPage *>(pg->getZOrder(), pg));
+        }
 
         pg = getNextSubPage();
     }
@@ -1967,6 +2005,7 @@ TSubPage *TPageManager::getCoordMatch(int x, int y)
 
         for (iter = zOrder.rbegin(); iter != zOrder.rend(); ++iter)
         {
+            MSG_DEBUG("Scanning subpage (Z: " << iter->second->getZOrder() << "): " << iter->second->getNumber() << ", " << iter->second->getName());
             RECT_T r = iter->second->getRegion();
 
             if (r.left <= realX && (r.left + r.width) >= realX &&
@@ -1989,15 +2028,16 @@ Button::TButton *TPageManager::getCoordMatchPage(int x, int y)
 
     if (page)
     {
-        Button::TButton *bt = page->getFirstButton();
+        Button::TButton *bt = page->getLastButton();
 
         while (bt)
         {
-            MSG_DEBUG("Button: " << bt->getButtonIndex() << ", l: " << bt->getLeftPosition() << ", t: " << bt->getTopPosition() << ", w: " << bt->getWidth() << ", h: " << bt->getHeight() << ", x: " << x << ", y: " << y);
+            bool clickable = bt->isClickable();
+            MSG_DEBUG("Button: " << bt->getButtonIndex() << ", l: " << bt->getLeftPosition() << ", t: " << bt->getTopPosition() << ", r: " << (bt->getLeftPosition() + bt->getWidth()) << ", b: " << (bt->getTopPosition() + bt->getHeight()) << ", x: " << x << ", y: " << y << ", " << (clickable ? "CLICKABLE" : "NOT CLICKABLE"));
 
-            if (!bt->isClickable())
+            if (!clickable)
             {
-                bt = page->getNextButton();
+                bt = page->getPreviousButton();
                 continue;
             }
 
@@ -2008,7 +2048,7 @@ Button::TButton *TPageManager::getCoordMatchPage(int x, int y)
                 return bt;
             }
 
-            bt = page->getNextButton();
+            bt = page->getPreviousButton();
         }
     }
 
@@ -2173,10 +2213,14 @@ void TPageManager::showSubPage(const string& name)
     if (name.empty())
         return;
 
-    TSubPage *pg = deliverSubPage(name);
+    TPage *page = nullptr;
+    TSubPage *pg = deliverSubPage(name, &page);
 
     if (!pg)
         return;
+
+    if (page)
+        page->addSubPage(pg);
 
     string group = pg->getGroupName();
 
@@ -2190,6 +2234,49 @@ void TPageManager::showSubPage(const string& name)
                 sub->drop();
 
             sub = getNextSubPageGroup(group, sub);
+        }
+    }
+
+    if (pg->isVisible())
+    {
+        MSG_DEBUG("Page " << pg->getName() << " is already visible but maybe not on top.");
+
+        TSubPage *sub = getFirstSubPage();
+        bool redraw = false;
+
+        while (sub)
+        {
+            if (sub->isVisible() && pg->getZOrder() < sub->getZOrder() &&
+                overlap(sub->getLeft(), sub->getTop(), sub->getWidth(), sub->getHeight(),
+                pg->getLeft(), pg->getTop(), pg->getWidth(), pg->getHeight()))
+            {
+                MSG_DEBUG("Page " << sub->getName() << " is overlapping page " << pg->getName());
+                redraw = true;
+                break;
+            }
+
+            sub = getNextSubPage();
+        }
+
+        if (redraw && _toFront)
+        {
+            _toFront((pg->getNumber() << 16) & 0xffff0000);
+            pg->setZOrder(page->getNextZOrder());
+            page->sortSubpages();
+            MSG_DEBUG("Setting new Z-order " << page->getActZOrder() << " on subpage " << page->getName());
+        }
+        else if (!_toFront)
+            pg->drop();
+        else        // Make sure the Z-order marks the popup on top
+        {
+            int zo = page->getActZOrder();
+
+            if (pg->getZOrder() < zo)
+            {
+                pg->setZOrder(page->getNextZOrder());
+                page->sortSubpages();
+                MSG_DEBUG("Setting new Z-order " << page->getActZOrder() << " on subpage " << page->getName());
+            }
         }
     }
 
@@ -2298,10 +2385,14 @@ void TPageManager::mouseEvent(int x, int y, bool pressed)
         if (bt)
         {
             MSG_DEBUG("Button on page " << bt->getButtonIndex() << ": size: left=" << bt->getLeftPosition() << ", top=" << bt->getTopPosition() << ", width=" << bt->getWidth() << ", height=" << bt->getHeight());
-            TSystemSound sysSound(TConfig::getSystemPath(TConfig::SOUNDS));
 
-            if (pressed && _playSound && sysSound.getSystemSoundState())
-                _playSound(sysSound.getTouchFeedbackSound());
+            if (TConfig::getSystemSoundState())
+            {
+                TSystemSound sysSound(TConfig::getSystemPath(TConfig::SOUNDS));
+
+                if (pressed && _playSound && sysSound.getSystemSoundState())
+                    _playSound(sysSound.getTouchFeedbackSound());
+            }
 
             bt->doClick(x - bt->getLeftPosition(), y - bt->getTopPosition(), pressed);
         }
@@ -2378,7 +2469,6 @@ vector<Button::TButton *> TPageManager::collectButtons(vector<MAP_T>& map)
                     return buttons;
 
                 page = getPage(iter->pg);
-                addPage(page);
             }
 
             Button::TButton *bt = page->getButton(iter->bt);
@@ -2406,7 +2496,7 @@ vector<Button::TButton *> TPageManager::collectButtons(vector<MAP_T>& map)
                     return buttons;
                 }
 
-                page->addSubPage(subpage);
+//                page->addSubPage(subpage);
             }
 
             Button::TButton *bt = subpage->getButton(iter->bt);
@@ -2802,6 +2892,74 @@ void TPageManager::sendOrientation()
     }
 
     sendGlobalString("TPCACC-" + ori);
+}
+
+void TPageManager::onSwipeEvent(TPageManager::SWIPES sw)
+{
+    DECL_TRACER("TPageManager::onSwipeEvent(TPageManager::SWIPES sw)");
+
+    // Swipes are defined in "external".
+    if (!mExternal)
+        return;
+
+    extButtons_t eBt;
+    string dbg;
+
+    switch(sw)
+    {
+        case SW_LEFT:   eBt = EXT_GESTURE_LEFT; dbg.assign("LEFT"); break;
+        case SW_RIGHT:  eBt = EXT_GESTURE_RIGHT; dbg.assign("RIGHT"); break;
+        case SW_UP:     eBt = EXT_GESTURE_UP; dbg.assign("UP"); break;
+        case SW_DOWN:   eBt = EXT_GESTURE_DOWN; dbg.assign("DOWN"); break;
+
+        default:
+            return;
+    }
+
+    int pgNum = getActualPageNumber();
+    EXTBUTTON_t bt = mExternal->getButton(pgNum, eBt);
+
+    if (bt.bi == 0)
+        return;
+
+    MSG_DEBUG("Received swipe " << dbg << " event for page " << pgNum << " on button " << bt.bi << " \"" << bt.na << "\"");
+
+    if (!bt.cm.empty() && bt.co == 0)           // Feed command to ourself?
+    {                                           // Yes, then feed it into command queue.
+        MSG_DEBUG("Button has a self feed command");
+
+        int channel = TConfig::getChannel();
+        int system = TConfig::getSystem();
+
+        amx::ANET_COMMAND cmd;
+        cmd.MC = 0x000c;
+        cmd.device1 = channel;
+        cmd.port1 = bt.ap;
+        cmd.system = system;
+        cmd.data.message_string.device = channel;
+        cmd.data.message_string.port = bt.ap;  // Must be the address port of button
+        cmd.data.message_string.system = system;
+        cmd.data.message_string.type = 1;   // 8 bit char string
+
+        vector<string>::iterator iter;
+
+        for (iter = bt.cm.begin(); iter != bt.cm.end(); ++iter)
+        {
+            cmd.data.message_string.length = iter->length();
+            memset(&cmd.data.message_string.content, 0, sizeof(cmd.data.message_string.content));
+            strncpy((char *)&cmd.data.message_string.content, iter->c_str(), sizeof(cmd.data.message_string.content));
+            doCommand(cmd);
+        }
+    }
+    else if (!bt.cm.empty())
+    {
+        MSG_DEBUG("Button sends a command on port " << bt.co);
+
+        vector<string>::iterator iter;
+
+        for (iter = bt.cm.begin(); iter != bt.cm.end(); ++iter)
+            sendCommandString(bt.co, *iter);
+    }
 }
 
 /****************************************************************************
@@ -3213,8 +3371,10 @@ void TPageManager::doAPG(int, std::vector<int>&, std::vector<std::string>& pars)
         return;
     }
 
+    page->addSubPage(subPage);
     subPage->setGroup(pars[1]);
     subPage->setZOrder(page->getNextZOrder());
+    MSG_DEBUG("Setting new Z-order " << page->getActZOrder() << " on page " << page->getName());
     subPage->show();
 }
 
@@ -3474,8 +3634,9 @@ void TPageManager::doPPG(int, std::vector<int>&, std::vector<std::string>& pars)
         sub = getNextSubPageGroup(pg->getGroupName(), sub);
     }
 
-    pg->show();
     pg->setZOrder(page->getNextZOrder());
+    MSG_DEBUG("Setting new Z-order " << page->getActZOrder() << " on page " << page->getName());
+    pg->show();
 }
 
 /**
@@ -4500,6 +4661,397 @@ void TPageManager::doBMC(int port, vector<int>& channels, vector<std::string>& p
             }
 
             idx++;
+        }
+    }
+}
+
+void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.size() < 2)
+        return;
+
+    TError::clear();
+    int btState = atoi(pars[0].c_str()) - 1;
+    string commands;
+
+    for (size_t i = 1; i < pars.size(); ++i)
+    {
+        if (i > 1)
+            commands += ",";
+
+        commands += pars[i];
+    }
+
+    vector<MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    // Start of parsing the command line
+    // We splitt the command line into parts by searching for a percent % sign.
+    vector<string> parts = StrSplit(commands, "%");
+
+    // Search for all buttons who need to be updated
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+            // Iterate through commands and apply them to button
+            vector<string>::iterator iter;
+
+            for (iter = parts.begin(); iter != parts.end(); ++iter)
+            {
+                char cmd = iter->at(0);
+                char cmd2;
+                string content;
+
+                switch(cmd)
+                {
+                    case 'B':   // Border style
+                        content = iter->substr(1);
+                        bt->setBorderStyle(content, btState);
+                    break;
+
+                    case 'C':   // Colors
+                        cmd2 = iter->at(1);
+                        content = iter->substr(2);
+
+                        switch(cmd2)
+                        {
+                            case 'B':   // Border color
+                                bt->setBorderColor(content, btState);
+                            break;
+
+                            case 'F':   // Fill color
+                                bt->setFillColor(content, btState);
+                            break;
+
+                            case 'T':   // Text color
+                                bt->setTextColor(content, btState);
+                            break;
+                        }
+                    break;
+
+                    case 'D':   // Draw order
+                        cmd2 = iter->at(1);
+                        content = iter->substr(2);
+
+                        if (cmd2 == 'O')
+                            bt->setDrawOrder(content, btState);
+                    break;
+
+                    case 'E':   // Text effect
+                        cmd2 = iter->at(1);
+                        content = iter->substr(2);
+
+                        switch(cmd2)
+                        {
+                            case 'C':   // Text effect color
+                                bt->setTextEffectColor(content, btState);
+                            break;
+
+                            case 'F':   // Text effect name
+                                bt->setTextEffectName(content, btState);
+                            break;
+
+                            case 'N':   // Enable/disable button
+                                bt->setEnable((content[0] == '1' ? true : false));
+                            break;
+                        }
+                    break;
+
+                    case 'F':   // Set font file name
+                        content = iter->substr(1);
+
+                        if (!isdigit(content[0]))
+                            bt->setFontFileName(content, -1, btState);
+                        else
+                            bt->setFontIndex(atoi(content.c_str()), btState);
+                    break;
+
+                    case 'G':   // Bargraphs
+                        cmd2 = iter->at(1);
+                        content = iter->substr(2);
+
+                        switch(cmd2)
+                        {
+                            case 'C':   // Bargraph slider color
+                                bt->setBargraphSliderColor(content);
+                            break;
+
+                            case 'D':   // Ramp down time
+                                // FIXME: Add function to set ramp time
+                            break;
+
+                            case 'G':   // Drag increment
+                                // FIXME: Add function to set drag increment
+                            break;
+
+                            case 'H':   // Upper limit
+                                bt->setBargraphUpperLimit(atoi(content.c_str()));
+                            break;
+
+                            case 'I':   // Invert/noninvert
+                                // FIXME: Add function to set inverting
+                            break;
+
+                            case 'L':   // Lower limit
+                                bt->setBargraphLowerLimit(atoi(content.c_str()));
+                            break;
+
+                            case 'N':   // Slider name
+                                // FIXME: Add function to set slider name
+                            break;
+
+                            case 'R':   // Repeat interval
+                                // FIXME: Add function to set repeat interval
+                            break;
+
+                            case 'U':   // Ramp up time
+                                // FIXME: Add function to set ramp up time
+                            break;
+
+                            case 'V':   // Bargraph value
+                                // FIXME: Add function to set level value
+                            break;
+                        }
+                    break;
+
+                    case 'I':   // Set the icon
+                        content = iter->substr(1);
+                        bt->setIcon(atoi(content.c_str()), btState);
+                    break;
+
+                    case 'J':   // Set text justification
+                        cmd2 = iter->at(1);
+
+                        if (cmd2 != 'T' && cmd2 != 'B' && cmd2 != 'I')
+                        {
+                            content = iter->substr(1);
+                            int just = atoi(content.c_str());
+                            int x = 0, y = 0;
+
+                            if (just == 0)
+                            {
+                                vector<string> coords = StrSplit(content, ",");
+
+                                if (coords.size() >= 3)
+                                {
+                                    x = atoi(coords[1].c_str());
+                                    y = atoi(coords[2].c_str());
+                                }
+                            }
+
+                            bt->setTextJustification(atoi(content.c_str()), x, y, btState);
+                        }
+                        else
+                        {
+                            content = iter->substr(2);
+                            int x = 0, y = 0;
+                            int just = atoi(content.c_str());
+
+                            if (just == 0)
+                            {
+                                vector<string> coords = StrSplit(content, ",");
+
+                                if (coords.size() >= 3)
+                                {
+                                    x = atoi(coords[1].c_str());
+                                    y = atoi(coords[2].c_str());
+                                }
+                            }
+
+                            switch(cmd2)
+                            {
+                                case 'B':   // Alignment of bitmap
+                                    bt->setBitmapJustification(atoi(content.c_str()), x, y, btState);
+                                break;
+
+                                case 'I':   // Alignment of icon
+                                    bt->setIconJustification(atoi(content.c_str()), x, y, btState);
+                                break;
+
+                                case 'T':   // Alignment of text
+                                    bt->setTextJustification(atoi(content.c_str()), x, y, btState);
+                                break;
+                            }
+                        }
+                    break;
+
+                    case 'M':   // Text area
+                        cmd2 = iter->at(1);
+                        content = iter->substr(2);
+
+                        switch(cmd2)
+                        {
+                            case 'I':   // Set mask image
+                                // FIXME: Add code for image mask
+                            break;
+
+                            case 'K':   // Input mask of text area
+                                // FIXME: Add input mask
+                            break;
+
+                            case 'L':   // Maximum length of text area
+                                // FIXME: Add code to set maximum length
+                            break;
+                        }
+                    break;
+
+                    case 'O':   // Set feedback typ, opacity
+                        cmd2 = iter->at(1);
+
+                        switch(cmd2)
+                        {
+                            case 'P':   // Set opacity
+                                bt->setOpacity(atoi(iter->substr(2).c_str()), btState);
+                            break;
+
+                            case 'T':   // Set feedback type
+                                content = iter->substr(2);
+                                content = toUpper(content);
+
+                                if (content == "NONE")
+                                    bt->setFeedback(Button::FB_NONE);
+                                else if (content == "CHANNEL")
+                                    bt->setFeedback(Button::FB_CHANNEL);
+                                else if (content == "INVERT")
+                                    bt->setFeedback(Button::FB_INV_CHANNEL);
+                                else if (content == "ON")
+                                    bt->setFeedback(Button::FB_ALWAYS_ON);
+                                else if (content == "MOMENTARY")
+                                    bt->setFeedback(Button::FB_MOMENTARY);
+                                else if (content == "BLINK")
+                                    bt->setFeedback(Button::FB_BLINK);
+                                else
+                                {
+                                    MSG_WARNING("Unknown feedback type " << content);
+                                }
+                            break;
+
+                            default:
+                                content = iter->substr(1);
+                                // FIXME: Add code to set the feedback type
+                        }
+                    break;
+
+                    case 'P':   // Set picture/bitmap file name
+                        content = iter->substr(1);
+                        bt->setBitmap(content, btState);
+                    break;
+
+                    case 'R':   // Set rectangle
+                    {
+                        content = iter->substr(1);
+                        vector<string> corners = StrSplit(content, ",");
+
+                        if (corners.size() > 0)
+                        {
+                            vector<string>::iterator itcorn;
+                            int pos = 0;
+                            int left, top, right, bottom;
+                            left = top = right = bottom = 0;
+
+                            for (itcorn = corners.begin(); itcorn != corners.end(); ++itcorn)
+                            {
+                                switch(pos)
+                                {
+                                    case 0: left   = atoi(itcorn->c_str()); break;
+                                    case 1: top    = atoi(itcorn->c_str()); break;
+                                    case 2: right  = atoi(itcorn->c_str()); break;
+                                    case 3: bottom = atoi(itcorn->c_str()); break;
+                                }
+
+                                pos++;
+                            }
+
+                            if (pos >= 4)
+                                bt->setRectangle(left, top, right, bottom);
+                        }
+                    }
+                    break;
+
+                    case 'S':   // show/hide, style, sound
+                        cmd2 = iter->at(1);
+                        content = iter->substr(2);
+
+                        switch(cmd2)
+                        {
+                            case 'F':   // Set focus of text area button
+                                // FIXME: Add code to set the focus of text area button
+                            break;
+
+                            case 'M':   // Submit text
+                                bt->setText(content, btState);
+                            break;
+
+                            case 'O':   // Sound
+                                bt->setSound(content, btState);
+                            break;
+
+                            case 'T':   // Button style
+                                // FIXME: Add code to set the button style
+                            break;
+
+                            case 'W':   // Show / hide button
+                                if (content[0] == '0')
+                                    bt->hide();
+                                else
+                                    bt->show();
+                            break;
+                        }
+                    break;
+
+                    case 'T':   // Set text
+                        content = iter->substr(1);
+                        bt->setText(content, btState);
+                    break;
+
+                    case 'U':   // Set the unicode text
+                        if (iter->at(1) == 'N')
+                        {
+                            content = iter->substr(2);
+                            string byte, text;
+                            size_t pos = 0;
+
+                            while (pos < content.length())
+                            {
+                                byte = content.substr(pos, 2);
+                                char ch = (char)strtol(byte.c_str(), NULL, 16);
+                                text += ch;
+                                pos += 2;
+                            }
+
+                            bt->setText(text, btState);
+                        }
+                    break;
+
+                    case 'V':   // Video on / off
+                        cmd2 = iter->at(1);
+                        // Controlling a computer remotely is not supported.
+                        if (cmd2 != 'L' && cmd2 != 'N' && cmd2 != 'P')
+                        {
+                            content = iter->substr(2);
+                            // FIXME: Add code to switch video on or off
+                        }
+                    break;
+
+                    case 'W':   // Word wrap
+                        if (iter->at(1) == 'W')
+                        {
+                            content = iter->substr(2);
+                            bt->setTextWordWrap(content[0] == '1' ? true : false, btState);
+                        }
+                    break;
+                }
+            }
         }
     }
 }
@@ -6092,16 +6644,23 @@ void TPageManager::doSHO(int port, vector<int>& channels, vector<string>& pars)
                     pVisible = true;
             }
 
-            bt->setVisible((cvalue ? true : false));
+            bool oldV = bt->isVisible();
+            bool visible = cvalue ? true : false;
+            MSG_DEBUG("Button " << bt->getButtonIndex() << ", \"" << bt->getButtonName() << "\" set " << (visible ? "VISIBLE" : "HIDDEN") << " (Previous: " << (oldV ? "VISIBLE" : "HIDDEN") << ")");
 
-            if (pVisible)
+            if (visible != oldV)
             {
-                setButtonCallbacks(bt);
+                bt->setVisible(visible);
 
-                if (_setVisible)
-                    _setVisible(bt->getHandle(), (cvalue ? true : false));
-                else
-                    bt->refresh();
+                if (pVisible)
+                {
+                    setButtonCallbacks(bt);
+
+                    if (_setVisible)
+                        _setVisible(bt->getHandle(), visible);
+                    else
+                        bt->refresh();
+                }
             }
         }
     }
@@ -6284,7 +6843,15 @@ void TPageManager::doTXT(int port, vector<int>& channels, vector<string>& pars)
     string text;
 
     if (pars.size() > 1)
-        text = pars[1];
+    {
+        for (size_t i = 1; i < pars.size(); ++i)
+        {
+            if (i > 1)
+                text += ",";
+
+            text += pars[i];
+        }
+    }
 
     vector<MAP_T> map = findButtons(port, channels);
 
@@ -6440,7 +7007,15 @@ void TPageManager::doUTF(int port, vector<int>& channels, vector<string>& pars)
     string text;
 
     if (pars.size() > 1)
-        text = pars[1];
+    {
+        for (size_t i = 1; i < pars.size(); ++i)
+        {
+            if (i > 1)
+                text += ",";
+
+            text += pars[i];
+        }
+    }
 
     vector<MAP_T> map = findButtons(port, channels);
 
@@ -6470,6 +7045,39 @@ void TPageManager::doUTF(int port, vector<int>& channels, vector<string>& pars)
                 bt->setText(text, btState - 1);
         }
     }
+}
+
+void TPageManager::doVTP (int, vector<int>&, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doVTP (int, vector<int>&, vector<string>& pars)");
+
+    if (pars.size() < 3)
+    {
+        MSG_ERROR("Expected 3 parameters but got only " << pars.size() << " parameters!");
+        return;
+    }
+
+    int pushType = atoi(pars[0].c_str());
+    int x = atoi(pars[1].c_str());
+    int y = atoi(pars[2].c_str());
+
+    if (pushType < 0 || pushType > 2)
+    {
+        MSG_ERROR("Invalid push type " << pushType << ". Ignoring command!");
+        return;
+    }
+
+    if (x < 0 || x > mTSettings->getWith() || y < 0 || y > mTSettings->getHeight())
+    {
+        MSG_ERROR("Illegal coordinates " << x << " x " << y << ". Ignoring command!");
+        return;
+    }
+
+    if (pushType == 0 || pushType == 2)
+        mouseEvent(x, y, true);
+
+    if (pushType == 1 || pushType == 2)
+        mouseEvent(x, y, false);
 }
 
 /**
@@ -7484,5 +8092,22 @@ void TPageManager::doTPCACC(int, vector<int>&, vector<string>& pars)
     else if (strCaseCompare(cmd, "QUERY") == 0)
     {
         sendOrientation();
+    }
+}
+
+void TPageManager::doTPCSIP(int, vector<int>&, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doTPCSIP(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.empty())
+        return;
+
+    string cmd = toUpper(pars[0]);
+
+    if (cmd == "SHOW" && _showPhoneDialog)
+        _showPhoneDialog(true);
+    else if (!_showPhoneDialog)
+    {
+        MSG_ERROR("There is no phone dialog registered!");
     }
 }

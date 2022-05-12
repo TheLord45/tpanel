@@ -66,8 +66,9 @@ typedef struct EXTBUTTON_t
     int lu{2};              //!< Level time up
     int ld{2};              //!< Level time down
     int so{1};
-    int co{1};
+    int co{1};              //!< Port number for command list
     std::string ac;
+    std::vector<std::string>cm; //!< Commands to self feed or to send to the NetLinx
     int ac_de{0};
     int at{0};
 }EXBUTTON_t;

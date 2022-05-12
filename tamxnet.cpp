@@ -347,7 +347,8 @@ void TAmxNet::start()
 
         if (__CommValid && TConfig::getController() == "0.0.0.0")
         {
-            MSG_INFO("Refusing to connect to invalid controller " << TConfig::getController());
+            string controller = TConfig::getController();
+            MSG_INFO("Refusing to connect to invalid controller " << controller);
             sendAllFuncNetwork(NSTATE_OFFLINE);
             std::this_thread::sleep_for(std::chrono::seconds(10));  // Wait 10 seconds before next try
             continue;

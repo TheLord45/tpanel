@@ -311,7 +311,7 @@ void TStreamError::_init()
     if (!TConfig::isLongFormat())
         *mStream << "Logfile started at " << getTime() << std::endl;
 
-    *mStream << TConfig::getProgName() << " version " << V_MAJOR << "." << V_MINOR << "." << V_PATCH << std::endl;
+    *mStream << TConfig::getProgName() << " version " << VERSION_STRING() << std::endl;
     *mStream << "(C) Copyright by Andreas Theofilu <andreas@theosys.at>" << std::endl << " " << std::endl;
 
     if (TConfig::isLongFormat())

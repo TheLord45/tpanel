@@ -6,12 +6,18 @@ Bargraphs
 Buttons
 =======
 * Add marquee function
+* Implement text area buttons completly
+* Add command ^BMF
+  - The border style must be setable by numbers also.
+  - Alignment: The x and y valuesmust be extracted on absolute positions
+  - Implement button style setting
+  - Set video on off
+  - Text area an input masks
 
 Missing features
 ================
 * Add more commands
 * Implement TP5 commands where possible.
-* Implement SIP phone.
 * Crack the encryption of TP5 internal file.
 * Crack the encryption of passwords in resources.
 * Implement panel to panel audio communication.

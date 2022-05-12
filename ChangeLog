@@ -3,6 +3,23 @@ ChangeLog
 
 Release: 1.3.2
 ===============================================================================
+2022-05-12 Made commands case insensitive.
+           Added swipe support.
+           If there is no toolbar the back button is now asking if the user
+           want to see the setup dialog or quit the app.
+
+2022-05-10 Fixed the orientation so that portrait and landscape is now
+           correctly detected.
+           Fixed the Z-order when a popup is raised to top.
+           Fixed the Z-order for popups called from existing popups previously
+           raised to top.
+           Added recognition of sub parameters on command ^BMF.
+
+2022-05-09 Added command ^BMF: Not all options are implemented!
+           Fixed cuted off text lines containing a comma for command ^TXT.
+
+2022-05-07 Added command ^VTP.
+
 2022-05-05 Added command ^AFP rudimentary. The command is missing the
            animation effects.
            Added self feed commands.

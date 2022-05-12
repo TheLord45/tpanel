@@ -1409,9 +1409,9 @@
     <widget class="QCheckBox" name="checkBox_Toolbar">
      <property name="geometry">
       <rect>
-       <x>140</x>
+       <x>360</x>
        <y>70</y>
-       <width>361</width>
+       <width>211</width>
        <height>21</height>
       </rect>
      </property>
@@ -1458,6 +1458,19 @@
      </property>
      <property name="text">
       <string>Lock rotation</string>
+     </property>
+    </widget>
+    <widget class="QCheckBox" name="checkBox_ToolbarSuppress">
+     <property name="geometry">
+      <rect>
+       <x>140</x>
+       <y>70</y>
+       <width>211</width>
+       <height>21</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Suppress toolbar</string>
      </property>
     </widget>
    </widget>

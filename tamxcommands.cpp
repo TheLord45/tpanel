@@ -215,6 +215,7 @@ CMD_DEFINATIONS cmdDefinations[] = {
     { "#FTR", false, true, ':' },
     { "TPCCMD", false, true, ',' },
     { "TPCACC", false, true, ',' },
+    { "TPCSIP", false, true, ',' },
     { "", false, false, '\0' }
 };
 
@@ -575,7 +576,6 @@ bool TAmxCommands::parseCommand(int device, int port, const string& cmd)
 
     if (pos != string::npos)    // Command with parameters
     {
-        string bef = cmd.substr(0, pos);
         string rest = cmd.substr(pos + 1);
 
         for (iter = mCmdTable.begin(); iter != mCmdTable.end(); ++iter)
@@ -583,13 +583,13 @@ bool TAmxCommands::parseCommand(int device, int port, const string& cmd)
             iter->channels.clear();
             iter->pars.clear();
 
-            if (iter->cmd.compare(bef) == 0 && iter->command)
+            if (iter->cmd.compare(scmd) == 0 && iter->command)
             {
-                CMD_DEFINATIONS cdef = findCmdDefines(bef);
+                CMD_DEFINATIONS cdef = findCmdDefines(scmd);
 
                 if (cdef.cmd.empty())
                 {
-                    MSG_WARNING("Command \"" << bef << "\" not found in command table! Ignoring it.");
+                    MSG_WARNING("Command \"" << scmd << "\" not found in command table! Ignoring it.");
                     continue;
                 }
 
@@ -635,7 +635,7 @@ bool TAmxCommands::parseCommand(int device, int port, const string& cmd)
     {
         for (iter = mCmdTable.begin(); iter != mCmdTable.end(); ++iter)
         {
-            if (iter->cmd.compare(cmd) == 0 && iter->command)
+            if (iter->cmd.compare(scmd) == 0 && iter->command)
             {
                 iter->command(port, iter->channels, iter->pars);
                 return true;

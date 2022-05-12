@@ -164,7 +164,7 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
         return 1;
     }
 
-    if (pmanager->getSettings()->getRotate() == 1)  // portrait?
+    if (pmanager->getSettings()->isPortrait())  // portrait?
     {
         MSG_INFO("Orientation set to portrait mode.");
 
@@ -200,7 +200,7 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
         int minWidth = pmanager->getSettings()->getWith();
         int minHeight = pmanager->getSettings()->getHeight();
 
-        if (pmanager->getSettings()->getRotate() == 1)  // portrait?
+        if (pmanager->getSettings()->isPortrait())  // portrait?
         {
             width = std::min(screenGeometry.width(), screenGeometry.height());
             height = std::max(screenGeometry.height(), screenGeometry.width());
@@ -265,6 +265,7 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
     mainWin.setConfigFile(TConfig::getConfigPath() + "/" + TConfig::getConfigFileName());
     mainWin.setStyleSheet("QMainWindow {background: 'black';}");    // Keep the background black. Helps to save battery on OLED displays.
     mainWin.grabGesture(Qt::PinchGesture);
+    mainWin.grabGesture(Qt::SwipeGesture);
 
     mainWin.show();
     return app.exec();
@@ -293,8 +294,9 @@ MainWindow::MainWindow()
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
     setAttribute(Qt::WA_AcceptTouchEvents, true);   // We accept touch events
     grabGesture(Qt::PinchGesture);                  // We use a pinch gesture to open the settings dialog
+    grabGesture(Qt::SwipeGesture);                  // We support swiping also
 
-    if (gPageManager && gPageManager->getSettings()->getRotate() == 1)  // portrait?
+    if (gPageManager && gPageManager->getSettings()->isPortrait() == 1)  // portrait?
     {
         MSG_INFO("Orientation set to portrait mode.");
         _setOrientation(O_PORTRAIT);
@@ -380,6 +382,7 @@ MainWindow::MainWindow()
     gPageManager->regOnOrientationChange(bind(&MainWindow::_orientationChanged, this, std::placeholders::_1));
 #endif
     gPageManager->regRepaintWindows(bind(&MainWindow::_repaintWindows, this));
+    gPageManager->regToFront(bind(&MainWindow::_toFront, this, std::placeholders::_1));
 
     gPageManager->deployCallbacks();
     createActions();
@@ -422,6 +425,7 @@ MainWindow::MainWindow()
         connect(this, &MainWindow::sigSetPhoneStatus, this, &MainWindow::setPhoneStatus);
         connect(this, &MainWindow::sigSetPhoneState, this, &MainWindow::setPhoneState);
         connect(this, &MainWindow::sigRepaintWindows, this, &MainWindow::repaintWindows);
+        connect(this, &MainWindow::sigToFront, this, &MainWindow::toFront);
         connect(qApp, &QGuiApplication::applicationStateChanged, this, &MainWindow::appStateChanged);
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         QScreen *screen = QGuiApplication::primaryScreen();
@@ -519,7 +523,7 @@ void MainWindow::_orientationChanged(int orientation)
 {
     DECL_TRACER("MainWindow::_orientationChanged(int orientation)");
 
-    if (gPageManager && gPageManager->getSettings()->getRotate() == 1)  // portrait?
+    if (gPageManager && gPageManager->getSettings()->isPortrait() == 1)  // portrait?
     {
         if (orientation == O_REVERSE_PORTRAIT && mOrientation != Qt::InvertedPortraitOrientation)
             _setOrientation((J_ORIENTATION)orientation);
@@ -542,6 +546,14 @@ void MainWindow::_repaintWindows()
 
     emit repaintWindows();
 }
+
+void MainWindow::_toFront(ulong handle)
+{
+    DECL_TRACER("MainWindow::_toFront(ulong handle)");
+
+    emit toFront(handle);
+}
+
 /**
  * @brief MainWindow::closeEvent called when the application receives an exit event.
  *
@@ -612,6 +624,34 @@ bool MainWindow::event(QEvent* event)
     {
         MSG_TRACE("The orientation has changed!");
     }
+    else if (event->type() == QEvent::KeyPress)
+    {
+        QKeyEvent *sKey = static_cast<QKeyEvent*>(event);
+
+        if (sKey && sKey->key() == Qt::Key_Back && !mToolbar)
+        {
+            QMessageBox msgBox(this);
+            msgBox.setText(QString("Should TPanel display the setup dialog or quit?"));
+            msgBox.addButton("Quit", QMessageBox::AcceptRole);      // This is correct! QT seems to change here the buttons.
+            msgBox.addButton("Setup", QMessageBox::RejectRole);     // This is correct! QT seems to change here the buttons.
+            int ret = msgBox.exec();
+
+            if (ret == QMessageBox::Accepted)   // This is correct! QT seems to change here the buttons.
+            {
+                showSetup();
+                return true;
+            }
+            else
+                close();
+        }
+    }
+    else if (event->type() == QEvent::KeyRelease)
+    {
+        QKeyEvent *sKey = static_cast<QKeyEvent*>(event);
+
+        if (sKey && sKey->key() == Qt::Key_Back && !mToolbar)
+            return true;
+    }
 
     return QWidget::event(event);
 }
@@ -651,6 +691,28 @@ bool MainWindow::gestureEvent(QGestureEvent* event)
 
             if (pg->totalScaleFactor() > pg->scaleFactor())
                 settings();
+        }
+    }
+    else if (QGesture *swipe = event->gesture(Qt::SwipeGesture))
+    {
+        string gs;
+
+        if (!gPageManager)
+            return false;
+
+        QSwipeGesture *sw = static_cast<QSwipeGesture *>(swipe);
+        MSG_DEBUG("Swipe gesture detected.");
+
+        if (sw->state() == Qt::GestureFinished)
+        {
+            if (sw->horizontalDirection() == QSwipeGesture::Left)
+                gPageManager->onSwipeEvent(TPageManager::SW_LEFT);
+            else if (sw->horizontalDirection() == QSwipeGesture::Right)
+                gPageManager->onSwipeEvent(TPageManager::SW_RIGHT);
+            else if (sw->verticalDirection() == QSwipeGesture::Up)
+                gPageManager->onSwipeEvent(TPageManager::SW_UP);
+            else if (sw->verticalDirection() == QSwipeGesture::Down)
+                gPageManager->onSwipeEvent(TPageManager::SW_DOWN);
         }
     }
 
@@ -785,6 +847,10 @@ void MainWindow::createActions()
 {
     DECL_TRACER("MainWindow::createActions()");
 
+    // If the toolbar should not be visible at all we return here immediately.
+    if (TConfig::getToolbarSuppress())
+        return;
+
     // Add a mToolbar (on the right side)
     mToolbar = new QToolBar(this);
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
@@ -902,6 +968,9 @@ void MainWindow::mousePressEvent(QMouseEvent* event)
         }
 
         gPageManager->mouseEvent(x, y, true);
+        mTouchStart = std::chrono::steady_clock::now();
+        mTouchX = mLastPressX;
+        mTouchY = mLastPressY;
     }
     else if (event->button() == Qt::MiddleButton)
         settings();
@@ -920,6 +989,9 @@ void MainWindow::mouseReleaseEvent(QMouseEvent* event)
 {
     DECL_TRACER("MainWindow::mouseReleaseEvent(QMouseEvent* event)");
 
+    if (!gPageManager)
+        return;
+
     if(event->button() == Qt::LeftButton)
     {
         int x = ((mLastPressX >= 0) ? mLastPressX : event->x());
@@ -934,6 +1006,30 @@ void MainWindow::mouseReleaseEvent(QMouseEvent* event)
         }
 
         gPageManager->mouseEvent(x, y, false);
+        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+        std::chrono::nanoseconds difftime = end - mTouchStart;
+        std::chrono::milliseconds msecs = std::chrono::duration_cast<std::chrono::milliseconds>(difftime);
+
+        if (msecs.count() < 100)    // 1/10 of a second
+        {
+            MSG_DEBUG("Time was too short: " << msecs.count());
+            return;
+        }
+
+        x = event->x();
+        y = event->y();
+        int width = scale(gPageManager->getSettings()->getWith());
+        int height = scale(gPageManager->getSettings()->getHeight());
+        MSG_DEBUG("Coordinates: x1=" << mTouchX << ", y1=" << mTouchY << ", x2=" << x << ", y2=" << y << ", width=" << width << ", height=" << height);
+
+        if (mTouchX < x && (x - mTouchX) > (width / 3))
+            gPageManager->onSwipeEvent(TPageManager::SW_RIGHT);
+        else if (x < mTouchX && (mTouchX - x) > (width / 3))
+            gPageManager->onSwipeEvent(TPageManager::SW_LEFT);
+        else if (mTouchY < y && (y - mTouchY) > (height / 3))
+            gPageManager->onSwipeEvent(TPageManager::SW_DOWN);
+        else if (y < mTouchY && (mTouchY - y) > (height / 3))
+            gPageManager->onSwipeEvent(TPageManager::SW_UP);
     }
 }
 
@@ -950,6 +1046,7 @@ void MainWindow::settings()
     int oldChannelID = TConfig::getChannel();
     string oldSurface = TConfig::getFtpSurface();
     bool oldToolbar = TConfig::getToolbarForce();
+    bool oldToolbarSuppress = TConfig::getToolbarSuppress();
     // Initialize and open the settings dialog.
     TQtSettings *dlg_settings = new TQtSettings(this);
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
@@ -965,11 +1062,20 @@ void MainWindow::settings()
     {
         writeSettings();
 
-        if (oldToolbar != TConfig::getToolbarForce())
+        if (!TConfig::getToolbarSuppress() && oldToolbar != TConfig::getToolbarForce())
         {
             QMessageBox msgBox(this);
             msgBox.setText("The change for the visibility of the toolbar will be active on the next start of TPanel!");
             msgBox.exec();
+        }
+        else if (oldToolbarSuppress != TConfig::getToolbarSuppress() && TConfig::getToolbarSuppress())
+        {
+            if (mToolbar)
+            {
+                mToolbar->close();
+                delete mToolbar;
+                mToolbar = nullptr;
+            }
         }
 
         if (TConfig::getFtpSurface() != oldSurface || dlg_settings->downloadForce())
@@ -1283,7 +1389,32 @@ void MainWindow::repaintWindows()
     DECL_TRACER("MainWindow::repaintWindows()");
 
     if (mWasInactive)
+    {
+        MSG_INFO("Refreshing of visible popups will be requested.");
         mDoRepaint = true;
+    }
+}
+
+void MainWindow::toFront(ulong handle)
+{
+    DECL_TRACER("MainWindow::toFront(ulong handle)");
+
+    if (!gObject)
+    {
+        MSG_ERROR(_NO_OBJECT);
+        return;
+    }
+
+    TObject::OBJECT_t *obj = gObject->findObject(handle);
+
+    if (!obj)
+    {
+        MSG_WARNING("Object with " << TObject::handleToString(handle) << " not found!");
+        return;
+    }
+
+    if (obj->type == TObject::OBJ_SUBPAGE && obj->object.widget)
+        obj->object.widget->raise();
 }
 
 /**
@@ -1769,7 +1900,11 @@ void MainWindow::repaintObjects()
     while (obj)
     {
         if (!obj->remove && obj->object.widget)
-            obj->object.widget->repaint();
+        {
+            MSG_PROTOCOL("Refreshing widget " << TObject::handleToString (obj->handle));
+            obj->object.widget->setHidden(true);
+            obj->object.widget->setHidden(false);
+        }
 
         obj = gObject->findNextWindow(obj);
     }
@@ -1870,6 +2005,7 @@ void MainWindow::displayButton(ulong handle, ulong parent, QByteArray buffer, in
 
         obj->object.label->installEventFilter(this);
         obj->object.label->grabGesture(Qt::PinchGesture);
+        obj->object.label->grabGesture(Qt::SwipeGesture);
         obj->object.label->setFixedSize(obj->width, obj->height);
         obj->object.label->move(obj->left, obj->top);
         obj->object.label->setAttribute(Qt::WA_TransparentForMouseEvents);
@@ -2000,6 +2136,7 @@ void MainWindow::setPage(ulong handle, int width, int height)
     {
         mBackground = new QWidget();
         mBackground->grabGesture(Qt::PinchGesture);
+        mBackground->grabGesture(Qt::SwipeGesture);
         mBackground->setAutoFillBackground(true);
         mBackground->setBackgroundRole(QPalette::Window);
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
@@ -2084,6 +2221,7 @@ void MainWindow::setSubPage(ulong handle, int left, int top, int width, int heig
     // filter move event
     obj->object.widget->installEventFilter(this);
     obj->object.widget->grabGesture(Qt::PinchGesture);
+    obj->object.widget->grabGesture(Qt::SwipeGesture);
     // By default set a transparent background
     QPixmap pix(scWidth, scHeight);
     pix.fill(QColor::fromRgba(qRgba(0,0,0,0xff)));

@@ -75,7 +75,8 @@ struct SETTINGS
     bool noBanner{false};       //!< Startup without showing a banner on the command line.
     bool certCheck{false};      //!< TRUE = Check certificate for SSL connection
     bool scale{false};          //!< TRUE = Images are scaled to fit the whole screen
-    bool tbforce{true};         //!< TRUE = The toolbar is forced to display, FALSE = The toolbar is only visible if there is enough space left
+    bool tbsuppress{false};     //!< TRUE = Don't show toolbar even if enough space
+    bool tbforce{true};         //!< Only if "tbsuppress" = FALSE: TRUE = The toolbar is forced to display, FALSE = The toolbar is only visible if there is enough space left
     bool profiling{false};      //!< TRUE = The declaration traces meassure the time and write it to the log
     string password1;           //!< First panel password
     string password2;           //!< Second panel password
@@ -486,6 +487,13 @@ void TConfig::saveToolbarForce(bool tb)
     localSettings.tbforce = tb;
 }
 
+void TConfig::saveToolbarSuppress(bool tb)
+{
+    DECL_TRACER("TConfig::saveToolbarSuppress(bool tb)");
+
+    localSettings.tbsuppress = tb;
+}
+
 void TConfig::saveProfiling(bool prof)
 {
     DECL_TRACER("TConfig::saveProfiling(bool prof)");
@@ -791,6 +799,7 @@ bool TConfig::saveSettings()
         lines += "LogLevel=" + localSettings.logLevel + "\n";
         lines += "ProjectPath=" + localSettings.project + "\n";
         lines += string("NoBanner=") + (localSettings.noBanner ? "true" : "false") + "\n";
+        lines += string("ToolbarSuppress=") + (localSettings.tbsuppress ? "true" : "false") + "\n";
         lines += string("ToolbarForce=") + (localSettings.tbforce ? "true" : "false") + "\n";
         lines += string("LongFormat=") + (localSettings.longformat ? "true" : "false") + "\n";
         lines += "Address=" + localSettings.server + "\n";
@@ -894,6 +903,13 @@ bool TConfig::getToolbarForce()
     DECL_TRACER("TConfig::getToolbarForce()");
 
     return localSettings.tbforce;
+}
+
+bool TConfig::getToolbarSuppress()
+{
+    DECL_TRACER("TConfig::getToolbarSuppress()");
+
+    return localSettings.tbsuppress;
 }
 
 bool TConfig::getProfiling()
@@ -1539,6 +1555,8 @@ bool TConfig::readConfig()
                 localSettings.scale = isTrue(right);
             else if (caseCompare(left, "ToolbarForce") == 0 && !right.empty())
                 localSettings.tbforce = isTrue(right);
+            else if (caseCompare(left, "ToolbarSuppress") == 0 && !right.empty())
+                localSettings.tbsuppress = isTrue(right);
             else if (caseCompare(left, "Profiling") == 0 && !right.empty())
                 localSettings.profiling = isTrue(right);
             else if (caseCompare(left, "Password1") == 0 && !right.empty())

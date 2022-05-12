@@ -461,6 +461,27 @@ FONT_T TFont::getFont(int number)
     return iter->second;
 }
 
+int TFont::getFontIDfromFile(const string& file)
+{
+    DECL_TRACER("TFont::getFontIDfromFile(const string& file)");
+
+    if (mFonts.size() == 0)
+    {
+        MSG_WARNING("No fonts found!");
+        return -1;
+    }
+
+    map<int, FONT_T>::iterator iter;
+
+    for (iter = mFonts.begin(); iter != mFonts.end(); ++iter)
+    {
+        if (iter->second.file == file)
+            return iter->first;
+    }
+
+    return -1;
+}
+
 FONT_STYLE TFont::getStyle(int number)
 {
     DECL_TRACER("TFont::getStyle(int number)");

@@ -120,6 +120,10 @@ TQtSettings::TQtSettings(QWidget *parent)
     ui->checkBox_Banner->setDisabled(true);
 #endif
     ui->checkBox_Toolbar->setCheckState((TConfig::getToolbarForce() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked));
+    ui->checkBox_ToolbarSuppress->setCheckState((TConfig::getToolbarSuppress() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked));
+
+    if (TConfig::getToolbarSuppress())
+        ui->checkBox_Toolbar->setDisabled(true);
 
     ui->lineEdit_SIPproxy->setText(TConfig::getSIPproxy().c_str());
     ui->spinBox_SIPport->setValue(TConfig::getSIPport());
@@ -151,7 +155,7 @@ TQtSettings::TQtSettings(QWidget *parent)
     // Sound settings
     string sySound = TConfig::getSystemSound();
     size_t pos = sySound.find_last_of(".");
-    int numpos;
+    int numpos = 0;
 
     if (pos != string::npos)
         numpos = atoi(sySound.substr(pos - 2, 2).c_str());
@@ -553,6 +557,18 @@ void TQtSettings::on_checkBox_Banner_toggled(bool checked)
 
     mSetChanged = true;
     TConfig::saveBanner(!checked);
+}
+
+void TQtSettings::on_checkBox_ToolbarSuppress_toggled(bool checked)
+{
+    DECL_TRACER("TQtSettings::on_checkBox_ToolbarSuppress_toggled(bool checked)");
+
+    if (TConfig::getToolbarSuppress() == checked)
+        return;
+
+    mSetChanged = true;
+    TConfig::saveToolbarSuppress(checked);
+    ui->checkBox_Toolbar->setDisabled(checked);
 }
 
 void TQtSettings::on_checkBox_Toolbar_toggled(bool checked)

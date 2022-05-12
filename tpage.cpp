@@ -33,6 +33,8 @@
 
 using std::string;
 using std::vector;
+using std::map;
+using std::pair;
 using namespace Button;
 using namespace Expat;
 
@@ -1095,7 +1097,7 @@ TSubPage *TPage::getFirstSubPage()
         if (pg->subpage)
         {
             mLastSubPage = pg->subpage->getNumber();
-            MSG_DEBUG("Subpage " << pg->subpage->getNumber() << ". " << pg->subpage->getName());
+            MSG_DEBUG("Subpage (Z: " << pg->subpage->getZOrder() << "): " << pg->subpage->getNumber() << ". " << pg->subpage->getName());
             return pg->subpage;
         }
     }
@@ -1121,7 +1123,7 @@ TSubPage *TPage::getNextSubPage()
                 {
                     TSubPage *page = p->next->subpage;
                     mLastSubPage = page->getNumber();
-                    MSG_DEBUG("Subpage " << page->getNumber() << ". " << page->getName());
+                    MSG_DEBUG("Subpage (Z: " << page->getZOrder() << "): " << page->getNumber() << ". " << page->getName());
                     return page;
                 }
             }
@@ -1268,6 +1270,46 @@ TButton *TPage::getNextButton()
     return nullptr;
 }
 
+TButton *TPage::getLastButton()
+{
+    DECL_TRACER("TPage::getLastButton()");
+
+    BUTTONS_T *but = mButtons;
+    mLastButton = 0;
+
+    while (but && but->next)
+    {
+        mLastButton++;
+        but = but->next;
+    }
+
+    return but->button;
+}
+
+TButton *TPage::getPreviousButton()
+{
+    DECL_TRACER("TPage::getPreviousButton()");
+
+    BUTTONS_T *but = mButtons;
+    int count = 0;
+
+    if (mLastButton)
+        mLastButton--;
+    else
+        return nullptr;
+
+    while (but)
+    {
+        if (but->button && count == mLastButton)
+            return but->button;
+
+        but = but->next;
+        count++;
+    }
+
+    return nullptr;
+}
+
 void TPage::drop()
 {
     DECL_TRACER("TPage::drop()");
@@ -1378,6 +1420,39 @@ void TPage::calcPosition(int im_width, int im_height, int *left, int *top)
         *top = 0;
 }
 
+void TPage::sortSubpages()
+{
+    DECL_TRACER("TPage::sortSubpage()");
+
+    map<int, TSubPage *> spages;
+    PAGECHAIN_T *pages = mSubPages;
+    PAGECHAIN_T *pgs = nullptr;
+
+    while (pages)
+    {
+        spages.insert(pair<int, TSubPage *>(pages->subpage->getZOrder(), pages->subpage));
+        pages = pages->next;
+    }
+
+    // Drop chain
+    pages = mSubPages;
+
+    while (pages)
+    {
+        pgs = pages->next;
+        delete pages;
+        pages = pgs;
+    }
+
+    mSubPages = nullptr;
+    // Create the chain newly (ordered by Z-Order
+    map<int, TSubPage *>::iterator iter;
+    pgs = nullptr;
+
+    for (iter = spages.begin(); iter != spages.end(); ++iter)
+        addSubPage(iter->second);
+}
+
 /*
  * Sort the button according to their Z-order.
  * The button with the highest Z-order will be the last button in the chain.
@@ -1432,4 +1507,49 @@ bool TPage::sortButtons()
     }
 
     return true;
+}
+
+int TPage::getNextZOrder()
+{
+    DECL_TRACER("TPage::getNextZOrder()");
+
+    // Find highest z-order number
+    PAGECHAIN_T *pages = mSubPages;
+    int z = 0;
+
+    while(pages)
+    {
+        int zo = pages->subpage->getZOrder();
+
+        if (zo > z)
+            z = zo;
+
+        pages = pages->next;
+    }
+
+    mZOrder = z + 1;
+    MSG_DEBUG("New Z-order: " << mZOrder);
+    return mZOrder;
+}
+
+int TPage::decZOrder()
+{
+    DECL_TRACER("TPage::decZOrder()");
+
+    // Find highest z-order number
+    PAGECHAIN_T *pages = mSubPages;
+    int z = 0;
+
+    while(pages)
+    {
+        int zo = pages->subpage->getZOrder();
+
+        if (zo > z)
+            z = zo;
+
+        pages = pages->next;
+    }
+
+    mZOrder = z;
+    return mZOrder;
 }

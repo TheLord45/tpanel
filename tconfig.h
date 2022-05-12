@@ -26,10 +26,10 @@
 #define V_MAJOR     1
 #define V_MINOR     3
 #define V_PATCH     2
-#define V_ADD       "b1"
+#define V_ADD       "b2"
 
 #ifndef V_SERIAL
-#define V_SERIAL    "20220503T132B"
+#define V_SERIAL    "20220512T132B"
 #endif
 
 /**
@@ -87,6 +87,7 @@ class TConfig
         static bool showBanner();
         static bool getScale();
         static bool getToolbarForce();
+        static bool getToolbarSuppress();
         static bool getProfiling();
         static std::string& getPassword1();
         static std::string& getPassword2();
@@ -132,6 +133,7 @@ class TConfig
         static void saveScale(bool scale);
         static void saveBanner(bool banner);
         static void saveToolbarForce(bool tb);
+        static void saveToolbarSuppress(bool tb);
         static void saveProfiling(bool prof);
         static void savePassword1(const std::string& pw);
         static void savePassword2(const std::string& pw);

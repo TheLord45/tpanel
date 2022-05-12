@@ -367,6 +367,14 @@ namespace Button
              * Returns the type of the button.
              */
             BUTTONTYPE getButtonType() { return type; }
+            /**
+             * Set font file name and optional the size
+             *
+             * @param font  File name of the font
+             * @param size  The size of the font in PT
+             * @param inst  The instance of the button
+             */
+            bool setFontFileName(const std::string& name, int size, int inst);
 
             int getRangeLow() { return rl; }
             int getRangeHigh() { return rh; }
@@ -456,6 +464,7 @@ namespace Button
             void setTop(int top);
             void setLeft(int left);
             void setLeftTop(int left, int top);
+            void setRectangle(int left, int top, int right, int bottom);
             void setResourceName(const std::string& name, int instance);
             int getBitmapJustification(int *x, int *y, int instance);
             void setBitmapJustification(int j, int x, int y, int instance);
@@ -946,7 +955,7 @@ namespace Button
             int lp{1};              // Level port (default: 1)
             int lv{0};              // Level code
             int co{0};              // Command port
-            std::string cm;         // Command to send on each button hit
+            std::vector<std::string> cm;         // Commands to send on each button hit
             std::string dr;         // Level "horizontal" or "vertical"
             int va{0};
             int stateCount{0};      // State count with multistate buttons

@@ -275,3 +275,17 @@ RESOURCE_LIST_T TSettings::findResourceType(const string& type)
 
     return RESOURCE_LIST_T();
 }
+
+bool TSettings::isPortrait()
+{
+    DECL_TRACER("TSettings::isPortrait()");
+
+    return mSetup.screenWidth < mSetup.screenHeight;
+}
+
+bool TSettings::isLandscape()
+{
+    DECL_TRACER("TSettings::isLandscape()");
+
+    return mSetup.screenWidth > mSetup.screenHeight;
+}

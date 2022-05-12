@@ -183,6 +183,8 @@ void TExternal::initialize()
                         button.so = xml.convertElementToInt(content);
                     else if (name.compare("co") == 0)
                         button.co = xml.convertElementToInt(content);
+                    else if (name.compare("cm") == 0)
+                        button.cm.push_back(content);
                     else if (name.compare("ac") == 0)
                     {
                         button.ac = content;

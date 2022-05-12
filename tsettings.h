@@ -98,9 +98,12 @@ class TSettings : public TValidateFile
         int getWith() { return mSetup.screenWidth; }
         int getHeight() { return mSetup.screenHeight; }
         int getRotate() { return mSetup.screenRotate; }
+        bool isPortrait();
+        bool isLandscape();
         std::vector<RESOURCE_LIST_T>& getResourcesList() { return mResourceLists; }
         bool loadSettings(bool initial=false);
         std::string& getPowerUpPage() { return mSetup.powerUpPage; }
+        int getVoipCmdPort() { return mSetup.voipCommandPort; }
 
     private:
         RESOURCE_LIST_T findResourceType(const std::string& type);

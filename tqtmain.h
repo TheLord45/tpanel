@@ -99,6 +99,7 @@ class MainWindow : public QMainWindow, TQManageQueue
         void sigSetPhoneStatus(const std::string& msg);
         void sigSetPhoneState(int state, int id);
         void sigRepaintWindows();
+        void sigToFront(ulong handle);
 
     protected:
         bool event(QEvent *event) override;
@@ -154,6 +155,7 @@ class MainWindow : public QMainWindow, TQManageQueue
         void textChangedMultiLine();
         void textSingleLineReturn();
         void repaintWindows();
+        void toFront(ulong handle);
 
     private:
         bool gestureEvent(QGestureEvent *event);
@@ -196,6 +198,7 @@ class MainWindow : public QMainWindow, TQManageQueue
         void _orientationChanged(int orientation);
 #endif
         void _repaintWindows();
+        void _toFront(ulong handle);
         void doReleaseButton();
         void repaintObjects();
         int calcVolume(int value);
@@ -224,6 +227,9 @@ class MainWindow : public QMainWindow, TQManageQueue
         int mLastPressY{-1};                // Remember the last mouse press Y coordinate
         Qt::ScreenOrientations mOrientation{Qt::PrimaryOrientation};
         QMediaPlayer *mMediaPlayer{nullptr};// Class to play sound files.
+        std::chrono::steady_clock::time_point mTouchStart;           // Time in micro seconds of the start of a touch event
+        int mTouchX{0};                        // The X coordinate of the mouse pointer
+        int mTouchY{0};                        // The Y coordinate of the mouse pointer
 };
 
 #endif

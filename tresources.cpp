@@ -942,9 +942,15 @@ string getCommand(const string& fullCmd)
     string cmd;
 
     if (pos != string::npos)
+    {
         cmd = fullCmd.substr(0, pos);
+        cmd = toUpper(cmd);
+    }
     else
+    {
         cmd = fullCmd;
+        cmd = toUpper(cmd);
+    }
 
     return cmd;
 }

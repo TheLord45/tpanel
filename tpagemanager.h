@@ -66,6 +66,15 @@ class TPageManager : public TAmxCommands
             O_FACE_DOWN = 16
         }J_ORIENTATION;
 
+        typedef enum SWIPES
+        {
+            SW_UNKNOWN,
+            SW_LEFT,
+            SW_RIGHT,
+            SW_UP,
+            SW_DOWN
+        }SWIPES;
+
         TPageManager();
         ~TPageManager();
 
@@ -102,6 +111,7 @@ class TPageManager : public TAmxCommands
         bool haveSubPage(const std::string& page, int id);
         TFont *getFonts() { return mFonts; }
         Button::TButton *findButton(ulong handle);
+        void onSwipeEvent(SWIPES sw);
 
         void registerCallbackDB(std::function<void(ulong handle, ulong parent, unsigned char *buffer, int width, int height, int pixline, int left, int top)> displayButton) { _displayButton = displayButton; }
         void registerCBsetVisible(std::function<void(ulong handle, bool state)> setVisible) { _setVisible = setVisible; }
@@ -146,6 +156,7 @@ class TPageManager : public TAmxCommands
         void regOnOrientationChange(std::function<void (int orientation)> orientationChange) { _onOrientationChange = orientationChange; }
 #endif
         void regRepaintWindows(std::function<void ()> repaintWindows) { _repaintWindows = repaintWindows; }
+        void regToFront(std::function<void (ulong handle)> toFront) { _toFront = toFront; }
 
         /**
          * The following function must be called to start non graphics part
@@ -289,6 +300,7 @@ class TPageManager : public TAmxCommands
         std::function<void (const std::string& number)> getSetPhoneNumber() { return _setPhoneNumber; }
         std::function<void (const std::string& msg)> getSetPhoneStatus() { return _setPhoneStatus; }
         std::function<void (int state, int id)> getSetPhoneState() { return _setPhoneState; }
+        std::function<void (ulong handle)> getToFront() { return _toFront; }
 #ifdef __ANDROID__
         std::function<void (int orientation)> onOrientationChange() { return _onOrientationChange; }
 #endif
@@ -352,6 +364,7 @@ class TPageManager : public TAmxCommands
         std::function<void (const std::string& msg)> _setPhoneStatus{nullptr};
         std::function<void (int state, int id)> _setPhoneState{nullptr};
         std::function<void ()> _repaintWindows{nullptr};
+        std::function<void (uint handle)> _toFront{nullptr};
 #ifdef __ANDROID__
         std::function<void (int orientation)> _onOrientationChange{nullptr};
 #endif
@@ -390,6 +403,7 @@ class TPageManager : public TAmxCommands
          * flag is set.
          */
         bool destroyAll();
+        bool overlap(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int h2);
         TPage *loadPage(PAGELIST_T& pl);
         void setButtonCallbacks(Button::TButton *bt);
         bool sendCustomEvent(int value1, int value2, int value3, const std::string& msg, int evType, int cp, int cn);
@@ -439,6 +453,7 @@ class TPageManager : public TAmxCommands
         void doBDO(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doBFB(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doBMC(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doBMF(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doBML(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doBMP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void getBMP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
@@ -478,6 +493,7 @@ class TPageManager : public TAmxCommands
         void getTXT(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doUNI(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doUTF(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doVTP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
 
         void doKPS(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doVKS(int port, std::vector<int>& channels, std::vector<std::string>& pars);
@@ -513,6 +529,7 @@ class TPageManager : public TAmxCommands
         // Commands inherited from TPControl (Touch Panel Control)
         void doTPCCMD(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doTPCACC(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doTPCSIP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
 
         int mActualPage{0};                             // The number of the actual visible page
         int mPreviousPage{0};                           // The number of the previous page

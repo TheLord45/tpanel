@@ -82,6 +82,7 @@ class TQtSettings : public QDialog
         // View
         void on_checkBox_Scale_toggled(bool checked);
         void on_checkBox_Banner_toggled(bool checked);
+        void on_checkBox_ToolbarSuppress_toggled(bool checked);
         void on_checkBox_Toolbar_toggled(bool checked);
         void on_checkBox_Rotation_toggled(bool checked);
         // Sound

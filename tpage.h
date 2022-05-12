@@ -60,6 +60,8 @@ class TPage : public TValidateFile
         std::vector<Button::TButton *> getAllButtons();
         Button::TButton *getFirstButton();
         Button::TButton *getNextButton();
+        Button::TButton *getLastButton();
+        Button::TButton *getPreviousButton();
 
         PAGECHAIN_T *addSubPage(TSubPage *pg);
         TSubPage *getSubPage(int pageID);
@@ -69,8 +71,8 @@ class TPage : public TValidateFile
         bool removeSubPage(int ID);
         bool removeSubPage(const std::string& nm);
         int getActZOrder() { return mZOrder; }
-        int getNextZOrder() { mZOrder++; return mZOrder; }
-        int decZOrder() { if (mZOrder > 0) mZOrder--; return mZOrder; }
+        int getNextZOrder();
+        int decZOrder();
         void resetZOrder() { mZOrder = ZORDER_INVALID; }
 
         Button::BUTTONS_T *addButton(Button::TButton *button);
@@ -83,6 +85,7 @@ class TPage : public TValidateFile
 
         void show();
         void drop();
+        void sortSubpages();
 
     protected:
         bool sortButtons();
