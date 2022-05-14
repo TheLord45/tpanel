@@ -92,6 +92,8 @@ class TPageManager : public TAmxCommands
         int getPreviousPageNumber() { return mPreviousPage; }   //!< Get the ID of the previous page, if there was any.
         TSubPage *getFirstSubPage();
         TSubPage *getNextSubPage();
+        TSubPage *getPrevSubPage();
+        TSubPage *getLastSubPage();
         TSubPage *getFirstSubPageGroup(const std::string& group);
         TSubPage *getNextSubPageGroup();
         TSubPage *getNextSubPageGroup(const std::string& group, TSubPage *pg);
@@ -556,6 +558,7 @@ class TPageManager : public TAmxCommands
         bool mPassThrough{false};                       // Can ve set to true with the command ^KPS
         bool mInformOrientation{false};                 // TRUE = The actual screen orientation is reported to the controller if it change.
         int mOrientation{0};                            // Contains the actual orientation.
+        int mLastPagePush{0};                           // The number of the last page received a push (key press / mouse hit)
         // SIP
 #ifndef _NOSIP_
         bool mPHNautoanswer{false};                     // The state of the SIP autoanswer

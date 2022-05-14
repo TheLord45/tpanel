@@ -122,6 +122,7 @@ class TSubPage : public TValidateFile
         void setTimeout(int t) { mSubpage.timeout = t; }
         bool isVisible() { return mVisible; }
         bool hasButton(int id);
+        ulong getHandle() { return ((mSubpage.pageID << 16) & 0xffff0000); }
         Button::TButton *getButton(int id);
         std::vector<Button::TButton *> getButtons(int ap, int ad);
         std::vector<Button::TButton *> getAllButtons();

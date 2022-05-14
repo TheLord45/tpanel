@@ -775,7 +775,7 @@ void TPageManager::doCommand(const amx::ANET_COMMAND& cmd)
                     case 0x8f: com += to_string(bef.data.message_value.content.dvalue); break;
                 }
 
-                parseCommand(bef.device1, bef.data.chan_state.port, com);
+                parseCommand(bef.device1, bef.data.message_value.port, com);
             break;
 
             case 0x000c:	// Command string
@@ -968,17 +968,15 @@ bool TPageManager::run()
     if (mActualPage <= 0)
         return false;
 
-    surface_mutex.lock();
     TPage *pg = getPage(mActualPage);
+
+    if (!pg || !_setPage || !mTSettings)
+        return false;
+
+    surface_mutex.lock();
     pg->setFonts(mFonts);
     pg->registerCallback(_setBackground);
     pg->regCallPlayVideo(_callPlayVideo);
-
-    if (!pg || !_setPage || !mTSettings)
-    {
-        surface_mutex.unlock();
-        return false;
-    }
 
     int width, height;
     width = mTSettings->getWith();
@@ -1223,8 +1221,6 @@ TSubPage *TPageManager::deliverSubPage(const string& name, TPage **pg)
             MSG_ERROR("Fatal: A page with name " << name << " does not exist!");
             return nullptr;
         }
-
-//        page->addSubPage(subPage);
     }
 
     return subPage;
@@ -1307,7 +1303,7 @@ bool TPageManager::readPage(const std::string& name)
 
     PAGELIST_T page = findPage(name);
 
-    if (page.pageID <= 0)
+    if (page.pageID <= 0 || page.pageID >= MAX_PAGE_ID)
     {
         MSG_ERROR("Page " << name << " not found!");
         return false;
@@ -1383,7 +1379,7 @@ bool TPageManager::readSubPage(const std::string& name)
     TError::clear();
     SUBPAGELIST_T page = findSubPage(name);
 
-    if (page.pageID <= 0)
+    if (page.pageID < MAX_PAGE_ID)
     {
         MSG_ERROR("Subpage " << name << " not found!");
         return false;
@@ -1424,7 +1420,7 @@ bool TPageManager::readSubPage(int ID)
     TError::clear();
     SUBPAGELIST_T page = findSubPage(ID);
 
-    if (page.pageID <= 0)
+    if (page.pageID <= MAX_PAGE_ID)
     {
         MSG_ERROR("Subpage with ID " << ID << " not found!");
         return false;
@@ -1832,6 +1828,37 @@ TSubPage *TPageManager::getNextSubPage()
     return nullptr;
 }
 
+TSubPage *TPageManager::getPrevSubPage()
+{
+    DECL_TRACER("TPageManager::getPrevSubPage()");
+
+    TPage *pg = getPage(mActualPage);
+
+    if (pg)
+        return pg->getPrevSubPage();
+
+    return nullptr;
+}
+
+TSubPage *TPageManager::getLastSubPage()
+{
+    DECL_TRACER("TPageManager::getLastSubPage()");
+
+    TPage *pg = getPage(mActualPage);
+
+    if (pg)
+    {
+        pg->sortSubpages();
+        return pg->getLastSubPage();
+    }
+    else
+    {
+        MSG_WARNING("Actual page " << mActualPage << " not found!");
+    }
+
+    return nullptr;
+}
+
 TSubPage *TPageManager::getFirstSubPageGroup(const string& group)
 {
     DECL_TRACER("TPageManager::getFirstSubPageGroup(const string& group)");
@@ -1984,37 +2011,28 @@ TSubPage *TPageManager::getCoordMatch(int x, int y)
     int realY = y;
 
     // Reverse order of pages
-    map<int, TSubPage *> zOrder;
-    TSubPage *pg = getFirstSubPage();
-
-    while (pg)
-    {
-        if (pg->isVisible())
-        {
-            MSG_DEBUG("Adding subpage (Z: " << pg->getZOrder() << "): " << pg->getNumber() << ", " << pg->getName());
-            zOrder.insert(pair<int, TSubPage *>(pg->getZOrder(), pg));
-        }
-
-        pg = getNextSubPage();
-    }
+    TSubPage *pg = getLastSubPage();
 
     // Iterate in reverse order through array
-    if (zOrder.size() > 0)
+    while (pg)
     {
-        map<int, TSubPage *>::reverse_iterator iter;
-
-        for (iter = zOrder.rbegin(); iter != zOrder.rend(); ++iter)
+        if (!pg->isVisible() || pg->getZOrder() == ZORDER_INVALID)
         {
-            MSG_DEBUG("Scanning subpage (Z: " << iter->second->getZOrder() << "): " << iter->second->getNumber() << ", " << iter->second->getName());
-            RECT_T r = iter->second->getRegion();
-
-            if (r.left <= realX && (r.left + r.width) >= realX &&
-                r.top <= realY && (r.top + r.height) >= realY)
-            {
-                MSG_DEBUG("Click matches subpage " << iter->second->getNumber() << " (" << iter->second->getName() << ")");
-                return iter->second;
-            }
+            pg = getPrevSubPage();
+            continue;
         }
+
+        MSG_DEBUG("Scanning subpage (Z: " << pg->getZOrder() << "): " << pg->getNumber() << ", " << pg->getName());
+        RECT_T r = pg->getRegion();
+
+        if (r.left <= realX && (r.left + r.width) >= realX &&
+            r.top <= realY && (r.top + r.height) >= realY)
+        {
+            MSG_DEBUG("Click matches subpage " << pg->getNumber() << " (" << pg->getName() << ")");
+            return pg;
+        }
+
+        pg = getPrevSubPage();
     }
 
     return nullptr;
@@ -2044,6 +2062,12 @@ Button::TButton *TPageManager::getCoordMatchPage(int x, int y)
             if (bt->getLeftPosition() <= x && (bt->getLeftPosition() + bt->getWidth()) >= x &&
                 bt->getTopPosition() <= y && (bt->getTopPosition() + bt->getHeight()) >= y)
             {
+                if (!bt->isClickable(x - bt->getLeftPosition(), y - bt->getTopPosition()))
+                {
+                    bt = page->getPreviousButton();
+                    continue;
+                }
+
                 MSG_DEBUG("Click matches button " << bt->getButtonIndex() << " (" << bt->getButtonName() << ")");
                 return bt;
             }
@@ -2260,14 +2284,14 @@ void TPageManager::showSubPage(const string& name)
 
         if (redraw && _toFront)
         {
-            _toFront((pg->getNumber() << 16) & 0xffff0000);
+            _toFront(pg->getHandle());
             pg->setZOrder(page->getNextZOrder());
             page->sortSubpages();
-            MSG_DEBUG("Setting new Z-order " << page->getActZOrder() << " on subpage " << page->getName());
+            MSG_DEBUG("Setting new Z-order " << page->getActZOrder() << " on subpage " << pg->getName());
         }
-        else if (!_toFront)
+        else if (redraw && !_toFront)
             pg->drop();
-        else        // Make sure the Z-order marks the popup on top
+/*        else        // Make sure the Z-order marks the popup on top
         {
             int zo = page->getActZOrder();
 
@@ -2275,9 +2299,9 @@ void TPageManager::showSubPage(const string& name)
             {
                 pg->setZOrder(page->getNextZOrder());
                 page->sortSubpages();
-                MSG_DEBUG("Setting new Z-order " << page->getActZOrder() << " on subpage " << page->getName());
+                MSG_DEBUG("Setting new Z-order " << page->getActZOrder() << " on subpage " << pg->getName());
             }
-        }
+        } */
     }
 
     if (!pg->isVisible())
@@ -2320,7 +2344,7 @@ void TPageManager::showSubPage(const string& name)
             if (pg->getTimeout() > 0)
                 pg->startTimer();
 
-            _setSubPage((pg->getNumber() << 16) & 0xffff0000, left, top, width, height, ani);
+            _setSubPage(pg->getHandle(), left, top, width, height, ani);
         }
     }
 
@@ -2346,10 +2370,8 @@ void TPageManager::hideSubPage(const string& name)
 
     if (pg)
     {
-        if (pg->getZOrder() == page->getActZOrder())
-            page->decZOrder();
-
         pg->drop();
+        page->decZOrder();
     }
 }
 
@@ -2372,11 +2394,16 @@ void TPageManager::mouseEvent(int x, int y, bool pressed)
         realY = (int)((double)realY / mScaleFactor);
         MSG_DEBUG("Scaled coordinates: x=" << realX << ", y=" << realY);
     }
-#else
-    MSG_DEBUG("Using real coordinates x=" << realX << ", y=" << realY);
 #endif
 
-    TSubPage *subPage = getCoordMatch(realX, realY);
+    TSubPage *subPage = nullptr;
+
+    if (pressed)
+        subPage = getCoordMatch(realX, realY);
+    else if (!pressed && mLastPagePush)
+        subPage = getSubPage(mLastPagePush);
+    else
+        subPage = getCoordMatch(realX, realY);
 
     if (!subPage)
     {
@@ -2400,7 +2427,13 @@ void TPageManager::mouseEvent(int x, int y, bool pressed)
         return;
     }
 
-    MSG_DEBUG("Subpage " << subPage->getNumber() << ": size: left=" << subPage->getLeft() << ", top=" << subPage->getTop() << ", width=" << subPage->getWidth() << ", height=" << subPage->getHeight());
+    MSG_DEBUG("Subpage " << subPage->getNumber() << " [" << subPage->getName() << "]: size: left=" << subPage->getLeft() << ", top=" << subPage->getTop() << ", width=" << subPage->getWidth() << ", height=" << subPage->getHeight());
+
+    if (pressed)
+        mLastPagePush = subPage->getNumber();
+    else
+        mLastPagePush = 0;
+
     subPage->doClick(realX - subPage->getLeft(), realY - subPage->getTop(), pressed);
 }
 
@@ -2495,8 +2528,6 @@ vector<Button::TButton *> TPageManager::collectButtons(vector<MAP_T>& map)
                     MSG_ERROR("No actual page loaded!");
                     return buttons;
                 }
-
-//                page->addSubPage(subpage);
             }
 
             Button::TButton *bt = subpage->getButton(iter->bt);

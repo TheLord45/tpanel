@@ -1565,7 +1565,6 @@ void MainWindow::_setVisible(ulong handle, bool state)
     if (prg_stopped)
         return;
 
-    MSG_DEBUG("Object " << TObject::handleToString(handle) << " marked for " << (state ? "VISIBLE" : "INVISIBLE") << " state.");
     emit sigSetVisible(handle, state);
 }
 
@@ -1894,7 +1893,9 @@ void MainWindow::repaintObjects()
     }
 
     draw_mutex.lock();
-
+#ifdef Q_OS_ANDROID
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));    // Necessary for slow devices
+#endif
     TObject::OBJECT_t *obj = gObject->findFirstWindow();
 
     while (obj)
@@ -1902,8 +1903,7 @@ void MainWindow::repaintObjects()
         if (!obj->remove && obj->object.widget)
         {
             MSG_PROTOCOL("Refreshing widget " << TObject::handleToString (obj->handle));
-            obj->object.widget->setHidden(true);
-            obj->object.widget->setHidden(false);
+            obj->object.widget->repaint();
         }
 
         obj = gObject->findNextWindow(obj);

@@ -26,10 +26,10 @@
 #define V_MAJOR     1
 #define V_MINOR     3
 #define V_PATCH     2
-#define V_ADD       "b2"
+#define V_ADD       "b3"
 
 #ifndef V_SERIAL
-#define V_SERIAL    "20220512T132B"
+#define V_SERIAL    "20220513T132B"
 #endif
 
 /**

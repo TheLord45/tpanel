@@ -30,10 +30,13 @@
 #include "tfont.h"
 
 #define ZORDER_INVALID      -1
+#define MAX_PAGE_ID         500
+
 
 typedef struct PAGECHAIN_T
 {
     TSubPage *subpage{nullptr}; // Ponter to subpage
+    PAGECHAIN_T *prev{nullptr}; // Pointer to previous element
     PAGECHAIN_T *next{nullptr}; // Pointer to next element
 }PAGECHAIN_T;
 
@@ -68,6 +71,8 @@ class TPage : public TValidateFile
         TSubPage *getSubPage(const std::string& name);
         TSubPage *getFirstSubPage();
         TSubPage *getNextSubPage();
+        TSubPage *getPrevSubPage();
+        TSubPage *getLastSubPage();
         bool removeSubPage(int ID);
         bool removeSubPage(const std::string& nm);
         int getActZOrder() { return mZOrder; }

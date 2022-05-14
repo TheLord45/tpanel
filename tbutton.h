@@ -857,7 +857,7 @@ namespace Button
              * Tests the button if it is clickable.
              * @return TRUE if it is clickable, FALSE otherwise.
              */
-            bool isClickable();
+            bool isClickable(int x = -1, int y = -1);
 
         protected:
             BUTTONTYPE getButtonType(const std::string& bt);

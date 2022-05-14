@@ -151,6 +151,8 @@ SYSBUTTONS_t sysButtons[] = {
     {  156, GENERAL,               2, 0,   0 },  // Date month dd, yyyy
     {  157, GENERAL,               2, 0,   0 },  // Date dd month, yyyy
     {  158, GENERAL,               2, 0,   0 },  // Date yyyy-mm-dd
+    {  171, GENERAL,               2, 0,   0 },  // Sytem volume up
+    {  172, GENERAL,               2, 0,   0 },  // Sytem volume down
     {  173, GENERAL,               2, 0,   0 },  // Sytem mute toggle
     {  199, TEXT_INPUT,            2, 0,   0 },  // Technical name of panel
     {  234, GENERAL,               2, 0,   0 },  // Battery charging/not charging
@@ -5592,14 +5594,17 @@ void TButton::hide(bool total)
     visible = false;
 }
 
-bool TButton::isClickable()
+bool TButton::isClickable(int x, int y)
 {
     DECL_TRACER("TButton::isClickable()");
 
-    MSG_DEBUG("Enabled: " << (mEnabled ? "YES" : "NO") << ", HS: " << hs);
-
     if (mEnabled && /*((cp != 0 && ch != 0) || (lp != 0 && lv != 0) || !cm.empty() || !op.empty() || !pushFunc.empty() || isSystemButton()) &&*/ hs.compare("passThru") != 0)
+    {
+        if (x != -1 && y != -1 && hs.empty() && !mLastImage.empty() && isPixelTransparent(x, y))
+            return false;
+
         return true;
+    }
 
     return false;
 }
@@ -5887,13 +5892,14 @@ bool TButton::stretchImageHeight(SkBitmap *bm, int height)
 bool TButton::doClick(int x, int y, bool pressed)
 {
     DECL_TRACER("TButton::doClick(int x, int y, bool pressed)");
+
+    if (!isClickable(x, y))
+        return false;
+
     amx::ANET_SEND scmd;
     int instance = 0;
     int sx = x, sy = y;
     bool isSystem = isSystemButton();
-
-    if (!isClickable())
-        return false;
 
     if (gPageManager && !checkForSound() && (ch > 0 || lv > 0 || !pushFunc.empty() || isSystem))
     {
@@ -5950,6 +5956,74 @@ bool TButton::doClick(int x, int y, bool pressed)
             {
                 if (gPageManager && gPageManager->haveShutdown())
                     gPageManager->callShutdown();
+            }
+        }
+        else if (isSystem && ch == 171)     // System volume up
+        {
+            int vol = TConfig::getSystemVolume() + 10;
+
+            if (vol > 100)
+                vol = 100;
+
+            TConfig::saveSystemVolume(vol);
+
+            if (pressed)
+                mActInstance = instance = 1;
+            else
+                mActInstance = instance = 0;
+
+            drawButton(mActInstance, true);
+            int channel = TConfig::getChannel();
+            int system = TConfig::getSystem();
+
+            if (gPageManager)
+            {
+                amx::ANET_COMMAND cmd;
+                cmd.MC = 0x000a;
+                cmd.device1 = channel;
+                cmd.port1 = ap;
+                cmd.system = system;
+                cmd.data.message_value.system = system;
+                cmd.data.message_value.value = 9;   // System volume
+                cmd.data.message_value.content.integer = vol;
+                cmd.data.message_value.device = channel;
+                cmd.data.message_value.port = ap;   // Must be the address port of button
+                cmd.data.message_value.type = 0x20; // Unsigned int
+                gPageManager->doCommand(cmd);
+            }
+        }
+        else if (isSystem && ch == 172)     // System volume down
+        {
+            int vol = TConfig::getSystemVolume() - 10;
+
+            if (vol < 0)
+                vol = 0;
+
+            TConfig::saveSystemVolume(vol);
+
+            if (pressed)
+                mActInstance = instance = 1;
+            else
+                mActInstance = instance = 0;
+
+            drawButton(mActInstance, true);
+            int channel = TConfig::getChannel();
+            int system = TConfig::getSystem();
+
+            if (gPageManager)
+            {
+                amx::ANET_COMMAND cmd;
+                cmd.MC = 0x000a;
+                cmd.device1 = channel;
+                cmd.port1 = ap;
+                cmd.system = system;
+                cmd.data.message_value.system = system;
+                cmd.data.message_value.value = 9;   // System volume
+                cmd.data.message_value.content.integer = vol;
+                cmd.data.message_value.device = channel;
+                cmd.data.message_value.port = ap;   // Must be the address port of button
+                cmd.data.message_value.type = 0x20; // Unsigned int
+                gPageManager->doCommand(cmd);
             }
         }
         else if (isSystem && ch == 173)     // System mute
@@ -6010,9 +6084,6 @@ bool TButton::doClick(int x, int y, bool pressed)
                 instance = 0;
 
             MSG_DEBUG("Flavor FB_CHANNEL, instance=" << instance);
-            // we ignore the state of the method, because it doesn't matter
-            // for the message to the controller.
-            drawButton(instance, false);
             // If there is nothing in "hs", then it depends on the pixel of the
             // layer. Only if the pixel the coordinates point to are not
             // transparent, the button takes the click.
@@ -6027,9 +6098,6 @@ bool TButton::doClick(int x, int y, bool pressed)
                 instance = 1;
 
             MSG_DEBUG("Flavor FB_INV_CHANNEL, instance=" << instance);
-            // we ignore the state of the method, because it doesn't matter
-            // for the message to the controller.
-            drawButton(instance, false);
             // If there is nothing in "hs", then it depends on the pixel of the
             // layer. Only if the pixel the coordinates point to are not
             // transparent, the button takes the click.
@@ -6047,12 +6115,14 @@ bool TButton::doClick(int x, int y, bool pressed)
         }
         else if (fb == FB_ALWAYS_ON)
         {
+            int oldInst = mActInstance;
             instance = 1;
             mActInstance = 1;
             MSG_DEBUG("Flavor FB_ALWAYS_ON, instance=" << instance);
-            // we ignore the state of the method, because it doesn't matter
-            // for the message to the controller.
-            drawButton(instance, false);
+
+            if (oldInst != mActInstance)        // This should never become true!
+                drawButton(instance, false);
+
             // If there is nothing in "hs", then it depends on the pixel of the
             // layer. Only if the pixel the coordinates point to are not
             // transparent, the button takes the click.

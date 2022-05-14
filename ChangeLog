@@ -3,6 +3,10 @@ ChangeLog
 
 Release: 1.3.2
 ===============================================================================
+2022-05-14 Fixed sorting of subpages.
+           Added some system buttons to upper and lower the volume TPanel uses.
+           Fixed a bug in sort algorithm which ended in a crash of application.
+
 2022-05-12 Made commands case insensitive.
            Added swipe support.
            If there is no toolbar the back button is now asking if the user

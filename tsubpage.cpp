@@ -1146,7 +1146,7 @@ void TSubPage::doClick(int x, int y, bool pressed)
         bool clickable = but->isClickable();
         MSG_DEBUG("Testing button " << but->getButtonIndex() << " (" << but->getButtonName() << "): " << (clickable ? "CLICKABLE" : "NOT CLICKABLE"));
 
-        if (x > but->getLeftPosition() && x < (but->getLeftPosition() + but->getWidth()) &&
+        if (clickable && x > but->getLeftPosition() && x < (but->getLeftPosition() + but->getWidth()) &&
             y > but->getTopPosition() && y < (but->getTopPosition() + but->getHeight()))
         {
             MSG_DEBUG("Clicking button " << but->getButtonIndex() << ": " << but->getButtonName() << " to state " << (pressed ? "PRESS" : "RELEASE"));
@@ -1155,10 +1155,6 @@ void TSubPage::doClick(int x, int y, bool pressed)
 
             if (but->doClick(btX, btY, pressed))
                 break;
-        }
-        else if (clickable)
-        {
-            MSG_DEBUG("Button out of position: L " << but->getLeftPosition() << ", R " << (but->getLeftPosition() + but->getWidth()) << ", T " << but->getTopPosition() << ", B " << (but->getTopPosition() + but->getHeight()) << " --> " << x << ":" << y);
         }
 
         button = button->previous;
