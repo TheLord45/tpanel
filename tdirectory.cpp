@@ -424,7 +424,11 @@ bool TDirectory::dropDir(const string& path)
 #endif
                 continue;
 
-            fs::remove(p.path());
+            if (!fs::remove(p.path()))
+            {
+                MSG_ERROR("Error deleting file:" << p.path());
+            }
+
             count++;
         }
     }

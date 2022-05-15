@@ -854,7 +854,6 @@ void TPageManager::doCommand(const amx::ANET_COMMAND& cmd)
 
                         case 0x0007:	// End of file transfer
                         {
-//                            initialize();
                             com = "#FTR-END";
                             parseCommand(bef.device1, bef.port1, com);
                         }
@@ -3139,6 +3138,12 @@ void TPageManager::doFTR(int port, vector<int>& channels, vector<string>& pars)
     else if (pars.at(0).compare("END") == 0)
     {
         MSG_TRACE("End of file transfer reached.");
+
+        // To make sure the new surface will not be deleted and replaced by the
+        // default build in surface, we must delete the "virgin" marker first.
+        // This is a file called <project path>/.system.
+        string virgin = TConfig::getProjectPath() + "/.system";
+        remove(virgin.c_str());     // Because this file may not exist we don't care about the result code.
 
         if (_resetSurface)
             _resetSurface();

@@ -112,6 +112,7 @@ class TQtSettings : public QDialog
         uint mLogLevel{0};
         bool mInitRun{false};
         bool mDownloadForce{false};
+        double mRatioFont{1.0};
 };
 
 #endif

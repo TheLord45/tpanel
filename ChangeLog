@@ -3,6 +3,11 @@ ChangeLog
 
 Release: 1.3.2
 ===============================================================================
+2022-05-15 Changed the size calculation of the setup dialog. It should now
+           be useable on a damn small display too. But it still looks ugly.
+           Added a remove of the "virgin" marker when a surface is received
+           over a file transfer from a NetLinx.
+
 2022-05-14 Fixed sorting of subpages.
            Added some system buttons to upper and lower the volume TPanel uses.
            Fixed a bug in sort algorithm which ended in a crash of application.

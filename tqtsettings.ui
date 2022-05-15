@@ -119,8 +119,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>91</width>
-       <height>28</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="toolTip">
@@ -160,8 +160,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>121</width>
-       <height>26</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -198,8 +198,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>121</width>
-       <height>22</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -236,8 +236,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>44</width>
-       <height>38</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="toolTip">
@@ -284,8 +284,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>121</width>
-       <height>22</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -309,8 +309,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>370</width>
-       <height>36</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="toolTip">
@@ -328,8 +328,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>44</width>
-       <height>38</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="toolTip">
@@ -368,8 +368,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>121</width>
-       <height>22</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -393,8 +393,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>120</width>
-       <height>22</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -418,8 +418,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>141</width>
-       <height>36</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="toolTip">
@@ -452,8 +452,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>141</width>
-       <height>36</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="toolTip">
@@ -480,8 +480,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>311</width>
-       <height>36</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="toolTip">
@@ -505,8 +505,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>141</width>
-       <height>36</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="toolTip">
@@ -539,8 +539,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>121</width>
-       <height>22</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -564,8 +564,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>111</width>
-       <height>22</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -589,8 +589,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>111</width>
-       <height>22</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -614,8 +614,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>111</width>
-       <height>22</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -639,8 +639,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>111</width>
-       <height>22</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -664,8 +664,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>111</width>
-       <height>22</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -689,8 +689,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>141</width>
-       <height>36</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="toolTip">
@@ -717,8 +717,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>141</width>
-       <height>36</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="toolTip">
@@ -753,6 +753,12 @@
        <height>36</height>
       </rect>
      </property>
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>0</height>
+      </size>
+     </property>
      <property name="editable">
       <bool>true</bool>
      </property>
@@ -768,6 +774,12 @@
        <width>41</width>
        <height>38</height>
       </rect>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>0</height>
+      </size>
      </property>
      <property name="text">
       <string>...</string>
@@ -805,8 +817,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>121</width>
-       <height>22</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -830,8 +842,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>121</width>
-       <height>22</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -855,8 +867,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>121</width>
-       <height>22</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -880,8 +892,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>121</width>
-       <height>22</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -905,8 +917,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>121</width>
-       <height>22</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -930,8 +942,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>121</width>
-       <height>22</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -955,8 +967,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>121</width>
-       <height>22</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -980,8 +992,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>311</width>
-       <height>36</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="toolTip">
@@ -1005,8 +1017,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>311</width>
-       <height>36</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="toolTip">
@@ -1030,8 +1042,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>311</width>
-       <height>36</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="toolTip">
@@ -1055,8 +1067,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>311</width>
-       <height>36</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="toolTip">
@@ -1080,8 +1092,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>311</width>
-       <height>36</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="toolTip">
@@ -1168,8 +1180,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>60</width>
-       <height>22</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -1193,8 +1205,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>121</width>
-       <height>22</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -1332,8 +1344,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>111</width>
-       <height>22</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -1357,8 +1369,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>111</width>
-       <height>22</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -1398,8 +1410,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>111</width>
-       <height>22</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -1436,8 +1448,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>111</width>
-       <height>22</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -1495,8 +1507,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>111</width>
-       <height>22</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -1520,8 +1532,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>111</width>
-       <height>22</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -1565,8 +1577,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>111</width>
-       <height>22</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -1607,8 +1619,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>111</width>
-       <height>22</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -1632,8 +1644,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>111</width>
-       <height>22</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -1723,8 +1735,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>111</width>
-       <height>22</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -1761,8 +1773,8 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>111</width>
-       <height>22</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
      <property name="text">
@@ -1815,8 +1827,8 @@
    </property>
    <property name="minimumSize">
     <size>
-     <width>411</width>
-     <height>32</height>
+     <width>0</width>
+     <height>0</height>
     </size>
    </property>
    <property name="locale">

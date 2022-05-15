@@ -86,6 +86,10 @@ TObject *gObject = nullptr;                     //!< Internal used pointer to a 
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
 static double gScale = 1.0;                     //!< Global variable holding the scale factor.
 static int gFullWidth = 0;                      //!< Global variable holding the width of the AMX screen. This is used to calculate the scale factor for the settings dialog.
+std::atomic<double> mScaleFactorW{1.0};
+std::atomic<double> mScaleFactorH{1.0};
+int gScreenWidth{0};
+int gScreenHeight{0};
 #endif
 
 using std::bind;
@@ -197,6 +201,8 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
         QRect screenGeometry = screens.at(0)->availableGeometry();
         double width = 0.0;
         double height = 0.0;
+        gScreenWidth = screenGeometry.width();
+        gScreenHeight = screenGeometry.height();
         int minWidth = pmanager->getSettings()->getWith();
         int minHeight = pmanager->getSettings()->getHeight();
 
@@ -218,12 +224,13 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
         MSG_INFO("Screen size: " << width << " x " << height);
         // The scale factor is always calculated in difference to the prefered
         // size of the original AMX panel.
-        double scaleW = width / minWidth;
-        double scaleH = height / minHeight;
-        scale = std::min(scaleW, scaleH);
+        mScaleFactorW = width / minWidth;
+        mScaleFactorH = height / minHeight;
+        scale = std::min(mScaleFactorW, mScaleFactorH);
 
         gScale = scale;     // The calculated scale factor
         gFullWidth = width;
+        MSG_INFO("Calculated scale factor: " << scale);
         // This preprocessor variable allows the scaling to be done by the Skia
         // library, which is used to draw everything. In comparison to Qt this
         // library is a bit slower and sometimes does not honor the aspect ratio
@@ -1052,7 +1059,33 @@ void MainWindow::settings()
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
     // On mobile devices we set the scale factor always because otherwise the
     // dialog will be unusable.
-    dlg_settings->setScaleFactor(gScale);
+    qreal ratio = 1.0;
+
+    if (gPageManager->getSettings()->isPortrait())
+    {
+        if (gScreenWidth > gScreenHeight)
+        {
+            qreal refHeight = dlg_settings->geometry().height();
+            qreal refWidth = dlg_settings->geometry().width();
+            QRect rect = QGuiApplication::primaryScreen()->geometry();
+            qreal height = qMax(rect.width(), rect.height());
+            qreal width = qMin(rect.width(), rect.height());
+            ratio = qMin(height / refHeight, width / refWidth);
+        }
+        else
+        {
+            qreal refWidth = dlg_settings->geometry().height();
+            qreal refHeight = dlg_settings->geometry().width();
+            QRect rect = QGuiApplication::primaryScreen()->geometry();
+            qreal width = qMax(rect.width(), rect.height());
+            qreal height = qMin(rect.width(), rect.height());
+            ratio = qMin(height / refHeight, width / refWidth);
+        }
+    }
+    else
+        ratio = gScale;
+
+    dlg_settings->setScaleFactor(ratio);
     dlg_settings->doResize();
 #endif
     int ret = dlg_settings->exec();

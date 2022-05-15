@@ -19,6 +19,9 @@
 #include <QComboBox>
 #include <QMessageBox>
 #include <QAudioOutput>
+#include <QScreen>
+#include <QGuiApplication>
+#include <QFont>
 
 #include <unistd.h>
 
@@ -375,6 +378,15 @@ void TQtSettings::scaleObject(T *obj)
     obj->resize(size);
     QRect rect = obj->geometry();
     obj->move(scale(rect.left()), scale(rect.top()));
+
+    QFont font = obj->font();
+    double fontSize = font.pointSizeF() * mRatioFont;
+
+    if (fontSize > 1.0)
+    {
+        font.setPointSizeF(fontSize);
+        obj->setFont(font);
+    }
 }
 
 void TQtSettings::doResize()
@@ -384,17 +396,38 @@ void TQtSettings::doResize()
     // The main dialog window
     QSize size = this->size();
     QRect rect = this->geometry();
+    QRect rectGui = QGuiApplication::primaryScreen()->geometry();
+    qreal height = qMax(rectGui.width(), rectGui.height());
+    qreal width = qMin(rectGui.width(), rectGui.height());
+
+    if (rectGui.width() > rectGui.height())
+        mScaleFactor = qMin(height / rect.height(), width / rect.width());
+
+    MSG_PROTOCOL("Native size: " << rect.width() << " x " << rect.height());
     size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
+    MSG_PROTOCOL("Calculated size: " << size.width() << " x " << size.height());
     this->resize(size);
-    this->move(scale(rect.left()), scale(rect.top()));
+
     QWidget *parent = this->parentWidget();
 
-    if (parent)
+    if (rect.width() > rectGui.width() || rect.height() > rectGui.height())
+        this->move(0, 0);
+    else if (parent && rect.width() < rectGui.width() && rect.height() < rectGui.height())
     {
         rect = parent->geometry();
         this->move(rect.center() - this->rect().center());
     }
+    else
+        this->move(scale(rect.left()), scale(rect.top()));
 
+    // Font size calculation
+    double refWidth = gPageManager->getSettings()->getWith();
+    double refHeight = gPageManager->getSettings()->getHeight();
+    width = rectGui.width();
+    height = rectGui.height();
+    double refDpi = 120.0;
+    double dpi = QGuiApplication::primaryScreen()->logicalDotsPerInch();
+    mRatioFont = qMin(height * refDpi / (dpi * refHeight), width * refDpi / (dpi * refWidth));
     // Layout
     // Iterate through childs and resize them
     QObjectList childs = children();
@@ -797,7 +830,7 @@ int TQtSettings::scale(int value)
 {
     DECL_TRACER("TQtSettings::scale(int value)");
 
-    if (value <= 0 || mScaleFactor == 1.0)
+    if (value <= 0 || mScaleFactor == 1.0 || mScaleFactor < 0.0)
         return value;
 
     return (int)((double)value * mScaleFactor);

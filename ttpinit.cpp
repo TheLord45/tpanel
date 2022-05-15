@@ -514,7 +514,6 @@ vector<string>& TTPInit::getFileList(const string& filter)
         return mDirList;
     }
 
-//    string tmpFile = std::tmpnam(nullptr);
     string tmpFile = getTmpFileName();
     MSG_DEBUG("Reading remote directory / into file " << tmpFile);
     ftp->Nlst(tmpFile.c_str(), "/");
