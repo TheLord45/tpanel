@@ -33,6 +33,8 @@ class TValidateFile
         bool isValidDir(const std::string& path);
         std::string& makeFileName(const std::string& path, const std::string& name);
         std::string& getFileName() { return mFile; }
+        std::string getPermissions(const std::string& path);
+        std::string getPermissions();
         static bool createPath(const std::string& path);
 
     private:

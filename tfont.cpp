@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
  */
 
 #include <codecvt>
+#include <mutex>
 
 #include "tresources.h"
 #include "tfont.h"
@@ -123,7 +124,13 @@ using std::string;
 using std::vector;
 using std::map;
 using std::pair;
+using std::mutex;
 using namespace Expat;
+
+mutex mutex_font;
+
+// This is an internal used font cache
+map<string, sk_sp<SkTypeface> > _tfontCache;
 
 TFont::TFont()
 {
@@ -139,6 +146,8 @@ TFont::~TFont()
 void TFont::initialize()
 {
     DECL_TRACER("TFont::initialize()");
+
+    mutex_font.lock();
 
     if (mFonts.size() > 0)
         mFonts.clear();
@@ -288,6 +297,7 @@ void TFont::initialize()
     {
         MSG_ERROR("File " << path << " doesn't exist or is not readable!");
         TError::setError();
+        mutex_font.unlock();
         return;
     }
 
@@ -295,7 +305,10 @@ void TFont::initialize()
     xml.setEncoding(ENC_CP1250);
 
     if (!xml.parse())
+    {
+        mutex_font.unlock();
         return;
+    }
 
     int depth = 0;
     size_t index = 0;
@@ -305,6 +318,7 @@ void TFont::initialize()
     {
         MSG_DEBUG("File does not contain the element \"fontList\"!");
         TError::setError();
+        mutex_font.unlock();
         return;
     }
 
@@ -322,6 +336,7 @@ void TFont::initialize()
         {
             MSG_ERROR("Element font contains no or invalid attribute!");
             TError::setError();
+            mutex_font.unlock();
             return;
         }
 
@@ -356,6 +371,8 @@ void TFont::initialize()
 
         xml.setIndex(index);
     }
+
+    mutex_font.unlock();
 }
 
 bool TFont::systemFonts()
@@ -555,25 +572,48 @@ sk_sp<SkTypeface> TFont::getTypeFace(int number)
         return sk_sp<SkTypeface>();
     }
 
+    if (!_tfontCache.empty())
+    {
+        map<string, sk_sp<SkTypeface> >::iterator itFont = _tfontCache.find(iter->second.file);
+
+        if (itFont != _tfontCache.end() && itFont->second)
+        {
+            MSG_DEBUG("Font " << number << ": " << iter->second.file << " was taken from cache.");
+            return itFont->second;
+        }
+        else if (itFont != _tfontCache.end())
+            _tfontCache.erase(itFont);
+    }
+
+    mutex_font.lock();
     string path;
 
     if (number < 32)    // System font?
+    {
         path = TConfig::getProjectPath() + "/__system/graphics/fonts/" + iter->second.file;
+
+        if (!isValidFile(path))
+        {
+            MSG_WARNING("Seem to miss system fonts ...");
+            path = TConfig::getProjectPath() + "/fonts/" + iter->second.file;
+        }
+    }
     else
         path = TConfig::getProjectPath() + "/fonts/" + iter->second.file;
 
     sk_sp<SkTypeface> tf;
-    MSG_TRACE("Loading font \"" << path << "\" ...");
+    MSG_DEBUG("Loading font \"" << path << "\" ...");
 
     if (isValidFile(path))
-        tf = MakeResourceAsTypeface(path.c_str(), iter->second.faceIndex);
+        tf = MakeResourceAsTypeface(path.c_str(), iter->second.faceIndex, RESTYPE_FONT);
     else
         MSG_WARNING("File " << path << " is not a valid file or does not exist!");
 
     if (!tf)
     {
-        MSG_ERROR("Error loading font \"" << path << "\"");
-        MSG_TRACE("Trying with alternative function ...");
+        string perms = getPermissions(path);
+        MSG_ERROR("Error loading font \"" << path << "\" [" << perms << "]");
+        MSG_PROTOCOL("Trying with alternative function ...");
         TError::setError();
 
         tf = SkTypeface::MakeFromName(iter->second.fullName.c_str(), getSkiaStyle(number));
@@ -583,35 +623,54 @@ sk_sp<SkTypeface> TFont::getTypeFace(int number)
         else
         {
             MSG_ERROR("Alternative method failed loading the font " << iter->second.fullName);
-            return tf;
+            MSG_WARNING("Will use a default font instead!");
+            tf = SkTypeface::MakeDefault();
+
+            if (tf)
+                TError::clear();
+            else
+            {
+                MSG_ERROR("No default font found!");
+                mutex_font.unlock();
+                return tf;
+            }
         }
     }
     else
     {
-        MSG_TRACE("Font \"" << path << "\" was loaded successfull.");
+        _tfontCache.insert(pair<string, sk_sp<SkTypeface> >(iter->second.file, tf));
+        MSG_DEBUG("Font \"" << path << "\" was loaded successfull.");
     }
 
     SkString sname;
     tf->getFamilyName(&sname);
-    MSG_DEBUG("Found font name \"" << sname.c_str() << "\" with attributes: bold=" << ((tf->isBold())?"TRUE":"FALSE") << ", italic=" << ((tf->isItalic())?"TRUE":"FALSE") << ", fixed=" << ((tf->isFixedPitch())?"TRUE":"FALSE"));
 
     if (iter->second.name.compare(sname.c_str()) != 0)
     {
+        MSG_WARNING("Found font name \"" << sname.c_str() << "\" with attributes: bold=" << ((tf->isBold())?"TRUE":"FALSE") << ", italic=" << ((tf->isItalic())?"TRUE":"FALSE") << ", fixed=" << ((tf->isFixedPitch())?"TRUE":"FALSE"));
         MSG_WARNING("The loaded font \"" << sname.c_str() << "\" is not the wanted font \"" << iter->second.name << "\"!");
     }
 
     FONT_STYLE style = getStyle(iter->second);
+    bool ret = false;
 
     if (style == FONT_BOLD && tf->isBold())
-        return tf;
+        ret = true;
     else if (style == FONT_ITALIC && tf->isItalic())
-        return tf;
+        ret = true;
     else if (style == FONT_BOLD_ITALIC && tf->isBold() && tf->isItalic())
-        return tf;
+        ret = true;
     else if (style == FONT_NORMAL && !tf->isBold() && !tf->isItalic())
+        ret = true;
+
+    if (ret)
+    {
+        mutex_font.unlock();
         return tf;
+    }
 
     MSG_WARNING("The wanted font style " << iter->second.subfamilyName << " was not found!");
+    mutex_font.unlock();
     return tf;
 }
 
@@ -781,7 +840,6 @@ uint16_t TFont::getGlyphIndex(SkUnichar ch)
                 {
                     MSG_WARNING("The character " << std::hex << std::setw(4) << std::setfill('0') << lCh << " is not supported by any segment!" << std::dec);
                     continue;
-//                    return 0xffff;
                 }
 
                 MSG_DEBUG("Table: " << (nTbs+1) << ": idRangeOffset: " << std::hex << std::setw(4) << std::setfill('0') << form.idRangeOffset[segment] << ", idDelta: " << std::setw(4) << std::setfill('0') << form.idDelta[segment] << std::dec);
@@ -841,6 +899,13 @@ SkGlyphID *TFont::textToGlyphs(const string& str, sk_sp<SkTypeface>& typeFace, s
 
     *size = 0;
     int tables = typeFace->countTables();
+
+    if (!tables)
+    {
+        MSG_ERROR("No tables in typeface!");
+        return nullptr;
+    }
+
     SkFontTableTag *tbTags = new SkFontTableTag[tables];
     int tags = typeFace->getTableTags(tbTags);
     bool haveCmap = false;
@@ -854,6 +919,14 @@ SkGlyphID *TFont::textToGlyphs(const string& str, sk_sp<SkTypeface>& typeFace, s
         if (fttg == FTABLE_cmap)
         {
             size_t tbSize = typeFace->getTableSize(fttg);
+
+            if (!tbSize)
+            {
+                MSG_ERROR("CMAP font table size is 0!");
+                delete[] tbTags;
+                return nullptr;
+            }
+
             cmaps = new unsigned char[tbSize];
             typeFace->getTableData(fttg, 0, tbSize, cmaps);
             haveCmap = true;
@@ -864,7 +937,7 @@ SkGlyphID *TFont::textToGlyphs(const string& str, sk_sp<SkTypeface>& typeFace, s
     if (!haveCmap)
     {
         MSG_ERROR("Invalid font. Missing CMAP table!");
-        TError::setError();
+//        TError::setError();
         delete[] tbTags;
         return nullptr;
     }
@@ -889,17 +962,32 @@ SkGlyphID *TFont::textToGlyphs(const string& str, sk_sp<SkTypeface>& typeFace, s
     return gIds;
 }
 
-bool TFont::isSymbol(sk_sp<SkTypeface>& typeFace)
+FONT_TYPE TFont::isSymbol(sk_sp<SkTypeface>& typeFace)
 {
     DECL_TRACER("TFont::isSymbol(sk_sp<SkTypeface>& typeFace)");
 
+    if (!typeFace)
+    {
+        MSG_ERROR("Got an empty typeface!");
+        return FT_UNKNOWN;
+    }
+
+    mutex_font.lock();
     int tables = typeFace->countTables();
+
+    if (tables <= 0)
+    {
+        MSG_ERROR("No tables found in typeface!");
+        mutex_font.unlock();
+        return FT_UNKNOWN;
+    }
+
     SkFontTableTag *tbTags = new SkFontTableTag[tables];
     int tags = typeFace->getTableTags(tbTags);
     bool haveCmap = false;
     unsigned char *cmaps = nullptr;
 
-    // Find the "cmap" table and get them
+    // Find the "cmap" table and get it
     for (int i = 0; i < tags; i++)
     {
         SkFontTableTag fttg = tbTags[i];
@@ -907,6 +995,15 @@ bool TFont::isSymbol(sk_sp<SkTypeface>& typeFace)
         if (fttg == FTABLE_cmap)
         {
             size_t tbSize = typeFace->getTableSize(fttg);
+
+            if (!tbSize)
+            {
+                MSG_ERROR("CMAP table has size of 0!");
+                delete[] tbTags;
+                mutex_font.unlock();
+                return FT_UNKNOWN;
+            }
+
             cmaps = new unsigned char[tbSize];
             typeFace->getTableData(fttg, 0, tbSize, cmaps);
             haveCmap = true;
@@ -917,9 +1014,10 @@ bool TFont::isSymbol(sk_sp<SkTypeface>& typeFace)
     if (!haveCmap)
     {
         MSG_ERROR("Invalid font. Missing CMAP table!");
-        TError::setError();
+//        TError::setError();
         delete[] tbTags;
-        return false;
+        mutex_font.unlock();
+        return FT_UNKNOWN;
     }
 
     delete[] tbTags;
@@ -932,13 +1030,20 @@ bool TFont::isSymbol(sk_sp<SkTypeface>& typeFace)
         {
             _freeCmap();
             delete[] cmaps;
-            return true;
+            FONT_TYPE ft = FT_SYMBOL;
+
+            if (_cmapTable.subtables[nTbs].platformID == FTABLE_PID_MICROSOFT && _cmapTable.subtables[nTbs].platformSpecificID == FTABLE_SID_MSC_SYMBOL)
+                ft = FT_SYM_MS;
+
+            mutex_font.unlock();
+            return ft;
         }
     }
 
     _freeCmap();
     delete[] cmaps;
-    return false;
+    mutex_font.unlock();
+    return FT_NORMAL;
 }
 
 size_t TFont::utf8ToUtf16(const string& str, uint16_t **uni, bool toSymbol)
@@ -947,7 +1052,9 @@ size_t TFont::utf8ToUtf16(const string& str, uint16_t **uni, bool toSymbol)
 
     if (str.empty() || !uni)
     {
-        *uni = nullptr;
+        if (uni)
+            *uni = nullptr;
+
         return 0;
     }
 
@@ -955,15 +1062,25 @@ size_t TFont::utf8ToUtf16(const string& str, uint16_t **uni, bool toSymbol)
     std::u16string dest = convert.from_bytes(str);
 
     *uni = new uint16_t[dest.length()+1];
-    memset(*uni, 0, sizeof(SkUnichar) * (dest.length()+1));
+    uint16_t *unicode = *uni;
+    memset(unicode, 0, sizeof(uint16_t) * (dest.length()+1));
 
     for (size_t i = 0; i < dest.length(); i++)
     {
-        *uni[i] = dest[i];
+        unicode[i] = dest[i];
 
-        if (toSymbol && *uni[i] < 0xf000)
-            *uni[i] += 0xf000;
+        if (toSymbol && unicode[i] < 0xf000)
+            unicode[i] += 0xf000;
     }
 
     return dest.length();
+}
+
+double TFont::pixelToPoint(int dpi, int pixel)
+{
+    DECL_TRACER("TFont::pixelToPoint(int dpi, int pixel)");
+
+    double size = 0.0138889 * (double)dpi * (double)pixel;
+    MSG_DEBUG("Size: " << size << ", dpi: " << dpi << ", pixels: " << pixel);
+    return size;
 }

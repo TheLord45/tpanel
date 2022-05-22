@@ -29,6 +29,7 @@
 #include "tdirectory.h"
 #include "tresources.h"
 #include "tpagemanager.h"
+#include "tfont.h"
 #include "terror.h"
 #include "ui_tqtsettings.h"
 
@@ -380,13 +381,24 @@ void TQtSettings::scaleObject(T *obj)
     obj->move(scale(rect.left()), scale(rect.top()));
 
     QFont font = obj->font();
-    double fontSize = font.pointSizeF() * mRatioFont;
+    double fontSize = -1.0;
+    int pixelSize = -1;
 
-    if (fontSize > 1.0)
-    {
+    if (font.pointSizeF() > 0.0 && mRatioFont != 1.0)
+        fontSize = font.pointSizeF() * mRatioFont;
+    else if (font.pointSize() > 0 && mRatioFont != 1.0)
+        fontSize = font.pointSize() * mRatioFont;
+    else if (font.pixelSize() > 0)
+        pixelSize = (int)((double)font.pixelSize() / mScaleFactor);
+
+    if (fontSize >= 6.0)
         font.setPointSizeF(fontSize);
-        obj->setFont(font);
-    }
+    else if (pixelSize >= 8)
+        font.setPixelSize(pixelSize);
+    else
+        font.setPointSizeF(6.0);
+
+    obj->setFont(font);
 }
 
 void TQtSettings::doResize()
@@ -397,15 +409,29 @@ void TQtSettings::doResize()
     QSize size = this->size();
     QRect rect = this->geometry();
     QRect rectGui = QGuiApplication::primaryScreen()->geometry();
-    qreal height = qMax(rectGui.width(), rectGui.height());
-    qreal width = qMin(rectGui.width(), rectGui.height());
+    qreal height = 0.0;
+    qreal width = 0.0;
 
-    if (rectGui.width() > rectGui.height())
-        mScaleFactor = qMin(height / rect.height(), width / rect.width());
+    if (gPageManager->getSettings()->isPortrait())
+    {
+        height = qMax(rectGui.width(), rectGui.height());
+        width = qMin(rectGui.width(), rectGui.height());
 
-    MSG_PROTOCOL("Native size: " << rect.width() << " x " << rect.height());
+        if (rectGui.width() > rectGui.height())
+            mScaleFactor = qMin(height / rect.height(), width / rect.width());
+    }
+    else
+    {
+        height = qMin(rectGui.width(), rectGui.height());
+        width = qMax(rectGui.width(), rectGui.height());
+
+        if (rectGui.width() < rectGui.height())
+            mScaleFactor = qMax(height / rect.height(), width / rect.width());
+    }
+
+    MSG_DEBUG("Native size: " << rect.width() << " x " << rect.height());
     size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-    MSG_PROTOCOL("Calculated size: " << size.width() << " x " << size.height());
+    MSG_DEBUG("Calculated size: " << size.width() << " x " << size.height());
     this->resize(size);
 
     QWidget *parent = this->parentWidget();
@@ -423,11 +449,10 @@ void TQtSettings::doResize()
     // Font size calculation
     double refWidth = gPageManager->getSettings()->getWith();
     double refHeight = gPageManager->getSettings()->getHeight();
-    width = rectGui.width();
-    height = rectGui.height();
-    double refDpi = 120.0;
     double dpi = QGuiApplication::primaryScreen()->logicalDotsPerInch();
+    double refDpi = dpi / ((width > height) ? width : height) * ((refWidth > refHeight) ? refWidth : refHeight);
     mRatioFont = qMin(height * refDpi / (dpi * refHeight), width * refDpi / (dpi * refWidth));
+    MSG_DEBUG("Original DPI: " << dpi << ", initial AMX DPI: " << refDpi << ", font scale factor: " << mRatioFont);
     // Layout
     // Iterate through childs and resize them
     QObjectList childs = children();
@@ -440,8 +465,12 @@ void TQtSettings::doResize()
 
         if (name.startsWith("tabWidget"))
         {
-            scaleObject(dynamic_cast<QTabWidget *>(obj));
-
+            QTabWidget *tw = dynamic_cast<QTabWidget *>(obj);
+            scaleObject(tw);
+#ifdef __ANDROID__
+            QColor txt = qt_fusionPalette().Text;
+            tw->setStyleSheet(QString("color: %1").arg(txt.name()));
+#endif
             QObjectList childsTab = obj->children();
             QList<QObject *>::Iterator iterTab;
 
@@ -478,9 +507,36 @@ void TQtSettings::doResize()
                             else if (n.startsWith("lineEdit"))
                                 scaleObject(dynamic_cast<QLineEdit *>(on));
                             else if (n.startsWith("spinBox"))
-                                scaleObject(dynamic_cast<QSpinBox *>(on));
+                            {
+                                QSpinBox *sb = dynamic_cast<QSpinBox *>(on);
+                                QFont font = sb->font();
+                                scaleObject(sb);
+
+                                if (font.pixelSize() > 0)
+                                {
+                                    int pixelSize = (int)((double)font.pixelSize() / mScaleFactor);
+                                    sb->setStyleSheet(QString("font-size: %1px").arg(pixelSize));
+                                }
+                            }
                             else if (n.startsWith("comboBox"))
-                                scaleObject(dynamic_cast<QComboBox *>(on));
+                            {
+                                QComboBox *cb = dynamic_cast<QComboBox *>(on);
+                                QFont font = cb->font();
+                                scaleObject(cb);
+#ifdef __ANDROID__
+                                if (font.pixelSize() > 0)
+                                {
+                                    int pixelSize = (int)((double)font.pixelSize() / mScaleFactor);
+                                    QColor txt = qt_fusionPalette().Text;
+                                    QColor back = qt_fusionPalette().Button;
+                                    cb->setStyleSheet(QString("font-size: %1px; color: %2;editable:background-color: %3;drop-down:background-color: %4")
+                                                      .arg(pixelSize)
+                                                      .arg(txt.name())
+                                                      .arg(back.name())
+                                                      .arg(back.name()));
+                                }
+#endif
+                            }
                             else if (n.startsWith("horizontalSlider") || n.startsWith("verticalSlider"))
                                 scaleObject(dynamic_cast<QSlider *>(on));
                             else if (n.startsWith("label"))

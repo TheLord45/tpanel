@@ -233,7 +233,7 @@ bool TSettings::loadSettings(bool initial)
         while ((index = xml.getNextElementIndex("resourceList", depth)) != TExpat::npos);
     }
 
-    if ((index = xml.getElementIndex("paletteList", &depth)) == TExpat::npos)
+    if (xml.getElementIndex("paletteList", &depth) == TExpat::npos)
     {
         MSG_WARNING("There exists no color palette! There will be only the system colors available.");
         return true;

@@ -34,11 +34,26 @@ class SkTypeface;
 
 extern sk_sp<SkData> (*gResourceFactory)(const char*);
 
-SkString GetResourcePath(const char* resource = "");
+typedef enum _RESOURCE_TYPE
+{
+    RESTYPE_UNKNOWN,
+    RESTYPE_IMAGE,
+    RESTYPE_SYSIMAGE,
+    RESTYPE_FONT,
+    RESTYPE_SYSFONT,
+    RESTYPE_CURSOR,
+    RESTYPE_SYSCURSOR,
+    RESTYPE_BORDER,
+    RESTYPE_SYSBORDER,
+    RESTYPE_SLIDER,
+    RESTYPE_SYSSLIDER
+}_RESOURCE_TYPE;
+
+SkString GetResourcePath(const char* resource = "", _RESOURCE_TYPE rs = RESTYPE_IMAGE);
 
 bool DecodeDataToBitmap(sk_sp<SkData> data, SkBitmap* dst);
 
-sk_sp<SkData> GetResourceAsData(const char* resource);
+sk_sp<SkData> GetResourceAsData(const char* resource, _RESOURCE_TYPE rs = RESTYPE_IMAGE);
 
 inline bool GetResourceAsBitmap(const char* resource, SkBitmap* dst)
 {
@@ -50,9 +65,9 @@ inline sk_sp<SkImage> GetResourceAsImage(const char* resource)
     return SkImage::MakeFromEncoded(GetResourceAsData(resource));
 }
 
-std::unique_ptr<SkStreamAsset> GetResourceAsStream(const char* resource);
+std::unique_ptr<SkStreamAsset> GetResourceAsStream(const char* resource, _RESOURCE_TYPE rs = RESTYPE_IMAGE);
 
-sk_sp<SkTypeface> MakeResourceAsTypeface(const char* resource, int ttcIndex = 0);
+sk_sp<SkTypeface> MakeResourceAsTypeface(const char* resource, int ttcIndex = 0, _RESOURCE_TYPE rs = RESTYPE_IMAGE);
 
 sk_sp<SkData> readImage(const std::string& fname);
 

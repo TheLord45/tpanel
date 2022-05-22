@@ -166,11 +166,32 @@ TPageManager::TPageManager()
     gPageManager = this;
     TTPInit *tinit = new TTPInit;
     tinit->setPath(TConfig::getProjectPath());
+    bool haveSurface = false;
 
     if (tinit->isVirgin())
-        tinit->loadSurfaceFromController();
+        haveSurface = tinit->loadSurfaceFromController();
+    else
+        haveSurface = true;
+
+    if (!haveSurface)
+    {
+        if (isValidFile(TConfig::getProjectPath() + "/prj.xma"))
+            haveSurface = true;
+        else if (!isValidFile(TConfig::getProjectPath() + "/prj.xma"))
+            haveSurface = tinit->reinitialize();
+    }
+    else
+        tinit->makeSystemFiles();
 
     delete tinit;
+
+    if (!haveSurface)
+    {
+        MSG_ERROR("Damaged surface! Impossible to initialize disk space!");
+        TError::setError();
+        surface_mutex.unlock();
+        return;
+    }
     // Read the AMX panel settings.
     mTSettings = new TSettings(TConfig::getProjectPath());
 
@@ -1559,7 +1580,7 @@ bool TPageManager::addPage(TPage* pg)
         setPChain(mPchain);
     }
 
-    MSG_DEBUG("Added page " << chain->page->getName());
+//    MSG_DEBUG("Added page " << chain->page->getName());
     return true;
 }
 
@@ -1599,7 +1620,6 @@ bool TPageManager::addSubPage(TSubPage* pg)
         setSPChain(mSPchain);
     }
 
-    MSG_DEBUG("Added subpage " << chain->page->getName());
     return true;
 }
 

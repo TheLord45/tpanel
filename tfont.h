@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -49,6 +49,14 @@ typedef enum FONT_STYLE
     FONT_BOLD_ITALIC
 }FONT_STYLE;
 
+typedef enum FONT_TYPE
+{
+    FT_UNKNOWN,     // Unknown font type
+    FT_NORMAL,      // Normal font with mostly letters
+    FT_SYMBOL,      // Normal font with mostly symbols
+    FT_SYM_MS       // Proprietary Microsoft symbol font
+}FONT_TYPE;
+
 class TFont : public TValidateFile
 {
     public:
@@ -66,8 +74,9 @@ class TFont : public TValidateFile
 
         static std::vector<std::string> getFontPathList();
         static SkGlyphID *textToGlyphs(const std::string& str, sk_sp<SkTypeface>& typeFace, size_t *size);
-        static bool isSymbol(sk_sp<SkTypeface>& typeFace);
+        static FONT_TYPE isSymbol(sk_sp<SkTypeface>& typeFace);
         static size_t utf8ToUtf16(const std::string& str, uint16_t **uni, bool toSymbol = false);
+        static double pixelToPoint(int dpi, int pixel);
 
     private:
         static void parseCmap(const unsigned char *cmaps);

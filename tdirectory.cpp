@@ -497,7 +497,10 @@ string TDirectory::getEntryWithPart(const string &part, bool precice)
             if (next == '.')
                 return iter->name;
 
-            if ((next >= 'A' && next <= 'Z') || (next >= 'a' && next <= 'z') || (precice && next == '_'))
+            if (precice && next == '_')
+                continue;
+
+            if ((next >= 'A' && next <= 'Z') || (next >= 'a' && next <= 'z'))
                 continue;
 
             return iter->name;

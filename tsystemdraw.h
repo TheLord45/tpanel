@@ -26,6 +26,7 @@
 #include <expat.h>
 
 #include "tvalidatefile.h"
+#include "tdirectory.h"
 
 typedef enum SLIDER_GRTYPE_t
 {
@@ -253,6 +254,7 @@ class TSystemDraw : public TValidateFile
             X_POPUP_EFFECT
         }XELEMENTS_t;
 
+        std::string getDirEntry(dir::TDirectory *dir, const std::string& part, bool alpha = true);
 
         std::string mPath;          // The path to the system directory tree
         bool mValid{false};         // TRUE = the path mPath is a valid directory

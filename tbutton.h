@@ -35,6 +35,7 @@
 #include "tamxnet.h"
 #include "ttimer.h"
 #include "timagerefresh.h"
+#include "tsystemdraw.h"
 
 #define ORD_ELEM_COUNT  5
 
@@ -182,6 +183,19 @@ namespace Button
         FB_MOMENTARY,
         FB_BLINK
     } FEEDBACK;
+
+    typedef enum PMIX
+    {
+        PMIX_MULTIPLY,
+        PMIX_XOR,
+        PMIX_SCREEN,
+        PMIX_SRC,
+        PMIX_DST,
+        PMIX_SRCOVER,
+        PMIX_SRCTOP,
+        PMIX_DSTTOP,
+        PMIX_PLUS
+    }PMIX;
 
     typedef struct SR_T
     {
@@ -923,7 +937,9 @@ namespace Button
             bool scaleImage(SkBitmap *bm, double scaleWidth, double scaleHeight);
             bool stretchImageWidth(SkBitmap *bm, int width);
             bool stretchImageHeight(SkBitmap *bm, int height);
-            bool colorImage(SkBitmap *img, int width, int height, SkColor col, SkColor bg=0, bool useBG=false);
+            bool stretchImageWH(SkBitmap *bm, int width, int height);
+            SkBitmap colorImage(SkBitmap& base, SkBitmap& alpha, SkColor col, SkColor bg=0, bool useBG=false);
+            SkBitmap retrieveBorderImage(const std::string& bs, const std::string& bsa, SkColor color, SkColor bgColor);
             bool retrieveImage(const std::string& path, SkBitmap *image);
             SkBitmap drawSliderButton(const std::string& slider, SkColor col);
 
@@ -935,6 +951,7 @@ namespace Button
             void setInvalid(ulong handle);
             void setBCBitmap(ulong handle, SkBitmap& bm);
             void showBitmapCache();
+            uint32_t pixelMix(uint32_t s, uint32_t d, uint32_t a, PMIX mix);
 
             BUTTONTYPE type;
             int bi{0};              // button ID

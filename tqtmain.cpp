@@ -217,7 +217,7 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
             height = std::min(screenGeometry.height(), screenGeometry.width());
         }
 
-        if (TConfig::getToolbarForce())
+        if (!TConfig::getToolbarSuppress() && TConfig::getToolbarForce())
             minWidth += 48;
 
         MSG_INFO("Dimension of AMX screen:" << minWidth << " x " << minHeight);
@@ -551,14 +551,14 @@ void MainWindow::_repaintWindows()
 {
     DECL_TRACER("MainWindow::_repaintWindows()");
 
-    emit repaintWindows();
+    emit sigRepaintWindows();
 }
 
 void MainWindow::_toFront(ulong handle)
 {
     DECL_TRACER("MainWindow::_toFront(ulong handle)");
 
-    emit toFront(handle);
+    emit sigToFront(handle);
 }
 
 /**
@@ -1814,7 +1814,7 @@ void MainWindow::_muteSound(bool state)
 {
     DECL_TRACER("MainWindow::_muteSound(bool state)");
 
-    emit muteSound(state);
+    emit sigMuteSound(state);
 }
 
 void MainWindow::_setOrientation(J_ORIENTATION ori)

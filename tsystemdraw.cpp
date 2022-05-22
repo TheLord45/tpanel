@@ -65,6 +65,8 @@ TSystemDraw::TSystemDraw(const string &path)
         mHaveFonts = true;
     {
         MSG_WARNING("Have no system fonts");
+        string perms = getPermissions(path);
+        MSG_PROTOCOL("Looked for system fonts at: " << path << "/fonts -- [" << perms << "]");
     }
 
     if (isValidDir(path + "/images"))
@@ -621,6 +623,24 @@ void TSystemDraw::CharacterDataHandler(void *userData, const XML_Char *s, int le
     }
 }
 
+string TSystemDraw::getDirEntry(dir::TDirectory* dir, const string& part, bool alpha)
+{
+    DECL_TRACER("TSystemDraw::getDirEntry(dir::TDirectory* dir, const string& part, bool precice)");
+
+    string such = part;
+
+    if (alpha)
+        such += "_alpha";
+
+    string dirEntry = dir->getEntryWithPart(such, true);
+    such = part;
+
+    if (dirEntry.empty())
+        dirEntry = dir->getEntryWithPart(such, false);
+
+    return dirEntry;
+}
+
 bool TSystemDraw::getBorder(const string &family, LINE_TYPE_t lt, BORDER_t *border)
 {
     DECL_TRACER("TSystemDraw::getBorder(const string &family, BORDER_t *border)");
@@ -688,14 +708,14 @@ bool TSystemDraw::getBorder(const string &family, LINE_TYPE_t lt, BORDER_t *bord
             if (num < 8)
                 continue;
 
-            border->b = mPath + "/borders/" + dir.getEntryWithPart("_b", false);
-            border->bl = mPath + "/borders/" + dir.getEntryWithPart("_bl", false);
-            border->br = mPath + "/borders/" + dir.getEntryWithPart("_br", false);
-            border->l = mPath + "/borders/" + dir.getEntryWithPart("_l", false);
-            border->r = mPath + "/borders/" + dir.getEntryWithPart("_r", false);
-            border->t = mPath + "/borders/" + dir.getEntryWithPart("_t", false);
-            border->tl = mPath + "/borders/" + dir.getEntryWithPart("_tl", false);
-            border->tr = mPath + "/borders/" + dir.getEntryWithPart("_tr", false);
+            border->b = mPath + "/borders/" + getDirEntry(&dir, "_b", (lt == LT_ON) ? true : false);
+            border->bl = mPath + "/borders/" + getDirEntry(&dir, "_bl", (lt == LT_ON) ? true : false);
+            border->br = mPath + "/borders/" + getDirEntry(&dir, "_br", (lt == LT_ON) ? true : false);
+            border->l = mPath + "/borders/" + getDirEntry(&dir, "_l", (lt == LT_ON) ? true : false);
+            border->r = mPath + "/borders/" + getDirEntry(&dir, "_r", (lt == LT_ON) ? true : false);
+            border->t = mPath + "/borders/" + getDirEntry(&dir, "_t", (lt == LT_ON) ? true : false);
+            border->tl = mPath + "/borders/" + getDirEntry(&dir, "_tl", (lt == LT_ON) ? true : false);
+            border->tr = mPath + "/borders/" + getDirEntry(&dir, "_tr", (lt == LT_ON) ? true : false);
             border->border = *brdIter;
             MSG_DEBUG("Bottom      : " << border->b);
             MSG_DEBUG("Top         : " << border->t);

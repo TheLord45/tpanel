@@ -36,6 +36,8 @@ class TTPInit
         std::vector<std::string>& getFileList(const std::string& filter);
         bool isSystemDefault();
         bool isVirgin();
+        bool makeSystemFiles();
+        bool reinitialize();
 
         int progressCallback(off64_t xfer);
         void regCallbackProcessEvents(std::function<void ()> pe) { _processEvents = pe; }

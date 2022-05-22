@@ -1194,12 +1194,8 @@ TSubPage *TPage::getLastSubPage()
     PAGECHAIN_T *pg = mSubPages;
 
     while (pg && pg->next)
-    {
-        MSG_DEBUG("Looping page " << pg->subpage->getNumber() << " [" << pg->subpage->getName() << "]: " << " z-order: " << pg->subpage->getZOrder());
         pg = pg->next;
-    }
 
-    MSG_DEBUG("Looping page " << pg->subpage->getNumber() << " [" << pg->subpage->getName() << "]: " << " z-order: " << pg->subpage->getZOrder());
     mLastSubPage = pg->subpage->getNumber();
     return pg->subpage;
 }

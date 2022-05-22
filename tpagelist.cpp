@@ -137,12 +137,12 @@ void TPageList::initialize()
 
             if (attribute.compare("page") == 0)
             {
-                MSG_PROTOCOL("Added page " << pl.pageID << ", " << pl.name << " to page list.");
+//                MSG_PROTOCOL("Added page " << pl.pageID << ", " << pl.name << " to page list.");
                 mPageList.push_back(pl);
             }
             else if (attribute.compare("subpage") == 0)
             {
-                MSG_PROTOCOL("Added subpage " << spl.pageID << ", " << spl.name << " to subpage list.");
+//                MSG_PROTOCOL("Added subpage " << spl.pageID << ", " << spl.name << " to subpage list.");
                 mSubPageList.push_back(spl);
             }
         }

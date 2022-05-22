@@ -29,6 +29,23 @@
 using std::string;
 using std::vector;
 
+#if __cplusplus < 201402L
+#   error "This module requires at least C++14 standard!"
+#else
+#   if __cplusplus < 201703L
+#       include <experimental/filesystem>
+        namespace fs = std::experimental::filesystem;
+#       warning "Support for C++14 and experimental filesystem will be removed in a future version!"
+#   else
+#       include <filesystem>
+#       ifdef __ANDROID__
+            namespace fs = std::__fs::filesystem;
+#       else
+            namespace fs = std::filesystem;
+#       endif
+#   endif
+#endif
+
 bool TValidateFile::isValidFile(const string& file)
 {
     DECL_TRACER("TValidateFile::isValidFile(const string& file)");
@@ -127,4 +144,37 @@ bool TValidateFile::createPath(const string &path)
 
     return true;
 
+}
+
+string TValidateFile::getPermissions(const string& path)
+{
+    DECL_TRACER("TValidateFile::getPermissions(const string& path)");
+
+    if (!isValidFile(path) && !isValidDir(path))
+        return "---------";
+
+    fs::perms p = fs::status(path).permissions();
+    std::stringstream str;
+
+    str << ((p & fs::perms::owner_read) != fs::perms::none ? "r" : "-")
+        << ((p & fs::perms::owner_write) != fs::perms::none ? "w" : "-")
+        << ((p & fs::perms::owner_exec) != fs::perms::none ? "x" : "-")
+        << ((p & fs::perms::group_read) != fs::perms::none ? "r" : "-")
+        << ((p & fs::perms::group_write) != fs::perms::none ? "w" : "-")
+        << ((p & fs::perms::group_exec) != fs::perms::none ? "x" : "-")
+        << ((p & fs::perms::others_read) != fs::perms::none ? "r" : "-")
+        << ((p & fs::perms::others_write) != fs::perms::none ? "w" : "-")
+        << ((p & fs::perms::others_exec) != fs::perms::none ? "x" : "-");
+
+    return str.str();
+}
+
+string TValidateFile::getPermissions()
+{
+    DECL_TRACER("TValidateFile::getPermissions()");
+
+    if (mFile.empty())
+        return mFile;
+
+    return getPermissions(mFile);
 }

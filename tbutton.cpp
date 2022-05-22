@@ -76,6 +76,7 @@ THR_REFRESH_t *TButton::mThrRefresh = nullptr;
 vector<BITMAP_CACHE> nBitmapCache;     // Holds the images who are delayed because they are external
 
 mutex mutex_button;
+mutex mutex_text;
 mutex mutex_bargraph;
 mutex mutex_sysdraw;
 mutex mutex_bmCache;
@@ -3546,211 +3547,227 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
     MSG_DEBUG("Searching for font number " << sr[instance].fi << " with text " << sr[instance].te);
     FONT_T font = mFonts->getFont(sr[instance].fi);
 
-    if (!font.file.empty())
+    if (font.file.empty())
     {
-        SkCanvas canvas(*bm, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
-        sk_sp<SkTypeface> typeFace = mFonts->getTypeFace(sr[instance].fi);
+        MSG_WARNING("No font file name found for font " << sr[instance].fi);
+        return true;
+    }
 
-        if (!typeFace)
+    sk_sp<SkTypeface> typeFace = mFonts->getTypeFace(sr[instance].fi);
+    SkCanvas canvas(*bm, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+
+    if (!typeFace)
+    {
+        MSG_ERROR("Error creating type face " << font.fullName);
+        TError::setError();
+        return false;
+    }
+
+    SkScalar fontSizePt = ((SkScalar)font.size * 1.322);
+    SkFont skFont(typeFace, fontSizePt);
+    skFont.setEdging(SkFont::Edging::kAntiAlias);
+    MSG_DEBUG("Wanted font size: " << font.size << ", this is " << fontSizePt << " pt");
+
+    SkPaint paint;
+    paint.setAntiAlias(true);
+    paint.setColor(TColor::getSkiaColor(sr[instance].ct));
+    paint.setStyle(SkPaint::kFill_Style);
+
+    SkFontMetrics metrics;
+    skFont.getMetrics(&metrics);
+    int lines = numberLines(sr[instance].te);
+    MSG_DEBUG("fAvgCharWidth: " << metrics.fAvgCharWidth);
+    MSG_DEBUG("fCapHeight:    " << metrics.fCapHeight);
+    MSG_DEBUG("fAscent:       " << metrics.fAscent);
+    MSG_DEBUG("fDescent:      " << metrics.fDescent);
+    MSG_DEBUG("fLeading:      " << metrics.fLeading);
+    MSG_DEBUG("fXHeight:      " << metrics.fXHeight);
+
+    MSG_DEBUG("Found " << lines << " lines.");
+
+    if (lines > 1 || sr[instance].ww)
+    {
+        vector<string> textLines;
+
+        if (!sr[instance].ww)
+            textLines = splitLine(sr[instance].te);
+        else
         {
-            MSG_ERROR("Error creating type face " << font.fullName);
-            TError::setError();
-            return false;
+            textLines = splitLine(sr[instance].te, wt, ht, skFont, paint);
+            lines = textLines.size();
         }
 
-        SkScalar fontSizePt = ((SkScalar)font.size * 1.322);
-        SkFont skFont(typeFace, fontSizePt);
-        skFont.setEdging(SkFont::Edging::kAntiAlias);
-        MSG_DEBUG("Wanted font size: " << font.size << ", this is " << fontSizePt << " pt");
+        MSG_DEBUG("Calculated number of lines: " << lines);
+        int lineHeight = (metrics.fAscent * -1) + metrics.fDescent;
+        int totalHeight = lineHeight * lines;
 
-        SkPaint paint;
-        paint.setAntiAlias(true);
-        paint.setColor(TColor::getSkiaColor(sr[instance].ct));
-        paint.setStyle(SkPaint::kFill_Style);
-
-        SkFontMetrics metrics;
-        skFont.getMetrics(&metrics);
-        int lines = numberLines(sr[instance].te);
-        MSG_DEBUG("fAvgCharWidth: " << metrics.fAvgCharWidth);
-        MSG_DEBUG("fCapHeight:    " << metrics.fCapHeight);
-        MSG_DEBUG("fAscent:       " << metrics.fAscent);
-        MSG_DEBUG("fDescent:      " << metrics.fDescent);
-        MSG_DEBUG("fLeading:      " << metrics.fLeading);
-        MSG_DEBUG("fXHeight:      " << metrics.fXHeight);
-
-        MSG_DEBUG("Found " << lines << " lines.");
-
-        if (lines > 1 || sr[instance].ww)
+        if (totalHeight > ht)
         {
-            vector<string> textLines;
-
-            if (!sr[instance].ww)
-                textLines = splitLine(sr[instance].te);
-            else
-            {
-                textLines = splitLine(sr[instance].te, wt, ht, skFont, paint);
-                lines = textLines.size();
-            }
-
-            MSG_DEBUG("Calculated number of lines: " << lines);
-            int lineHeight = (metrics.fAscent * -1) + metrics.fDescent;
-            int totalHeight = lineHeight * lines;
-
-            if (totalHeight > ht)
-            {
-                lines = ht / lineHeight;
-                totalHeight = lineHeight * lines;
-            }
-
-            MSG_DEBUG("Line height: " << lineHeight << ", total height: " << totalHeight);
-            vector<string>::iterator iter;
-            int line = 0;
-            int maxWidth = 0;
-
-            if (textLines.size() > 0)
-            {
-                // Calculate the maximum width
-                for (iter = textLines.begin(); iter != textLines.end(); ++iter)
-                {
-                    SkRect rect;
-                    skFont.measureText(iter->c_str(), iter->length(), SkTextEncoding::kUTF8, &rect, &paint);
-
-                    if (rect.width() > maxWidth)
-                        maxWidth = rect.width();
-                }
-
-                POSITION_t pos = calcImagePosition(maxWidth, totalHeight, SC_TEXT, instance);
-
-                if (!pos.valid)
-                {
-                    MSG_ERROR("Error calculating the text position!");
-                    TError::setError();
-                    return false;
-                }
-
-                SkScalar lnHt = metrics.fAscent * -1;
-
-                for (iter = textLines.begin(); iter != textLines.end(); ++iter)
-                {
-                    sk_sp<SkTextBlob> blob = SkTextBlob::MakeFromString(iter->c_str(), skFont);
-                    MSG_DEBUG("Triing to print line: " << *iter);
-                    // We want to take care about the horizontal position.
-                    SkRect rect;
-                    skFont.measureText(iter->c_str(), iter->length(), SkTextEncoding::kUTF8, &rect, &paint);
-                    SkScalar horizontal = 0.0;
-
-                    switch(sr[instance].jt)
-                    {
-                        case ORI_BOTTOM_MIDDLE:
-                        case ORI_CENTER_MIDDLE:
-                        case ORI_TOP_MIDDLE:
-                            horizontal = (wt - rect.width()) / 2.0f;
-                        break;
-
-                        case ORI_BOTTOM_RIGHT:
-                        case ORI_CENTER_RIGHT:
-                        case ORI_TOP_RIGHT:
-                            horizontal = wt - rect.width();
-                        break;
-
-                        default:
-                            horizontal = pos.left;
-                    }
-
-                    SkScalar startX = horizontal;
-                    SkScalar startY = (SkScalar)pos.top + (SkScalar)lineHeight * (SkScalar)line;
-                    MSG_DEBUG("x=" << startX << ", y=" << startY);
-                    bool tEffect = false;
-                    // Text effects
-                    if (sr[instance].et > 0)
-                        tEffect = textEffect(&canvas, blob, startX, startY + lnHt, instance);
-
-                    if (!tEffect)
-                        canvas.drawTextBlob(blob.get(), startX, startY + lnHt, paint);
-
-                    line++;
-
-                    if (line > lines)
-                        break;
-                }
-            }
+            lines = ht / lineHeight;
+            totalHeight = lineHeight * lines;
         }
-        else    // single line
-        {
-            string text = sr[instance].te;
-            sk_sp<SkTextBlob> blob = SkTextBlob::MakeFromString(text.data(), skFont);
-            SkRect rect;
-            skFont.measureText(text.data(), text.size(), SkTextEncoding::kUTF8, &rect, &paint);
-            POSITION_t position = calcImagePosition(rect.width(), metrics.fCapHeight, SC_TEXT, instance);
 
-            if (!position.valid)
+        MSG_DEBUG("Line height: " << lineHeight << ", total height: " << totalHeight);
+        vector<string>::iterator iter;
+        int line = 0;
+        int maxWidth = 0;
+
+        if (textLines.size() > 0)
+        {
+            // Calculate the maximum width
+            for (iter = textLines.begin(); iter != textLines.end(); ++iter)
+            {
+                SkRect rect;
+                skFont.measureText(iter->c_str(), iter->length(), SkTextEncoding::kUTF8, &rect, &paint);
+
+                if (rect.width() > maxWidth)
+                    maxWidth = rect.width();
+            }
+
+            POSITION_t pos = calcImagePosition(maxWidth, totalHeight, SC_TEXT, instance);
+
+            if (!pos.valid)
             {
                 MSG_ERROR("Error calculating the text position!");
                 TError::setError();
                 return false;
             }
 
-            MSG_DEBUG("Printing line " << text);
-            SkScalar startX = (SkScalar)position.left;
-            SkScalar startY = (SkScalar)position.top + metrics.fCapHeight;  // This is the offset of the line
+            SkScalar lnHt = metrics.fAscent * -1;
 
-            bool tEffect = false;
-            // Text effects
-            if (sr[instance].et > 0)
-                tEffect = textEffect(&canvas, blob, startX, startY, instance);
-
-            if (!tEffect && utf8Strlen(text) > 1)
-                canvas.drawTextBlob(blob.get(), startX, startY, paint);
-            else
+            for (iter = textLines.begin(); iter != textLines.end(); ++iter)
             {
-                int count = 0;
-                uint16_t *glyphs = nullptr;
+                sk_sp<SkTextBlob> blob = SkTextBlob::MakeFromString(iter->c_str(), skFont);
+                MSG_DEBUG("Trying to print line: " << *iter);
+                // We want to take care about the horizontal position.
+                SkRect rect;
+                skFont.measureText(iter->c_str(), iter->length(), SkTextEncoding::kUTF8, &rect, &paint);
+                SkScalar horizontal = 0.0;
 
-                if (TFont::isSymbol(typeFace))
+                switch(sr[instance].jt)
                 {
-                    MSG_DEBUG("Symbol font detected.");
-                    uint16_t *uni;
-                    size_t num = TFont::utf8ToUtf16(text, &uni, true);
-                    MSG_DEBUG("Got " << num << " unichars, first unichar: " << std::hex << std::setw(4) << std::setfill('0') << *uni << std::dec);
+                    case ORI_BOTTOM_MIDDLE:
+                    case ORI_CENTER_MIDDLE:
+                    case ORI_TOP_MIDDLE:
+                        horizontal = (wt - rect.width()) / 2.0f;
+                    break;
 
-                    if (num > 0)
-                    {
-                        glyphs = new uint16_t[num];
-                        size_t glyphSize = sizeof(uint16_t) * num;
-                        count = skFont.textToGlyphs(uni, num, SkTextEncoding::kUTF16, glyphs, glyphSize);
+                    case ORI_BOTTOM_RIGHT:
+                    case ORI_CENTER_RIGHT:
+                    case ORI_TOP_RIGHT:
+                        horizontal = wt - rect.width();
+                    break;
 
-                        if (count <= 0)
-                        {
-                            delete[] glyphs;
-                            glyphs = TFont::textToGlyphs(text, typeFace, &num);
-                            count = num;
-                        }
-                    }
-                    else
-                    {
-                        canvas.drawTextBlob(blob.get(), startX, startY, paint);
-                        return true;
-                    }
-
-                    if (uni)
-                        delete[] uni;
-                }
-                else
-                {
-                    glyphs = new uint16_t[text.size()];
-                    size_t glyphSize = sizeof(uint16_t) * text.size();
-                    count = skFont.textToGlyphs(text.data(), text.size(), SkTextEncoding::kUTF8, glyphs, glyphSize);
+                    default:
+                        horizontal = pos.left;
                 }
 
-                MSG_DEBUG("1st glyph: 0x" << std::hex << std::setw(8) << std::setfill('0') << *glyphs << ", # glyphs: " << std::dec << count);
-                canvas.drawSimpleText(glyphs, sizeof(uint16_t) * count, SkTextEncoding::kGlyphID, startX, startY, skFont, paint);
-                delete[] glyphs;
+                SkScalar startX = horizontal;
+                SkScalar startY = (SkScalar)pos.top + (SkScalar)lineHeight * (SkScalar)line;
+                MSG_DEBUG("x=" << startX << ", y=" << startY);
+                bool tEffect = false;
+                // Text effects
+                if (sr[instance].et > 0)
+                    tEffect = textEffect(&canvas, blob, startX, startY + lnHt, instance);
+
+                if (!tEffect)
+                    canvas.drawTextBlob(blob.get(), startX, startY + lnHt, paint);
+
+                line++;
+
+                if (line > lines)
+                    break;
             }
         }
     }
-    else
+    else    // single line
     {
-        MSG_WARNING("No font file name found for font " << sr[instance].fi);
+        string text = sr[instance].te;
+        sk_sp<SkTextBlob> blob = SkTextBlob::MakeFromString(text.data(), skFont);
+        SkRect rect;
+        skFont.measureText(text.data(), text.size(), SkTextEncoding::kUTF8, &rect, &paint);
+//            POSITION_t position = calcImagePosition(rect.width(), metrics.fCapHeight, SC_TEXT, instance);
+        POSITION_t position = calcImagePosition(rect.width(), font.size, SC_TEXT, instance);
+
+        if (!position.valid)
+        {
+            MSG_ERROR("Error calculating the text position!");
+            TError::setError();
+            return false;
+        }
+
+        MSG_DEBUG("Printing line " << text);
+        SkScalar startX = (SkScalar)position.left;
+        SkScalar startY = (SkScalar)position.top + metrics.fCapHeight;  // This is the offset of the line
+
+        FONT_TYPE sym = TFont::isSymbol(typeFace);
+        bool tEffect = false;
+        // Text effects
+        if (sr[instance].et > 0)
+            tEffect = textEffect(&canvas, blob, startX, (sym == FT_SYMBOL ? (startY + font.size) : startY), instance);
+
+        if (!tEffect && utf8Strlen(text) > 1)
+            canvas.drawTextBlob(blob.get(), startX, (sym == FT_SYMBOL ? (startY + font.size) : startY), paint);
+        else
+        {
+            int count = 0;
+            uint16_t *glyphs = nullptr;
+
+            if (sym == FT_SYM_MS)
+            {
+                MSG_DEBUG("Microsoft proprietary symbol font detected.");
+                uint16_t *uni;
+                size_t num = TFont::utf8ToUtf16(text, &uni, true);
+                MSG_DEBUG("Got " << num << " unichars, first unichar: " << std::hex << std::setw(4) << std::setfill('0') << *uni << std::dec);
+
+                if (num > 0)
+                {
+                    glyphs = new uint16_t[num];
+                    size_t glyphSize = sizeof(uint16_t) * num;
+                    count = skFont.textToGlyphs(uni, num, SkTextEncoding::kUTF16, glyphs, glyphSize);
+
+                    if (count <= 0)
+                    {
+                        delete[] glyphs;
+                        glyphs = TFont::textToGlyphs(text, typeFace, &num);
+                        count = num;
+                    }
+                }
+                else
+                {
+                    canvas.drawTextBlob(blob.get(), startX, startY, paint);
+                    return true;
+                }
+
+                if (uni)
+                    delete[] uni;
+            }
+            else if (tEffect)
+                return true;
+            else
+            {
+                glyphs = new uint16_t[text.size()];
+                size_t glyphSize = sizeof(uint16_t) * text.size();
+                count = skFont.textToGlyphs(text.data(), text.size(), SkTextEncoding::kUTF8, glyphs, glyphSize);
+            }
+
+            if (glyphs)
+            {
+                MSG_DEBUG("1st glyph: 0x" << std::hex << std::setw(8) << std::setfill('0') << *glyphs << ", # glyphs: " << std::dec << count);
+                canvas.drawSimpleText(glyphs, sizeof(uint16_t) * count, SkTextEncoding::kGlyphID, startX, (sym == FT_SYMBOL ? (startY + font.size) : startY), skFont, paint);
+            }
+            else    // Try to print something
+            {
+                MSG_WARNING("Got no glyphs! Try to print: " << text);
+                glyphs = new uint16_t[text.size()];
+                size_t glyphSize = sizeof(uint16_t) * text.size();
+                count = skFont.textToGlyphs(text.data(), text.size(), SkTextEncoding::kUTF8, glyphs, glyphSize);
+                canvas.drawSimpleText(glyphs, sizeof(uint16_t) * count, SkTextEncoding::kGlyphID, startX, startY, skFont, paint);
+//                canvas.drawSimpleText(glyphs, sizeof(uint16_t) * count, SkTextEncoding::kGlyphID, startX, (sym == FT_SYMBOL ? (startY + font.size) : startY), skFont, paint);
+            }
+
+            delete[] glyphs;
+        }
     }
 
     return true;
@@ -3820,13 +3837,66 @@ bool TButton::textEffect(SkCanvas *canvas, sk_sp<SkTextBlob>& blob, SkScalar sta
         canvas->drawTextBlob(blob.get(), startX, startY, paint);
         return true;
     }
+    else if (sr[instance].et >= 5 && sr[instance].et <= 8)  // Glow
+    {
+        SkScalar sigma = 0.0;
+
+        switch(sr[instance].et)
+        {
+            case 5: sigma = 2.0; break;     // Glow-S
+            case 6: sigma = 4.0; break;     // Glow-M
+            case 7: sigma = 6.0; break;     // Glow-L
+            case 8: sigma = 8.0; break;     // Glow-X
+        }
+
+        SkPaint paint, blur;
+        paint.setAntiAlias(true);
+        paint.setColor(TColor::getSkiaColor(sr[instance].ct));
+        blur.setColor(TColor::getSkiaColor(sr[instance].ec));
+        blur.setStyle(SkPaint::kStroke_Style);
+        blur.setStrokeWidth(sigma / 1.5);
+        blur.setMaskFilter(SkMaskFilter::MakeBlur(kOuter_SkBlurStyle, sigma));
+        canvas->drawTextBlob(blob.get(), startX, startY, paint);
+        canvas->drawTextBlob(blob.get(), startX, startY, blur);
+        return true;
+    }
+    else if (sr[instance].et >= 1 && sr[instance].et <= 4)  // Outline
+    {
+        SkScalar sigma = 0.0;
+
+        switch(sr[instance].et)
+        {
+            case 1: sigma = 1.0; break;     // Outline-S
+            case 2: sigma = 2.0; break;     // Outline-M
+            case 3: sigma = 4.0; break;     // Outline-L
+            case 4: sigma = 6.0; break;     // Outline-X
+        }
+
+        SkPaint paint, outline;
+        paint.setAntiAlias(true);
+        paint.setColor(TColor::getSkiaColor(sr[instance].ct));
+        outline.setAntiAlias(true);
+        outline.setColor(TColor::getSkiaColor(sr[instance].ec));
+        outline.setStyle(SkPaint::kStroke_Style);
+        outline.setStrokeWidth(sigma);
+        canvas->drawTextBlob(blob.get(), startX, startY, outline);
+        canvas->drawTextBlob(blob.get(), startX, startY, paint);
+        return true;
+    }
 
     return false;
 }
 
-bool TButton::buttonBorder(SkBitmap* bm, int instance)
+bool TButton::buttonBorder(SkBitmap* bm, int inst)
 {
     DECL_TRACER("TButton::buttonBorder(SkBitmap* bm, int instance)");
+
+    int instance = inst;
+
+    if (instance < 0)
+        instance = 0;
+    else if ((size_t)instance > sr.size())
+        instance = (int)sr.size() - 1;
 
     if (sr[instance].bs.empty())
     {
@@ -3835,7 +3905,7 @@ bool TButton::buttonBorder(SkBitmap* bm, int instance)
     }
 
     // Try to find the border in the system table
-    BORDER_t bd;
+    BORDER_t bd, bda;
     int borderIndex = -1;
     int i = 0;
 
@@ -3856,94 +3926,88 @@ bool TButton::buttonBorder(SkBitmap* bm, int instance)
 
     if ((classExist && borderIndex >= 0 && !sysBorders[borderIndex].calc) || (classExist && borderIndex < 0))
     {
-        if (gPageManager->getSystemDraw()->getBorder(sr[instance].bs, ((instance == 0) ? TSystemDraw::LT_OFF : TSystemDraw::LT_ON), &bd))
-        {
-            MSG_DEBUG("System border " << sr[instance].bs << " found.");
+        if (!gPageManager->getSystemDraw()->getBorder(sr[instance].bs, TSystemDraw::LT_OFF, &bd))
+            return false;
 
-            SkColor color = TColor::getSkiaColor(sr[instance].cb);      // border color
-            SkColor bgColor = TColor::getSkiaColor(sr[instance].cf);    // fill color
-            // Load images
-            SkBitmap imgB, imgBR, imgR, imgTR, imgT, imgTL, imgL, imgBL;
-            sk_sp<SkData> image;
+        if (!gPageManager->getSystemDraw()->getBorder(sr[instance].bs, TSystemDraw::LT_ON, &bda))
+            return false;
 
-            if (!bd.b.empty() &&!(image = readImage(bd.b)))
-                return false;
+        MSG_DEBUG("System border " << sr[instance].bs << " found.");
+        SkColor color = TColor::getSkiaColor(sr[instance].cb);      // border color
+        SkColor bgColor = TColor::getSkiaColor(sr[instance].cf);    // fill color
+        MSG_DEBUG("Button color: #" << std::setw(6) << std::setfill('0') << std::hex << color);
+        // Load images
+        SkBitmap imgB, imgBR, imgR, imgTR, imgT, imgTL, imgL, imgBL;
 
-            DecodeDataToBitmap(image, &imgB);
-            colorImage(&imgB, imgB.info().width(), imgB.info().height(), color, bgColor, (bd.border.fillLeft != bd.border.textLeft) ? true : false);
-            MSG_DEBUG("Got image " << bd.b << " with size " << imgB.info().width() << " x " << imgB.info().height());
+        imgB = retrieveBorderImage(bd.b, bda.b, color, bgColor);
 
-            if (!bd.br.empty() && !(image = readImage(bd.br)))
-                return false;
+        if (imgB.empty())
+            return false;
 
-            DecodeDataToBitmap(image, &imgBR);
-            colorImage(&imgBR, imgBR.info().width(), imgBR.info().height(), color, bgColor, (bd.border.fillLeft != bd.border.textLeft) ? true : false);
-            MSG_DEBUG("Got image " << bd.br << " with size " << imgBR.info().width() << " x " << imgBR.info().height());
+        MSG_DEBUG("Got images " << bd.b << " and " << bda.b << " with size " << imgB.info().width() << " x " << imgB.info().height());
+        imgBR = retrieveBorderImage(bd.br, bda.br, color, bgColor);
 
-            if (!bd.r.empty() && !(image = readImage(bd.r)))
-                return false;
+        if (imgBR.empty())
+            return false;
 
-            DecodeDataToBitmap(image, &imgR);
-            colorImage(&imgR, imgR.info().width(), imgR.info().height(), color, bgColor, (bd.border.fillLeft != bd.border.textLeft) ? true : false);
-            MSG_DEBUG("Got image " << bd.r << " with size " << imgR.info().width() << " x " << imgR.info().height());
+        MSG_DEBUG("Got images " << bd.br << " and " << bda.br << " with size " << imgBR.info().width() << " x " << imgBR.info().height());
+        imgR = retrieveBorderImage(bd.r, bda.r, color, bgColor);
 
-            if (!bd.tr.empty() && !(image = readImage(bd.tr)))
-                return false;
+        if (imgR.empty())
+            return false;
 
-            DecodeDataToBitmap(image, &imgTR);
-            colorImage(&imgTR, imgTR.info().width(), imgTR.info().height(), color, bgColor, (bd.border.fillLeft != bd.border.textLeft) ? true : false);
-            MSG_DEBUG("Got image " << bd.tr << " with size " << imgTR.info().width() << " x " << imgTR.info().height());
+        MSG_DEBUG("Got images " << bd.r << " and " << bda.r << " with size " << imgR.info().width() << " x " << imgR.info().height());
+        imgTR = retrieveBorderImage(bd.tr, bda.tr, color, bgColor);
 
-            if (!bd.t.empty() && !(image = readImage(bd.t)))
-                return false;
+        if (imgTR.empty())
+            return false;
 
-            DecodeDataToBitmap(image, &imgT);
-            colorImage(&imgT, imgT.info().width(), imgT.info().height(), color, bgColor, (bd.border.fillLeft != bd.border.textLeft) ? true : false);
-            MSG_DEBUG("Got image " << bd.t << " with size " << imgT.info().width() << " x " << imgT.info().height());
+        MSG_DEBUG("Got images " << bd.tr << " and " << bda.tr << " with size " << imgTR.info().width() << " x " << imgTR.info().height());
+        imgT = retrieveBorderImage(bd.t, bda.t, color, bgColor);
 
-            if (!bd.tl.empty() && !(image = readImage(bd.tl)))
-                return false;
+        if (imgT.empty())
+            return false;
 
-            DecodeDataToBitmap(image, &imgTL);
-            colorImage(&imgTL, imgTL.info().width(), imgTL.info().height(), color, bgColor, (bd.border.fillLeft != bd.border.textLeft) ? true : false);
-            MSG_DEBUG("Got image " << bd.tl << " with size " << imgTL.info().width() << " x " << imgTL.info().height());
+        MSG_DEBUG("Got images " << bd.t << " and " << bda.t << " with size " << imgT.info().width() << " x " << imgT.info().height());
+        imgTL = retrieveBorderImage(bd.tl, bda.tl, color, bgColor);
 
-            if (!bd.l.empty() && !(image = readImage(bd.l)))
-                return false;
+        if (imgTL.empty())
+            return false;
 
-            DecodeDataToBitmap(image, &imgL);
-            colorImage(&imgL, imgL.info().width(), imgL.info().height(), color, bgColor, (bd.border.fillLeft != bd.border.textLeft) ? true : false);
-            MSG_DEBUG("Got image " << bd.l << " with size " << imgL.info().width() << " x " << imgL.info().height());
+        MSG_DEBUG("Got images " << bd.tl << " and " << bda.tl << " with size " << imgTL.info().width() << " x " << imgTL.info().height());
+        imgL = retrieveBorderImage(bd.l, bda.l, color, bgColor);
 
-            if (!bd.bl.empty() && !(image = readImage(bd.bl)))
-                return false;
+        if (imgL.empty())
+            return false;
 
-            DecodeDataToBitmap(image, &imgBL);
-            colorImage(&imgBL, imgBL.info().width(), imgBL.info().height(), color, bgColor, (bd.border.fillLeft != bd.border.textLeft) ? true : false);
-            MSG_DEBUG("Got image " << bd.bl << " with size " << imgBL.info().width() << " x " << imgBL.info().height());
+        MSG_DEBUG("Got images " << bd.l << " and " << bda.l << " with size " << imgL.info().width() << " x " << imgL.info().height());
+        imgBL = retrieveBorderImage(bd.bl, bda.bl, color, bgColor);
 
-            MSG_DEBUG("Total size: " << wt << " x " << ht);
-            stretchImageWidth(&imgB, wt - imgBL.info().width() - imgBR.info().width());
-            stretchImageWidth(&imgT, wt - imgTL.info().width() - imgTR.info().width());
-            stretchImageHeight(&imgL, ht - imgTL.info().height() - imgBL.info().height());
-            stretchImageHeight(&imgR, ht - imgTR.info().height() - imgBR.info().height());
-            // Draw the frame
-            SkCanvas canvas(*bm, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
-            SkPaint paint;
+        if (imgBL.empty())
+            return false;
 
-            paint.setColor(color);
-            paint.setBlendMode(SkBlendMode::kSrcATop);
-            paint.setStyle(SkPaint::kStroke_Style);
-            canvas.drawBitmap(imgB, imgBL.info().width(), ht - imgB.info().height(), &paint);
-            canvas.drawBitmap(imgBR, wt - imgBR.info().width(), ht - imgBR.info().height(), &paint);
-            canvas.drawBitmap(imgR, wt - imgR.info().width(), imgTR.info().height(), &paint);
-            canvas.drawBitmap(imgTR, wt - imgTR.info().width(), 0, &paint);
-            canvas.drawBitmap(imgT, imgTL.info().width(), 0, &paint);
-            canvas.drawBitmap(imgTL, 0, 0, &paint);
-            canvas.drawBitmap(imgL, 0, imgTL.info().height(), &paint);
-            canvas.drawBitmap(imgBL, 0, ht - imgBL.info().height(), &paint);
-            return true;
-        }
+        MSG_DEBUG("Got images " << bd.bl << " and " << bda.bl << " with size " << imgBL.info().width() << " x " << imgBL.info().height());
+        MSG_DEBUG("Total size: " << wt << " x " << ht);
+        stretchImageWidth(&imgB, wt - imgBL.info().width() - imgBR.info().width());
+        stretchImageWidth(&imgT, wt - imgTL.info().width() - imgTR.info().width());
+        stretchImageHeight(&imgL, ht - imgTL.info().height() - imgBL.info().height());
+        stretchImageHeight(&imgR, ht - imgTR.info().height() - imgBR.info().height());
+        // Draw the frame
+        SkCanvas canvas(*bm, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+        SkPaint paint;
+
+        paint.setColor(bgColor);
+        paint.setBlendMode(SkBlendMode::kSrcOver);
+//            paint.setStyle(SkPaint::kStroke_Style);
+        canvas.drawBitmap(imgB, imgBL.info().width(), ht - imgB.info().height(), &paint);
+        canvas.drawBitmap(imgBR, wt - imgBR.info().width(), ht - imgBR.info().height(), &paint);
+        canvas.drawBitmap(imgR, wt - imgR.info().width(), imgTR.info().height(), &paint);
+        canvas.drawBitmap(imgTR, wt - imgTR.info().width(), 0, &paint);
+        canvas.drawBitmap(imgT, imgTL.info().width(), 0, &paint);
+        canvas.drawBitmap(imgTL, 0, 0, &paint);
+        canvas.drawBitmap(imgL, 0, imgTL.info().height(), &paint);
+        canvas.drawBitmap(imgBL, 0, ht - imgBL.info().height(), &paint);
+        return true;
     }
 
     // Here we've not found the wanted border in the system table. Reasons may
@@ -5425,17 +5489,24 @@ SkBitmap TButton::combineImages(SkBitmap& base, SkBitmap& alpha, SkColor col)
     return Bm;
 }
 
-bool TButton::colorImage(SkBitmap *img, int width, int height, SkColor col, SkColor bg, bool useBG)
+SkBitmap TButton::colorImage(SkBitmap& base, SkBitmap& alpha, SkColor col, SkColor bg, bool useBG)
 {
     DECL_TRACER("TButton::colorImage(SkBitmap *img, int width, int height, SkColor col, SkColor bg, bool useBG)");
+
+    int width = base.info().width();
+    int height = base.info().height();
 
     if (width <= 0 || height <= 0)
     {
         MSG_WARNING("Got invalid width or height! (width: " << width << ", height: " << height);
-        return false;
+        return SkBitmap();
     }
 
-    SkPixmap pixmap = img->pixmap();
+    if (width != alpha.info().width() || height != alpha.info().height())
+    {
+        MSG_ERROR("Base and alpha masks have different size!")
+        return SkBitmap();
+    }
 
     SkBitmap maskBm;
     maskBm.allocPixels(SkImageInfo::MakeN32Premul(width, height));
@@ -5445,7 +5516,7 @@ bool TButton::colorImage(SkBitmap *img, int width, int height, SkColor col, SkCo
     {
         for (int iy = 0; iy < height; iy++)
         {
-            SkColor pixel = pixmap.getColor(ix, iy);
+            SkColor pixelAlpha = alpha.getColor(ix, iy);
             uint32_t *wpix = maskBm.getAddr32(ix, iy);
 
             if (!wpix)
@@ -5454,36 +5525,50 @@ bool TButton::colorImage(SkBitmap *img, int width, int height, SkColor col, SkCo
                 break;
             }
 
-            uint32_t alpha = SkColorGetA(pixel);
+            uint32_t alpha = SkColorGetA(pixelAlpha);
 
             if (alpha == 0 && !useBG)
-                pixel = col;
+                pixelAlpha = col;
             else if (alpha == 0)
-                pixel = bg;
+                pixelAlpha = bg;
             else
             {
-                uint32_t pred = SkColorGetR(pixel);
-                uint32_t pgreen = SkColorGetG(pixel);
-                uint32_t pblue = SkColorGetB(pixel);
-
-                uint32_t red = SkColorGetR(col);
+                // We've to change the red and the blue color channel because
+                // of an error in the Skia library.
+                uint32_t blue = SkColorGetR(col);
                 uint32_t green = SkColorGetG(col);
-                uint32_t blue = SkColorGetB(col);
-                uint32_t maxChan = SkColorGetG(SK_ColorWHITE);
+                uint32_t red = SkColorGetB(col);
 
-                red   = ((pred == maxChan) ? pred : red);
-                green = ((pgreen == maxChan) ? pgreen : green);
-                blue  = ((pblue == maxChan) ? pblue : blue);
+                if (alpha == 0)
+                    red = green = blue = 0;
 
-                pixel = SkColorSetARGB(alpha, red, green, blue);
+                pixelAlpha = SkColorSetARGB(alpha, red, green, blue);
             }
 
-            *wpix = pixel;
+            *wpix = pixelAlpha;
         }
     }
 
-    *img = maskBm;
-    return true;
+    SkPaint paint;
+    paint.setBlendMode(SkBlendMode::kSrcOver);
+    SkCanvas can(maskBm);
+    can.drawBitmap(base, 0, 0, &paint);
+    return maskBm;
+}
+
+SkBitmap TButton::retrieveBorderImage(const string& pa, const string& pb, SkColor color, SkColor bgColor)
+{
+    DECL_TRACER("TButton::retrieveBorderImage(const string& pa, const string& pb, SkColor color, SkColor bgColor)");
+
+    SkBitmap bm, bma;
+
+    if (!pa.empty() && !retrieveImage(pa, &bm))
+        return SkBitmap();
+
+    if (!pb.empty() && !retrieveImage(pb, &bma))
+        return SkBitmap();
+
+    return colorImage(bm, bma, color, bgColor, false);
 }
 
 bool TButton::retrieveImage(const string& path, SkBitmap* image)
@@ -5847,17 +5932,25 @@ bool TButton::stretchImageWidth(SkBitmap *bm, int width)
     if (!bm)
         return false;
 
+    int rwidth = width;
     SkPaint paint;
     paint.setBlendMode(SkBlendMode::kSrc);
     paint.setFilterQuality(kHigh_SkFilterQuality);
 
     SkImageInfo info = bm->info();
     sk_sp<SkImage> im = SkImage::MakeFromBitmap(*bm);
-    MSG_DEBUG("Width: " << width << ", Height: " << info.height());
-    bm->allocN32Pixels(width, info.height());
+
+    if (width <= 0)
+        rwidth = info.width() + width;
+
+    if (rwidth <= 0)
+        rwidth = 1;
+
+    MSG_DEBUG("Width: " << rwidth << ", Height: " << info.height());
+    bm->allocN32Pixels(rwidth, info.height());
     bm->eraseColor(SK_ColorTRANSPARENT);
     SkCanvas can(*bm, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
-    SkRect rect = SkRect::MakeXYWH(0, 0, width, info.height());
+    SkRect rect = SkRect::MakeXYWH(0, 0, rwidth, info.height());
     can.drawImageRect(im, rect, &paint);
     return true;
 }
@@ -5869,17 +5962,62 @@ bool TButton::stretchImageHeight(SkBitmap *bm, int height)
     if (!bm)
         return false;
 
+    int rheight = height;
     SkPaint paint;
     paint.setBlendMode(SkBlendMode::kSrc);
     paint.setFilterQuality(kHigh_SkFilterQuality);
 
     SkImageInfo info = bm->info();
+
+    if (height <= 0)
+        rheight = info.height() + height;
+
+    if (rheight <= 0)
+        rheight = 1;
+
     sk_sp<SkImage> im = SkImage::MakeFromBitmap(*bm);
-    MSG_DEBUG("Width: " << info.width() << ", Height: " << height);
-    bm->allocN32Pixels(info.width(), height);
+    MSG_DEBUG("Width: " << info.width() << ", Height: " << rheight);
+    bm->allocN32Pixels(info.width(), rheight);
     bm->eraseColor(SK_ColorTRANSPARENT);
     SkCanvas can(*bm, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
-    SkRect rect = SkRect::MakeXYWH(0, 0, info.width(), height);
+    SkRect rect = SkRect::MakeXYWH(0, 0, info.width(), rheight);
+    can.drawImageRect(im, rect, &paint);
+    return true;
+}
+
+bool TButton::stretchImageWH(SkBitmap *bm, int width, int height)
+{
+    DECL_TRACER("TButton::stretchImageWH(SkBitmap *bm, int width, int height)");
+
+    if (!bm)
+        return false;
+
+    int rwidth = width;
+    int rheight = height;
+    SkPaint paint;
+    paint.setBlendMode(SkBlendMode::kSrc);
+    paint.setFilterQuality(kHigh_SkFilterQuality);
+
+    SkImageInfo info = bm->info();
+
+    if (width <= 0)
+        rwidth = info.width() + width;
+
+    if (height <= 0)
+        rheight = info.height() + height;
+
+    if (rheight <= 0)
+        rheight = 1;
+
+    if (rwidth <= 0)
+        rwidth = 1;
+
+    sk_sp<SkImage> im = SkImage::MakeFromBitmap(*bm);
+    MSG_DEBUG("Width: " << rwidth << ", Height: " << rheight);
+    bm->allocN32Pixels(rwidth, rheight);
+    bm->eraseColor(SK_ColorTRANSPARENT);
+    SkCanvas can(*bm, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+    SkRect rect = SkRect::MakeXYWH(0, 0, rwidth, rheight);
     can.drawImageRect(im, rect, &paint);
     return true;
 }
@@ -6883,4 +7021,26 @@ void TButton::showBitmapCache()
     }
 
     mutex_bmCache.unlock();
+}
+
+uint32_t TButton::pixelMix(uint32_t s, uint32_t d, uint32_t a, PMIX mix)
+{
+    DECL_TRACER("TButton::pixelMultiply(uint32_t s, uint32_t d)");
+
+    uint32_t r = 0;
+
+    switch(mix)
+    {
+        case PMIX_SRC:          r = s; break;                                                   // SRC
+        case PMIX_DST:          r = d; break;                                                   // DST
+        case PMIX_MULTIPLY:     r = s * (255 - (d * a)) + d * (255 - (s * a)) + s * d; break;   // Multiply
+        case PMIX_PLUS:         r = std::min(s + d, (uint32_t)255); break;                      // plus
+        case PMIX_XOR:          r = s * (255 - (d * a)) + d * (255 - (s * a)); break;           // XOr
+        case PMIX_DSTTOP:       r = d * (s * a) + s * (255 - (d * a)); break;                   // DstATop
+        case PMIX_SRCTOP:       r = s * (d * a) + d * (255 - (s * a)); break;                   // SrcATop
+        case PMIX_SRCOVER:      r = s + (255 - (s * a)) * d; break;                             // SrcOver
+        case PMIX_SCREEN:       r = s + d - s * d; break;                                       // Screen
+    }
+
+    return r & 0x00ff;
 }

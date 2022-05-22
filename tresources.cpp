@@ -177,9 +177,26 @@ static CHTABLE __cht[] = {
     {0xFF,	0xCB99}
 };
 
-SkString GetResourcePath(const char* resource)
+SkString GetResourcePath(const char* resource, _RESOURCE_TYPE rs)
 {
-    string path = TConfig::getProjectPath() + "/images/" + resource;
+    string pth;
+
+    switch(rs)
+    {
+        case RESTYPE_BORDER:    pth = "/borders/"; break;
+        case RESTYPE_CURSOR:    pth = "/cursors/"; break;
+        case RESTYPE_FONT:      pth = "/fonts/"; break;
+        case RESTYPE_UNKNOWN:
+        case RESTYPE_IMAGE:     pth = "/images/"; break;
+        case RESTYPE_SLIDER:    pth = "/sliders/"; break;
+        case RESTYPE_SYSBORDER: pth = "/__system/graphics/borders/"; break;
+        case RESTYPE_SYSCURSOR: pth = "/__system/graphics/cursors/"; break;
+        case RESTYPE_SYSFONT:   pth = "/__system/graphics/fonts/"; break;
+        case RESTYPE_SYSIMAGE:  pth = "/__system/graphics/images/"; break;
+        case RESTYPE_SYSSLIDER: pth = "/__system/graphics/sliders/"; break;
+    }
+
+    string path = TConfig::getProjectPath() + pth + resource;
 
     if (*resource == '/')       // absolute path?
         path.assign(resource);  // yes, then take it as it is
@@ -198,21 +215,21 @@ bool DecodeDataToBitmap(sk_sp<SkData> data, SkBitmap* dst)
 #endif
 }
 
-std::unique_ptr<SkStreamAsset> GetResourceAsStream(const char* resource)
+std::unique_ptr<SkStreamAsset> GetResourceAsStream(const char* resource, _RESOURCE_TYPE rs)
 {
-    sk_sp<SkData> data = GetResourceAsData(resource);
+    sk_sp<SkData> data = GetResourceAsData(resource, rs);
     return data ? std::unique_ptr<SkStreamAsset>(new SkMemoryStream(std::move(data)))
     : nullptr;
 }
 
-sk_sp<SkData> GetResourceAsData(const char* resource)
+sk_sp<SkData> GetResourceAsData(const char* resource, _RESOURCE_TYPE rs)
 {
-    if (sk_sp<SkData> data = gResourceFactory ? gResourceFactory(resource) : SkData::MakeFromFileName(GetResourcePath(resource).c_str()))
+    if (sk_sp<SkData> data = gResourceFactory ? gResourceFactory(resource) : SkData::MakeFromFileName(GetResourcePath(resource, rs).c_str()))
     {
         return data;
     }
 
-    MSG_ERROR("GetResourceAsData: Resource \"" << GetResourcePath(resource).c_str() << "\" not found." << endl);
+    MSG_ERROR("GetResourceAsData: Resource \"" << GetResourcePath(resource, rs).c_str() << "\" not found." << endl);
     TError::setError();
 #ifdef SK_TOOLS_REQUIRE_RESOURCES
     SK_ABORT("GetResourceAsData: missing resource");
@@ -220,9 +237,9 @@ sk_sp<SkData> GetResourceAsData(const char* resource)
     return nullptr;
 }
 
-sk_sp<SkTypeface> MakeResourceAsTypeface(const char* resource, int ttcIndex)
+sk_sp<SkTypeface> MakeResourceAsTypeface(const char* resource, int ttcIndex, _RESOURCE_TYPE rs)
 {
-    return SkTypeface::MakeFromStream(GetResourceAsStream(resource), ttcIndex);
+    return SkTypeface::MakeFromStream(GetResourceAsStream(resource, rs), ttcIndex);
 }
 
 /*
@@ -759,16 +776,16 @@ size_t utf8Strlen(const std::string& str)
 
     for (q = 0, i = 0, ix = str.length(); i < ix; i++, q++)
     {
-        c = (unsigned char) str[i];
+        c = (unsigned char)str[i];
 
-        if (c>=0   && c<=127)
-            i+=0;
+        if (c >= 0 && c <= 127)
+            i += 0;
         else if ((c & 0xE0) == 0xC0)
-            i+=1;
+            i += 1;
         else if ((c & 0xF0) == 0xE0)
-            i+=2;
+            i += 2;
         else if ((c & 0xF8) == 0xF0)
-            i+=3;
+            i += 3;
         else
             return 0;   //invalid utf8
     }
