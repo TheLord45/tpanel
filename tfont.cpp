@@ -543,7 +543,7 @@ SkFontStyle TFont::getSkiaStyle(int number)
     map<int, FONT_T>::iterator iter = mFonts.find(number);
 
     if (iter == mFonts.end())
-        return SkFontStyle(SkFontStyle::kInvisible_Weight, SkFontStyle::kUltraCondensed_Width, SkFontStyle::kUpright_Slant);
+        return SkFontStyle(SkFontStyle::kNormal_Weight, SkFontStyle::kNormal_Width, SkFontStyle::kUpright_Slant);
 
     if (iter->second.subfamilyName.compare("Regular") == 0)
         return SkFontStyle::Normal();
@@ -569,7 +569,7 @@ sk_sp<SkTypeface> TFont::getTypeFace(int number)
     {
         MSG_ERROR("No font with index " << number << " found!");
         TError::setError();
-        return sk_sp<SkTypeface>();
+        return nullptr;
     }
 
     if (!_tfontCache.empty())
@@ -605,7 +605,16 @@ sk_sp<SkTypeface> TFont::getTypeFace(int number)
     MSG_DEBUG("Loading font \"" << path << "\" ...");
 
     if (isValidFile(path))
-        tf = MakeResourceAsTypeface(path.c_str(), iter->second.faceIndex, RESTYPE_FONT);
+    {
+        try
+        {
+            tf = MakeResourceAsTypeface(path.c_str(), iter->second.faceIndex, RESTYPE_FONT);
+        }
+        catch(std::exception& e)
+        {
+            MSG_ERROR("Error loading font: " << e.what());
+        }
+    }
     else
         MSG_WARNING("File " << path << " is not a valid file or does not exist!");
 
@@ -638,8 +647,15 @@ sk_sp<SkTypeface> TFont::getTypeFace(int number)
     }
     else
     {
-        _tfontCache.insert(pair<string, sk_sp<SkTypeface> >(iter->second.file, tf));
-        MSG_DEBUG("Font \"" << path << "\" was loaded successfull.");
+        if (tf->countTables() > 0)
+        {
+            _tfontCache.insert(pair<string, sk_sp<SkTypeface> >(iter->second.file, tf));
+            MSG_DEBUG("Font \"" << path << "\" was loaded successfull.");
+        }
+        else
+        {
+            MSG_WARNING("Refused to enter invalid typeface into font cache!");
+        }
     }
 
     SkString sname;

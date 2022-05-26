@@ -332,7 +332,10 @@ size_t TButton::initialize(TExpat *xml, size_t index)
     while((index = xml->getNextElementFromIndex(index, &ename, &content, &attrs)) != TExpat::npos)
     {
         if (ename.compare("bi") == 0)
+        {
             bi = xml->convertElementToInt(content);
+            MSG_DEBUG("Processing button index: " << bi);
+        }
         else if (ename.compare("na") == 0)
             na = content;
         else if (ename.compare("bd") == 0)
@@ -533,13 +536,11 @@ size_t TButton::initialize(TExpat *xml, size_t index)
         }
     }
 */
-    if (index == TExpat::npos)
-    {
-        MSG_DEBUG("Returning old index " << (oldIndex + 1));
-        return oldIndex + 1;
-    }
+    MSG_DEBUG("Added button " << bi << " --> " << na);
 
-    MSG_DEBUG("Returning index " << index);
+    if (index == TExpat::npos)
+        return oldIndex + 1;
+
     return index;
 }
 
@@ -923,7 +924,7 @@ bool TButton::appendText(const string &txt, int instance)
 {
     DECL_TRACER("TButton::appendText(const string &txt, int instance)");
 
-    if ((size_t)instance >= sr.size())
+    if (instance < 0 || (size_t)instance >= sr.size())
     {
         MSG_ERROR("Instance " << instance << " does not exist!");
         return false;
@@ -2265,18 +2266,21 @@ void TButton::addPushFunction(string& func, string& page)
 
     for (iter = allFunc.begin(); iter != allFunc.end(); ++iter)
     {
-        if (iter->compare(func) == 0)
+        if (strCaseCompare(*iter, func) == 0)
         {
             bool found = false;
             vector<PUSH_FUNC_T>::iterator iterPf;
 
-            for (iterPf = pushFunc.begin(); iterPf != pushFunc.end(); ++iterPf)
+            if (pushFunc.size() > 0)
             {
-                if (iterPf->pfType.compare(func) == 0)
+                for (iterPf = pushFunc.begin(); iterPf != pushFunc.end(); ++iterPf)
                 {
-                    iterPf->pfName = page;
-                    found = true;
-                    break;
+                    if (strCaseCompare(iterPf->pfType, func) == 0)
+                    {
+                        iterPf->pfName = page;
+                        found = true;
+                        break;
+                    }
                 }
             }
 
@@ -2304,7 +2308,7 @@ void TButton::clearPushFunction(const string& action)
 
     for (iter = pushFunc.begin(); iter != pushFunc.end(); ++iter)
     {
-        if (iter->pfName.compare(action) == 0)
+        if (strCaseCompare(iter->pfName, action) == 0)
         {
             pushFunc.erase(iter);
             return;
@@ -2390,9 +2394,25 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
 
         SkBitmap imgRed(iterImages->second.imageMi);
         SkBitmap imgMask;
+        bool haveBothImages = true;
 
         if (!sr[instance].bm.empty())
-            imgMask.installPixels(iterImages->second.imageBm.pixmap());
+        {
+            if (imgRed.info().width() == iterImages->second.imageBm.info().width() &&
+                imgRed.info().height() == iterImages->second.imageBm.info().height())
+            {
+                imgMask.installPixels(iterImages->second.imageBm.pixmap());
+            }
+            else
+            {
+                MSG_WARNING("The mask has an invalid size. Will ignore the mask!");
+                imgMask.allocN32Pixels(imgRed.info().width(), imgRed.info().height());
+                imgMask.eraseColor(SK_ColorTRANSPARENT);
+                haveBothImages = false;
+            }
+        }
+        else
+            haveBothImages = false;
 
         SkBitmap img = drawImageButton(imgRed, imgMask, sr[instance].mi_width, sr[instance].mi_height, TColor::getSkiaColor(sr[instance].cf), TColor::getSkiaColor(sr[instance].cb));
 
@@ -2422,12 +2442,45 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
         paint.setBlendMode(SkBlendMode::kSrc);
 
         if (sr[instance].sb == 0)
-            can.drawBitmap(img, position.left, position.top, &paint);
+        {
+            if (!haveBothImages)
+            {
+                can.drawBitmap(img, 0, 0, &paint);
+
+                if (!sr[instance].bm.empty())
+                {
+                    imgMask.installPixels(iterImages->second.imageBm.pixmap());
+                    paint.setBlendMode(SkBlendMode::kSrcOver);
+                    can.drawBitmap(imgMask, position.left, position.top, &paint);
+                }
+            }
+            else
+                can.drawBitmap(img, position.left, position.top, &paint);
+        }
         else    // Scale to fit
         {
-            SkRect rect = SkRect::MakeXYWH(position.left, position.top, position.width, position.height);
-            sk_sp<SkImage> im = SkImage::MakeFromBitmap(img);
-            can.drawImageRect(im, rect, &paint);
+            if (!haveBothImages)
+            {
+                SkRect rect;
+                rect.setXYWH(0, 0, imgRed.info().width(), imgRed.info().height());
+                sk_sp<SkImage> im = SkImage::MakeFromBitmap(img);
+                can.drawImageRect(im, rect, &paint);
+
+                if (!sr[instance].bm.empty())
+                {
+                    imgMask.installPixels(iterImages->second.imageBm.pixmap());
+                    rect.setXYWH(position.left, position.top, position.width, position.height);
+                    im = SkImage::MakeFromBitmap(imgMask);
+                    paint.setBlendMode(SkBlendMode::kSrcOver);
+                    can.drawImageRect(im, rect, &paint);
+                }
+            }
+            else
+            {
+                SkRect rect = SkRect::MakeXYWH(position.left, position.top, position.width, position.height);
+                sk_sp<SkImage> im = SkImage::MakeFromBitmap(img);
+                can.drawImageRect(im, rect, &paint);
+            }
         }
     }
     else if (!sr[instance].bm.empty())
@@ -3558,13 +3611,43 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
 
     if (!typeFace)
     {
-        MSG_ERROR("Error creating type face " << font.fullName);
-        TError::setError();
-        return false;
+        MSG_WARNING("Error creating type face " << font.fullName);
     }
 
     SkScalar fontSizePt = ((SkScalar)font.size * 1.322);
-    SkFont skFont(typeFace, fontSizePt);
+    SkFont skFont;
+
+    if (typeFace && typeFace->countTables() > 0)
+        skFont.setTypeface(typeFace);
+/*    else
+    {
+        FONT_STYLE style = mFonts->getStyle(font);
+        SkFontStyle fs;
+
+        switch(style)
+        {
+            case FONT_BOLD:         fs = SkFontStyle::Bold(); break;
+            case FONT_ITALIC:       fs = SkFontStyle::Italic(); break;
+            case FONT_BOLD_ITALIC:  fs = SkFontStyle::BoldItalic(); break;
+
+            default:
+                fs = SkFontStyle::Normal();
+        }
+
+        typeFace = SkTypeface::MakeFromName(nullptr, fs);
+
+        if (typeFace)
+        {
+            skFont.setTypeface(typeFace);
+            MSG_INFO("Successfully set a typeface!");
+        }
+        else
+        {
+            MSG_WARNING("Last try to set a typeface failed also!");
+        }
+    }
+*/
+    skFont.setSize(fontSizePt);
     skFont.setEdging(SkFont::Edging::kAntiAlias);
     MSG_DEBUG("Wanted font size: " << font.size << ", this is " << fontSizePt << " pt");
 
@@ -3576,12 +3659,12 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
     SkFontMetrics metrics;
     skFont.getMetrics(&metrics);
     int lines = numberLines(sr[instance].te);
-    MSG_DEBUG("fAvgCharWidth: " << metrics.fAvgCharWidth);
-    MSG_DEBUG("fCapHeight:    " << metrics.fCapHeight);
-    MSG_DEBUG("fAscent:       " << metrics.fAscent);
-    MSG_DEBUG("fDescent:      " << metrics.fDescent);
-    MSG_DEBUG("fLeading:      " << metrics.fLeading);
-    MSG_DEBUG("fXHeight:      " << metrics.fXHeight);
+//    MSG_DEBUG("fAvgCharWidth: " << metrics.fAvgCharWidth);
+//    MSG_DEBUG("fCapHeight:    " << metrics.fCapHeight);
+//    MSG_DEBUG("fAscent:       " << metrics.fAscent);
+//    MSG_DEBUG("fDescent:      " << metrics.fDescent);
+//    MSG_DEBUG("fLeading:      " << metrics.fLeading);
+//    MSG_DEBUG("fXHeight:      " << metrics.fXHeight);
 
     MSG_DEBUG("Found " << lines << " lines.");
 
@@ -3686,8 +3769,13 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
         sk_sp<SkTextBlob> blob = SkTextBlob::MakeFromString(text.data(), skFont);
         SkRect rect;
         skFont.measureText(text.data(), text.size(), SkTextEncoding::kUTF8, &rect, &paint);
-//            POSITION_t position = calcImagePosition(rect.width(), metrics.fCapHeight, SC_TEXT, instance);
-        POSITION_t position = calcImagePosition(rect.width(), font.size, SC_TEXT, instance);
+        MSG_DEBUG("Calculated Skia rectangle of font: width=" << rect.width() << ", height=" << rect.height());
+        POSITION_t position;
+
+        if (metrics.fCapHeight >= 1.0)
+            position = calcImagePosition(rect.width(), metrics.fCapHeight, SC_TEXT, instance);
+        else
+            position = calcImagePosition(rect.width(), rect.height(), SC_TEXT, instance);
 
         if (!position.valid)
         {
@@ -3698,16 +3786,21 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
 
         MSG_DEBUG("Printing line " << text);
         SkScalar startX = (SkScalar)position.left;
-        SkScalar startY = (SkScalar)position.top + metrics.fCapHeight;  // This is the offset of the line
+        SkScalar startY = (SkScalar)position.top;
+
+        if (metrics.fCapHeight >= 1.0)
+            startY += metrics.fCapHeight;   // This is the offset of the line
+        else
+            startY += rect.height();        // This is the offset of the line
 
         FONT_TYPE sym = TFont::isSymbol(typeFace);
         bool tEffect = false;
         // Text effects
         if (sr[instance].et > 0)
-            tEffect = textEffect(&canvas, blob, startX, (sym == FT_SYMBOL ? (startY + font.size) : startY), instance);
+            tEffect = textEffect(&canvas, blob, startX, startY, instance);
 
         if (!tEffect && utf8Strlen(text) > 1)
-            canvas.drawTextBlob(blob.get(), startX, (sym == FT_SYMBOL ? (startY + font.size) : startY), paint);
+            canvas.drawTextBlob(blob.get(), startX, startY, paint);
         else
         {
             int count = 0;
@@ -3754,7 +3847,7 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
             if (glyphs)
             {
                 MSG_DEBUG("1st glyph: 0x" << std::hex << std::setw(8) << std::setfill('0') << *glyphs << ", # glyphs: " << std::dec << count);
-                canvas.drawSimpleText(glyphs, sizeof(uint16_t) * count, SkTextEncoding::kGlyphID, startX, (sym == FT_SYMBOL ? (startY + font.size) : startY), skFont, paint);
+                canvas.drawSimpleText(glyphs, sizeof(uint16_t) * count, SkTextEncoding::kGlyphID, startX, startY, skFont, paint);
             }
             else    // Try to print something
             {
@@ -3763,7 +3856,6 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
                 size_t glyphSize = sizeof(uint16_t) * text.size();
                 count = skFont.textToGlyphs(text.data(), text.size(), SkTextEncoding::kUTF8, glyphs, glyphSize);
                 canvas.drawSimpleText(glyphs, sizeof(uint16_t) * count, SkTextEncoding::kGlyphID, startX, startY, skFont, paint);
-//                canvas.drawSimpleText(glyphs, sizeof(uint16_t) * count, SkTextEncoding::kGlyphID, startX, (sym == FT_SYMBOL ? (startY + font.size) : startY), skFont, paint);
             }
 
             delete[] glyphs;
@@ -5108,7 +5200,10 @@ POSITION_t TButton::calcImagePosition(int width, int height, CENTER_CODE cc, int
             ix = act_sr.tx;
             iy = act_sr.ty;
             dbgCC = "TEXT";
-            border += 4;
+
+            if (border < 4)
+                border = 4;
+//            border += 4;
             rwt = std::min(wt - border * 2, width);         // We've always a minimum (invisible) border of 4 pixels.
             rht = std::min(ht - border_size * 2, height);   // The height is calculated from a defined border, if any.
         break;
@@ -5374,11 +5469,29 @@ SkBitmap TButton::drawImageButton(SkBitmap& imgRed, SkBitmap& imgMask, int width
         return SkBitmap();
     }
 
+    if (imgRed.empty())
+    {
+        MSG_WARNING("Missing mask to draw image!");
+        return SkBitmap();
+    }
+
     SkPixmap pixmapRed = imgRed.pixmap();
     SkPixmap pixmapMask;
+    bool haveBothImages = true;
 
     if (!imgMask.empty())
+    {
         pixmapMask = imgMask.pixmap();
+
+        if (pixmapRed.info().width() != pixmapMask.info().width() ||
+            pixmapRed.info().height() != pixmapMask.info().height())
+        {
+            MSG_WARNING("Image and mask have different sizes!");
+            haveBothImages = false;
+        }
+    }
+    else
+        haveBothImages = false;
 
     SkBitmap maskBm;
     maskBm.allocPixels(SkImageInfo::MakeN32Premul(width, height));
@@ -5391,10 +5504,10 @@ SkBitmap TButton::drawImageButton(SkBitmap& imgRed, SkBitmap& imgMask, int width
             SkColor pixelRed = pixmapRed.getColor(ix, iy);
             SkColor pixelMask;
 
-            if (!imgMask.empty())
+            if (haveBothImages && !imgMask.empty())
                 pixelMask = pixmapMask.getColor(ix, iy);
             else
-                pixelMask = SK_ColorTRANSPARENT;
+                pixelMask = SkColorSetA(SK_ColorWHITE, 0);
 
             SkColor pixel = baseColor(pixelRed, pixelMask, col1, col2);
             uint32_t alpha = SkColorGetA(pixel);
@@ -6119,13 +6232,13 @@ bool TButton::doClick(int x, int y, bool pressed)
                 amx::ANET_COMMAND cmd;
                 cmd.MC = 0x000a;
                 cmd.device1 = channel;
-                cmd.port1 = ap;
+                cmd.port1 = 0;
                 cmd.system = system;
                 cmd.data.message_value.system = system;
                 cmd.data.message_value.value = 9;   // System volume
                 cmd.data.message_value.content.integer = vol;
                 cmd.data.message_value.device = channel;
-                cmd.data.message_value.port = ap;   // Must be the address port of button
+                cmd.data.message_value.port = 0;    // Must be the address port of button
                 cmd.data.message_value.type = 0x20; // Unsigned int
                 gPageManager->doCommand(cmd);
             }
@@ -6153,13 +6266,13 @@ bool TButton::doClick(int x, int y, bool pressed)
                 amx::ANET_COMMAND cmd;
                 cmd.MC = 0x000a;
                 cmd.device1 = channel;
-                cmd.port1 = ap;
+                cmd.port1 = 0;
                 cmd.system = system;
                 cmd.data.message_value.system = system;
                 cmd.data.message_value.value = 9;   // System volume
                 cmd.data.message_value.content.integer = vol;
                 cmd.data.message_value.device = channel;
-                cmd.data.message_value.port = ap;   // Must be the address port of button
+                cmd.data.message_value.port = 0;    // Must be the address port of button
                 cmd.data.message_value.type = 0x20; // Unsigned int
                 gPageManager->doCommand(cmd);
             }
@@ -6193,7 +6306,10 @@ bool TButton::doClick(int x, int y, bool pressed)
 
             MSG_DEBUG("Flavor FB_MOMENTARY, instance=" << instance);
             mActInstance = instance;
-            drawButton(instance);
+
+            if (pushFunc.empty() || (!pushFunc.empty() && instance == 0))
+                drawButton(instance);
+
             // If there is nothing in "hs", then it depends on the pixel of the
             // layer. Only if the pixel the coordinates point to are not
             // transparent, the button takes the click.
@@ -6430,6 +6546,11 @@ bool TButton::doClick(int x, int y, bool pressed)
             MSG_DEBUG("Testing for function " << iter->pfType);
             string pfType = toUpper(iter->pfType);
 
+            if (fb == FB_MOMENTARY || fb == FB_NONE)
+                mActInstance = 0;
+            else if (fb == FB_ALWAYS_ON || fb == FB_INV_CHANNEL)
+                mActInstance = 1;
+
             if (pfType == "SSHOW")            // show popup
             {
                 if (gPageManager)
@@ -6594,10 +6715,11 @@ SkColor TButton::baseColor(SkColor basePix, SkColor maskPix, SkColor col1, SkCol
 
     if (red && green)
     {
-        if (red > green)
-            return col1;
-        else
-            return col2;
+        uint32_t newR = (SkColorGetR(col1) + SkColorGetR(col2)) / 2;
+        uint32_t newG = (SkColorGetG(col1) + SkColorGetG(col2)) / 2;
+        uint32_t newB = (SkColorGetB(col1) + SkColorGetB(col2)) / 2;
+        uint32_t newA = (SkColorGetA(col1) + SkColorGetA(col2)) / 2;
+        return SkColorSetARGB(newA, newR, newG, newB);
     }
 
     if (red)

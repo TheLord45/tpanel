@@ -114,6 +114,8 @@ class TPageManager : public TAmxCommands
         TFont *getFonts() { return mFonts; }
         Button::TButton *findButton(ulong handle);
         void onSwipeEvent(SWIPES sw);
+        double getDPI() { return mDPI; }
+        void setDPI(const double dpi) { mDPI = dpi; }
 
         void registerCallbackDB(std::function<void(ulong handle, ulong parent, unsigned char *buffer, int width, int height, int pixline, int left, int top)> displayButton) { _displayButton = displayButton; }
         void registerCBsetVisible(std::function<void(ulong handle, bool state)> setVisible) { _setVisible = setVisible; }
@@ -559,6 +561,7 @@ class TPageManager : public TAmxCommands
         bool mInformOrientation{false};                 // TRUE = The actual screen orientation is reported to the controller if it change.
         int mOrientation{0};                            // Contains the actual orientation.
         int mLastPagePush{0};                           // The number of the last page received a push (key press / mouse hit)
+        double mDPI{96.0};                              // DPI (Dots Per Inch) of the primary display.
         // SIP
 #ifndef _NOSIP_
         bool mPHNautoanswer{false};                     // The state of the SIP autoanswer

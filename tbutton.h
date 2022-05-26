@@ -975,7 +975,7 @@ namespace Button
             std::vector<std::string> cm;         // Commands to send on each button hit
             std::string dr;         // Level "horizontal" or "vertical"
             int va{0};
-            int stateCount{0};      // State count with multistate buttons
+            int stateCount{0};      // State count with multistate buttons (number of states)
             int rm{0};              // State count with multistate buttons?
             int nu{2};              // Animate time up
             int nd{2};              // Animate time down

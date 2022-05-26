@@ -34,8 +34,6 @@
 #include "terror.h"
 #include "tconfig.h"
 
-sk_sp<SkData> (*gResourceFactory)(const char*) = nullptr;
-
 using std::string;
 using std::endl;
 using std::vector;
@@ -179,6 +177,14 @@ static CHTABLE __cht[] = {
 
 SkString GetResourcePath(const char* resource, _RESOURCE_TYPE rs)
 {
+    if (!resource)
+        return SkString();
+
+    if (*resource == '/')       // absolute path?
+    {                           // yes, then take it as it is
+        return SkString(resource);
+    }
+
     string pth;
 
     switch(rs)
@@ -197,9 +203,6 @@ SkString GetResourcePath(const char* resource, _RESOURCE_TYPE rs)
     }
 
     string path = TConfig::getProjectPath() + pth + resource;
-
-    if (*resource == '/')       // absolute path?
-        path.assign(resource);  // yes, then take it as it is
 
     return SkString(path);
 }
@@ -224,12 +227,13 @@ std::unique_ptr<SkStreamAsset> GetResourceAsStream(const char* resource, _RESOUR
 
 sk_sp<SkData> GetResourceAsData(const char* resource, _RESOURCE_TYPE rs)
 {
-    if (sk_sp<SkData> data = gResourceFactory ? gResourceFactory(resource) : SkData::MakeFromFileName(GetResourcePath(resource, rs).c_str()))
-    {
-        return data;
-    }
+    SkString str = GetResourcePath(resource, rs);
+    sk_sp<SkData> data = SkData::MakeFromFileName(str.c_str());
 
-    MSG_ERROR("GetResourceAsData: Resource \"" << GetResourcePath(resource, rs).c_str() << "\" not found." << endl);
+    if (data)
+        return data;
+
+    MSG_ERROR("GetResourceAsData: Resource \"" << str.c_str() << "\" not found.");
     TError::setError();
 #ifdef SK_TOOLS_REQUIRE_RESOURCES
     SK_ABORT("GetResourceAsData: missing resource");
@@ -280,6 +284,8 @@ vector<string> StrSplit(const string& str, const string& seps, const bool trimEm
                     parts.push_back(str.substr(mark, len));
                 else if (len > 0)
                     parts.push_back(str.substr(mark, len) + "\n");
+                else if (*sepIt == '\n')
+                    parts.push_back("\n");
                 else
                     parts.push_back(string());
 
@@ -454,7 +460,7 @@ string UTF8ToCp1250(const string& str)
         else
             out.push_back(uch);
     }
-MSG_WARNING("String: " << out);
+
     return out;
 #else
     char dst[1024];
@@ -612,7 +618,7 @@ vector<string> splitLine(const string& str, int width, int height, SkFont& font,
         if ((pos = iter->find("\n")) != string::npos)
         {
             if (pos > 0)
-                *iter = iter->substr(0, pos - 1);
+                *iter = iter->substr(0, pos);
             else
                 *iter = "";
 
@@ -641,7 +647,7 @@ vector<string> splitLine(const string& str, int width, int height, SkFont& font,
 
                     if (rect.width() > (width - 8))
                     {
-                        lines.push_back(sample.substr(0, sample.length() - 1)); // Cut off the last charachter because it is already out of bounds.
+                        lines.push_back(sample.substr(0, sample.length() - 1)); // Cut off the last character because it is already out of bounds.
                         start = i;                                              // Set the new start of the string
                         i--;                                                    // We must repeat the last character
                         pos = 0;                                                // Reset the position counter
@@ -971,3 +977,4 @@ string getCommand(const string& fullCmd)
 
     return cmd;
 }
+

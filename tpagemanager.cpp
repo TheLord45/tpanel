@@ -1042,7 +1042,9 @@ bool TPageManager::run()
             ani.showTime = subPg->getShowTime();
             ani.hideEffect = subPg->getHideEffect();
             ani.hideTime = subPg->getHideTime();
-            _setSubPage(((subPg->getNumber() << 16) & 0xffff0000), left, top, width, height, ani);
+
+            subPg->setZOrder(pg->getNextZOrder());
+            _setSubPage(subPg->getHandle(), left, top, width, height, ani);
             subPg->show();
         }
 
@@ -2310,17 +2312,6 @@ void TPageManager::showSubPage(const string& name)
         }
         else if (redraw && !_toFront)
             pg->drop();
-/*        else        // Make sure the Z-order marks the popup on top
-        {
-            int zo = page->getActZOrder();
-
-            if (pg->getZOrder() < zo)
-            {
-                pg->setZOrder(page->getNextZOrder());
-                page->sortSubpages();
-                MSG_DEBUG("Setting new Z-order " << page->getActZOrder() << " on subpage " << pg->getName());
-            }
-        } */
     }
 
     if (!pg->isVisible())
@@ -2683,6 +2674,9 @@ void TPageManager::initOrientation()
 
 void TPageManager::setButtonCallbacks(Button::TButton *bt)
 {
+    if (!bt)
+        return;
+
     bt->registerCallback(_displayButton);
     bt->regCallPlayVideo(_callPlayVideo);
     bt->setFonts(mFonts);
@@ -3336,6 +3330,10 @@ void TPageManager::doBLINK(int, vector<int>&, vector<string>& pars)
     }
 }
 
+/**
+ * Send the version of the panel to the NetLinx. This is the real application
+ * version.
+ */
 void TPageManager::doVER(int, vector<int>&, vector<string>&)
 {
     DECL_TRACER("TPageManager::doVER(int, vector<int>&, vector<string>&)");
@@ -3352,6 +3350,10 @@ void TPageManager::doVER(int, vector<int>&, vector<string>&)
         MSG_WARNING("Missing global class TAmxNet. Can't send message!");
 }
 
+/**
+ * Returns the user name used to connect to a SIP server. An empty string is
+ * returned if there is no user defined.
+ */
 void TPageManager::doWCN(int, vector<int>&, vector<string>&)
 {
     DECL_TRACER("TPageManager::doWCN(int, vector<int>&, vector<string>&)");
@@ -3424,6 +3426,12 @@ void TPageManager::doAPG(int, std::vector<int>&, std::vector<std::string>& pars)
     if (!subPage)
     {
         MSG_ERROR("Subpage " << pars[0] << " couldn't either found or created!");
+        return;
+    }
+
+    if (!page)
+    {
+        MSG_ERROR("There seems to be no page for subpage " << pars[0]);
         return;
     }
 
@@ -3516,23 +3524,23 @@ void TPageManager::doPHE(int, vector<int>&, vector<string>& pars)
     if (!pg)
         return;
 
-    if (pars[1].compare("fade") == 0)
+    if (strCaseCompare(pars[1], "fade") == 0)
         pg->setHideEffect(SE_FADE);
-    else if (pars[1].compare("slide to left") == 0)
+    else if (strCaseCompare(pars[1], "slide to left") == 0)
         pg->setHideEffect(SE_SLIDE_LEFT);
-    else if (pars[1].compare("slide to right") == 0)
+    else if (strCaseCompare(pars[1], "slide to right") == 0)
         pg->setHideEffect(SE_SLIDE_RIGHT);
-    else if (pars[1].compare("slide to top") == 0)
+    else if (strCaseCompare(pars[1], "slide to top") == 0)
         pg->setHideEffect(SE_SLIDE_TOP);
-    else if (pars[1].compare("slide to bottom") == 0)
+    else if (strCaseCompare(pars[1], "slide to bottom") == 0)
         pg->setHideEffect(SE_SLIDE_BOTTOM);
-    else if (pars[1].compare("slide to left fade") == 0)
+    else if (strCaseCompare(pars[1], "slide to left fade") == 0)
         pg->setHideEffect(SE_SLIDE_LEFT_FADE);
-    else if (pars[1].compare("slide to right fade") == 0)
+    else if (strCaseCompare(pars[1], "slide to right fade") == 0)
         pg->setHideEffect(SE_SLIDE_RIGHT_FADE);
-    else if (pars[1].compare("slide to top fade") == 0)
+    else if (strCaseCompare(pars[1], "slide to top fade") == 0)
         pg->setHideEffect(SE_SLIDE_TOP_FADE);
-    else if (pars[1].compare("slide to bottom fade") == 0)
+    else if (strCaseCompare(pars[1], "slide to bottom fade") == 0)
         pg->setHideEffect(SE_SLIDE_BOTTOM_FADE);
     else
         pg->setHideEffect(SE_NONE);
@@ -3673,10 +3681,8 @@ void TPageManager::doPPG(int, std::vector<int>&, std::vector<std::string>& pars)
 
     if (pg->isVisible())
     {
-        if (pg->getZOrder() == page->getActZOrder())
-            page->decZOrder();
-
         pg->drop();
+        page->decZOrder();
         return;
     }
 
@@ -3723,10 +3729,8 @@ void TPageManager::doPPK(int, std::vector<int>&, std::vector<std::string>& pars)
 
     if (pg)
     {
-        if (pg->getZOrder() == page->getActZOrder())
-            page->decZOrder();
-
         pg->drop();
+        page->decZOrder();
     }
 }
 
@@ -3751,7 +3755,7 @@ void TPageManager::doPPM(int, std::vector<int>&, std::vector<std::string>& pars)
 
     if (pg)
     {
-        if (pars[1] == "1" || pars[1].compare("modal") == 0 || pars[1].compare("MODAL") == 0)
+        if (pars[1] == "1" || strCaseCompare(pars[1], "modal") == 0)
             pg->setModal(1);
         else
             pg->setModal(0);
@@ -3856,28 +3860,33 @@ void TPageManager::doPSE(int, vector<int>&, vector<string>& pars)
     if (!pg)
         return;
 
-    if (pars[1].compare("fade") == 0)
+    if (strCaseCompare(pars[1], "fade") == 0)
         pg->setShowEffect(SE_FADE);
-    else if (pars[1].compare("slide to left") == 0)
+    else if (strCaseCompare(pars[1], "slide to left") == 0)
         pg->setShowEffect(SE_SLIDE_LEFT);
-    else if (pars[1].compare("slide to right") == 0)
+    else if (strCaseCompare(pars[1], "slide to right") == 0)
         pg->setShowEffect(SE_SLIDE_RIGHT);
-    else if (pars[1].compare("slide to top") == 0)
+    else if (strCaseCompare(pars[1], "slide to top") == 0)
         pg->setShowEffect(SE_SLIDE_TOP);
-    else if (pars[1].compare("slide to bottom") == 0)
+    else if (strCaseCompare(pars[1], "slide to bottom") == 0)
         pg->setShowEffect(SE_SLIDE_BOTTOM);
-    else if (pars[1].compare("slide to left fade") == 0)
+    else if (strCaseCompare(pars[1], "slide to left fade") == 0)
         pg->setShowEffect(SE_SLIDE_LEFT_FADE);
-    else if (pars[1].compare("slide to right fade") == 0)
+    else if (strCaseCompare(pars[1], "slide to right fade") == 0)
         pg->setShowEffect(SE_SLIDE_RIGHT_FADE);
-    else if (pars[1].compare("slide to top fade") == 0)
+    else if (strCaseCompare(pars[1], "slide to top fade") == 0)
         pg->setShowEffect(SE_SLIDE_TOP_FADE);
-    else if (pars[1].compare("slide to bottom fade") == 0)
+    else if (strCaseCompare(pars[1], "slide to bottom fade") == 0)
         pg->setShowEffect(SE_SLIDE_BOTTOM_FADE);
     else
         pg->setShowEffect(SE_NONE);
 }
 
+/**
+ * Set the show effect position. Only 1 coordinate is ever needed for an effect;
+ * however, the command will specify both. This command sets the location at
+ * which the effect will begin.
+ */
 void TPageManager::doPSP(int, vector<int>&, vector<string>& pars)
 {
     DECL_TRACER("TPageManager::doPSP(int port, vector<int>& channels, vector<string>& pars)");
@@ -4066,25 +4075,25 @@ void TPageManager::doBAT(int port, vector<int> &channels, vector<string> &pars)
 
     vector<Button::TButton *> buttons = collectButtons(map);
 
-    if (buttons.size() > 0)
+    if (buttons.empty())
+        return;
+
+    vector<Button::TButton *>::iterator mapIter;
+
+    for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
     {
-        vector<Button::TButton *>::iterator mapIter;
+        Button::TButton *bt = *mapIter;
+        setButtonCallbacks(bt);
 
-        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        if (btState == 0)       // All instances?
         {
-            Button::TButton *bt = *mapIter;
-            setButtonCallbacks(bt);
+            int bst = bt->getNumberInstances();
 
-            if (btState == 0)       // All instances?
-            {
-                int bst = bt->getNumberInstances();
-
-                for (int i = 0; i < bst; i++)
-                    bt->appendText(text, i);
-            }
-            else
-                bt->appendText(text, btState - 1);
+            for (int i = 0; i < bst; i++)
+                bt->appendText(text, i);
         }
+        else
+            bt->appendText(text, btState - 1);
     }
 }
 
@@ -4108,52 +4117,60 @@ void TPageManager::doBAU(int port, vector<int>& channels, vector<string>& pars)
     string text;
     char ch[3];
 
-    if (pars.size() > 1)
+    if (pars.size() > 1 && (pars.size() % 2) == 0)
     {
-        text = pars[1];
-        // Because the unicode characters are hex numbers, we scan the text
-        // and convert the hex numbers into real numbers.
-        size_t len = text.length();
-        string t;
-        bool inHex = false;
-        int lastChar = 0;
-
-        for (size_t i = 0; i < len; i++)
+        try
         {
-            if (!inHex && isHex(text.at(i)))
+            text = pars[1];
+            // Because the unicode characters are hex numbers, we scan the text
+            // and convert the hex numbers into real numbers.
+            size_t len = text.length();
+            bool inHex = false;
+            int lastChar = 0;
+            std::wstring uniText;
+            int uniPos = 0;
+
+            for (size_t i = 0; i < len; i++)
             {
-                inHex = true;
-                lastChar = text.at(i);
-                continue;
+                int c = text.at(i);
+
+                if (!inHex && isHex(c))
+                {
+                    inHex = true;
+                    lastChar = c;
+                    continue;
+                }
+
+                if (inHex && !isHex(c))
+                {
+                    inHex = false;
+                    break;
+                }
+
+                if (inHex && isHex(c))
+                {
+                    ch[0] = lastChar;
+                    ch[1] = c;
+                    ch[2] = 0;
+                    uint16_t num = (uint16_t)strtol(ch, NULL, 16);
+                    uniText += num;
+                    uniPos++;
+                    inHex = false;
+
+                    if (uniPos >= 50)
+                        break;
+
+                    continue;
+                }
             }
 
-            if (inHex && !isHex(text.at(i)))
-            {
-                inHex = false;
-                ch[0] = lastChar;
-                ch[1] = 0;
-                t.append(ch);
-            }
-
-            if (inHex && isHex(text.at(i)))
-            {
-                ch[0] = lastChar;
-                ch[1] = text.at(i);
-                ch[2] = 0;
-                int num = (int)strtol(ch, NULL, 16);
-                ch[0] = num;
-                ch[1] = 0;
-                t.append(ch);
-                inHex = false;
-                continue;
-            }
-
-            ch[0] = text.at(i);
-            ch[1] = 0;
-            t.append(ch);
+            text = CharConvert::UtfConv<std::string>(uniText);
         }
-
-        text = t;
+        catch (std::exception const & e)
+        {
+            MSG_ERROR("Character conversion error: " << e.what());
+            return;
+        }
     }
 
     vector<MAP_T> map = findButtons(port, channels);
@@ -4746,8 +4763,11 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
         return;
 
     // Start of parsing the command line
-    // We splitt the command line into parts by searching for a percent % sign.
+    // We splitt the command line into parts by searching for a percent (%) sign.
     vector<string> parts = StrSplit(commands, "%");
+
+    if (parts.empty())
+        return;
 
     // Search for all buttons who need to be updated
     vector<Button::TButton *> buttons = collectButtons(map);
@@ -4759,6 +4779,13 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
+
+            if (!bt)
+            {
+                MSG_WARNING("Command ^BMF found an invalid pointer to a button!")
+                continue;
+            }
+
             // Iterate through commands and apply them to button
             vector<string>::iterator iter;
 

@@ -2236,6 +2236,15 @@ vector<string>& TTPInit::getFileList(const string& filter)
 {
     DECL_TRACER("TTPInit::getFileList(const string& filter)");
 
+    string netlinx = TConfig::getController();
+
+    if (netlinx.empty() || netlinx == "0.0.0.0")
+    {
+        MSG_WARNING("Refusing to connect to " << netlinx << ":21!");
+        mDirList.clear();
+        return mDirList;
+    }
+
     ftplib *ftp = new ftplib();
     ftp->regLogging(bind(&TTPInit::logging, this, std::placeholders::_1, std::placeholders::_2));
 
@@ -2367,7 +2376,7 @@ bool TTPInit::makeSystemFiles()
 {
     DECL_TRACER("TTPInit::makeSystemFiles()");
 
-    if (!fs::exists(mPath + "__system/graphics/borders/AMXeliteL-off_b.png"))
+    if (!fs::exists(mPath + "/__system/graphics/borders/AMXeliteL-off_b.png"))
         return createSystemConfigs();
 
     return true;

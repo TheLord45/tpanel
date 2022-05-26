@@ -253,8 +253,9 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
 #endif  // defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
 
     // Initialize the application
+    pmanager->setDPI(QGuiApplication::primaryScreen()->logicalDotsPerInch());
     QCoreApplication::setOrganizationName(TConfig::getProgName().c_str());
-    QCoreApplication::setApplicationName("AMX panel simulator");
+    QCoreApplication::setApplicationName("TPanel");
     QCoreApplication::setApplicationVersion(VERSION_STRING());
     QCommandLineParser parser;
     parser.setApplicationDescription(QCoreApplication::applicationName());

@@ -3,6 +3,13 @@ ChangeLog
 
 Release: 1.3.2
 ===============================================================================
+2022-05-26 Fixed multi line text to not cut off the last character and to leave
+           an empty line as such.
+           Improved the drawing of chameleon images a bit.
+
+2022-05-25 Fixed the chameleon images if the bitmap has a different size.
+           Fixed buttons with functions to not show state 1 when pressed.
+
 2022-05-22 Addedd text effects for Glow and Outline.
            Fixed the border drawing.
            Fixed the position of symbols from a symbol font.
