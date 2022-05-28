@@ -74,9 +74,9 @@ bool TImgCache::addImage(const string& name, SkBitmap& bm, _IMGCACHE_BMTYPE bmTy
     return true;
 }
 
-bool TImgCache::getBitmap(const string& name, SkBitmap *bm, _IMGCACHE_BMTYPE bmType)
+bool TImgCache::getBitmap(const string& name, SkBitmap *bm, _IMGCACHE_BMTYPE bmType, int *width, int *height)
 {
-    DECL_TRACER("TImgCache::getBitmap(const string& name, _IMGCACHE_BMTYPE bmType)");
+    DECL_TRACER("TImgCache::getBitmap(const string& name, _IMGCACHE_BMTYPE bmType, int *width, int *height)");
 
     if (mImgCache.size() == 0 || !bm)
         return false;
@@ -88,10 +88,23 @@ bool TImgCache::getBitmap(const string& name, SkBitmap *bm, _IMGCACHE_BMTYPE bmT
         if (iter->name == name && iter->bmType == bmType)
         {
             *bm = iter->bitmap;
+
+            if (width && !iter->bitmap.empty())
+                *width = iter->bitmap.info().width();
+
+            if (height && !iter->bitmap.empty())
+                *height = iter->bitmap.info().height();
+
             MSG_DEBUG("Bitmap \"" << iter->name << "\" was found.");
             return true;
         }
     }
+
+    if (width)
+        *width = 0;
+
+    if (height)
+        *height = 0;
 
     return false;
 }

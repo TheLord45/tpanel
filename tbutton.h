@@ -886,20 +886,6 @@ namespace Button
             void funcNetworkState(int level);
 
         private:
-/*            typedef struct IMAGE_t
-            {
-                int number{0};
-                SkBitmap imageMi;
-                SkBitmap imageBm;
-
-                void clear()
-                {
-                    number = 0;
-                    imageMi.reset();
-                    imageBm.reset();
-                }
-            }IMAGE_t;
-*/
             std::function<void (ulong handle, ulong parent, unsigned char *buffer, int width, int height, int pixline, int left, int top)> _displayButton{nullptr};
             std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw)> _playVideo{nullptr};
 

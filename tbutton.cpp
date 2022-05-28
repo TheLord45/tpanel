@@ -680,7 +680,6 @@ bool TButton::createButtons(bool force)
     for (srIter = sr.begin(); srIter != sr.end(); ++srIter)
     {
         int number = srIter->number;
-//        IMAGE_t img;
 
         if (srIter->sb > 0)
             continue;
@@ -706,15 +705,7 @@ bool TButton::createButtons(bool force)
             if (!reload)   // If the image already exist, do not load it again.
                 continue;
         }
-/*        else if (!srIter->mi.empty() || !srIter->bm.empty())  // We must first erase the image
-        {
-            if (bmExistMi)
-                TImgCache::delBitmap(srIter->mi, _BMTYPE_CHAMELEON);
 
-            if (bmExistBm)
-                TImgCache::delBitmap(srIter->bm, _BMTYPE_BITMAP);
-        }
-*/
         if (!bmExistMi && !srIter->mi.empty())        // Do we have a chameleon image?
         {
             sk_sp<SkData> image;
@@ -731,16 +722,9 @@ bool TButton::createButtons(bool force)
                 return false;
             }
 
-            if (TImgCache::addImage(srIter->mi, bm, _BMTYPE_CHAMELEON))
-            {
-                srIter->mi_width = bm.info().width();
-                srIter->mi_height = bm.info().height();
-            }
-            else
-            {
-                srIter->mi_width = 0;
-                srIter->mi_height = 0;
-            }
+            TImgCache::addImage(srIter->mi, bm, _BMTYPE_CHAMELEON);
+            srIter->mi_width = bm.info().width();
+            srIter->mi_height = bm.info().height();
         }
 
         if (!bmExistBm && !srIter->bm.empty())        // Do we have a bitmap?
@@ -759,16 +743,9 @@ bool TButton::createButtons(bool force)
                 return false;
             }
 
-            if (TImgCache::addImage(srIter->bm, bm, _BMTYPE_BITMAP))
-            {
-                srIter->bm_width = bm.info().width();
-                srIter->bm_height = bm.info().height();
-            }
-            else
-            {
-                srIter->bm_width = 0;
-                srIter->bm_height = 0;
-            }
+            TImgCache::addImage(srIter->bm, bm, _BMTYPE_BITMAP);
+            srIter->bm_width = bm.info().width();
+            srIter->bm_height = bm.info().height();
         }
 
         i++;
@@ -861,7 +838,7 @@ bool TButton::setIcon(int id, int instance)
 {
     DECL_TRACER("TButton::setIcon(int id, int instance)");
 
-    if ((size_t)instance >= sr.size())
+    if (instance >= 0 && (size_t)instance >= sr.size())
     {
         MSG_ERROR("Instance " << instance << " does not exist!");
         return false;
@@ -889,7 +866,7 @@ bool TButton::setIcon(const string& icon, int instance)
 {
     DECL_TRACER("TButton::setIcon(const string& icon, int instance)");
 
-    if ((size_t)instance >= sr.size())
+    if (instance >= 0 && (size_t)instance >= sr.size())
     {
         MSG_ERROR("Instance " << instance << " does not exist!");
         return false;
@@ -947,7 +924,7 @@ bool TButton::revokeIcon(int instance)
 {
     DECL_TRACER("TButton::revokeIcon(int instance)");
 
-    if ((size_t)instance >= sr.size())
+    if (instance >= 0 && (size_t)instance >= sr.size())
     {
         MSG_ERROR("Instance " << instance << " does not exist!");
         return false;
@@ -986,7 +963,7 @@ bool TButton::setText(const string& txt, int instance)
 {
     DECL_TRACER("TButton::setText(const string& txt, int instance)");
 
-    if ((size_t)instance >= sr.size())
+    if (instance >= 0 && (size_t)instance >= sr.size())
     {
         MSG_ERROR("Instance " << instance << " does not exist!");
         return false;
@@ -1002,7 +979,7 @@ bool TButton::setTextOnly(const string& txt, int instance)
 {
     DECL_TRACER("TButton::setTextOnly(const string& txt, int instance)");
 
-    if ((size_t)instance >= sr.size())
+    if (instance >= 0 && (size_t)instance >= sr.size())
     {
         MSG_ERROR("Instance " << instance << " does not exist!");
         return false;
@@ -1030,7 +1007,7 @@ bool TButton::appendText(const string &txt, int instance)
 {
     DECL_TRACER("TButton::appendText(const string &txt, int instance)");
 
-    if (instance < 0 || (size_t)instance >= sr.size())
+    if (instance >= 0 || (size_t)instance >= sr.size())
     {
         MSG_ERROR("Instance " << instance << " does not exist!");
         return false;
@@ -1058,7 +1035,7 @@ bool TButton::setBorderColor(const string &color, int instance)
 {
     DECL_TRACER("TButton::setBorderColor(const string &color, int instance)");
 
-    if ((size_t)instance >= sr.size())
+    if (instance >= 0 && (size_t)instance >= sr.size())
     {
         MSG_ERROR("Instance " << instance << " does not exist!");
         return false;
@@ -1110,7 +1087,7 @@ bool TButton::setFillColor(const string& color, int instance)
 {
     DECL_TRACER("TButton::setFillColor(const string& color, int instance)");
 
-    if ((size_t)instance >= sr.size())
+    if (instance >= 0 && (size_t)instance >= sr.size())
     {
         MSG_ERROR("Instance " << instance << " does not exist!");
         return false;
@@ -1149,7 +1126,7 @@ bool TButton::setTextColor(const string& color, int instance)
 {
     DECL_TRACER("TButton::setTextColor(const string& color, int instance)");
 
-    if ((size_t)instance >= sr.size())
+    if (instance >= 0 && (size_t)instance >= sr.size())
     {
         MSG_ERROR("Instance " << instance << " does not exist!");
         return false;
@@ -1188,7 +1165,7 @@ bool TButton::setDrawOrder(const string& order, int instance)
 {
     DECL_TRACER("TButton::setDrawOrder(const string& order, int instance)");
 
-    if ((size_t)instance >= sr.size())
+    if (instance >= 0 && (size_t)instance >= sr.size())
     {
         MSG_ERROR("Instance " << instance << " does not exist!");
         return false;
@@ -1251,7 +1228,7 @@ bool TButton::setBorderStyle(const string& style, int instance)
 {
     DECL_TRACER("TButton::setBorderStyle(const string& style, int instance)");
 
-    if ((size_t)instance >= sr.size())
+    if (instance >= 0 && (size_t)instance >= sr.size())
     {
         MSG_ERROR("Instance " << instance << " does not exist!");
         return false;
@@ -1371,7 +1348,7 @@ bool TButton::setBargraphSliderColor(const string& color)
     return true;
 }
 
-bool TButton::setFontFileName(const string& name, int size, int instance)
+bool TButton::setFontFileName(const string& name, int /*size*/, int instance)
 {
     DECL_TRACER("TButton::setFontFileName(const string& name, int size)");
 
@@ -1445,7 +1422,11 @@ bool TButton::setBitmap(const string& file, int instance)
                 DecodeDataToBitmap(image, &bm);
 
                 if (!bm.empty())
+                {
                     TImgCache::addImage(sr[inst].bm, bm, _BMTYPE_BITMAP);
+                    sr[inst].bm_width = bm.info().width();
+                    sr[inst].bm_height = bm.info().height();
+                }
             }
         }
 
@@ -1487,6 +1468,27 @@ bool TButton::setCameleon(const string& file, int instance)
         }
 
         sr[inst].mi = file;
+
+        if (!file.empty() && !TImgCache::existBitmap(file, _BMTYPE_CHAMELEON))
+        {
+            sk_sp<SkData> image;
+            SkBitmap bm;
+
+            image = readImage(file);
+
+            if (image)
+            {
+                DecodeDataToBitmap(image, &bm);
+
+                if (!bm.empty())
+                {
+                    TImgCache::addImage(sr[inst].mi, bm, _BMTYPE_CHAMELEON);
+                    sr[inst].mi_width = bm.info().width();
+                    sr[inst].mi_height = bm.info().height();
+                }
+            }
+        }
+
         changed = true;
         inst++;
     }
@@ -1602,7 +1604,7 @@ bool TButton::setOpacity(int op, int instance)
 {
     DECL_TRACER("TButton::setOpacity(int op, int instance)");
 
-    if ((size_t)instance >= sr.size())
+    if (instance >= 0 && (size_t)instance >= sr.size())
     {
         MSG_ERROR("Instance " << instance << " does not exist!");
         return false;
@@ -1647,7 +1649,7 @@ bool TButton::setFont(int id, int instance)
 {
     DECL_TRACER("TButton::setFont(int id)");
 
-    if ((size_t)instance >= sr.size())
+    if (instance >= 0 && (size_t)instance >= sr.size())
     {
         MSG_ERROR("Instance " << instance << " does not exist!");
         return false;
@@ -2743,7 +2745,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
         SkBitmap bmMi;
         SkBitmap bmBm;
 
-        if (!TImgCache::getBitmap(sr[instance].mi, &bmMi, _BMTYPE_CHAMELEON))
+        if (!TImgCache::getBitmap(sr[instance].mi, &bmMi, _BMTYPE_CHAMELEON, &sr[instance].mi_width, &sr[instance].mi_height))
         {
             sk_sp<SkData> data = readImage(sr[instance].mi);
             bool loaded = false;
@@ -2769,13 +2771,14 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
             }
         }
 
+        MSG_DEBUG("Chameleon image size: " << sr[instance].mi_width << " x " << sr[instance].mi_height);
         SkBitmap imgRed(bmMi);
         SkBitmap imgMask;
         bool haveBothImages = true;
 
         if (!sr[instance].bm.empty())
         {
-            if (!TImgCache::getBitmap(sr[instance].bm, &bmBm, _BMTYPE_BITMAP))
+            if (!TImgCache::getBitmap(sr[instance].bm, &bmBm, _BMTYPE_BITMAP, &sr[instance].bm_width, &sr[instance].bm_height))
             {
                 sk_sp<SkData> data = readImage(sr[instance].bm);
                 bool loaded = false;
@@ -2817,8 +2820,9 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
         else
             haveBothImages = false;
 
-//        SkBitmap img = drawImageButton(imgRed, imgMask, sr[instance].mi_width, sr[instance].mi_height, TColor::getSkiaColor(sr[instance].cf), TColor::getSkiaColor(sr[instance].cb));
-        SkBitmap img = drawImageButton(imgRed, imgMask, imgRed.info().width(), imgRed.info().height(), TColor::getSkiaColor(sr[instance].cf), TColor::getSkiaColor(sr[instance].cb));
+        MSG_DEBUG("Bitmap image size: " << sr[instance].bm_width << " x " << sr[instance].bm_height);
+        SkBitmap img = drawImageButton(imgRed, imgMask, sr[instance].mi_width, sr[instance].mi_height, TColor::getSkiaColor(sr[instance].cf), TColor::getSkiaColor(sr[instance].cb));
+//        SkBitmap img = drawImageButton(imgRed, imgMask, imgRed.info().width(), imgRed.info().height(), TColor::getSkiaColor(sr[instance].cf), TColor::getSkiaColor(sr[instance].cb));
 
         if (img.empty())
         {
@@ -2893,7 +2897,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
 
         SkBitmap image;
 
-        if (!TImgCache::getBitmap(sr[instance].bm, &image, _BMTYPE_BITMAP))
+        if (!TImgCache::getBitmap(sr[instance].bm, &image, _BMTYPE_BITMAP, &sr[instance].bm_width, &sr[instance].bm_height))
         {
             sk_sp<SkData> data = readImage(sr[instance].bm);
             bool loaded = false;
@@ -3490,8 +3494,8 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
         MSG_TRACE("Chameleon image ...");
         SkBitmap bmMi, bmBm;
 
-        TImgCache::getBitmap(sr[0].mi, &bmMi, _BMTYPE_CHAMELEON);
-        TImgCache::getBitmap(sr[1].bm, &bmBm, _BMTYPE_BITMAP);
+        TImgCache::getBitmap(sr[0].mi, &bmMi, _BMTYPE_CHAMELEON, &sr[0].mi_width, &sr[0].mi_height);
+        TImgCache::getBitmap(sr[1].bm, &bmBm, _BMTYPE_BITMAP, &sr[1].bm_width, &sr[1].bm_height);
         SkBitmap imgRed(bmMi);
         SkBitmap imgMask(bmBm);
 
@@ -3586,8 +3590,8 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
         MSG_TRACE("Drawing normal image ...");
         SkBitmap image1, image2;
 
-        TImgCache::getBitmap(sr[0].bm, &image1, _BMTYPE_BITMAP);   // State when level = 0%
-        TImgCache::getBitmap(sr[1].bm, &image2, _BMTYPE_BITMAP);   // State when level = 100%
+        TImgCache::getBitmap(sr[0].bm, &image1, _BMTYPE_BITMAP, &sr[0].bm_width, &sr[0].bm_height);   // State when level = 0%
+        TImgCache::getBitmap(sr[1].bm, &image2, _BMTYPE_BITMAP, &sr[1].bm_width, &sr[1].bm_height);   // State when level = 100%
         SkCanvas can_bm(*bm, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
 
 
@@ -3662,7 +3666,7 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
     {
         MSG_TRACE("Drawing second image " << sr[1].bm << " ...");
         SkBitmap image;
-        TImgCache::getBitmap(sr[0].bm, &image, _BMTYPE_BITMAP);   // State when level = 100%
+        TImgCache::getBitmap(sr[1].bm, &image, _BMTYPE_BITMAP, &sr[1].bm_width, &sr[1].bm_height);   // State when level = 100%
         SkCanvas can_bm(*bm, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
 
         if (image.empty())

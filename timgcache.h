@@ -44,7 +44,7 @@ class TImgCache
 {
     public:
         static bool addImage(const std::string& name, SkBitmap& bm, _IMGCACHE_BMTYPE bmType=_BMTYPE_NONE);
-        static bool getBitmap(const std::string& name, SkBitmap *bm, _IMGCACHE_BMTYPE bmType=_BMTYPE_NONE);
+        static bool getBitmap(const std::string& name, SkBitmap *bm, _IMGCACHE_BMTYPE bmType=_BMTYPE_NONE, int *width=nullptr, int *height=nullptr);
         static bool delBitmap(const std::string& name, _IMGCACHE_BMTYPE bmType=_BMTYPE_NONE);
         static bool existBitmap(const std::string& name, _IMGCACHE_BMTYPE bmType=_BMTYPE_NONE);
 
