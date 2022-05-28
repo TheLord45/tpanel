@@ -245,7 +245,7 @@ TButton::~TButton()
             iter->second.imageBm.reset();
     }
 */
-    mImages.clear();
+//    mImages.clear();
 
     if (ap == 0 && ad == 8)
     {
@@ -680,68 +680,97 @@ bool TButton::createButtons(bool force)
     for (srIter = sr.begin(); srIter != sr.end(); ++srIter)
     {
         int number = srIter->number;
-        IMAGE_t img;
+//        IMAGE_t img;
 
         if (srIter->sb > 0)
             continue;
 
-        std::map<int, IMAGE_t>::iterator imgIter = mImages.find(number);
+        bool bmExistMi = false;
+        bool bmExistBm = false;
+        bool reload = false;
+
+        if (!srIter->mi.empty())
+        {
+            if ((bmExistMi = TImgCache::existBitmap(srIter->mi, _BMTYPE_CHAMELEON)) == false)
+                reload = true;
+        }
+
+        if (!srIter->bm.empty())
+        {
+            if ((bmExistBm = TImgCache::existBitmap(srIter->bm, _BMTYPE_BITMAP)) == false)
+                reload = true;
+        }
 
         if (!force)
         {
-            if (imgIter != mImages.end())   // If the image already exist, do not load it again.
+            if (!reload)   // If the image already exist, do not load it again.
                 continue;
         }
-        else if (imgIter != mImages.end())  // We must first erase the image
+/*        else if (!srIter->mi.empty() || !srIter->bm.empty())  // We must first erase the image
         {
-            if (!imgIter->second.imageBm.empty())
-                imgIter->second.imageBm.reset();
+            if (bmExistMi)
+                TImgCache::delBitmap(srIter->mi, _BMTYPE_CHAMELEON);
 
-            if (!imgIter->second.imageMi.empty())
-                imgIter->second.imageMi.reset();
-
-            mImages.erase(imgIter);
+            if (bmExistBm)
+                TImgCache::delBitmap(srIter->bm, _BMTYPE_BITMAP);
         }
-
-        if (!srIter->mi.empty())        // Do we have a chameleon image?
+*/
+        if (!bmExistMi && !srIter->mi.empty())        // Do we have a chameleon image?
         {
             sk_sp<SkData> image;
+            SkBitmap bm;
 
             if (!(image = readImage(srIter->mi)))
                 return false;
 
-            DecodeDataToBitmap(image, &img.imageMi);
+            DecodeDataToBitmap(image, &bm);
 
-            if (img.imageMi.empty())
+            if (bm.empty())
             {
                 MSG_WARNING("Could not create a picture for element " << number << " on button " << bi << " (" << na << ")");
                 return false;
             }
 
-            srIter->mi_width = img.imageMi.dimensions().width();
-            srIter->mi_height = img.imageMi.dimensions().height();
+            if (TImgCache::addImage(srIter->mi, bm, _BMTYPE_CHAMELEON))
+            {
+                srIter->mi_width = bm.info().width();
+                srIter->mi_height = bm.info().height();
+            }
+            else
+            {
+                srIter->mi_width = 0;
+                srIter->mi_height = 0;
+            }
         }
 
-        if (!srIter->bm.empty())        // Do we have a bitmap?
+        if (!bmExistBm && !srIter->bm.empty())        // Do we have a bitmap?
         {
             sk_sp<SkData> image;
+            SkBitmap bm;
 
             if (!(image = readImage(srIter->bm)))
                 return false;
 
-            DecodeDataToBitmap(image, &img.imageBm);
+            DecodeDataToBitmap(image, &bm);
 
-            if (img.imageBm.empty())
+            if (bm.empty())
             {
                 MSG_WARNING("Could not create a picture for element " << number << " on button " << bi << " (" << na << ")");
                 return false;
             }
 
-            srIter->bm_width = img.imageBm.dimensions().width();
-            srIter->bm_height = img.imageBm.dimensions().height();
+            if (TImgCache::addImage(srIter->bm, bm, _BMTYPE_BITMAP))
+            {
+                srIter->bm_width = bm.info().width();
+                srIter->bm_height = bm.info().height();
+            }
+            else
+            {
+                srIter->bm_width = 0;
+                srIter->bm_height = 0;
+            }
         }
 
-        mImages.insert(pair<int, IMAGE_t>(number, img));
         i++;
     }
 
@@ -813,17 +842,14 @@ bool TButton::setActive(int instance)
     if (mAniRunning)
         return true;
 
-    if ((size_t)instance >= sr.size())
+    if (instance < 0 || (size_t)instance >= sr.size())
     {
-        MSG_ERROR("Instance " << instance << " is higher than the maximum instance " << sr.size() << "!");
+        MSG_ERROR("Instance " << instance << " is out of range from 0 to " << sr.size() << "!");
         return false;
     }
 
     if (instance == mActInstance)
-    {
-        MSG_TRACE("Not necessary to set instance " << instance << " again.");
         return true;
-    }
 
     mActInstance = instance;
     makeElement(instance);
@@ -841,7 +867,21 @@ bool TButton::setIcon(int id, int instance)
         return false;
     }
 
-    sr[instance].ii = id;
+    int inst = instance;
+    int loop = 1;
+
+    if (inst < 0)
+    {
+        loop = (int)sr.size();
+        inst = 0;
+    }
+
+    for (int i = 0; i < loop; ++i)
+    {
+        sr[inst].ii = id;
+        inst++;
+    }
+
     return makeElement(instance);
 }
 
@@ -874,7 +914,32 @@ bool TButton::setIcon(const string& icon, int instance)
         return false;
     }
 
-    sr[instance].ii = id;
+    int inst = instance;
+    int loop = 1;
+    bool changed = false;
+
+    if (inst < 0)
+    {
+        loop = (int)sr.size();
+        inst = 0;
+    }
+
+    for (int i = 0; i < loop; ++i)
+    {
+        if (sr[inst].ii == id)
+        {
+            inst++;
+            continue;
+        }
+
+        sr[inst].ii = id;
+        changed = true;
+        inst++;
+    }
+
+    if (!changed)
+        return true;
+
     return makeElement(instance);
 }
 
@@ -888,7 +953,32 @@ bool TButton::revokeIcon(int instance)
         return false;
     }
 
-    sr[instance].ii = 0;
+    int inst = instance;
+    int loop = 1;
+    bool changed = false;
+
+    if (inst < 0)
+    {
+        loop = (int)sr.size();
+        inst = 0;
+    }
+
+    for (int i = 0; i < loop; ++i)
+    {
+        if (sr[inst].ii == 0)
+        {
+            inst++;
+            continue;
+        }
+
+        sr[inst].ii = 0;
+        inst++;
+        changed = true;
+    }
+
+    if (!changed)
+        return true;
+
     return makeElement(instance);
 }
 
@@ -902,7 +992,9 @@ bool TButton::setText(const string& txt, int instance)
         return false;
     }
 
-    sr[instance].te = txt;
+    if (!setTextOnly(txt, instance))
+        return false;
+
     return makeElement(instance);
 }
 
@@ -916,7 +1008,21 @@ bool TButton::setTextOnly(const string& txt, int instance)
         return false;
     }
 
-    sr[instance].te = txt;
+    int inst = instance;
+    int loop = 1;
+
+    if (inst < 0)
+    {
+        loop = (int)sr.size();
+        inst = 0;
+    }
+
+    for (int i = 0; i < loop; ++i)
+    {
+        sr[inst].te = txt;
+        inst++;
+    }
+
     return true;
 }
 
@@ -930,7 +1036,21 @@ bool TButton::appendText(const string &txt, int instance)
         return false;
     }
 
-    sr[instance].te.append(txt);
+    int inst = instance;
+    int loop = 1;
+
+    if (inst < 0)
+    {
+        loop = (int)sr.size();
+        inst = 0;
+    }
+
+    for (int i = 0; i < loop; ++i)
+    {
+        sr[inst].te.append(txt);
+        inst++;
+    }
+
     return makeElement(instance);
 }
 
@@ -944,10 +1064,32 @@ bool TButton::setBorderColor(const string &color, int instance)
         return false;
     }
 
-    if (sr[instance].cb.compare(color) == 0)
+    int inst = instance;
+    int loop = 1;
+    bool changed = false;
+
+    if (inst < 0)
+    {
+        loop = (int)sr.size();
+        inst = 0;
+    }
+
+    for (int i = 0; i < loop; ++i)
+    {
+        if (sr[inst].cb.compare(color) == 0)
+        {
+            inst++;
+            continue;
+        }
+
+        sr[inst].cb = color;
+        changed = true;
+        inst++;
+    }
+
+    if (!changed)
         return true;
 
-    sr[instance].cb = color;
     return makeElement(instance);
 }
 
@@ -955,7 +1097,7 @@ string TButton::getBorderColor(int instance)
 {
     DECL_TRACER("TButton::getBorderColor(int instance)");
 
-    if ((size_t)instance >= sr.size())
+    if (instance < 0 || (size_t)instance >= sr.size())
     {
         MSG_ERROR("Instance " << instance << " does not exist!");
         return string();
@@ -974,10 +1116,32 @@ bool TButton::setFillColor(const string& color, int instance)
         return false;
     }
 
-    if (sr[instance].cf.compare(color) == 0)
+    int inst = instance;
+    int loop = 1;
+    bool changed = false;
+
+    if (inst < 0)
+    {
+        loop = (int)sr.size();
+        inst = 0;
+    }
+
+    for (int i = 0; i < loop; ++i)
+    {
+        if (sr[inst].cf.compare(color) == 0)
+        {
+            inst++;
+            continue;
+        }
+
+        sr[inst].cf = color;
+        changed = true;
+        inst++;
+    }
+
+    if (!changed)
         return true;
 
-    sr[instance].cf = color;
     return makeElement(instance);
 }
 
@@ -991,10 +1155,32 @@ bool TButton::setTextColor(const string& color, int instance)
         return false;
     }
 
-    if (sr[instance].ct.compare(color) == 0)
+    int inst = instance;
+    int loop = 1;
+    bool changed = false;
+
+    if (inst < 0)
+    {
+        loop = (int)sr.size();
+        inst = 0;
+    }
+
+    for (int i = 0; i < loop; ++i)
+    {
+        if (sr[inst].ct.compare(color) == 0)
+        {
+            inst++;
+            continue;
+        }
+
+        sr[inst].ct = color;
+        inst++;
+        changed = true;
+    }
+
+    if (!changed)
         return true;
 
-    sr[instance].ct = color;
     return makeElement(instance);
 }
 
@@ -1008,10 +1194,32 @@ bool TButton::setDrawOrder(const string& order, int instance)
         return false;
     }
 
-    if (sr[instance]._do.compare(order) == 0)
+    int inst = instance;
+    int loop = 1;
+    bool changed = false;
+
+    if (inst < 0)
+    {
+        loop = (int)sr.size();
+        inst = 0;
+    }
+
+    for (int i = 0; i < loop; ++i)
+    {
+        if (sr[inst]._do.compare(order) == 0)
+        {
+            inst++;
+            continue;
+        }
+
+        sr[inst]._do = order;
+        inst++;
+        changed = true;
+    }
+
+    if (!changed)
         return true;
 
-    sr[instance]._do = order;
     return makeElement(instance);
 }
 
@@ -1163,14 +1371,14 @@ bool TButton::setBargraphSliderColor(const string& color)
     return true;
 }
 
-bool TButton::setFontFileName(const string& name, int size, int inst)
+bool TButton::setFontFileName(const string& name, int size, int instance)
 {
     DECL_TRACER("TButton::setFontFileName(const string& name, int size)");
 
     if (name.empty() || !mFonts)
         return false;
 
-    if ((size_t)inst >= sr.size())
+    if ((size_t)instance >= sr.size())
         return false;
 
     int id = mFonts->getFontIDfromFile(name);
@@ -1178,13 +1386,20 @@ bool TButton::setFontFileName(const string& name, int size, int inst)
     if (id == -1)
         return false;
 
+    int inst = instance;
+    int loop = 1;
+
     if (inst < 0)
     {
-        sr[0].fi = id;
-        sr[1].fi = id;
+        loop = (int)sr.size();
+        inst = 0;
     }
-    else
+
+    for (int i = 0; i < loop; ++i)
+    {
         sr[inst].fi = id;
+        inst++;
+    }
 
     return true;
 }
@@ -1193,20 +1408,49 @@ bool TButton::setBitmap(const string& file, int instance)
 {
     DECL_TRACER("TButton::setBitmap(const string& file, int instance)");
 
-    if (file.empty() || instance >= (int)sr.size())
+    if (instance >= (int)sr.size())
     {
         MSG_ERROR("Invalid parameters!");
         return false;
     }
 
-    if (sr[instance].bm == file)
-        return true;
+    int inst = instance;
+    int loop = 1;
 
-    sr[instance].bm = file;
-    map<int, IMAGE_t>::iterator iter = mImages.find(sr[instance].number);
+    if (inst < 0)
+    {
+        loop = (int)sr.size();
+        inst = 0;
+    }
 
-    if (iter != mImages.end())
-        mImages.erase(iter);
+    for (int i = 0; i < loop; ++i)
+    {
+        if (sr[inst].bm == file)
+        {
+            inst++;
+            continue;
+        }
+
+        sr[inst].bm = file;
+
+        if (!file.empty() && !TImgCache::existBitmap(file, _BMTYPE_BITMAP))
+        {
+            sk_sp<SkData> image;
+            SkBitmap bm;
+
+            image = readImage(file);
+
+            if (image)
+            {
+                DecodeDataToBitmap(image, &bm);
+
+                if (!bm.empty())
+                    TImgCache::addImage(sr[inst].bm, bm, _BMTYPE_BITMAP);
+            }
+        }
+
+        inst++;
+    }
 
     if (!createButtons(true))   // We're forcing the image to load
         return false;
@@ -1224,10 +1468,31 @@ bool TButton::setCameleon(const string& file, int instance)
         return false;
     }
 
-    if (sr[instance].mi == file)
-        return true;
+    int inst = instance;
+    int loop = 1;
+    bool changed = false;
 
-    sr[instance].mi = file;
+    if (inst < 0)
+    {
+        loop = (int)sr.size();
+        inst = 0;
+    }
+
+    for (int i = 0; i < loop; ++i)
+    {
+        if (sr[inst].mi == file)
+        {
+            inst++;
+            continue;
+        }
+
+        sr[inst].mi = file;
+        changed = true;
+        inst++;
+    }
+
+    if (!changed)
+        return true;
 
     if (!createButtons(true))   // We're forcing the image to load
         return false;
@@ -1349,7 +1614,32 @@ bool TButton::setOpacity(int op, int instance)
         return false;
     }
 
-    sr[instance].oo = op;
+    int inst = instance;
+    int loop = 1;
+    bool changed = false;
+
+    if (inst < 0)
+    {
+        loop = (int)sr.size();
+        inst = 0;
+    }
+
+    for (int i = 0; i < loop; ++i)
+    {
+        if (sr[inst].oo == op)
+        {
+            inst++;
+            continue;
+        }
+
+        sr[inst].oo = op;
+        changed = true;
+        inst++;
+    }
+
+    if (!changed)
+        return true;
+
     return makeElement(instance);
 }
 
@@ -1357,13 +1647,38 @@ bool TButton::setFont(int id, int instance)
 {
     DECL_TRACER("TButton::setFont(int id)");
 
-    if (instance < 0 || (size_t)instance >= sr.size())
+    if ((size_t)instance >= sr.size())
     {
         MSG_ERROR("Instance " << instance << " does not exist!");
         return false;
     }
 
-    sr[instance].fi = id;
+    int inst = instance;
+    int loop = 1;
+    bool changed = false;
+
+    if (inst < 0)
+    {
+        loop = (int)sr.size();
+        inst = 0;
+    }
+
+    for (int i = 0; i < loop; ++i)
+    {
+        if (sr[inst].fi == id)
+        {
+            inst++;
+            continue;
+        }
+
+        sr[inst].fi = id;
+        changed = true;
+        inst++;
+    }
+
+    if (!changed)
+        return true;
+
     return makeElement(instance);
 }
 
@@ -1430,19 +1745,32 @@ void TButton::setResourceName(const string& name, int instance)
 {
     DECL_TRACER("TButton::setResourceName(const string& name, int instance)");
 
-    if (instance < 0 || instance >= (int)sr.size())
+    if (instance >= (int)sr.size())
     {
         MSG_ERROR("Invalid instance " << instance);
         return;
     }
 
-    if (!sr[instance].dynamic)
+    int inst = instance;
+    int loop = 1;
+
+    if (inst < 0)
     {
-        MSG_ERROR("Button " << bi << ": " << na << " is not a resource button!");
-        return;
+        loop = (int)sr.size();
+        inst = 0;
     }
 
-    sr[instance].bm = name;
+    for (int i = 0; i < loop; ++i)
+    {
+        if (!sr[inst].dynamic)
+        {
+            inst++;
+            continue;
+        }
+
+        sr[inst].bm = name;
+        inst++;
+    }
 }
 
 int TButton::getBitmapJustification(int* x, int* y, int instance)
@@ -1468,7 +1796,7 @@ void TButton::setBitmapJustification(int j, int x, int y, int instance)
 {
     DECL_TRACER("TButton::setBitmapJustification(int j, int instance)");
 
-    if (j < 0 || j > 9 || instance < 0 || instance >= (int)sr.size())
+    if (j < 0 || j > 9 || instance >= (int)sr.size())
         return;
 
     if (instance < 0)
@@ -1521,7 +1849,7 @@ void TButton::setIconJustification(int j, int x, int y, int instance)
 {
     DECL_TRACER("TButton::setIconJustification(int j, int x, int y, int instance)");
 
-    if (j < 0 || j > 9 || instance < 0 || instance >= (int)sr.size())
+    if (j < 0 || j > 9 || instance >= (int)sr.size())
         return;
 
     if (instance < 0)
@@ -1643,13 +1971,13 @@ string TButton::getTextEffectColor(int inst)
     return sr[inst].ec;
 }
 
-void TButton::setTextEffectColor(const string& ec, int inst)
+void TButton::setTextEffectColor(const string& ec, int instance)
 {
     DECL_TRACER("TButton::setTextEffectColor(const string& ec, int inst)");
 
-    if ((size_t)inst >= sr.size())
+    if ((size_t)instance >= sr.size())
     {
-        MSG_ERROR("Instance " << inst << " does not exist!");
+        MSG_ERROR("Instance " << instance << " does not exist!");
         return;
     }
 
@@ -1659,16 +1987,31 @@ void TButton::setTextEffectColor(const string& ec, int inst)
         return;
     }
 
-    if (sr[inst].ec.compare(ec) == 0)
-        return;
+    int inst = instance;
+    int loop = 1;
+    bool changed = false;
 
     if (inst < 0)
     {
-        for (size_t i = 0; i < sr.size(); i++)
-            sr[i].ec = ec;
+        loop = (int)sr.size();
+        inst = 0;
     }
-    else
+
+    for (int i = 0; i < loop; ++i)
+    {
+        if (sr[inst].ec.compare(ec) == 0)
+        {
+            inst++;
+            continue;
+        }
+
         sr[inst].ec = ec;
+        changed = true;
+        inst++;
+    }
+
+    if (!changed)
+        return;
 
     if (visible)
         makeElement();
@@ -1830,23 +2173,30 @@ int TButton::getFontIndex(int inst)
     return sr[inst].fi;
 }
 
-bool TButton::setFontIndex(int fi, int inst)
+bool TButton::setFontIndex(int fi, int instance)
 {
     DECL_TRACER("TButton::setFontIndex(int fi, int inst)");
 
-    if (inst >= (int)sr.size())
+    if (instance >= (int)sr.size())
     {
-        MSG_ERROR("Invalid instance " << inst);
+        MSG_ERROR("Invalid instance " << instance);
         return false;
     }
 
+    int inst = instance;
+    int loop = 1;
+
     if (inst < 0)
     {
-        for (size_t i = 0; i < sr.size(); i++)
-            sr[i].fi = fi;
+        loop = (int)sr.size();
+        inst = 0;
     }
-    else
+
+    for (int i = 0; i < loop; ++i)
+    {
         sr[inst].fi = fi;
+        inst++;
+    }
 
     return makeElement(inst);
 }
@@ -2360,6 +2710,12 @@ bool TButton::buttonFill(SkBitmap* bm, int instance)
         return false;
     }
 
+    if (instance < 0 || (size_t)instance >= sr.size())
+    {
+        MSG_ERROR("Invalid instance " << instance);
+        return false;
+    }
+
     SkColor color = TColor::getSkiaColor(sr[instance].cf);
     MSG_DEBUG("Fill color[" << instance << "]: " << sr[instance].cf << " (#" << std::setw(8) << std::setfill('0') << std::hex << color << ")");
     bm->eraseColor(color);
@@ -2383,25 +2739,72 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
     if (!sr[instance].mi.empty() && sr[instance].bs.empty())       // Chameleon image?
     {
         MSG_TRACE("Chameleon image consisting of mask " << sr[instance].mi << " and bitmap " << (sr[instance].bm.empty() ? "NONE" : sr[instance].bm) << " ...");
-        map<int, IMAGE_t>::iterator iterImages = mImages.find(sr[instance].number);
 
-        if (iterImages == mImages.end())
+        SkBitmap bmMi;
+        SkBitmap bmBm;
+
+        if (!TImgCache::getBitmap(sr[instance].mi, &bmMi, _BMTYPE_CHAMELEON))
         {
-            MSG_ERROR("Missing images " << sr[instance].mi << " and " <<  sr[instance].bm << "!");
-            TError::setError();
-            return false;
+            sk_sp<SkData> data = readImage(sr[instance].mi);
+            bool loaded = false;
+
+            if (data)
+            {
+                DecodeDataToBitmap(data, &bmMi);
+
+                if (!bmMi.empty())
+                {
+                    TImgCache::addImage(sr[instance].mi, bmMi, _BMTYPE_CHAMELEON);
+                    loaded = true;
+                    sr[instance].mi_width = bmMi.info().width();
+                    sr[instance].mi_height = bmMi.info().height();
+                }
+            }
+
+            if(!loaded)
+            {
+                MSG_ERROR("Missing image " << sr[instance].mi << "!");
+                TError::setError();
+                return false;
+            }
         }
 
-        SkBitmap imgRed(iterImages->second.imageMi);
+        SkBitmap imgRed(bmMi);
         SkBitmap imgMask;
         bool haveBothImages = true;
 
         if (!sr[instance].bm.empty())
         {
-            if (imgRed.info().width() == iterImages->second.imageBm.info().width() &&
-                imgRed.info().height() == iterImages->second.imageBm.info().height())
+            if (!TImgCache::getBitmap(sr[instance].bm, &bmBm, _BMTYPE_BITMAP))
             {
-                imgMask.installPixels(iterImages->second.imageBm.pixmap());
+                sk_sp<SkData> data = readImage(sr[instance].bm);
+                bool loaded = false;
+
+                if (data)
+                {
+                    DecodeDataToBitmap(data, &bmBm);
+
+                    if (!bmMi.empty())
+                    {
+                        TImgCache::addImage(sr[instance].bm, bmMi, _BMTYPE_BITMAP);
+                        loaded = true;
+                        sr[instance].bm_width = bmBm.info().width();
+                        sr[instance].bm_height = bmBm.info().height();
+                    }
+                }
+
+                if (!loaded)
+                {
+                    MSG_ERROR("Missing image " << sr[instance].bm << "!");
+                    TError::setError();
+                    return false;
+                }
+            }
+
+            if (imgRed.info().width() == bmBm.info().width() &&
+                imgRed.info().height() == bmBm.info().height())
+            {
+                imgMask.installPixels(bmBm.pixmap());
             }
             else
             {
@@ -2414,7 +2817,8 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
         else
             haveBothImages = false;
 
-        SkBitmap img = drawImageButton(imgRed, imgMask, sr[instance].mi_width, sr[instance].mi_height, TColor::getSkiaColor(sr[instance].cf), TColor::getSkiaColor(sr[instance].cb));
+//        SkBitmap img = drawImageButton(imgRed, imgMask, sr[instance].mi_width, sr[instance].mi_height, TColor::getSkiaColor(sr[instance].cf), TColor::getSkiaColor(sr[instance].cb));
+        SkBitmap img = drawImageButton(imgRed, imgMask, imgRed.info().width(), imgRed.info().height(), TColor::getSkiaColor(sr[instance].cf), TColor::getSkiaColor(sr[instance].cb));
 
         if (img.empty())
         {
@@ -2449,7 +2853,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
 
                 if (!sr[instance].bm.empty())
                 {
-                    imgMask.installPixels(iterImages->second.imageBm.pixmap());
+                    imgMask.installPixels(bmBm.pixmap());
                     paint.setBlendMode(SkBlendMode::kSrcOver);
                     can.drawBitmap(imgMask, position.left, position.top, &paint);
                 }
@@ -2468,7 +2872,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
 
                 if (!sr[instance].bm.empty())
                 {
-                    imgMask.installPixels(iterImages->second.imageBm.pixmap());
+                    imgMask.installPixels(bmBm.pixmap());
                     rect.setXYWH(position.left, position.top, position.width, position.height);
                     im = SkImage::MakeFromBitmap(imgMask);
                     paint.setBlendMode(SkBlendMode::kSrcOver);
@@ -2486,15 +2890,33 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
     else if (!sr[instance].bm.empty())
     {
         MSG_TRACE("Drawing normal image " << sr[instance].bm << " ...");
-        map<int, IMAGE_t>::iterator iterImages = mImages.find(sr[instance].number);
 
-        if (iterImages == mImages.end())
+        SkBitmap image;
+
+        if (!TImgCache::getBitmap(sr[instance].bm, &image, _BMTYPE_BITMAP))
         {
-            MSG_ERROR("Missing image " << sr[instance].bm << "!");
-            return true;        // We want the button even without an image
-        }
+            sk_sp<SkData> data = readImage(sr[instance].bm);
+            bool loaded = false;
 
-        SkBitmap image = iterImages->second.imageBm;
+            if (data)
+            {
+                DecodeDataToBitmap(data, &image);
+
+                if (!image.empty())
+                {
+                    TImgCache::addImage(sr[instance].mi, image, _BMTYPE_BITMAP);
+                    loaded = true;
+                    sr[instance].bm_width = image.info().width();
+                    sr[instance].bm_height = image.info().height();
+                }
+            }
+
+            if (!loaded)
+            {
+                MSG_ERROR("Missing image " << sr[instance].bm << "!");
+                return true;        // We want the button even without an image
+            }
+        }
 
         if (image.empty())
         {
@@ -2573,6 +2995,12 @@ bool TButton::buttonDynamic(SkBitmap* bm, int instance, bool show, bool *state)
         return false;
     }
 
+    if (instance < 0 || (size_t)instance >= sr.size())
+    {
+        MSG_ERROR("Invalid instance " << instance);
+        return false;
+    }
+
     if (!sr[instance].dynamic)
     {
         MSG_WARNING("Button " << bi << ": \"" << na << "\" is not for remote image!");
@@ -2617,7 +3045,7 @@ bool TButton::buttonDynamic(SkBitmap* bm, int instance, bool show, bool *state)
 
     SkBitmap image;
 
-    if (TImgCache::getBitmap(url, &image))
+    if (TImgCache::getBitmap(url, &image, _BMTYPE_URL))
     {
         MSG_DEBUG("Found image \"" << url << "\" in the cache. Will reuse it.");
         IMAGE_SIZE_t isize = calcImageSize(image.info().width(), image.info().height(), instance, true);
@@ -2712,6 +3140,12 @@ bool TButton::buttonDynamic(SkBitmap* bm, int instance, bool show, bool *state)
 bool TButton::drawAlongOrder(SkBitmap *imgButton, int instance)
 {
     DECL_TRACER("TButton::drawAlongOrder(SkBitmap *imgButton, int instance)");
+
+    if (instance < 0 || (size_t)instance >= sr.size())
+    {
+        MSG_ERROR("Invalid instance " << instance);
+        return false;
+    }
 
     bool cont = false;
 
@@ -2833,11 +3267,17 @@ void TButton::funcResource(const RESOURCE_T* resource, const std::string& url, B
             return;
         }
 
+        if (instance < 0 || (size_t)instance >= sr.size())
+        {
+            MSG_ERROR("Invalid instance " << instance);
+            return;
+        }
+
         // Check whether we have this image already
         SkBitmap bitm;
         bool cached = false;
 
-        cached = TImgCache::getBitmap(url, &bitm);
+        cached = TImgCache::getBitmap(url, &bitm, _BMTYPE_URL);
         BITMAP_CACHE bmCache = getBCentryByHandle(bc.handle, bc.parent);
 
         if (!cached)    // If the bitmap was not in cache we must load it
@@ -2910,7 +3350,7 @@ void TButton::funcResource(const RESOURCE_T* resource, const std::string& url, B
             }
 
             // Put this image into the static image cache
-            TImgCache::addImage(url, image);
+            TImgCache::addImage(url, image, _BMTYPE_URL);
             // Make the button complete
             loadImage(&bmCache.bitmap, image, instance);
             drawAlongOrder(&bmCache.bitmap, instance);
@@ -2924,6 +3364,13 @@ void TButton::funcResource(const RESOURCE_T* resource, const std::string& url, B
         else
         {
             MSG_DEBUG("Found image in cache. Using it ...");
+
+            if (instance < 0 || (size_t)instance >= sr.size())
+            {
+                MSG_ERROR("Invalid instance " << instance);
+                return;
+            }
+
             loadImage(&bmCache.bitmap, bitm, instance);
             setInvalid(bc.handle);
 
@@ -2995,6 +3442,12 @@ bool TButton::loadImage(SkBitmap* bm, SkBitmap& image, int instance)
         return false;
     }
 
+    if (instance < 0 || (size_t)instance >= sr.size())
+    {
+        MSG_ERROR("Invalid instance " << instance);
+        return false;
+    }
+
     SkImageInfo info = image.info();
     IMAGE_SIZE_t isize = calcImageSize(image.info().width(), image.info().height(), instance, true);
     POSITION_t position = calcImagePosition((sr[instance].sb ? isize.width : info.width()), (sr[instance].sb ? isize.height : info.height()), SC_BITMAP, instance);
@@ -3035,10 +3488,12 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
     if (!sr[0].mi.empty()  && sr[0].bs.empty() && !sr[1].bm.empty())       // Chameleon image?
     {
         MSG_TRACE("Chameleon image ...");
-        map<int, IMAGE_t>::iterator iterImages1 = mImages.find(sr[0].number);
-        map<int, IMAGE_t>::iterator iterImages2 = mImages.find(sr[1].number);
-        SkBitmap imgRed(iterImages1->second.imageMi);
-        SkBitmap imgMask(iterImages2->second.imageBm);
+        SkBitmap bmMi, bmBm;
+
+        TImgCache::getBitmap(sr[0].mi, &bmMi, _BMTYPE_CHAMELEON);
+        TImgCache::getBitmap(sr[1].bm, &bmBm, _BMTYPE_BITMAP);
+        SkBitmap imgRed(bmMi);
+        SkBitmap imgMask(bmBm);
 
         SkBitmap img;
         SkPixmap pixmapRed = imgRed.pixmap();
@@ -3129,10 +3584,10 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
     else if (!sr[0].bm.empty() && !sr[1].bm.empty())
     {
         MSG_TRACE("Drawing normal image ...");
-        map<int, IMAGE_t>::iterator iterImages1 = mImages.find(sr[0].number);   // State when level = 0%
-        map<int, IMAGE_t>::iterator iterImages2 = mImages.find(sr[1].number);   // State when level = 100%
-        SkBitmap image1 = iterImages1->second.imageBm;  // 0%
-        SkBitmap image2 = iterImages2->second.imageBm;  // 100%
+        SkBitmap image1, image2;
+
+        TImgCache::getBitmap(sr[0].bm, &image1, _BMTYPE_BITMAP);   // State when level = 0%
+        TImgCache::getBitmap(sr[1].bm, &image2, _BMTYPE_BITMAP);   // State when level = 100%
         SkCanvas can_bm(*bm, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
 
 
@@ -3206,8 +3661,8 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
     else if (sr[0].bm.empty() && !sr[1].bm.empty())     // Only one bitmap in the second instance
     {
         MSG_TRACE("Drawing second image " << sr[1].bm << " ...");
-        map<int, IMAGE_t>::iterator iterImages = mImages.find(sr[1].number);   // State when level = 100%
-        SkBitmap image = iterImages->second.imageBm;    // 100%
+        SkBitmap image;
+        TImgCache::getBitmap(sr[0].bm, &image, _BMTYPE_BITMAP);   // State when level = 100%
         SkCanvas can_bm(*bm, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
 
         if (image.empty())
@@ -3511,6 +3966,12 @@ bool TButton::buttonIcon(SkBitmap* bm, int instance)
 {
     DECL_TRACER("TButton::buttonIcon(SkBitmap* bm, int instance)");
 
+    if (instance < 0 || (size_t)instance >= sr.size())
+    {
+        MSG_ERROR("Invalid instance " << instance);
+        return false;
+    }
+
     if (sr[instance].ii <= 0)
     {
         MSG_TRACE("No icon defined!");
@@ -3619,34 +4080,7 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
 
     if (typeFace && typeFace->countTables() > 0)
         skFont.setTypeface(typeFace);
-/*    else
-    {
-        FONT_STYLE style = mFonts->getStyle(font);
-        SkFontStyle fs;
 
-        switch(style)
-        {
-            case FONT_BOLD:         fs = SkFontStyle::Bold(); break;
-            case FONT_ITALIC:       fs = SkFontStyle::Italic(); break;
-            case FONT_BOLD_ITALIC:  fs = SkFontStyle::BoldItalic(); break;
-
-            default:
-                fs = SkFontStyle::Normal();
-        }
-
-        typeFace = SkTypeface::MakeFromName(nullptr, fs);
-
-        if (typeFace)
-        {
-            skFont.setTypeface(typeFace);
-            MSG_INFO("Successfully set a typeface!");
-        }
-        else
-        {
-            MSG_WARNING("Last try to set a typeface failed also!");
-        }
-    }
-*/
     skFont.setSize(fontSizePt);
     skFont.setEdging(SkFont::Edging::kAntiAlias);
     MSG_DEBUG("Wanted font size: " << font.size << ", this is " << fontSizePt << " pt");
@@ -3886,6 +4320,12 @@ bool TButton::textEffect(SkCanvas *canvas, sk_sp<SkTextBlob>& blob, SkScalar sta
 
     if (!canvas)
         return false;
+
+    if (instance < 0 || (size_t)instance >= sr.size())
+    {
+        MSG_ERROR("Invalid instance " << instance);
+        return false;
+    }
 
     // Drop Shadow
     if (sr[instance].et >= 9 && sr[instance].et <= 32)
@@ -5465,7 +5905,7 @@ SkBitmap TButton::drawImageButton(SkBitmap& imgRed, SkBitmap& imgMask, int width
 
     if (width <= 0 || height <= 0)
     {
-        MSG_WARNING("Got invalid width of height! (width: " << width << ", height: " << height);
+        MSG_WARNING("Got invalid width of height! (width: " << width << ", height: " << height << ")");
         return SkBitmap();
     }
 
@@ -5778,9 +6218,26 @@ void TButton::hide(bool total)
         }
 #endif
         SkBitmap imgButton;
-        imgButton.allocN32Pixels(rwidth, rheight);
-        imgButton.eraseColor(SK_ColorTRANSPARENT);
-        size_t rowBytes = imgButton.info().minRowBytes();
+        size_t rowBytes = 0;
+
+        if (rwidth < 0 || rheight < 0)
+        {
+            MSG_ERROR("Invalid size of image: " << rwidth << " x " << rheight);
+            return;
+        }
+
+        try
+        {
+            imgButton.allocN32Pixels(rwidth, rheight);
+            imgButton.eraseColor(SK_ColorTRANSPARENT);
+            rowBytes = imgButton.info().minRowBytes();
+        }
+        catch (std::exception& e)
+        {
+            MSG_ERROR("Error creating image: " << e.what());
+            visible = false;
+            return;
+        }
 
         if (!_displayButton && gPageManager)
             _displayButton = gPageManager->getCallbackDB();
@@ -6319,9 +6776,9 @@ bool TButton::doClick(int x, int y, bool pressed)
             // Play sound, if one is defined
             if (gPageManager)
             {
-                if (pressed && gPageManager->havePlaySound() && !sr[0].sd.empty())
+                if (pressed && gPageManager->havePlaySound() && !sr[0].sd.empty() && strCaseCompare(sr[0].sd, "None") != 0)
                     gPageManager->getCallPlaySound()(TConfig::getProjectPath() + "/sounds/" + sr[0].sd);
-                else if (!pressed && gPageManager->havePlaySound() && !sr[1].sd.empty())
+                else if (!pressed && gPageManager->havePlaySound() && !sr[1].sd.empty() && strCaseCompare(sr[1].sd, "None") != 0)
                     gPageManager->getCallPlaySound()(TConfig::getProjectPath() + "/sounds/" + sr[1].sd);
             }
 
@@ -6361,9 +6818,9 @@ bool TButton::doClick(int x, int y, bool pressed)
             // Play sound, if one is defined
             if (gPageManager)
             {
-                if (pressed && gPageManager->havePlaySound() && !sr[1].sd.empty())
+                if (pressed && gPageManager->havePlaySound() && !sr[1].sd.empty() && strCaseCompare(sr[0].sd, "None") != 0)
                     gPageManager->getCallPlaySound()(TConfig::getProjectPath() + "/sounds/" + sr[1].sd);
-                else if (!pressed && gPageManager->havePlaySound() && !sr[0].sd.empty())
+                else if (!pressed && gPageManager->havePlaySound() && !sr[0].sd.empty() && strCaseCompare(sr[1].sd, "None") != 0)
                     gPageManager->getCallPlaySound()(TConfig::getProjectPath() + "/sounds/" + sr[0].sd);
             }
         }
@@ -6384,7 +6841,7 @@ bool TButton::doClick(int x, int y, bool pressed)
                 return false;
 
             // Play sound, if one is defined
-            if (pressed && gPageManager && gPageManager->havePlaySound() && !sr[1].sd.empty())
+            if (pressed && gPageManager && gPageManager->havePlaySound() && !sr[1].sd.empty() && strCaseCompare(sr[1].sd, "None") != 0)
                 gPageManager->getCallPlaySound()(TConfig::getProjectPath() + "/sounds/" + sr[1].sd);
         }
 
@@ -6422,7 +6879,7 @@ bool TButton::doClick(int x, int y, bool pressed)
     else if (type == MULTISTATE_GENERAL)
     {
         // Play sound, if one is defined
-        if (pressed && gPageManager && gPageManager->havePlaySound() && !sr[mActInstance].sd.empty())
+        if (pressed && gPageManager && gPageManager->havePlaySound() && !sr[mActInstance].sd.empty() && strCaseCompare(sr[mActInstance].sd, "None") != 0)
             gPageManager->getCallPlaySound()(TConfig::getProjectPath() + "/sounds/" + sr[mActInstance].sd);
 
         if ((cp && ch) || !op.empty())

@@ -886,7 +886,7 @@ namespace Button
             void funcNetworkState(int level);
 
         private:
-            typedef struct IMAGE_t
+/*            typedef struct IMAGE_t
             {
                 int number{0};
                 SkBitmap imageMi;
@@ -899,7 +899,7 @@ namespace Button
                     imageBm.reset();
                 }
             }IMAGE_t;
-
+*/
             std::function<void (ulong handle, ulong parent, unsigned char *buffer, int width, int height, int pixline, int left, int top)> _displayButton{nullptr};
             std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw)> _playVideo{nullptr};
 
@@ -1006,7 +1006,7 @@ namespace Button
 
             TPalette *mPalette{nullptr}; // The color palette
             // Image management
-            std::map<int, IMAGE_t> mImages; // Contains the images in ready to use format, if there any
+//            std::map<int, IMAGE_t> mImages; // Contains the images in ready to use format, if there any
             SkBitmap mLastImage;    // The last calculated image
             ulong mHandle{0};       // internal used handle to identify button
             int mParentHeight{0};   // The height of the parent page / subpage

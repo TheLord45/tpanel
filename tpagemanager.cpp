@@ -5027,6 +5027,15 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
 
                     case 'P':   // Set picture/bitmap file name
                         content = iter->substr(1);
+
+                        if (content.find(".") == string::npos)  // If the image has no extension ...
+                        {                                       // we must find the image in the map
+                            string iname = findImage(content);
+
+                            if (!iname.empty())
+                                content = iname;
+                        }
+
                         bt->setBitmap(content, btState);
                     break;
 
@@ -7741,6 +7750,9 @@ void TPageManager::doSOU(int, vector<int>&, vector<string>& pars)
         MSG_ERROR("@SOU: Missing sound module!");
         return;
     }
+
+    if (pars[0].empty() || strCaseCompare(pars[0], "None") == 0)
+        return;
 
     _playSound(pars[0]);
 }

@@ -61,7 +61,7 @@ typedef struct MAP_BM_T
     int rt{0};
     int pg{0};          // page number
     int bt{0};          // button number
-    int st{0};
+    int st{0};          // button instance
     int sl{0};
     std::string pn;     // page name
     std::string bn;     // button name
@@ -103,7 +103,7 @@ class TAmxCommands : public TValidateFile
         {
             TYPE_CM = 1,    // ON / OFF
             TYPE_AM,        // TXT, ...
-            TYPE_LM         // Bargraphs
+            TYPE_LM        // Bargraphs
         }MAP_TYPE;
 
         TAmxCommands();
@@ -113,6 +113,8 @@ class TAmxCommands : public TValidateFile
         void setSPChain(SPCHAIN_T *ch) { mSPChain = ch; }
         bool parseCommand(int device, int port, const std::string& cmd);
         std::vector<MAP_T> findButtons(int port, std::vector<int>& channels, MAP_TYPE mt = TYPE_AM);
+        std::string findImage(int bt, int page, int instance=0);
+        std::string findImage(const std::string& name);
         std::vector<MAP_T> findButtonByName(const std::string& name);
         std::vector<MAP_T> findBargraphs(int port, std::vector<int>& channels);
         std::vector<std::string> findSounds();

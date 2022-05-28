@@ -36,14 +36,15 @@ TImgCache::~TImgCache()
     mImgCache.clear();
 }
 
-bool TImgCache::addImage(const string& name, SkBitmap& bm)
+bool TImgCache::addImage(const string& name, SkBitmap& bm, _IMGCACHE_BMTYPE bmType)
 {
-    DECL_TRACER("TImgCache::addImage(const string& name, SkBitmap& bm)");
+    DECL_TRACER("TImgCache::addImage(const string& name, SkBitmap& bm, _IMGCACHE_BMTYPE bmType)");
 
     _imgCache.lock();
     _IMGCACHE ic;
 
     ic.name = name;
+    ic.bmType = bmType;
     ic.bitmap = bm;
 
     if (mImgCache.size() == 0)
@@ -73,34 +74,31 @@ bool TImgCache::addImage(const string& name, SkBitmap& bm)
     return true;
 }
 
-bool TImgCache::getBitmap(const string& name, SkBitmap *bm)
+bool TImgCache::getBitmap(const string& name, SkBitmap *bm, _IMGCACHE_BMTYPE bmType)
 {
-    DECL_TRACER("TImgCache::getBitmap(const string& name)");
+    DECL_TRACER("TImgCache::getBitmap(const string& name, _IMGCACHE_BMTYPE bmType)");
 
     if (mImgCache.size() == 0 || !bm)
         return false;
 
-    _imgCache.lock();
     vector<_IMGCACHE>::iterator iter;
 
     for (iter = mImgCache.begin(); iter != mImgCache.end(); ++iter)
     {
-        if (iter->name == name)
+        if (iter->name == name && iter->bmType == bmType)
         {
             *bm = iter->bitmap;
             MSG_DEBUG("Bitmap \"" << iter->name << "\" was found.");
-            _imgCache.unlock();
             return true;
         }
     }
 
-    _imgCache.unlock();
     return false;
 }
 
-bool TImgCache::delBitmap(const string& name)
+bool TImgCache::delBitmap(const string& name, _IMGCACHE_BMTYPE bmType)
 {
-    DECL_TRACER("TImgCache::delBitmap(const string& name)");
+    DECL_TRACER("TImgCache::delBitmap(const string& name, _IMGCACHE_BMTYPE bmType)");
 
     if (name.empty() || mImgCache.size() == 0)
         return false;
@@ -110,7 +108,7 @@ bool TImgCache::delBitmap(const string& name)
 
     for (iter = mImgCache.begin(); iter != mImgCache.end(); ++iter)
     {
-        if (iter->name == name)
+        if (iter->name == name && iter->bmType == bmType)
         {
             MSG_DEBUG("Bitmap \"" << iter->name << "\" will be erased.");
             mImgCache.erase(iter);
@@ -120,5 +118,23 @@ bool TImgCache::delBitmap(const string& name)
     }
 
     _imgCache.unlock();
+    return false;
+}
+
+bool TImgCache::existBitmap(const string& name, _IMGCACHE_BMTYPE bmType)
+{
+    DECL_TRACER("TImgCache::existBitmap(const string& name, _IMGCACHE_BMTYPE bmType)");
+
+    if (mImgCache.size() == 0)
+        return false;
+
+    vector<_IMGCACHE>::iterator iter;
+
+    for (iter = mImgCache.begin(); iter != mImgCache.end(); ++iter)
+    {
+        if (iter->name == name && iter->bmType == bmType)
+            return true;
+    }
+
     return false;
 }

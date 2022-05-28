@@ -3,6 +3,10 @@ ChangeLog
 
 Release: 1.3.2
 ===============================================================================
+2022-05-27 Fixed several index bugs triggered by the ^BMF command.
+           Changed the image cache to a global one and removed the small one
+           inside the button class. This saves a lot of memory and speeds up.
+
 2022-05-26 Fixed multi line text to not cut off the last character and to leave
            an empty line as such.
            Improved the drawing of chameleon images a bit.

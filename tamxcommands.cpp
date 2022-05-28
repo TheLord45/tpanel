@@ -481,6 +481,65 @@ vector<MAP_T> TAmxCommands::findButtons(int port, vector<int>& channels, MAP_TYP
     return map;
 }
 
+string TAmxCommands::findImage(int bt, int page, int instance)
+{
+    DECL_TRACER("TAmxCommands::findImage(int bt, int page, int instance)");
+
+    vector<MAP_BM_T> mapBm = mMap.map_bm;
+    vector<MAP_BM_T>::iterator iter;
+
+    if (mapBm.empty())
+        return string();
+
+    for (iter = mapBm.begin(); iter != mapBm.end(); ++iter)
+    {
+        if (iter->bt == bt && iter->pg == page && !iter->i.empty())
+        {
+            if (instance >= 0 && iter->st == (instance + 1))
+                return iter->i;
+            else if (instance < 0)
+                return iter->i;
+        }
+    }
+
+    return string();
+}
+
+string TAmxCommands::findImage(const string& name)
+{
+    DECL_TRACER("TAmxCommands::findImage(const string& name)");
+
+    vector<MAP_BM_T> mapBm = mMap.map_bm;
+    vector<MAP_BM_T>::iterator iter;
+
+    if (mapBm.empty() || name.empty())
+        return string();
+
+    size_t cnt = 0;
+
+    for (iter = mapBm.begin(); iter != mapBm.end(); ++iter)
+    {
+        if (!iter->i.empty() && iter->i.find(name) != string::npos)
+        {
+            size_t pos = iter->i.find_last_of(".");
+
+            if (pos != string::npos)
+            {
+                string left = iter->i.substr(0, pos);
+MSG_DEBUG("Found candidate: " << iter->i << " (" << left << ")");
+                if (left == name)
+                    return iter->i;
+            }
+        }
+
+        cnt++;
+    }
+
+    MSG_WARNING("No image with name " << name << " in table found!");
+    MSG_DEBUG("Searched " << cnt << " entries for image " << name);
+    return string();
+}
+
 vector<MAP_T> TAmxCommands::findButtonByName(const string& name)
 {
     DECL_TRACER("TAmxCommands::findButtonByName(const string& name)");

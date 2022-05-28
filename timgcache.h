@@ -24,8 +24,18 @@
 
 #include <include/core/SkBitmap.h>
 
+typedef enum _IMGCACHE_BMTYPE
+{
+    _BMTYPE_NONE,
+    _BMTYPE_CHAMELEON,
+    _BMTYPE_BITMAP,
+    _BMTYPE_ICON,
+    _BMTYPE_URL
+}_IMGCACHE_BMTYPE;
+
 typedef struct _IMGCACHE
 {
+    _IMGCACHE_BMTYPE bmType{_BMTYPE_NONE};
     std::string name;
     SkBitmap bitmap;
 }_IMGCACHE;
@@ -33,9 +43,10 @@ typedef struct _IMGCACHE
 class TImgCache
 {
     public:
-        static bool addImage(const std::string& name, SkBitmap& bm);
-        static bool getBitmap(const std::string& name, SkBitmap *bm);
-        static bool delBitmap(const std::string& name);
+        static bool addImage(const std::string& name, SkBitmap& bm, _IMGCACHE_BMTYPE bmType=_BMTYPE_NONE);
+        static bool getBitmap(const std::string& name, SkBitmap *bm, _IMGCACHE_BMTYPE bmType=_BMTYPE_NONE);
+        static bool delBitmap(const std::string& name, _IMGCACHE_BMTYPE bmType=_BMTYPE_NONE);
+        static bool existBitmap(const std::string& name, _IMGCACHE_BMTYPE bmType=_BMTYPE_NONE);
 
     private:
         // This should never be used
