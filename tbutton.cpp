@@ -20,6 +20,7 @@
 #include <memory>
 #include <algorithm>
 #include <codecvt>
+#include <fstream>
 
 #include <include/core/SkPixmap.h>
 #include <include/core/SkSize.h>
@@ -35,6 +36,7 @@
 #include <include/core/SkSurfaceProps.h>
 #include <include/core/SkFilterQuality.h>
 #include <include/core/SkMaskFilter.h>
+#include <include/core/SkImageEncoder.h>
 
 #ifdef __ANDROID__
 #include <QtAndroidExtras/QAndroidJniObject>
@@ -4452,6 +4454,7 @@ bool TButton::buttonBorder(SkBitmap* bm, int inst)
         if (sysBrd == sr[instance].bs)
         {
             borderIndex = i;
+            MSG_DEBUG("Found internal system border [" << i << "]: " << sysBrd);
             break;
         }
 
@@ -4462,88 +4465,111 @@ bool TButton::buttonBorder(SkBitmap* bm, int inst)
 
     if ((classExist && borderIndex >= 0 && !sysBorders[borderIndex].calc) || (classExist && borderIndex < 0))
     {
-        if (!gPageManager->getSystemDraw()->getBorder(sr[instance].bs, TSystemDraw::LT_OFF, &bd))
-            return false;
+        int numBorders = 0;
+        bool extBorder = false;
 
-        if (!gPageManager->getSystemDraw()->getBorder(sr[instance].bs, TSystemDraw::LT_ON, &bda))
-            return false;
+        string borderName1 = (bs.empty() ? sr[instance].bs : bs);
+        string borderName2 = (!bs.empty() && !sr[instance].bs.empty() ? sr[instance].bs : bs);
 
-        MSG_DEBUG("System border " << sr[instance].bs << " found.");
-        SkColor color = TColor::getSkiaColor(sr[instance].cb);      // border color
-        SkColor bgColor = TColor::getSkiaColor(sr[instance].cf);    // fill color
-        MSG_DEBUG("Button color: #" << std::setw(6) << std::setfill('0') << std::hex << color);
-        // Load images
-        SkBitmap imgB, imgBR, imgR, imgTR, imgT, imgTL, imgL, imgBL;
+        if (bs.empty())
+        {
+            if (gPageManager->getSystemDraw()->getBorder(sr[instance].bs, TSystemDraw::LT_OFF, &bd))
+                numBorders++;
 
-        imgB = retrieveBorderImage(bd.b, bda.b, color, bgColor);
+            if (gPageManager->getSystemDraw()->getBorder(sr[instance].bs, TSystemDraw::LT_ON, &bda))
+                numBorders++;
 
-        if (imgB.empty())
-            return false;
+            if (numBorders == 2)
+                extBorder = true;
+        }
+        else if (!sr[instance].bs.empty())
+        {
+            if (gPageManager->getSystemDraw()->getBorder(bs, (instance == 0 ? TSystemDraw::LT_OFF : TSystemDraw::LT_ON), &bd, sr[instance].bs))
+            {
+                numBorders++;
+                extBorder = true;
+            }
+        }
 
-        MSG_DEBUG("Got images " << bd.b << " and " << bda.b << " with size " << imgB.info().width() << " x " << imgB.info().height());
-        imgBR = retrieveBorderImage(bd.br, bda.br, color, bgColor);
+        if (extBorder)
+        {
+            MSG_DEBUG("System border \"" << borderName1 << "\" and \"" << borderName2 << "\" found.");
+            SkColor color = TColor::getSkiaColor(sr[instance].cb);      // border color
+            SkColor bgColor = TColor::getSkiaColor(sr[instance].cf);    // fill color
+            MSG_DEBUG("Button color: #" << std::setw(6) << std::setfill('0') << std::hex << color);
+            // Load images
+            SkBitmap imgB, imgBR, imgR, imgTR, imgT, imgTL, imgL, imgBL;
 
-        if (imgBR.empty())
-            return false;
+            imgB = retrieveBorderImage(bd.b, bda.b, color, bgColor);
 
-        MSG_DEBUG("Got images " << bd.br << " and " << bda.br << " with size " << imgBR.info().width() << " x " << imgBR.info().height());
-        imgR = retrieveBorderImage(bd.r, bda.r, color, bgColor);
+            if (imgB.empty())
+                return false;
 
-        if (imgR.empty())
-            return false;
+            MSG_DEBUG("Got images " << bd.b << " and " << bda.b << " with size " << imgB.info().width() << " x " << imgB.info().height());
+            imgBR = retrieveBorderImage(bd.br, bda.br, color, bgColor);
 
-        MSG_DEBUG("Got images " << bd.r << " and " << bda.r << " with size " << imgR.info().width() << " x " << imgR.info().height());
-        imgTR = retrieveBorderImage(bd.tr, bda.tr, color, bgColor);
+            if (imgBR.empty())
+                return false;
 
-        if (imgTR.empty())
-            return false;
+            MSG_DEBUG("Got images " << bd.br << " and " << bda.br << " with size " << imgBR.info().width() << " x " << imgBR.info().height());
+            imgR = retrieveBorderImage(bd.r, bda.r, color, bgColor);
 
-        MSG_DEBUG("Got images " << bd.tr << " and " << bda.tr << " with size " << imgTR.info().width() << " x " << imgTR.info().height());
-        imgT = retrieveBorderImage(bd.t, bda.t, color, bgColor);
+            if (imgR.empty())
+                return false;
 
-        if (imgT.empty())
-            return false;
+            MSG_DEBUG("Got images " << bd.r << " and " << bda.r << " with size " << imgR.info().width() << " x " << imgR.info().height());
+            imgTR = retrieveBorderImage(bd.tr, bda.tr, color, bgColor);
 
-        MSG_DEBUG("Got images " << bd.t << " and " << bda.t << " with size " << imgT.info().width() << " x " << imgT.info().height());
-        imgTL = retrieveBorderImage(bd.tl, bda.tl, color, bgColor);
+            if (imgTR.empty())
+                return false;
 
-        if (imgTL.empty())
-            return false;
+            MSG_DEBUG("Got images " << bd.tr << " and " << bda.tr << " with size " << imgTR.info().width() << " x " << imgTR.info().height());
+            imgT = retrieveBorderImage(bd.t, bda.t, color, bgColor);
 
-        MSG_DEBUG("Got images " << bd.tl << " and " << bda.tl << " with size " << imgTL.info().width() << " x " << imgTL.info().height());
-        imgL = retrieveBorderImage(bd.l, bda.l, color, bgColor);
+            if (imgT.empty())
+                return false;
 
-        if (imgL.empty())
-            return false;
+            MSG_DEBUG("Got images " << bd.t << " and " << bda.t << " with size " << imgT.info().width() << " x " << imgT.info().height());
+            imgTL = retrieveBorderImage(bd.tl, bda.tl, color, bgColor);
 
-        MSG_DEBUG("Got images " << bd.l << " and " << bda.l << " with size " << imgL.info().width() << " x " << imgL.info().height());
-        imgBL = retrieveBorderImage(bd.bl, bda.bl, color, bgColor);
+            if (imgTL.empty())
+                return false;
 
-        if (imgBL.empty())
-            return false;
+            MSG_DEBUG("Got images " << bd.tl << " and " << bda.tl << " with size " << imgTL.info().width() << " x " << imgTL.info().height());
+            imgL = retrieveBorderImage(bd.l, bda.l, color, bgColor);
 
-        MSG_DEBUG("Got images " << bd.bl << " and " << bda.bl << " with size " << imgBL.info().width() << " x " << imgBL.info().height());
-        MSG_DEBUG("Total size: " << wt << " x " << ht);
-        stretchImageWidth(&imgB, wt - imgBL.info().width() - imgBR.info().width());
-        stretchImageWidth(&imgT, wt - imgTL.info().width() - imgTR.info().width());
-        stretchImageHeight(&imgL, ht - imgTL.info().height() - imgBL.info().height());
-        stretchImageHeight(&imgR, ht - imgTR.info().height() - imgBR.info().height());
-        // Draw the frame
-        SkCanvas canvas(*bm, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
-        SkPaint paint;
+            if (imgL.empty())
+                return false;
 
-        paint.setColor(bgColor);
-        paint.setBlendMode(SkBlendMode::kSrcOver);
-//            paint.setStyle(SkPaint::kStroke_Style);
-        canvas.drawBitmap(imgB, imgBL.info().width(), ht - imgB.info().height(), &paint);
-        canvas.drawBitmap(imgBR, wt - imgBR.info().width(), ht - imgBR.info().height(), &paint);
-        canvas.drawBitmap(imgR, wt - imgR.info().width(), imgTR.info().height(), &paint);
-        canvas.drawBitmap(imgTR, wt - imgTR.info().width(), 0, &paint);
-        canvas.drawBitmap(imgT, imgTL.info().width(), 0, &paint);
-        canvas.drawBitmap(imgTL, 0, 0, &paint);
-        canvas.drawBitmap(imgL, 0, imgTL.info().height(), &paint);
-        canvas.drawBitmap(imgBL, 0, ht - imgBL.info().height(), &paint);
-        return true;
+            MSG_DEBUG("Got images " << bd.l << " and " << bda.l << " with size " << imgL.info().width() << " x " << imgL.info().height());
+            imgBL = retrieveBorderImage(bd.bl, bda.bl, color, bgColor);
+
+            if (imgBL.empty())
+                return false;
+
+            MSG_DEBUG("Got images " << bd.bl << " and " << bda.bl << " with size " << imgBL.info().width() << " x " << imgBL.info().height());
+            MSG_DEBUG("Button image size: " << (imgTL.info().width() + imgT.info().width() + imgTR.info().width()) << " x " << (imgTL.info().height() + imgL.info().height() + imgBL.info().height()));
+            MSG_DEBUG("Total size: " << wt << " x " << ht);
+            stretchImageWidth(&imgB, wt - imgBL.info().width() - imgBR.info().width());
+            stretchImageWidth(&imgT, wt - imgTL.info().width() - imgTR.info().width());
+            stretchImageHeight(&imgL, ht - imgTL.info().height() - imgBL.info().height());
+            stretchImageHeight(&imgR, ht - imgTR.info().height() - imgBR.info().height());
+            MSG_DEBUG("Stretched button image size: " << (imgTL.info().width() + imgT.info().width() + imgTR.info().width()) << " x " << (imgTL.info().height() + imgL.info().height() + imgBL.info().height()));
+            // Draw the frame
+            SkCanvas canvas(*bm, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+            SkPaint paint;
+
+            paint.setBlendMode(SkBlendMode::kSrcOver);
+            canvas.drawBitmap(imgB, imgBL.info().width(), ht - imgB.info().height(), &paint);
+            canvas.drawBitmap(imgBR, wt - imgBR.info().width(), ht - imgBR.info().height(), &paint);
+            canvas.drawBitmap(imgR, wt - imgR.info().width(), imgTR.info().height(), &paint);
+            canvas.drawBitmap(imgTR, wt - imgTR.info().width(), 0, &paint);
+            canvas.drawBitmap(imgT, imgTL.info().width(), 0, &paint);
+            canvas.drawBitmap(imgTL, 0, 0, &paint);
+            canvas.drawBitmap(imgL, 0, imgTL.info().height(), &paint);
+            canvas.drawBitmap(imgBL, 0, ht - imgBL.info().height(), &paint);
+            return true;
+        }
     }
 
     // Here we've not found the wanted border in the system table. Reasons may
@@ -6055,14 +6081,17 @@ SkBitmap TButton::colorImage(SkBitmap& base, SkBitmap& alpha, SkColor col, SkCol
 
     if (width <= 0 || height <= 0)
     {
-        MSG_WARNING("Got invalid width or height! (width: " << width << ", height: " << height);
+        MSG_WARNING("Got invalid width or height! (width: " << width << ", height: " << height << ")");
         return SkBitmap();
     }
 
-    if (width != alpha.info().width() || height != alpha.info().height())
+    if (!alpha.empty())
     {
-        MSG_ERROR("Base and alpha masks have different size!")
-        return SkBitmap();
+        if (width != alpha.info().width() || height != alpha.info().height())
+        {
+            MSG_ERROR("Base and alpha masks have different size!");
+            return SkBitmap();
+        }
     }
 
     SkBitmap maskBm;
@@ -6073,7 +6102,13 @@ SkBitmap TButton::colorImage(SkBitmap& base, SkBitmap& alpha, SkColor col, SkCol
     {
         for (int iy = 0; iy < height; iy++)
         {
-            SkColor pixelAlpha = alpha.getColor(ix, iy);
+            SkColor pixelAlpha = 0;
+
+            if (!alpha.empty())
+                pixelAlpha = alpha.getColor(ix, iy);
+            else
+                pixelAlpha = base.getColor(ix, iy);
+
             uint32_t *wpix = maskBm.getAddr32(ix, iy);
 
             if (!wpix)
@@ -6082,11 +6117,11 @@ SkBitmap TButton::colorImage(SkBitmap& base, SkBitmap& alpha, SkColor col, SkCol
                 break;
             }
 
-            uint32_t alpha = SkColorGetA(pixelAlpha);
+            uint32_t ala = SkColorGetA(pixelAlpha);
 
-            if (alpha == 0 && !useBG)
+            if (ala == 0 && !useBG)
                 pixelAlpha = col;
-            else if (alpha == 0)
+            else if (ala == 0)
                 pixelAlpha = bg;
             else
             {
@@ -6096,20 +6131,36 @@ SkBitmap TButton::colorImage(SkBitmap& base, SkBitmap& alpha, SkColor col, SkCol
                 uint32_t green = SkColorGetG(col);
                 uint32_t red = SkColorGetB(col);
 
-                if (alpha == 0)
+                if (alpha.empty())
+                {
+                    uint32_t pred = SkColorGetR(pixelAlpha);
+                    uint32_t pgreen = SkColorGetG(pixelAlpha);
+                    uint32_t pblue = SkColorGetB(pixelAlpha);
+                    uint32_t maxChan = SkColorGetG(SK_ColorWHITE);
+
+                    red   = ((pred == maxChan) ? pred : red);
+                    green = ((pgreen == maxChan) ? pgreen : green);
+                    blue  = ((pblue == maxChan) ? pblue : blue);
+                }
+                else if (ala == 0)
                     red = green = blue = 0;
 
-                pixelAlpha = SkColorSetARGB(alpha, red, green, blue);
+                pixelAlpha = SkColorSetARGB(ala, red, green, blue);
             }
 
             *wpix = pixelAlpha;
+//            MSG_DEBUG("Pixel " << ix << ", " << iy << ": #" << std::setw(8) << std::setfill('0') << std::hex << pixelAlpha);
         }
     }
 
-    SkPaint paint;
-    paint.setBlendMode(SkBlendMode::kSrcOver);
-    SkCanvas can(maskBm);
-    can.drawBitmap(base, 0, 0, &paint);
+    if (!alpha.empty())
+    {
+        SkPaint paint;
+        paint.setBlendMode(SkBlendMode::kSrcOver);
+        SkCanvas can(maskBm);
+        can.drawBitmap(base, 0, 0, &paint);
+    }
+
     return maskBm;
 }
 
@@ -7004,48 +7055,57 @@ bool TButton::doClick(int x, int y, bool pressed)
 
         for (iter = pushFunc.begin(); iter != pushFunc.end(); ++iter)
         {
-            MSG_DEBUG("Testing for function " << iter->pfType);
-            string pfType = toUpper(iter->pfType);
+            MSG_DEBUG("Testing for function \"" << iter->pfType << "\"");
 
             if (fb == FB_MOMENTARY || fb == FB_NONE)
                 mActInstance = 0;
             else if (fb == FB_ALWAYS_ON || fb == FB_INV_CHANNEL)
                 mActInstance = 1;
 
-            if (pfType == "SSHOW")            // show popup
+            if (strCaseCompare(iter->pfType, "SSHOW") == 0)            // show popup
             {
                 if (gPageManager)
                     gPageManager->showSubPage(iter->pfName);
             }
-            else if (pfType == "SHIDE")       // hide popup
+            else if (strCaseCompare(iter->pfType, "SHIDE") == 0)       // hide popup
             {
                 if (gPageManager)
                     gPageManager->hideSubPage(iter->pfName);
             }
-            else if (pfType == "SCGROUP")     // hide group
+            else if (strCaseCompare(iter->pfType, "SCGROUP") == 0)     // hide group
             {
                 if (gPageManager)
                     gPageManager->closeGroup(iter->pfName);
             }
-            else if (pfType == "STAN")        // Flip to standard page
+            else if (strCaseCompare(iter->pfType, "STAN") == 0)        // Flip to standard page
             {
                 if (gPageManager)
                 {
-                    TPage *page = gPageManager->getActualPage();
-
-                    if (!page)
+                    if (!iter->pfName.empty())
+                        gPageManager->setPage(iter->pfName);
+                    else
                     {
-                        MSG_DEBUG("Internal error: No actual page found!");
-                        return false;
+                        TPage *page = gPageManager->getActualPage();
+
+                        if (!page)
+                        {
+                            MSG_DEBUG("Internal error: No actual page found!");
+                            return false;
+                        }
+
+                        TSettings *settings = gPageManager->getSettings();
+
+                        if (settings->getPowerUpPage().compare(page->getName()) != 0)
+                            gPageManager->setPage(settings->getPowerUpPage());
                     }
-
-                    TSettings *settings = gPageManager->getSettings();
-
-                    if (settings->getPowerUpPage().compare(page->getName()) != 0)
-                        gPageManager->setPage(settings->getPowerUpPage());
                 }
             }
-            else if (pfType == "PREV")        // Flip to previous page
+            else if (strCaseCompare(iter->pfType, "FORGET") == 0)      // Flip to page and forget
+            {
+                if (gPageManager && !iter->pfName.empty())
+                        gPageManager->setPage(iter->pfName, true);
+            }
+            else if (strCaseCompare(iter->pfType, "PREV") == 0)        // Flip to previous page
             {
                 if (gPageManager)
                 {
@@ -7055,7 +7115,7 @@ bool TButton::doClick(int x, int y, bool pressed)
                         gPageManager->setPage(old);
                 }
             }
-            else if (pfType == "STOGGLE")     // Toggle popup state
+            else if (strCaseCompare(iter->pfType, "STOGGLE") == 0)     // Toggle popup state
             {
                 if (!iter->pfName.empty() && gPageManager)
                 {
@@ -7073,7 +7133,7 @@ bool TButton::doClick(int x, int y, bool pressed)
                         gPageManager->showSubPage(iter->pfName);
                 }
             }
-            else if (pfType == "SCPANEL")   // Hide all popups
+            else if (strCaseCompare(iter->pfType, "SCPANEL") == 0)   // Hide all popups
             {
                 if (gPageManager)
                 {

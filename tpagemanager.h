@@ -36,6 +36,7 @@
 #include "tamxcommands.h"
 #include "tsystemdraw.h"
 #include "tsipclient.h"
+#include "tvector.h"
 
 #define REG_CMD(func, name)     registerCommand(bind(&TPageManager::func, this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),name)
 
@@ -102,7 +103,7 @@ class TPageManager : public TAmxCommands
         TPage *getPage(int pageID);
         TPage *getPage(const std::string& name);
         bool setPage(int PageID);
-        bool setPage(const std::string& name);
+        bool setPage(const std::string& name, bool forget=false);
         TSubPage *getSubPage(int pageID);
         TSubPage *getSubPage(const std::string& name);
         TSubPage *deliverSubPage(const std::string& name, TPage **pg=nullptr);
@@ -274,6 +275,17 @@ class TPageManager : public TAmxCommands
          * end by a command.
          */
         void startUp();
+        /**
+         * This starts a thread running the command loop. Each event from the
+         * Netlinx is entered into a vector array (doCommand()) and this this
+         * method starts the event loop as a thread running as long as this
+         * class exists.
+         */
+        void runCommands();
+        /**
+         * This method is the thread started by the command runCommands().
+         */
+        void commandLoop();
         /**
          * Callback function for the AMX controller part. This function must
          * be registered to the class TAmxNet and is called from this module
@@ -552,8 +564,8 @@ class TPageManager : public TAmxCommands
         TExternal *mExternal{nullptr};                  // Pointer to the external buttons (if any)
         TSystemDraw *mSystemDraw{nullptr};              // A pointer to the (optional) system resources
         std::thread mThreadAmxNet;                      // The thread handle to the controler handler
-        std::vector<amx::ANET_COMMAND> mCommands;       // Command queue of commands received from controller
-        bool mBusy{false};                              // Internal used to block the command handler
+        TVector<amx::ANET_COMMAND> mCommands;           // Command queue of commands received from controller
+        std::atomic<bool> mBusy{false};                 // Internal used to block the command handler
         std::string mCmdBuffer;                         // Internal used buffer for commands who need more than one network package
         std::string mAkbText;                           // This is the text for the virtual keyboard (@AKB)
         std::string mAkpText;                           // This is the text for the virtual keyad (@AKP)
@@ -562,6 +574,8 @@ class TPageManager : public TAmxCommands
         int mOrientation{0};                            // Contains the actual orientation.
         int mLastPagePush{0};                           // The number of the last page received a push (key press / mouse hit)
         double mDPI{96.0};                              // DPI (Dots Per Inch) of the primary display.
+        std::atomic<bool> cmdLoop_busy{false};          // As long as this is true the command loop thread is active
+        std::thread mThreadCommand;                     // Thread handle for command loop thread.
         // SIP
 #ifndef _NOSIP_
         bool mPHNautoanswer{false};                     // The state of the SIP autoanswer

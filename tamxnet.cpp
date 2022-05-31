@@ -25,6 +25,7 @@
 #include <string>
 #include <chrono>
 #include <thread>
+#include <mutex>
 #include <map>
 
 #include <sys/stat.h>
@@ -43,6 +44,7 @@
 
 using namespace amx;
 using namespace std;
+using std::mutex;
 
 using placeholders::_1;
 using placeholders::_2;
@@ -76,19 +78,17 @@ string cmdList[] =
 
 #define NUMBER_CMDS     144
 
-#ifndef __ANDROID__
 std::atomic<bool> killed{false};
 std::atomic<bool> _netRunning{false};
-#else
-std::atomic<bool> killed{false};
-std::atomic<bool> _netRunning{false};
-#endif
 amx::TAmxNet *gAmxNet = nullptr;
 static bool __CommValid = false;
 std::map<ulong, FUNC_NETWORK_t> mFuncsNetwork;
 std::map<ulong, FUNC_TIMER_t> mFuncsTimer;
 
+//std::vector<ANET_COMMAND> TAmxNet::comStack; // commands to answer
 extern TPageManager *gPageManager;
+
+//mutex read_mutex;
 
 TAmxNet::TAmxNet()
 {
@@ -127,6 +127,7 @@ TAmxNet::~TAmxNet()
     DECL_TRACER("TAmxNet::~TAmxNet()");
 
     callback = 0;
+    write_busy = false;
     stop();
 
     if (mSocket)
@@ -171,6 +172,11 @@ void TAmxNet::init()
         devID = 0x0149;
         fwID = 0x0310;
     }
+    else if (panName.find("NX-CV7") != string::npos)
+    {
+        devID = 0x0123;
+        fwID = 0x0135;
+    }
 
     // Initialize the devive info structure
     DEVICE_INFO di;
@@ -179,7 +185,7 @@ void TAmxNet::init()
     di.parentID = 0;
     di.manufacturerID = 1;
     di.deviceID = devID;
-    memset(di.serialNum, 0x20, sizeof(di.serialNum));
+    memset(di.serialNum, 0, sizeof(di.serialNum));
 
     if (!serNum.empty())
         memcpy(di.serialNum, serNum.c_str(), serNum.length());
@@ -391,8 +397,8 @@ void TAmxNet::handle_connect()
             start_read();
 
             // Start the output actor.
-            if (isRunning())
-                start_write();
+            if (isRunning() && !write_busy)
+                runWrite();
         }
 
         if (!stopped_ && (killed || prg_stopped))
@@ -1435,8 +1441,8 @@ bool TAmxNet::sendCommand(const ANET_SEND& s)
         break;
     }
 
-    if (mSendReady)
-        start_write();
+    if (mSendReady && !write_busy)
+        runWrite();
 
     return mSendReady;
 }
@@ -2064,6 +2070,25 @@ int TAmxNet::msg97fill(ANET_COMMAND *com)
     return pos;
 }
 
+void TAmxNet::runWrite()
+{
+    DECL_TRACER("TAmxNet::runWrite()");
+
+    if (write_busy)
+        return;
+
+    try
+    {
+        mWriteThread = std::thread([=] { this->start_write(); });
+        mWriteThread.detach();
+    }
+    catch (std::exception& e)
+    {
+        MSG_ERROR("Error starting write thread: " << e.what());
+        _netRunning = false;
+    }
+}
+
 void TAmxNet::start_write()
 {
     DECL_TRACER("TAmxNet::start_write()");
@@ -2076,31 +2101,36 @@ void TAmxNet::start_write()
 
     write_busy = true;
 
-    while (comStack.size() > 0)
+    while (write_busy && !_restart_ && !killed && _netRunning)
     {
-        if (!isRunning())
+        while (comStack.size() > 0)
         {
-            comStack.clear();
-            write_busy = false;
-            return;
+            if (!isRunning())
+            {
+                comStack.clear();
+                write_busy = false;
+                return;
+            }
+
+            mSend = comStack.at(0);
+            comStack.erase(comStack.begin());   // delete oldest element
+            unsigned char *buf = makeBuffer(mSend);
+
+            if (buf == nullptr)
+            {
+                MSG_ERROR("Error creating a buffer! Token number: " << mSend.MC);
+                continue;
+            }
+
+            MSG_DEBUG("Wrote buffer with " << (mSend.hlen + 4) << " bytes.");
+            mSocket->send((char *)buf, mSend.hlen + 4);
+            delete[] buf;
         }
 
-        mSend = comStack.at(0);
-        comStack.erase(comStack.begin());   // delete oldest element
-        unsigned char *buf = makeBuffer(mSend);
-
-        if (buf == nullptr)
-        {
-            MSG_ERROR("Error creating a buffer! Token number: " << mSend.MC);
-            continue;
-        }
-
-        MSG_DEBUG("Wrote buffer with " << (mSend.hlen + 4) << " bytes.");
-        mSocket->send((char *)buf, mSend.hlen + 4);
-        delete[] buf;
+        mSendReady = false;
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
 
-    mSendReady = false;
     write_busy = false;
 }
 

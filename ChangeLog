@@ -3,6 +3,14 @@ ChangeLog
 
 Release: 1.3.2
 ===============================================================================
+2022-05-31 Changed the commands arrived from a Netlinx to go into a command
+           queue which is now handled in a thread of it's own.
+           Fixed the text parts of the ^BMF command to replace a "|" sign with
+           a LF (0x0a).
+
+2022-05-30 Changed the writing to Netlinx into a thread so that it now reads
+           and writes really asynchronous.
+
 2022-05-27 Fixed several index bugs triggered by the ^BMF command.
            Changed the image cache to a global one and removed the small one
            inside the button class. This saves a lot of memory and speeds up.

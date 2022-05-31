@@ -9,7 +9,6 @@ Buttons
 * Implement text area buttons completly
 * Add command ^BMF
   - The border style must be setable by numbers also.
-  - Alignment: The x and y valuesmust be extracted on absolute positions
   - Implement button style setting
   - Set video on off
   - Text area an input masks
@@ -24,11 +23,13 @@ Missing features
 
 Known errors
 ============
-* Fix lines containing a komma. They must not end at the comma.
 * On a mobile device the surface may become a destructive look if the app is
   suspended and loose network connection. In this case a new connection is
   established, which work, but the surface can't be drawn. This leads into loss
   of graphics. Seen this on a Samsung tablet Galaxy A7.
+* The setup dialog look bad on mobile devices. It must made sure that the size
+  of the input lines and the fonts has the correct size. This must be
+  independent of any device.
 
 Documentation
 =============

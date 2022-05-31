@@ -620,12 +620,7 @@ bool TAmxCommands::soundExist(const string& sname)
 bool TAmxCommands::parseCommand(int device, int port, const string& cmd)
 {
     DECL_TRACER("TAmxCommands::parseCommand(int device, int port, const string& cmd)");
-/*
-    if (device != TConfig::getChannel())    // This happens on a filetransfer only!
-    {
-        MSG_WARNING("Command is for device " << device << ", but this device is " << TConfig::getChannel());
-    }
-*/
+
     vector<CMD_TABLE>::iterator iter;
     size_t pos = cmd.find_first_of("-");
     int system = TConfig::getSystem();

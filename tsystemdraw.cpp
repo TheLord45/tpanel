@@ -641,9 +641,9 @@ string TSystemDraw::getDirEntry(dir::TDirectory* dir, const string& part, bool a
     return dirEntry;
 }
 
-bool TSystemDraw::getBorder(const string &family, LINE_TYPE_t lt, BORDER_t *border)
+bool TSystemDraw::getBorder(const string &family, LINE_TYPE_t lt, BORDER_t *border, const string& family2)
 {
-    DECL_TRACER("TSystemDraw::getBorder(const string &family, BORDER_t *border)");
+    DECL_TRACER("TSystemDraw::getBorder(const string &family, LINE_TYPE_t lt, BORDER_t *border, const string& family2)");
 
     if (!border || family.empty() || mDraw.borders.size() == 0)
         return false;
@@ -679,6 +679,7 @@ bool TSystemDraw::getBorder(const string &family, LINE_TYPE_t lt, BORDER_t *bord
                             case LT_DROP:   fullName = styIter->drop; break;
                         }
 
+
                         break;
                     }
                 }
@@ -693,15 +694,19 @@ bool TSystemDraw::getBorder(const string &family, LINE_TYPE_t lt, BORDER_t *bord
     }
 
     if (!found || fullName.empty())
+    {
+        MSG_WARNING("Border " << family << " not found!");
         return false;
+    }
 
     dir::TDirectory dir(mPath + "/borders");
     dir.setStripPath(true);
     vector<BORDER_DATA_t>::iterator brdIter;
+    string dataName = (family2.length() > 0 ? family2 : fullName);
 
     for (brdIter = mDraw.borderData.begin(); brdIter != mDraw.borderData.end(); brdIter++)
     {
-        if (brdIter->name.compare(fullName) == 0)
+        if (brdIter->name.compare(dataName) == 0)
         {
             int num = dir.scanFiles(brdIter->baseFile + "_");
 

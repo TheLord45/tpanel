@@ -54,6 +54,8 @@ using std::bind;
 TIcons *gIcons = nullptr;
 TPrjResources *gPrjResources = nullptr;
 TPageManager *gPageManager = nullptr;
+//std::vector<amx::ANET_COMMAND> TPageManager::mCommands;
+
 extern amx::TAmxNet *gAmxNet;
 extern std::atomic<bool> _netRunning;
 extern bool _restart_;                          //!< If this is set to true then the whole program will start over.
@@ -742,157 +744,190 @@ void TPageManager::reset()
     initialize();
 }
 
+void TPageManager::runCommands()
+{
+    DECL_TRACER("TPageManager::runCommands()");
+
+    if (mBusy || cmdLoop_busy)
+        return;
+
+    try
+    {
+        mThreadCommand = std::thread([=] { this->commandLoop(); });
+        mThreadCommand.detach();
+    }
+    catch (std::exception& e)
+    {
+        MSG_ERROR("Error starting thread for command loop: " << e.what());
+        _netRunning = false;
+    }
+}
+
 /*
  * The following method is called by the class TAmxNet whenever an event from
- * the controller occured.
+ * the Netlinx occured.
  */
 void TPageManager::doCommand(const amx::ANET_COMMAND& cmd)
 {
     DECL_TRACER("TPageManager::doCommand(const amx::ANET_COMMAND& cmd)");
 
-    mCommands.push_back(cmd);
+    if (!cmdLoop_busy)
+        runCommands();
 
-    if (mBusy)
+    mCommands.push_back(cmd);
+}
+
+void TPageManager::commandLoop()
+{
+    DECL_TRACER("TPageManager::commandLoop()");
+
+    if (mBusy || cmdLoop_busy)
         return;
 
-    mBusy = true;
+    mBusy = cmdLoop_busy = true;
     string com;
 
-    while (mCommands.size() > 0)
+    while (cmdLoop_busy && !killed && !_restart_)
     {
-        amx::ANET_COMMAND& bef = mCommands.at(0);
-        mCommands.erase(mCommands.begin());
-
-        switch (bef.MC)
+        while (mCommands.size() > 0)
         {
-            case 0x0006:
-            case 0x0018:	// feedback channel on
-                com.assign("ON-");
-                com.append(to_string(bef.data.chan_state.channel));
-                parseCommand(bef.device1, bef.data.chan_state.port, com);
-            break;
+            amx::ANET_COMMAND bef = mCommands.at(0);
+            mCommands.erase(mCommands.begin());
 
-            case 0x0007:
-            case 0x0019:	// feedback channel off
-                com.assign("OFF-");
-                com.append(to_string(bef.data.chan_state.channel));
-                parseCommand(bef.device1, bef.data.chan_state.port, com);
-            break;
-
-            case 0x000a:	// level value change
-                com = "LEVEL-";
-                com += to_string(bef.data.message_value.value);
-                com += ",";
-
-                switch (bef.data.message_value.type)
-                {
-                    case 0x10: com += to_string(bef.data.message_value.content.byte); break;
-                    case 0x11: com += to_string(bef.data.message_value.content.ch); break;
-                    case 0x20: com += to_string(bef.data.message_value.content.integer); break;
-                    case 0x21: com += to_string(bef.data.message_value.content.sinteger); break;
-                    case 0x40: com += to_string(bef.data.message_value.content.dword); break;
-                    case 0x41: com += to_string(bef.data.message_value.content.sdword); break;
-                    case 0x4f: com += to_string(bef.data.message_value.content.fvalue); break;
-                    case 0x8f: com += to_string(bef.data.message_value.content.dvalue); break;
-                }
-
-                parseCommand(bef.device1, bef.data.message_value.port, com);
-            break;
-
-            case 0x000c:	// Command string
+            switch (bef.MC)
             {
-                amx::ANET_MSG_STRING msg = bef.data.message_string;
+                case 0x0006:
+                case 0x0018:	// feedback channel on
+                    com.assign("ON-");
+                    com.append(to_string(bef.data.chan_state.channel));
+                    parseCommand(bef.device1, bef.data.chan_state.port, com);
+                break;
 
-                if (msg.length < strlen((char *)&msg.content))
-                {
-                    mCmdBuffer.append((char *)&msg.content);
-                    break;
-                }
-                else if (mCmdBuffer.length() > 0)
-                {
-                    mCmdBuffer.append((char *)&msg.content);
-                    size_t len = (mCmdBuffer.length() >= sizeof(msg.content)) ? (sizeof(msg.content)-1) : mCmdBuffer.length();
-                    strncpy((char *)&msg.content, mCmdBuffer.c_str(), len);
-                    msg.content[len] = 0;
-                }
+                case 0x0007:
+                case 0x0019:	// feedback channel off
+                    com.assign("OFF-");
+                    com.append(to_string(bef.data.chan_state.channel));
+                    parseCommand(bef.device1, bef.data.chan_state.port, com);
+                break;
 
-                if (getCommand((char *)msg.content) == "^UTF")  // This is already UTF8!
-                    com.assign((char *)msg.content);
-                else
-                    com.assign(cp1250ToUTF8((char *)&msg.content));
+                case 0x000a:	// level value change
+                    com = "LEVEL-";
+                    com += to_string(bef.data.message_value.value);
+                    com += ",";
 
-                parseCommand(bef.device1, msg.port, com);
-                mCmdBuffer.clear();
-            }
-            break;
-
-            case 0x0502:    // Blink message (contains date and time)
-                com = "BLINK-" + to_string(bef.data.blinkMessage.hour) + ":";
-                com += to_string(bef.data.blinkMessage.minute) + ":";
-                com += to_string(bef.data.blinkMessage.second) + ",";
-                com += to_string(bef.data.blinkMessage.year) + "-";
-                com += to_string(bef.data.blinkMessage.month) + "-";
-                com += to_string(bef.data.blinkMessage.day) + ",";
-                com += to_string(bef.data.blinkMessage.weekday) + ",";
-                com += ((bef.data.blinkMessage.LED & 0x0001) ? "ON" : "OFF");
-                parseCommand(0, 0, com);
-            break;
-
-            case 0x1000:	// Filetransfer
-            {
-                amx::ANET_FILETRANSFER ftr = bef.data.filetransfer;
-
-                if (ftr.ftype == 0)
-                {
-                    switch(ftr.function)
+                    switch (bef.data.message_value.type)
                     {
-                        case 0x0100:	// Syncing directory
-                            com = "#FTR-SYNC:0:";
-                            com.append((char*)&ftr.data[0]);
-                            parseCommand(bef.device1, bef.port1, com);
-                        break;
+                        case 0x10: com += to_string(bef.data.message_value.content.byte); break;
+                        case 0x11: com += to_string(bef.data.message_value.content.ch); break;
+                        case 0x20: com += to_string(bef.data.message_value.content.integer); break;
+                        case 0x21: com += to_string(bef.data.message_value.content.sinteger); break;
+                        case 0x40: com += to_string(bef.data.message_value.content.dword); break;
+                        case 0x41: com += to_string(bef.data.message_value.content.sdword); break;
+                        case 0x4f: com += to_string(bef.data.message_value.content.fvalue); break;
+                        case 0x8f: com += to_string(bef.data.message_value.content.dvalue); break;
+                    }
 
-                        case 0x0104:	// Delete file
-                            com = "#FTR-SYNC:"+to_string(bef.count)+":Deleting files ... ("+to_string(bef.count)+"%)";
-                            parseCommand(bef.device1, bef.port1, com);
-                        break;
+                    parseCommand(bef.device1, bef.data.message_value.port, com);
+                break;
 
-                        case 0x0105:	// start filetransfer
-                            com = "#FTR-START";
-                            parseCommand(bef.device1, bef.port1, com);
+                case 0x000c:	// Command string
+                {
+                    amx::ANET_MSG_STRING msg = bef.data.message_string;
+
+                    if (msg.length < strlen((char *)&msg.content))
+                    {
+                        mCmdBuffer.append((char *)&msg.content);
                         break;
                     }
-                }
-                else
-                {
-                    switch(ftr.function)
+                    else if (mCmdBuffer.length() > 0)
                     {
-                        case 0x0003:	// Received part of file
-                        case 0x0004:	// End of file
-                            com = "#FTR-FTRPART:"+to_string(bef.count)+":"+to_string(ftr.info1);
-                            parseCommand(bef.device1, bef.port1, com);
-                        break;
+                        mCmdBuffer.append((char *)&msg.content);
+                        size_t len = (mCmdBuffer.length() >= sizeof(msg.content)) ? (sizeof(msg.content)-1) : mCmdBuffer.length();
+                        strncpy((char *)&msg.content, mCmdBuffer.c_str(), len);
+                        msg.content[len] = 0;
+                    }
 
-                        case 0x0007:	// End of file transfer
+                    if (getCommand((char *)msg.content) == "^UTF")  // This is already UTF8!
+                        com.assign((char *)msg.content);
+                    else
+                        com.assign(cp1250ToUTF8((char *)&msg.content));
+
+                    parseCommand(bef.device1, msg.port, com);
+                    mCmdBuffer.clear();
+                }
+                break;
+
+                case 0x0502:    // Blink message (contains date and time)
+                    com = "BLINK-" + to_string(bef.data.blinkMessage.hour) + ":";
+                    com += to_string(bef.data.blinkMessage.minute) + ":";
+                    com += to_string(bef.data.blinkMessage.second) + ",";
+                    com += to_string(bef.data.blinkMessage.year) + "-";
+                    com += to_string(bef.data.blinkMessage.month) + "-";
+                    com += to_string(bef.data.blinkMessage.day) + ",";
+                    com += to_string(bef.data.blinkMessage.weekday) + ",";
+                    com += ((bef.data.blinkMessage.LED & 0x0001) ? "ON" : "OFF");
+                    parseCommand(0, 0, com);
+                break;
+
+                case 0x1000:	// Filetransfer
+                {
+                    amx::ANET_FILETRANSFER ftr = bef.data.filetransfer;
+
+                    if (ftr.ftype == 0)
+                    {
+                        switch(ftr.function)
                         {
-                            com = "#FTR-END";
-                            parseCommand(bef.device1, bef.port1, com);
-                        }
-                        break;
+                            case 0x0100:	// Syncing directory
+                                com = "#FTR-SYNC:0:";
+                                com.append((char*)&ftr.data[0]);
+                                parseCommand(bef.device1, bef.port1, com);
+                            break;
 
-                        case 0x0102:	// Receiving file
-                            com = "#FTR-FTRSTART:"+to_string(bef.count)+":"+to_string(ftr.info1)+":";
-                            com.append((char*)&ftr.data[0]);
-                            parseCommand(bef.device1, bef.port1, com);
-                        break;
+                            case 0x0104:	// Delete file
+                                com = "#FTR-SYNC:"+to_string(bef.count)+":Deleting files ... ("+to_string(bef.count)+"%)";
+                                parseCommand(bef.device1, bef.port1, com);
+                            break;
+
+                            case 0x0105:	// start filetransfer
+                                com = "#FTR-START";
+                                parseCommand(bef.device1, bef.port1, com);
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        switch(ftr.function)
+                        {
+                            case 0x0003:	// Received part of file
+                            case 0x0004:	// End of file
+                                com = "#FTR-FTRPART:"+to_string(bef.count)+":"+to_string(ftr.info1);
+                                parseCommand(bef.device1, bef.port1, com);
+                            break;
+
+                            case 0x0007:	// End of file transfer
+                            {
+                                com = "#FTR-END";
+                                parseCommand(bef.device1, bef.port1, com);
+                            }
+                            break;
+
+                            case 0x0102:	// Receiving file
+                                com = "#FTR-FTRSTART:"+to_string(bef.count)+":"+to_string(ftr.info1)+":";
+                                com.append((char*)&ftr.data[0]);
+                                parseCommand(bef.device1, bef.port1, com);
+                            break;
+                        }
                     }
                 }
+                break;
             }
-            break;
         }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
 
     mBusy = false;
+    cmdLoop_busy = false;
 }
 
 void TPageManager::deployCallbacks()
@@ -1146,7 +1181,7 @@ bool TPageManager::setPage(int PageID)
     return true;
 }
 
-bool TPageManager::setPage(const string& name)
+bool TPageManager::setPage(const string& name, bool forget)
 {
     DECL_TRACER("TPageManager::setPage(const string& name)");
 
@@ -1156,7 +1191,8 @@ bool TPageManager::setPage(const string& name)
         return true;
 
     // FIXME: Make this a vector array to hold a larger history!
-    mPreviousPage = mActualPage;    // Necessary to be able to jump back to at least the last previous page
+    if (!forget)
+        mPreviousPage = mActualPage;    // Necessary to be able to jump back to at least the last previous page
 
     if (pg)
         pg->drop();
@@ -1823,12 +1859,15 @@ Button::TButton *TPageManager::findButton(ulong handle)
 
 TPage *TPageManager::getActualPage()
 {
+    DECL_TRACER("TPageManager::getActualPage()");
+
     return getPage(mActualPage);
 }
 
 TSubPage *TPageManager::getFirstSubPage()
 {
     DECL_TRACER("TPageManager::getFirstSubPage()");
+
     TPage *pg = getPage(mActualPage);
 
     if (!pg)
@@ -5081,6 +5120,14 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
                             break;
 
                             case 'M':   // Submit text
+                                if (content.find("|"))  // To be replaced by LF (0x0a)?
+                                {
+                                    size_t pos = 0;
+
+                                    while ((pos = content.find("|")) != string::npos)
+                                        content = content.replace(pos, 1, "\n");
+                                }
+
                                 bt->setText(content, btState);
                             break;
 
@@ -5103,6 +5150,15 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
 
                     case 'T':   // Set text
                         content = iter->substr(1);
+
+                        if (content.find("|"))  // To be replaced by LF (0x0a)?
+                        {
+                            size_t pos = 0;
+
+                            while ((pos = content.find("|")) != string::npos)
+                                content = content.replace(pos, 1, "\n");
+                        }
+
                         bt->setText(content, btState);
                     break;
 
@@ -5119,6 +5175,14 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
                                 char ch = (char)strtol(byte.c_str(), NULL, 16);
                                 text += ch;
                                 pos += 2;
+                            }
+
+                            if (text.find("|"))  // To be replaced by LF (0x0a)?
+                            {
+                                size_t pos = 0;
+
+                                while ((pos = text.find("|")) != string::npos)
+                                    text = text.replace(pos, 1, "\n");
                             }
 
                             bt->setText(text, btState);

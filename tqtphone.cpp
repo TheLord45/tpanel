@@ -411,4 +411,6 @@ string TQtPhone::stateToString(SIP_STATE_t state)
         case SIP_RINGING:       return "RINGING";
         case SIP_TRYING:        return "TRYING";
     }
+
+    return string();
 }

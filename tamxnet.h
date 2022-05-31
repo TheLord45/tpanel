@@ -30,10 +30,7 @@
 #include <thread>
 
 #include "tsocket.h"
-
-//#ifdef __APPLE__
-//using namespace boost;
-//#endif
+#include "tvector.h"
 
 #ifdef __ANDROID__
 typedef unsigned long int ulong;
@@ -413,6 +410,7 @@ namespace amx
 
             void init();
             void handle_connect();
+            void runWrite();
             void start_read();
             void handle_read(size_t n, R_TOKEN tk);
             void start_write();
@@ -441,9 +439,10 @@ namespace amx
             size_t posSnd{0};
             size_t lenSnd{0};
             std::thread mThread;
+            std::thread mWriteThread;   // Thread used to write to the Netlinx.
             std::string input_buffer_;
             std::string panName;        // The technical name of the panel
-            std::vector<ANET_COMMAND> comStack; // commands to answer
+            TVector<ANET_COMMAND> comStack; // commands to answer
             std::vector<DEVICE_INFO> devInfo;
             std::string oldCmd;
             std::string serNum;
@@ -462,7 +461,7 @@ namespace amx
             bool protError{false};      // true = error on receive --> disconnect
             bool initSend{false};       // TRUE = all init messages are send.
             bool ready{false};          // TRUE = ready for communication
-            bool write_busy{false};
+            std::atomic<bool> write_busy{false};
             std::atomic<bool> receiveSetup{false};
             bool isOpenSnd{false};
             bool isOpenRcv{false};

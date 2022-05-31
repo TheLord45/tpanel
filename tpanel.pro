@@ -52,6 +52,7 @@ HEADERS = \
    $$PWD/tsystemsound.h \
    $$PWD/tsystemdraw.h \
    $$PWD/texpat++.h \
+   $$PWD/tvector.h \
    $$PWD/ftplib/ftplib.h
 
 SOURCES = \
