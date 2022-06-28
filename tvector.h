@@ -152,7 +152,7 @@ class TVector
 
         const value_type* data() const noexcept
         {
-            std::lock_guard<std::mutex> vectorLockGuard(mut);
+            std::lock_guard<const std::mutex> vectorLockGuard(mut);
 
             return vec.data();
         }

@@ -1,9 +1,9 @@
 # TPanel
-TPanel is an emulation of some AMX G4 touch panels. The panels used to reverse engineer the communication protocol and the behavior were a *AMX MVP-5200i* and a *AMX NXD-700Vi*.
+**TPanel** is an emulation of some AMX G4 touch panels. The panels used to verify the communication protocol and the behavior were an *AMX MVP-5200i* and an *AMX NXD-700Vi*.
 
-TPanel was designed for *NIX desktops (Linux, BSD, …) as well as Android operating systems version 10 or newer. Currently there exists no Windows version and there probably never will be one.
+**TPanel** was designed for *NIX desktops (Linux, BSD, …) as well as Android operating systems version 10 or newer. Currently there exists no Windows version and there probably never will.
 
-The software uses internally the [Skia](https://skia.org) library for drawing all objects and the [Qt 5.15](https://doc.qt.io/qt-5.15/) library to display the objects. TPanel is written in C++. This makes it especially on mobile platforms fast and reliable. It has the advantage to not drain the accumulator of any mobile device while running as fast as possible. Compared to commercial products the accumulator lasts up to 10 times longer.
+The software uses internally the [Skia](https://skia.org) library for drawing all objects and the [Qt 5.15](https://doc.qt.io/qt-5.15/) library to display the objects. **TPanel** is written in C++. This makes it especially on mobile platforms fast and reliable. It has the advantage to not drain the battery of any mobile device while running as fast as possible. Compared to commercial products the battery lasts up to 10 times longer.
 
 # Full documentation
 Look at the full documentation in this repository. You'll will find the [reference manual](https://github.com/TheLord45/tpanel/tree/main/documentation) in three different formats:
@@ -30,7 +30,7 @@ To be able to compile the source you need the following credentials installed. M
 - Expat
 - Freetype
 
-Apart from the fact that Skia is not part of your Linux distribution, the other dependencies are.
+Apart from the fact that Skia is not part of your Linux distribution, the other dependencies are (for most distributions).
 
 If everything compiled successfull and installed, you should create a configuration file. Look at the [reference guide](https://github.com/TheLord45/tpanel/tree/main/documentation) of how to do this.
 
@@ -70,7 +70,7 @@ For **Build environment** check **Clear system environment**. Then click on **De
     PATH                   /usr/lib/jvm/java-11-openjdk-amd64/bin:/home/user/distribution/qt/bin:/usr/share/android-sdk-linux/ndk/23.1.7779620/toolchains/llvm/prebuilt/linux-x86_64/bin:/bin:/usr/bin
     QTDIR                  /home/user/distribution/qt
 
-Your Java distribution may be in a differnet location. Set the variable `JAVA_HOME` to the location on your system. Don't forget to set this path also for the variable `PATH`.
+Your Java distribution may be in a different location. Set the variable `JAVA_HOME` to the location on your system. Don't forget to set this path also for the variable `PATH`.
 
 It is possible that you want to use another ndk version then *23.1.7779620*. At the time of writing this documentation, this was the latest one available. You can use of course a newer one.
 

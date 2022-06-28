@@ -1,6 +1,10 @@
 ChangeLog
 =========
 
+Release: 1.3.3
+===============================================================================
+2022-06-01 Fixed the colors of the chameleon images.
+
 Release: 1.3.2
 ===============================================================================
 2022-05-31 Changed the commands arrived from a Netlinx to go into a command

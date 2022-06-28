@@ -7236,11 +7236,12 @@ SkColor TButton::baseColor(SkColor basePix, SkColor maskPix, SkColor col1, SkCol
 
     if (red && green)
     {
-        uint32_t newR = (SkColorGetR(col1) + SkColorGetR(col2)) / 2;
+        return col1;
+/*        uint32_t newR = (SkColorGetR(col1) + SkColorGetR(col2)) / 2;
         uint32_t newG = (SkColorGetG(col1) + SkColorGetG(col2)) / 2;
         uint32_t newB = (SkColorGetB(col1) + SkColorGetB(col2)) / 2;
         uint32_t newA = (SkColorGetA(col1) + SkColorGetA(col2)) / 2;
-        return SkColorSetARGB(newA, newR, newG, newB);
+        return SkColorSetARGB(newA, newR, newG, newB); */
     }
 
     if (red)
