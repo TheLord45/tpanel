@@ -3,6 +3,9 @@ ChangeLog
 
 Release: 1.3.3
 ===============================================================================
+2022-07-01 Added a mechanism to redraw a button internally only if it was
+           changed.
+
 2022-06-01 Fixed the colors of the chameleon images.
 
 Release: 1.3.2

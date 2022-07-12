@@ -204,6 +204,9 @@ TPageManager::TPageManager()
         return;
     }
 
+    // Set the panel type from the project information
+    TConfig::savePanelType(mTSettings->getPanelType());
+
     readMap();  // Start the initialisation of the AMX part.
 
     gPrjResources = new TPrjResources(mTSettings->getResourcesList());
@@ -574,6 +577,9 @@ void TPageManager::initialize()
         surface_mutex.unlock();
         return;
     }
+
+    // Set the panel type from the project information
+    TConfig::savePanelType(mTSettings->getPanelType());
 
     if (gPrjResources)
         delete gPrjResources;

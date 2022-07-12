@@ -375,12 +375,12 @@ void TQtSettings::scaleObject(T *obj)
     DECL_TRACER("TQtSettings::scaleObject(T *obj)");
 
     QSize size = obj->size();
+    QFont font = obj->font();
     size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
     obj->resize(size);
     QRect rect = obj->geometry();
     obj->move(scale(rect.left()), scale(rect.top()));
 
-    QFont font = obj->font();
     double fontSize = -1.0;
     int pixelSize = -1;
 
@@ -388,15 +388,17 @@ void TQtSettings::scaleObject(T *obj)
         fontSize = font.pointSizeF() * mRatioFont;
     else if (font.pointSize() > 0 && mRatioFont != 1.0)
         fontSize = font.pointSize() * mRatioFont;
-    else if (font.pixelSize() > 0)
-        pixelSize = (int)((double)font.pixelSize() / mScaleFactor);
+    else if (font.pixelSize() > 0 && mRatioFont != 1.0)
+        pixelSize = (int)((double)font.pixelSize() * mRatioFont);
+    else if (font.pixelSize() >= 8)
+        return;
 
     if (fontSize >= 6.0)
         font.setPointSizeF(fontSize);
     else if (pixelSize >= 8)
         font.setPixelSize(pixelSize);
     else
-        font.setPointSizeF(6.0);
+        font.setPointSizeF(11.0);
 
     obj->setFont(font);
 }
@@ -429,9 +431,7 @@ void TQtSettings::doResize()
             mScaleFactor = qMax(height / rect.height(), width / rect.width());
     }
 
-    MSG_DEBUG("Native size: " << rect.width() << " x " << rect.height());
     size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-    MSG_DEBUG("Calculated size: " << size.width() << " x " << size.height());
     this->resize(size);
 
     QWidget *parent = this->parentWidget();
@@ -450,9 +450,10 @@ void TQtSettings::doResize()
     double refWidth = gPageManager->getSettings()->getWith();
     double refHeight = gPageManager->getSettings()->getHeight();
     double dpi = QGuiApplication::primaryScreen()->logicalDotsPerInch();
-    double refDpi = dpi / ((width > height) ? width : height) * ((refWidth > refHeight) ? refWidth : refHeight);
-    mRatioFont = qMin(height * refDpi / (dpi * refHeight), width * refDpi / (dpi * refWidth));
-    MSG_DEBUG("Original DPI: " << dpi << ", initial AMX DPI: " << refDpi << ", font scale factor: " << mRatioFont);
+    double amxDpi = dpi / ((width > height) ? width : height) * ((refWidth > refHeight) ? refWidth : refHeight);
+    mRatioFont = qMin(height * amxDpi / (dpi * refHeight), width * amxDpi / (dpi * refWidth));
+//    MSG_PROTOCOL("qMin(" << height << " * " << amxDpi << " / " << "(" << dpi << " * " << refHeight << "), " << width << " * " << amxDpi << " / " << "(" << dpi << " * " << refWidth << "))");
+//    MSG_PROTOCOL("Original DPI: " << dpi << ", initial AMX DPI: " << amxDpi << ", font scale factor: " << mRatioFont);
     // Layout
     // Iterate through childs and resize them
     QObjectList childs = children();
@@ -498,42 +499,49 @@ void TQtSettings::doResize()
                                 scaleObject(dynamic_cast<QToolButton *>(on));
                             else if (n.startsWith("checkBox"))
                             {
-                                scaleObject(dynamic_cast<QCheckBox *>(on));
-#ifdef __ANDROID__
                                 QCheckBox *cb = dynamic_cast<QCheckBox *>(on);
+                                scaleObject(cb);
+#ifdef __ANDROID__
                                 cb->setPalette(qt_fusionPalette());
 #endif
                             }
                             else if (n.startsWith("lineEdit"))
-                                scaleObject(dynamic_cast<QLineEdit *>(on));
+                            {
+                                QLineEdit *le = dynamic_cast<QLineEdit *>(on);
+                                scaleObject(le);
+                            }
                             else if (n.startsWith("spinBox"))
                             {
                                 QSpinBox *sb = dynamic_cast<QSpinBox *>(on);
-                                QFont font = sb->font();
                                 scaleObject(sb);
+                                QFont font = sb->font();
 
                                 if (font.pixelSize() > 0)
-                                {
-                                    int pixelSize = (int)((double)font.pixelSize() / mScaleFactor);
-                                    sb->setStyleSheet(QString("font-size: %1px").arg(pixelSize));
-                                }
+                                    sb->setStyleSheet(QString("font-size: %1px").arg(font.pixelSize()));
                             }
                             else if (n.startsWith("comboBox"))
                             {
                                 QComboBox *cb = dynamic_cast<QComboBox *>(on);
-                                QFont font = cb->font();
                                 scaleObject(cb);
+                                QFont font = cb->font();
 #ifdef __ANDROID__
                                 if (font.pixelSize() > 0)
                                 {
-                                    int pixelSize = (int)((double)font.pixelSize() / mScaleFactor);
-                                    QColor txt = qt_fusionPalette().Text;
-                                    QColor back = qt_fusionPalette().Button;
-                                    cb->setStyleSheet(QString("font-size: %1px; color: %2;editable:background-color: %3;drop-down:background-color: %4")
-                                                      .arg(pixelSize)
-                                                      .arg(txt.name())
-                                                      .arg(back.name())
-                                                      .arg(back.name()));
+                                    cb->setPalette(qt_fusionPalette());
+                                    QColor txt = qt_fusionPalette().text().color();
+                                    QColor back = qt_fusionPalette().button().color();
+                                    QColor base = qt_fusionPalette().base().color();
+                                    QString ss;
+
+                                    ss = QString("font-size:%1px;color:%2;editable:{background-color:%3};drop-down:{color:%4;background:%5}")
+                                            .arg(font.pixelSize())
+                                            .arg(txt.name())
+                                            .arg(back.name())
+                                            .arg(txt.name())
+                                            .arg(base.name());
+
+                                    MSG_PROTOCOL("ComboBox style sheet: " << ss.toStdString());
+                                    cb->setStyleSheet(ss);
                                 }
 #endif
                             }
@@ -541,9 +549,9 @@ void TQtSettings::doResize()
                                 scaleObject(dynamic_cast<QSlider *>(on));
                             else if (n.startsWith("label"))
                             {
-                                scaleObject(dynamic_cast<QLabel *>(on));
-#ifdef __ANDROID__
                                 QLabel *lb = dynamic_cast<QLabel *>(on);
+                                scaleObject(lb);
+#ifdef __ANDROID__
                                 lb->setPalette(qt_fusionPalette());
 #endif
                             }

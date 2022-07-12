@@ -61,6 +61,34 @@ bool TSettings::loadSettings(bool initial)
     int depth = 0;
     size_t index = 0;
 
+    if ((index = xml.getElementIndex("projectInfo", &depth)) == TExpat::npos)
+    {
+        MSG_ERROR("Couldn't find the project information! Broken surface?");
+        TError::setError();
+        return false;
+    }
+
+    depth++;
+    mProject.protection = xml.getElement("protection", depth);
+    mProject.password = xml.getElement("password", depth);
+    vector<Expat::ATTRIBUTE_t> attr = xml.getAttributes();
+    mProject.encrypted = xml.getAttributeInt("encrypted", attr);
+    mProject.panelType = xml.getElement("panelType", depth);
+    mProject.fileRevision = xml.getElement("fileRevision", depth);
+    mProject.dealerID = xml.getElement("dealerId", depth);
+    mProject.jobName = xml.getElement("jobName", depth);
+    mProject.salesOrder = xml.getElement("salesOrder", depth);
+    mProject.purchaseOrder = xml.getElement("purchaseOrder", depth);
+    mProject.jobComment = xml.getElement("jobComment", depth);
+    mProject.designerID = xml.getElement("designerId", depth);
+    mProject.creationDate = xml.getElement("creationDate", depth);
+    mProject.revisionDate = xml.getElement("revisionDate", depth);
+    mProject.lastSaveDate = xml.getElement("lastSaveDate", depth);
+    mProject.fileName = xml.getElement("fileName", depth);
+    mProject.colorChoice = xml.getElement("colorChoice", depth);
+    mProject.specifyPortCount = xml.getElementInt("specifyPortCount", depth);
+    mProject.specifyChanCount = xml.getElementInt("specifyChanCount", depth);
+
     if ((index = xml.getElementIndex("panelSetup", &depth)) == TExpat::npos)
     {
         MSG_ERROR("Couldn't find the section \"panelSetup\" in file!");

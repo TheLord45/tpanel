@@ -235,19 +235,6 @@ TButton::TButton()
 TButton::~TButton()
 {
     DECL_TRACER("TButton::~TButton()");
-/*
-    map<int, IMAGE_t>::iterator iter;
-
-    for (iter = mImages.begin(); iter != mImages.end(); iter++)
-    {
-        if (!iter->second.imageMi.empty())
-            iter->second.imageMi.reset();
-
-        if (!iter->second.imageBm.empty())
-            iter->second.imageBm.reset();
-    }
-*/
-//    mImages.clear();
 
     if (ap == 0 && ad == 8)
     {
@@ -324,6 +311,7 @@ size_t TButton::initialize(TExpat *xml, size_t index)
         return TExpat::npos;
     }
 
+    mChanged = true;
     vector<ATTRIBUTE_t> attrs = xml->getAttributes(index);
     string stype = xml->getAttribute("type", attrs);
     type = getButtonType(stype);
@@ -580,6 +568,7 @@ bool TButton::createSoftButton(const EXTBUTTON_t& bt)
     rn = bt.rn;
     sc = bt.sc;
     sr = bt.sr;
+    mChanged = true;
     return true;
 }
 
@@ -667,13 +656,16 @@ FEEDBACK TButton::getButtonFeedback(const string& fb)
 
 bool TButton::createButtons(bool force)
 {
-    DECL_TRACER("TButton::createButtons()");
+    DECL_TRACER("TButton::createButtons(bool force)");
 
     if (prg_stopped)
         return false;
 
     if (force)
+    {
+        mChanged = true;
         MSG_TRACE("Creating of image is forced!");
+    }
 
     // Get the images, if there any
     vector<SR_T>::iterator srIter;
@@ -693,13 +685,19 @@ bool TButton::createButtons(bool force)
         if (!srIter->mi.empty())
         {
             if ((bmExistMi = TImgCache::existBitmap(srIter->mi, _BMTYPE_CHAMELEON)) == false)
+            {
+                mChanged = true;
                 reload = true;
+            }
         }
 
         if (!srIter->bm.empty())
         {
             if ((bmExistBm = TImgCache::existBitmap(srIter->bm, _BMTYPE_BITMAP)) == false)
+            {
+                mChanged = true;
                 reload = true;
+            }
         }
 
         if (!force)
@@ -727,6 +725,7 @@ bool TButton::createButtons(bool force)
             TImgCache::addImage(srIter->mi, bm, _BMTYPE_CHAMELEON);
             srIter->mi_width = bm.info().width();
             srIter->mi_height = bm.info().height();
+            mChanged = true;
         }
 
         if (!bmExistBm && !srIter->bm.empty())        // Do we have a bitmap?
@@ -748,6 +747,7 @@ bool TButton::createButtons(bool force)
             TImgCache::addImage(srIter->bm, bm, _BMTYPE_BITMAP);
             srIter->bm_width = bm.info().width();
             srIter->bm_height = bm.info().height();
+            mChanged = true;
         }
 
         i++;
@@ -760,6 +760,7 @@ void TButton::refresh()
 {
     DECL_TRACER("TButton::refresh()");
 
+    mChanged = true;
     makeElement();
 }
 
@@ -773,7 +774,12 @@ bool TButton::makeElement(int instance)
     int inst = mActInstance;
 
     if (instance >= 0 && (size_t)instance < sr.size())
+    {
+        if (mActInstance != instance)
+            mChanged = true;
+
         inst = instance;
+    }
 
     if (type == MULTISTATE_GENERAL && ar == 1)
         return drawButtonMultistateAni();
@@ -831,6 +837,7 @@ bool TButton::setActive(int instance)
         return true;
 
     mActInstance = instance;
+    mChanged = true;
     makeElement(instance);
 
     return true;
@@ -857,6 +864,9 @@ bool TButton::setIcon(int id, int instance)
 
     for (int i = 0; i < loop; ++i)
     {
+        if (sr[inst].ii != id)
+            mChanged = true;
+
         sr[inst].ii = id;
         inst++;
     }
@@ -895,7 +905,6 @@ bool TButton::setIcon(const string& icon, int instance)
 
     int inst = instance;
     int loop = 1;
-    bool changed = false;
 
     if (inst < 0)
     {
@@ -912,12 +921,9 @@ bool TButton::setIcon(const string& icon, int instance)
         }
 
         sr[inst].ii = id;
-        changed = true;
+        mChanged = true;
         inst++;
     }
-
-    if (!changed)
-        return true;
 
     return makeElement(instance);
 }
@@ -934,7 +940,6 @@ bool TButton::revokeIcon(int instance)
 
     int inst = instance;
     int loop = 1;
-    bool changed = false;
 
     if (inst < 0)
     {
@@ -952,11 +957,8 @@ bool TButton::revokeIcon(int instance)
 
         sr[inst].ii = 0;
         inst++;
-        changed = true;
+        mChanged = true;
     }
-
-    if (!changed)
-        return true;
 
     return makeElement(instance);
 }
@@ -998,6 +1000,9 @@ bool TButton::setTextOnly(const string& txt, int instance)
 
     for (int i = 0; i < loop; ++i)
     {
+        if (sr[inst].te != txt)
+            mChanged = true;
+
         sr[inst].te = txt;
         inst++;
     }
@@ -1015,6 +1020,9 @@ bool TButton::appendText(const string &txt, int instance)
         return false;
     }
 
+    if (txt.empty())
+        return true;
+
     int inst = instance;
     int loop = 1;
 
@@ -1027,6 +1035,7 @@ bool TButton::appendText(const string &txt, int instance)
     for (int i = 0; i < loop; ++i)
     {
         sr[inst].te.append(txt);
+        mChanged = true;
         inst++;
     }
 
@@ -1045,7 +1054,6 @@ bool TButton::setBorderColor(const string &color, int instance)
 
     int inst = instance;
     int loop = 1;
-    bool changed = false;
 
     if (inst < 0)
     {
@@ -1062,12 +1070,9 @@ bool TButton::setBorderColor(const string &color, int instance)
         }
 
         sr[inst].cb = color;
-        changed = true;
+        mChanged = true;
         inst++;
     }
-
-    if (!changed)
-        return true;
 
     return makeElement(instance);
 }
@@ -1097,7 +1102,6 @@ bool TButton::setFillColor(const string& color, int instance)
 
     int inst = instance;
     int loop = 1;
-    bool changed = false;
 
     if (inst < 0)
     {
@@ -1114,12 +1118,9 @@ bool TButton::setFillColor(const string& color, int instance)
         }
 
         sr[inst].cf = color;
-        changed = true;
+        mChanged = true;
         inst++;
     }
-
-    if (!changed)
-        return true;
 
     return makeElement(instance);
 }
@@ -1136,7 +1137,6 @@ bool TButton::setTextColor(const string& color, int instance)
 
     int inst = instance;
     int loop = 1;
-    bool changed = false;
 
     if (inst < 0)
     {
@@ -1154,11 +1154,8 @@ bool TButton::setTextColor(const string& color, int instance)
 
         sr[inst].ct = color;
         inst++;
-        changed = true;
+        mChanged = true;
     }
-
-    if (!changed)
-        return true;
 
     return makeElement(instance);
 }
@@ -1175,7 +1172,6 @@ bool TButton::setDrawOrder(const string& order, int instance)
 
     int inst = instance;
     int loop = 1;
-    bool changed = false;
 
     if (inst < 0)
     {
@@ -1193,11 +1189,8 @@ bool TButton::setDrawOrder(const string& order, int instance)
 
         sr[inst]._do = order;
         inst++;
-        changed = true;
+        mChanged = true;
     }
-
-    if (!changed)
-        return true;
 
     return makeElement(instance);
 }
@@ -1214,11 +1207,13 @@ bool TButton::setFeedback(FEEDBACK feedback)
         if ((feedback == FB_ALWAYS_ON || feedback == FB_INV_CHANNEL) && mActInstance != 1)
         {
             mActInstance = 1;
+            mChanged = true;
             makeElement(1);
         }
         else if (oldFB == FB_ALWAYS_ON && feedback != FB_ALWAYS_ON && feedback != FB_INV_CHANNEL && mActInstance == 1)
         {
             mActInstance = 0;
+            mChanged = true;
             makeElement(0);
         }
     }
@@ -1235,6 +1230,8 @@ bool TButton::setBorderStyle(const string& style, int instance)
         MSG_ERROR("Instance " << instance << " does not exist!");
         return false;
     }
+
+    mChanged = true;
 
     if (strCaseCompare(style, "None") == 0)     // Clear the border?
     {
@@ -1342,6 +1339,9 @@ bool TButton::setBargraphSliderColor(const string& color)
         return false;
     }
 
+    if (sc != color)
+        mChanged = true;
+
     sc = color;
 
     if (visible)
@@ -1376,6 +1376,9 @@ bool TButton::setFontFileName(const string& name, int /*size*/, int instance)
 
     for (int i = 0; i < loop; ++i)
     {
+        if (sr[inst].fi != id)
+            mChanged = true;
+
         sr[inst].fi = id;
         inst++;
     }
@@ -1410,6 +1413,7 @@ bool TButton::setBitmap(const string& file, int instance)
             continue;
         }
 
+        mChanged = true;
         sr[inst].bm = file;
 
         if (!file.empty() && !TImgCache::existBitmap(file, _BMTYPE_BITMAP))
@@ -1453,7 +1457,6 @@ bool TButton::setCameleon(const string& file, int instance)
 
     int inst = instance;
     int loop = 1;
-    bool changed = false;
 
     if (inst < 0)
     {
@@ -1469,6 +1472,7 @@ bool TButton::setCameleon(const string& file, int instance)
             continue;
         }
 
+        mChanged = true;
         sr[inst].mi = file;
 
         if (!file.empty() && !TImgCache::existBitmap(file, _BMTYPE_CHAMELEON))
@@ -1491,12 +1495,8 @@ bool TButton::setCameleon(const string& file, int instance)
             }
         }
 
-        changed = true;
         inst++;
     }
-
-    if (!changed)
-        return true;
 
     if (!createButtons(true))   // We're forcing the image to load
         return false;
@@ -1510,6 +1510,9 @@ void TButton::setActiveInstance(int inst)
 
     if (inst < 0 || (size_t)inst >= sr.size())
         return;
+
+    if (mActInstance != inst)
+        mChanged = true;
 
     mActInstance = inst;
 }
@@ -1561,6 +1564,7 @@ void TButton::setDynamic(int d, int inst)
                         mImageRefresh->stop();
                 }
 
+                mChanged = true;
                 makeElement(instance);
             }
 
@@ -1584,6 +1588,7 @@ void TButton::setDynamic(int d, int inst)
                     mImageRefresh->stop();
             }
 
+            mChanged = true;
             makeElement(inst);
         }
     }
@@ -1620,7 +1625,6 @@ bool TButton::setOpacity(int op, int instance)
 
     int inst = instance;
     int loop = 1;
-    bool changed = false;
 
     if (inst < 0)
     {
@@ -1637,12 +1641,9 @@ bool TButton::setOpacity(int op, int instance)
         }
 
         sr[inst].oo = op;
-        changed = true;
+        mChanged = true;
         inst++;
     }
-
-    if (!changed)
-        return true;
 
     return makeElement(instance);
 }
@@ -1659,7 +1660,6 @@ bool TButton::setFont(int id, int instance)
 
     int inst = instance;
     int loop = 1;
-    bool changed = false;
 
     if (inst < 0)
     {
@@ -1676,12 +1676,9 @@ bool TButton::setFont(int id, int instance)
         }
 
         sr[inst].fi = id;
-        changed = true;
+        mChanged = true;
         inst++;
     }
-
-    if (!changed)
-        return true;
 
     return makeElement(instance);
 }
@@ -1692,6 +1689,9 @@ void TButton::setLeft(int left)
 
     if (left < 0)
         return;
+
+    if (lt != left)
+        mChanged = true;
 
     lt = left;
     makeElement(mActInstance);
@@ -1704,6 +1704,9 @@ void TButton::setTop(int top)
     if (top < 0)
         return;
 
+    if (tp != top)
+        mChanged = true;
+
     tp = top;
     makeElement(mActInstance);
 }
@@ -1714,6 +1717,9 @@ void TButton::setLeftTop(int left, int top)
 
     if (top < 0 || left < 0)
         return;
+
+    if (lt != left || tp != top)
+        mChanged = true;
 
     lt = left;
     tp = top;
@@ -1772,6 +1778,9 @@ void TButton::setResourceName(const string& name, int instance)
             continue;
         }
 
+        if (sr[inst].bm != name)
+            mChanged = true;
+
         sr[inst].bm = name;
         inst++;
     }
@@ -1807,6 +1816,9 @@ void TButton::setBitmapJustification(int j, int x, int y, int instance)
     {
         for (size_t i = 0; i < sr.size(); i++)
         {
+            if (sr[i].jb != j)
+                mChanged = true;
+
             sr[i].jb = j;
 
             if (j == 0)
@@ -1818,6 +1830,9 @@ void TButton::setBitmapJustification(int j, int x, int y, int instance)
     }
     else
     {
+        if (sr[instance].jb != j)
+            mChanged = true;
+
         sr[instance].jb = j;
 
         if (j == 0)
@@ -1860,6 +1875,9 @@ void TButton::setIconJustification(int j, int x, int y, int instance)
     {
         for (size_t i = 0; i < sr.size(); i++)
         {
+            if (sr[i].ji != j)
+                mChanged = true;
+
             sr[i].ji = j;
 
             if (j == 0)
@@ -1871,6 +1889,9 @@ void TButton::setIconJustification(int j, int x, int y, int instance)
     }
     else
     {
+        if (sr[instance].ji != j)
+            mChanged = true;
+
         sr[instance].ji = j;
 
         if (j == 0)
@@ -1913,6 +1934,9 @@ void TButton::setTextJustification(int j, int x, int y, int instance)
     {
         for (size_t i = 0; i < sr.size(); i++)
         {
+            if (sr[i].jt != j)
+                mChanged = true;
+
             sr[i].jt = (TEXT_ORIENTATION)j;
 
             if (j == 0)
@@ -1924,6 +1948,9 @@ void TButton::setTextJustification(int j, int x, int y, int instance)
     }
     else
     {
+        if (sr[instance].jt != j)
+            mChanged = true;
+
         sr[instance].jt = (TEXT_ORIENTATION)j;
 
         if (j == 0)
@@ -1993,7 +2020,6 @@ void TButton::setTextEffectColor(const string& ec, int instance)
 
     int inst = instance;
     int loop = 1;
-    bool changed = false;
 
     if (inst < 0)
     {
@@ -2010,12 +2036,9 @@ void TButton::setTextEffectColor(const string& ec, int instance)
         }
 
         sr[inst].ec = ec;
-        changed = true;
+        mChanged = true;
         inst++;
     }
-
-    if (!changed)
-        return;
 
     if (visible)
         makeElement();
@@ -2047,10 +2070,20 @@ void TButton::setTextEffect(int et, int inst)
     if (inst < 0)
     {
         for (size_t i = 0; i < sr.size(); i++)
+        {
+            if (sr[i].et != et)
+                mChanged = true;
+
             sr[i].et = et;
+        }
     }
     else
+    {
+        if (sr[inst].et != et)
+            mChanged = true;
+
         sr[inst].et = et;
+    }
 
     makeElement();
 }
@@ -2091,10 +2124,20 @@ void TButton::setTextEffectName(const string& name, int inst)
             if (inst < 0)
             {
                 for (size_t i = 0; i < sr.size(); i++)
+                {
+                    if (sr[i].et != sysTefs[idx].idx)
+                        mChanged = true;
+
                     sr[i].et = sysTefs[idx].idx;
+                }
             }
             else
+            {
+                if (sr[inst].et != sysTefs[idx].idx)
+                    mChanged = true;
+
                 sr[inst].et = sysTefs[idx].idx;
+            }
 
             makeElement();
             break;
@@ -2140,13 +2183,25 @@ bool TButton::setTextWordWrap(bool state, int instance)
         return false;
     }
 
+    int stt = state ? 1 : 0;
+
     if (instance < 0)
     {
         for (size_t i = 0; i < sr.size(); i++)
-            sr[i].ww = state ? 1 : 0;
+        {
+            if (sr[i].ww != stt)
+                mChanged = true;
+
+            sr[i].ww = stt;
+        }
     }
     else
-        sr[instance].ww = state ? 1 : 0;
+    {
+        if (sr[instance].ww != stt)
+            mChanged = true;
+
+        sr[instance].ww = stt;
+    }
 
     return makeElement(instance);
 }
@@ -2198,6 +2253,9 @@ bool TButton::setFontIndex(int fi, int instance)
 
     for (int i = 0; i < loop; ++i)
     {
+        if (sr[inst].fi != fi)
+            mChanged = true;
+
         sr[inst].fi = fi;
         inst++;
     }
@@ -2244,10 +2302,20 @@ void TButton::setSound(const string& sound, int inst)
     if (inst < 0)
     {
         for (size_t i = 0; i < sr.size(); i++)
+        {
+            if (sr[i].sd != sound)
+                mChanged = true;
+
             sr[i].sd = sound;
+        }
     }
     else
+    {
+        if (sr[inst].sd != sound)
+            mChanged = true;
+
         sr[inst].sd = sound;
+    }
 }
 
 bool TButton::startAnimation(int start, int end, int time)
@@ -2508,6 +2576,7 @@ void TButton::_imageRefresh(const string& url)
     }
 
     mLastImage = imgButton;
+    mChanged = false;
     size_t rowBytes = imgButton.info().minRowBytes();
 
     if (!prg_stopped && visible && _displayButton)
@@ -2600,15 +2669,30 @@ void TButton::registerSystemButton()
             gPageManager->regCallbackNetState(bind(&TButton::funcNetworkState, this, std::placeholders::_1), mHandle);
     }
     else if (ap == 0 && ad == 122)      // IP Address of server
+    {
         sr[0].te = sr[1].te = TConfig::getController();
+        mChanged = true;
+    }
     else if (ap == 0 && ad == 123)      // Channel number of panel
+    {
         sr[0].te = sr[1].te = std::to_string(TConfig::getChannel());
+        mChanged = true;
+    }
     else if (ap == 0 && ad == 124)      // Network port number of the controller
+    {
         sr[0].te = sr[1].te = std::to_string(TConfig::getPort());
+        mChanged = true;
+    }
     else if (ap == 0 && ad == 199)      // Technical name of panel
+    {
         sr[0].te = sr[1].te = TConfig::getPanelType();
+        mChanged = true;
+    }
     else if (ap == 0 && ad == 1101)     // Path and name of the logfile
+    {
         sr[0].te = sr[1].te = TConfig::getLogFile();
+        mChanged = true;
+    }
 }
 
 void TButton::addPushFunction(string& func, string& page)
@@ -3381,7 +3465,10 @@ void TButton::funcResource(const RESOURCE_T* resource, const std::string& url, B
             setInvalid(bc.handle);
 
             if (bc.show && _displayButton)
+            {
                 _displayButton(bc.handle, bc.parent, (unsigned char *)bmCache.bitmap.getPixels(), bc.width, bc.height, bmCache.bitmap.info().minRowBytes(), bc.left, bc.top);
+                mChanged = false;
+            }
         }
     }
     else if (!_restart_)
@@ -3404,6 +3491,7 @@ void TButton::funcBattery(int level, bool charging, int /* chargeType */)
     if (ap == 0 && ad == 242)       // Not charging
     {
         mEnabled = !charging;
+        mChanged = true;
 
         if (!mEnabled && visible)
             hide(true);
@@ -3416,6 +3504,7 @@ void TButton::funcBattery(int level, bool charging, int /* chargeType */)
     else if (ap == 0 && ad == 234)  // Charging
     {
         mEnabled = charging;
+        mChanged = true;
 
         if (!mEnabled && visible)
             hide(true);
@@ -3434,6 +3523,7 @@ void TButton::funcNetworkState(int level)
     if (level >= rl && level <= rh)
     {
         mLastLevel = level;
+        mChanged = true;
         drawMultistateBargraph(mLastLevel);
     }
 }
@@ -4855,6 +4945,7 @@ void TButton::runAnimation()
     while (mAniRunning && !mAniStop && !prg_stopped)
     {
         mActInstance = instance;
+        mChanged = true;
 
         if (visible && !drawButton(instance))
             break;
@@ -4885,6 +4976,7 @@ void TButton::runAnimationRange(int start, int end, ulong step)
     while (mAniRunning && !mAniStop && !prg_stopped)
     {
         mActInstance = instance;
+        mChanged = true;
 
         if (visible)
             drawButton(instance);   // We ignore the state and try to draw the next instance
@@ -4974,6 +5066,14 @@ bool TButton::drawButton(int instance, bool show)
     }
 
     MSG_DEBUG("Drawing button " << bi << ", \"" << na << "\" at instance " << instance);
+
+    if (!mChanged && !mLastImage.empty())
+    {
+        showLastButton();
+        mutex_button.unlock();
+        return true;
+    }
+
     ulong parent = mHandle & 0xffff0000;
     getDrawOrder(sr[instance]._do, (DRAW_ORDER *)&mDOrder);
 
@@ -5077,6 +5177,7 @@ bool TButton::drawButton(int instance, bool show)
     }
 
     mLastImage = imgButton;
+    mChanged = false;
     size_t rowBytes = imgButton.info().minRowBytes();
 
     if (!prg_stopped && !dynState)
@@ -5112,7 +5213,9 @@ bool TButton::drawButton(int instance, bool show)
         }
 #endif
         if (show)
+        {
             _displayButton(mHandle, parent, (unsigned char *)imgButton.getPixels(), rwidth, rheight, rowBytes, rleft, rtop);
+        }
     }
 
     mutex_button.unlock();
@@ -5134,6 +5237,12 @@ bool TButton::drawTextArea(int instance)
         MSG_ERROR("Instance " << instance << " is out of bounds!");
         TError::setError();
         return false;
+    }
+
+    if (!mChanged)
+    {
+        showLastButton();
+        return true;
     }
 
     getDrawOrder(sr[instance]._do, (DRAW_ORDER *)&mDOrder);
@@ -5209,6 +5318,7 @@ bool TButton::drawTextArea(int instance)
     }
 
     mLastImage = imgButton;
+    mChanged = false;
 
     if (!prg_stopped)
     {
@@ -5388,6 +5498,7 @@ bool TButton::drawMultistateBargraph(int level, bool show)
     }
 
     mLastImage = imgButton;
+    mChanged = false;
     size_t rowBytes = imgButton.info().minRowBytes();
 
     if (!prg_stopped)
@@ -5436,7 +5547,7 @@ bool TButton::drawMultistateBargraph(int level, bool show)
 bool TButton::drawBargraph(int instance, int level, bool show)
 {
     mutex_bargraph.lock();
-    DECL_TRACER("TButton::drawBargraph(int instance, bool show)");
+    DECL_TRACER("TButton::drawBargraph(int instance, int level, bool show)");
 
     if ((size_t)instance >= sr.size() || instance < 0)
     {
@@ -5448,6 +5559,13 @@ bool TButton::drawBargraph(int instance, int level, bool show)
 
     if (!_displayButton && gPageManager)
         _displayButton = gPageManager->getCallbackDB();
+
+    if (!mChanged && mLastLevel == level)
+    {
+        showLastButton();
+        mutex_bargraph.unlock();
+        return true;
+    }
 
     if (level < rl)
         mLastLevel = rl;
@@ -5573,6 +5691,7 @@ bool TButton::drawBargraph(int instance, int level, bool show)
     }
 
     mLastImage = imgButton;
+    mChanged = false;
     size_t rowBytes = imgButton.info().minRowBytes();
 
     if (!prg_stopped && show && visible && instance == mActInstance && _displayButton)
@@ -6238,6 +6357,7 @@ void TButton::showLastButton()
         }
 #endif
         _displayButton(mHandle, parent, (unsigned char *)mLastImage.getPixels(), rwidth, rheight, rowBytes, rleft, rtop);
+        mChanged = false;
     }
 }
 
@@ -6298,7 +6418,10 @@ void TButton::hide(bool total)
             _displayButton = gPageManager->getCallbackDB();
 
         if (_displayButton)
+        {
             _displayButton(mHandle, parent, (unsigned char *)imgButton.getPixels(), rwidth, rheight, rowBytes, rleft, rtop);
+            mChanged = false;
+        }
     }
 
     visible = false;
@@ -6335,6 +6458,7 @@ void TButton::funcNetwork(int state)
 
     mLastLevel = state;
     mActInstance = state;
+    mChanged = true;
 
     if (visible)
         makeElement(state);
@@ -6458,6 +6582,10 @@ void TButton::funcTimer(const amx::ANET_BLINK& blink)
         case 158:   // Date yyyy-mm-dd
             sstr << (int)blink.year << "-" << (int)blink.month << "-" << (int)blink.day;
         break;
+
+        default:
+            mutex_sysdraw.unlock();
+            return;
     }
 
     vector<SR_T>::iterator iter;
@@ -6465,6 +6593,8 @@ void TButton::funcTimer(const amx::ANET_BLINK& blink)
 
     for (iter = sr.begin(); iter != sr.end(); ++iter)
         iter->te = tm;
+
+    mChanged = true;
 
     if (visible)
         makeElement(mActInstance);
@@ -6701,6 +6831,7 @@ bool TButton::doClick(int x, int y, bool pressed)
 
                 TConfig::saveSystemSoundState(!sstate);
                 TConfig::saveSettings();
+                mChanged = true;
                 drawButton(mActInstance, false);
                 showLastButton();
             }
@@ -6735,6 +6866,7 @@ bool TButton::doClick(int x, int y, bool pressed)
             else
                 mActInstance = instance = 0;
 
+            mChanged = true;
             drawButton(mActInstance, true);
             int channel = TConfig::getChannel();
             int system = TConfig::getSystem();
@@ -6769,6 +6901,7 @@ bool TButton::doClick(int x, int y, bool pressed)
             else
                 mActInstance = instance = 0;
 
+            mChanged = true;
             drawButton(mActInstance, true);
             int channel = TConfig::getChannel();
             int system = TConfig::getSystem();
@@ -6805,6 +6938,7 @@ bool TButton::doClick(int x, int y, bool pressed)
                 if (gPageManager && gPageManager->getCallMuteSound())
                     gPageManager->getCallMuteSound()(!mute);
 
+                mChanged = true;
                 drawButton(mActInstance, false);
                 showLastButton();
             }
@@ -6818,6 +6952,7 @@ bool TButton::doClick(int x, int y, bool pressed)
 
             MSG_DEBUG("Flavor FB_MOMENTARY, instance=" << instance);
             mActInstance = instance;
+            mChanged = true;
 
             if (pushFunc.empty() || (!pushFunc.empty() && instance == 0))
                 drawButton(instance);
@@ -6887,7 +7022,10 @@ bool TButton::doClick(int x, int y, bool pressed)
             MSG_DEBUG("Flavor FB_ALWAYS_ON, instance=" << instance);
 
             if (oldInst != mActInstance)        // This should never become true!
+            {
+                mChanged = true;
                 drawButton(instance, false);
+            }
 
             // If there is nothing in "hs", then it depends on the pixel of the
             // layer. Only if the pixel the coordinates point to are not
@@ -7652,7 +7790,10 @@ void TButton::showBitmapCache()
             if (iter->ready)
             {
                 if (_displayButton)
+                {
                     _displayButton(iter->handle, iter->parent, (unsigned char *)iter->bitmap.getPixels(), iter->width, iter->height, iter->bitmap.info().minRowBytes(), iter->left, iter->top);
+                    mChanged = false;
+                }
 
                 nBitmapCache.erase(iter);
                 found = true;

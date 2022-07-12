@@ -78,6 +78,7 @@ struct SETTINGS
     bool tbsuppress{false};     //!< TRUE = Don't show toolbar even if enough space
     bool tbforce{true};         //!< Only if "tbsuppress" = FALSE: TRUE = The toolbar is forced to display, FALSE = The toolbar is only visible if there is enough space left
     bool profiling{false};      //!< TRUE = The declaration traces meassure the time and write it to the log
+    size_t max_cache{100};      //!< Size of internal button cache in Mb
     string password1;           //!< First panel password
     string password2;           //!< Second panel password
     string password3;           //!< Third panel password
@@ -501,6 +502,13 @@ void TConfig::saveProfiling(bool prof)
     localSettings.profiling = prof;
 }
 
+void TConfig::saveButtonCache(size_t size)
+{
+    DECL_TRACER("TConfig::saveButtonCache(size_t size)");
+
+    localSettings.max_cache = size;
+}
+
 void TConfig::savePassword1(const std::string& pw)
 {
     DECL_TRACER("TConfig::savePassword1(const std::string& pw)");
@@ -811,6 +819,7 @@ bool TConfig::saveSettings()
         lines += string("CertCheck=") + (localSettings.certCheck ? "true" : "false") + "\n";
         lines += string("Scale=") + (localSettings.scale ? "true" : "false") + "\n";
         lines += string("Profiling=") + (localSettings.profiling ? "true" : "false") + "\n";
+        lines += "MaxButtonCache=" + std::to_string(localSettings.max_cache) + "\n";
         lines += string("Password1=") + localSettings.password1 + "\n";
         lines += string("Password2=") + localSettings.password2 + "\n";
         lines += string("Password3=") + localSettings.password3 + "\n";
@@ -915,6 +924,14 @@ bool TConfig::getToolbarSuppress()
 bool TConfig::getProfiling()
 {
     return localSettings.profiling;
+}
+
+size_t TConfig::getButttonCache()
+{
+    if (localSettings.max_cache > 0)
+        return localSettings.max_cache * 1000 * 1000;
+
+    return 0;
 }
 
 string & TConfig::getPassword1()
@@ -1444,6 +1461,11 @@ bool TConfig::readConfig()
     localSettings.version = "1.0";
     localSettings.longformat = false;
     localSettings.profiling = false;
+#ifdef __ANDROID__
+    localSettings.max_cache = 100;
+#else
+    localSettings.max_cache = 400;
+#endif
     localSettings.systemSoundState = true;
     localSettings.systemSound = "singleBeep.wav";
     localSettings.systemSingleBeep = "singleBeep01.wav";
@@ -1559,6 +1581,8 @@ bool TConfig::readConfig()
                 localSettings.tbsuppress = isTrue(right);
             else if (caseCompare(left, "Profiling") == 0 && !right.empty())
                 localSettings.profiling = isTrue(right);
+            else if (caseCompare(left, "MaxButtonCache") == 0 && !right.empty())
+                localSettings.max_cache = atoi(right.c_str());
             else if (caseCompare(left, "Password1") == 0 && !right.empty())
                 localSettings.password1 = right;
             else if (caseCompare(left, "Password2") == 0 && !right.empty())
@@ -1679,6 +1703,7 @@ bool TConfig::readConfig()
         MSG_INFO("    Firmware ver. " << localSettings.version);
         MSG_INFO("    Scaling:      " << (localSettings.scale ? "YES" : "NO"));
         MSG_INFO("    Profiling:    " << (localSettings.profiling ? "YES" : "NO"));
+        MSG_INFO("    Button cache: " << localSettings.max_cache);
         MSG_INFO("    System Sound: " << localSettings.systemSound);
         MSG_INFO("    Sound state:  " << (localSettings.systemSoundState ? "ACTIVATED" : "DEACTIVATED"));
         MSG_INFO("    Single beep:  " << localSettings.systemSingleBeep);

@@ -33,6 +33,28 @@ typedef struct PALETTE_SETUP
     int paletteID{0};
 }PALETTE_SETUP;
 
+typedef struct PROJECT_INFO
+{
+    std::string protection;             //!< Default: none;
+    bool encrypted{0};                  //!< TRUE=Password is encrypted
+    std::string password;               //!< The password to open the page
+    std::string panelType;              //!< The type of the panel (NXT-CV7, ...)
+    std::string fileRevision;           //!< Optional revision number of the file
+    std::string dealerID;               //!< The ID of the dealer, if any
+    std::string jobName;                //!< The job name
+    std::string salesOrder;
+    std::string purchaseOrder;
+    std::string jobComment;
+    std::string designerID;
+    std::string creationDate;
+    std::string revisionDate;
+    std::string lastSaveDate;
+    std::string fileName;
+    std::string colorChoice;
+    int specifyPortCount{0};
+    int specifyChanCount{0};
+}PROJECT_INFO;
+
 typedef struct PANEL_SETUP
 {
     int portCount{0};                   //!< Number of total ports available
@@ -95,6 +117,7 @@ class TSettings : public TValidateFile
 
         const std::string& getPath() { return mPath; }
         PANEL_SETUP_T& getSettings() { return mSetup; }
+        PROJECT_INFO& getProjectInfo() { return mProject; }
         int getWith() { return mSetup.screenWidth; }
         int getHeight() { return mSetup.screenHeight; }
         int getRotate() { return mSetup.screenRotate; }
@@ -104,12 +127,14 @@ class TSettings : public TValidateFile
         bool loadSettings(bool initial=false);
         std::string& getPowerUpPage() { return mSetup.powerUpPage; }
         int getVoipCmdPort() { return mSetup.voipCommandPort; }
+        std::string& getPanelType() { return mProject.panelType; }
 
     private:
         RESOURCE_LIST_T findResourceType(const std::string& type);
 
         std::string mPath;                              // The path to the resources
         PANEL_SETUP_T mSetup;                           // Settings read from file prj.xma
+        PROJECT_INFO mProject;                          // The project information.
         std::vector<RESOURCE_LIST_T> mResourceLists;    // Resources (cameras) read from prj.xma
 };
 

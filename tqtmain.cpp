@@ -135,6 +135,9 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
 #endif
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
     QApplication::setAttribute(Qt::AA_ForceRasterWidgets);
+    QApplication::setAttribute(Qt::AA_Use96Dpi);
+//    QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+//    QApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
 #endif
 
     QApplication app(argc, argv);

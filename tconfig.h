@@ -89,6 +89,7 @@ class TConfig
         static bool getToolbarForce();
         static bool getToolbarSuppress();
         static bool getProfiling();
+        static size_t getButttonCache();
         static std::string& getPassword1();
         static std::string& getPassword2();
         static std::string& getPassword3();
@@ -135,6 +136,7 @@ class TConfig
         static void saveToolbarForce(bool tb);
         static void saveToolbarSuppress(bool tb);
         static void saveProfiling(bool prof);
+        static void saveButtonCache(size_t size);
         static void savePassword1(const std::string& pw);
         static void savePassword2(const std::string& pw);
         static void savePassword3(const std::string& pw);

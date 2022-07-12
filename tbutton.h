@@ -992,7 +992,6 @@ namespace Button
 
             TPalette *mPalette{nullptr}; // The color palette
             // Image management
-//            std::map<int, IMAGE_t> mImages; // Contains the images in ready to use format, if there any
             SkBitmap mLastImage;    // The last calculated image
             ulong mHandle{0};       // internal used handle to identify button
             int mParentHeight{0};   // The height of the parent page / subpage
@@ -1013,6 +1012,7 @@ namespace Button
             static THR_REFRESH_t *mThrRefresh;  // If  we have a source to reread periodicaly, this starts a thread to do that.
             ulong mAniRunTime{0};   // The time in milliseconds an animation should run. 0 = run forever.
             BITMAP_CACHE mBCDummy;  // A dummy retuned in case no cache exists or the element was not found.
+            bool mChanged{true};    // TRUE=Something changed --> button must be redrawn
     };
 
     typedef struct BUTTONS_T
