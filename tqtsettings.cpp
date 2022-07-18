@@ -76,31 +76,34 @@ TQtSettings::TQtSettings(QWidget *parent)
 
     TTPInit tinit;
     tinit.setPath(TConfig::getProjectPath());
-    vector<string> list = tinit.getFileList(".tp4");
+    mFileList = tinit.getFileList(".tp4");
     ui->comboBox_FTPsurface->clear();
     string curSurface = TConfig::getFtpSurface();
 
-    if (list.size() == 0)
+    if (mFileList.size() == 0)
         ui->comboBox_FTPsurface->addItem(curSurface.c_str());
     else
     {
         ui->comboBox_FTPsurface->clear();
-        vector<string>::iterator iter;
+        vector<TTPInit::FILELIST_t>::iterator iter;
         int idx = 0;
         int newIdx = -1;
 
-        for (iter = list.begin(); iter != list.end(); ++iter)
+        for (iter = mFileList.begin(); iter != mFileList.end(); ++iter)
         {
-            ui->comboBox_FTPsurface->addItem(iter->c_str());
+            ui->comboBox_FTPsurface->addItem(iter->fname.c_str());
 
-            if (iter->compare(curSurface) == 0)
+            if (iter->fname.compare(curSurface) == 0)
                 newIdx = idx;
 
             idx++;
         }
 
         if (newIdx != -1)
+        {
             ui->comboBox_FTPsurface->setCurrentIndex(newIdx);
+            mIndex = newIdx;
+        }
     }
 
     ui->checkBox_FTPpassive->setCheckState((TConfig::getFtpPassive() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked));
@@ -568,6 +571,26 @@ void TQtSettings::doResize()
     }
 }
 
+string TQtSettings::getSelectedFtpFile()
+{
+    DECL_TRACER("TQtSettings::getSelectedFtpFile()");
+
+    if ((size_t)mIndex < mFileList.size())
+        return mFileList[mIndex].fname;
+
+    return string();
+}
+
+size_t TQtSettings::getSelectedFtpFileSize()
+{
+    DECL_TRACER("TQtSettings::getSelectedFtpFileSize()");
+
+    if ((size_t)mIndex < mFileList.size())
+        return mFileList[mIndex].size;
+
+    return 0;
+}
+
 void TQtSettings::on_lineEdit_logFile_textChanged(const QString &arg1)
 {
     DECL_TRACER("TQtSettings::on_lineEdit_logFile_textChanged(const QString &arg1)");
@@ -948,6 +971,20 @@ void TQtSettings::on_comboBox_FTPsurface_currentIndexChanged(const QString& arg1
     mSetChanged = true;
     TConfig::saveFtpSurface(arg1.toStdString());
     MSG_DEBUG("Surface was set to " << arg1.toStdString());
+
+    vector<TTPInit::FILELIST_t>::iterator iter;
+    int idx = 0;
+
+    for (iter = mFileList.begin(); iter != mFileList.end(); ++iter)
+    {
+        if (iter->fname.compare(arg1.toStdString()) == 0)
+        {
+            mIndex = idx;
+            break;
+        }
+
+        idx++;
+    }
 }
 
 void TQtSettings::on_toolButton_Download_clicked()

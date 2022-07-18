@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2021, 2022 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,32 +30,43 @@ class TTPInit
         TTPInit(const std::string& path);
         TTPInit();
 
+        typedef struct FILELIST_t
+        {
+            size_t size;
+            std::string fname;
+        }FILELIST_t;
+
         void setPath(const std::string& p) { mPath = p; }
         bool createDirectoryStructure();
         bool loadSurfaceFromController(bool force=false);
-        std::vector<std::string>& getFileList(const std::string& filter);
+        std::vector<FILELIST_t>& getFileList(const std::string& filter);
         bool isSystemDefault();
         bool isVirgin();
         bool makeSystemFiles();
         bool reinitialize();
 
         int progressCallback(off64_t xfer);
+        void setFileSize(off64_t fs) { mFileSize = fs; }
+        off64_t getFileSize() { return mFileSize; }
         void regCallbackProcessEvents(std::function<void ()> pe) { _processEvents = pe; }
+        void regCallbackProgressBar(std::function<void (int percent)> pb) { _progressBar = pb; }
 
     private:
         std::function<void ()> _processEvents{nullptr};
+        std::function<void (int percent)> _progressBar{nullptr};
 
         bool createPanelConfigs();
         bool createSystemConfigs();
         bool _makeDir(const std::string& dir);
         bool copyFile(const std::string& fname);
         std::string getTmpFileName();
+        void logging(int level, const std::string& msg);
 #ifdef __ANDROID__
         bool askPermissions();
 #endif
         std::string mPath;
-        std::vector<std::string> mDirList;
-        void logging(int level, const std::string& msg);
+        std::vector<FILELIST_t> mDirList;
+        off64_t mFileSize{0};
 };
 
 #endif // TTPINIT_H

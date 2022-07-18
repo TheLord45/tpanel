@@ -45,6 +45,7 @@ class TQtSettings;
 class TQKeyboard;
 class TQKeypad;
 class TQBusy;
+class TqDownload;
 class TQtPhone;
 QT_END_NAMESPACE
 
@@ -100,6 +101,7 @@ class MainWindow : public QMainWindow, TQManageQueue
         void sigSetPhoneState(int state, int id);
         void sigRepaintWindows();
         void sigToFront(ulong handle);
+        void sigOnProgressChanged(int percent);
 
     protected:
         bool event(QEvent *event) override;
@@ -156,6 +158,8 @@ class MainWindow : public QMainWindow, TQManageQueue
         void textSingleLineReturn();
         void repaintWindows();
         void toFront(ulong handle);
+        // Progress bar (busy indicator)
+        void onProgressChanged(int percent);
 
     private:
         bool gestureEvent(QGestureEvent *event);
@@ -166,6 +170,7 @@ class MainWindow : public QMainWindow, TQManageQueue
         bool isScaled() { return (mScaleFactor != 1.0); }
         void startAnimation(TObject::OBJECT_t *obj, ANIMATION_t& ani, bool in = true);
         void busyIndicator(const std::string& msg, QWidget *parent);
+        void downloadBar(const std::string& msg, QWidget *parent);
         void runEvents();
 
         void _displayButton(ulong handle, ulong parent, unsigned char* buffer, int width, int height, int pixline, int left, int top);
@@ -193,6 +198,7 @@ class MainWindow : public QMainWindow, TQManageQueue
         void _setPhoneNumber(const std::string& number);
         void _setPhoneStatus(const std::string& msg);
         void _setPhoneState(int state, int id);
+        void _onProgressChanged(int percent);
 #ifdef __ANDROID__
         void _signalState(Qt::ApplicationState state);
         void _orientationChanged(int orientation);
@@ -216,6 +222,7 @@ class MainWindow : public QMainWindow, TQManageQueue
         std::atomic<TObject::OBJECT_t *> mLastObject{nullptr};     // This is for the hide effect of widgets.
         std::atomic<bool> mBusy{false};     // If TRUE the busy indicator is active
         TQBusy *mBusyDialog{nullptr};       // Pointer to busy indicator dialog window
+        TqDownload *mDownloadBar{nullptr};  // Pointer to a dialog showing a progress bar
         TQKeyboard *mQKeyboard{nullptr};    // Pointer to an active virtual keyboard
         TQKeypad *mQKeypad{nullptr};        // Pointer to an active virtual keypad
 //        std::thread mThreadBusy;            // The thread of the busy indicator.

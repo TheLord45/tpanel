@@ -113,7 +113,7 @@ TFsfReader::~TFsfReader()
 
 bool TFsfReader::copyOverFTP(const string& fname, const string& target)
 {
-    DECL_TRACER("TFsfReader::copyOverFTP(const string& fname, const string& target, const string& user, const string& pw)");
+    DECL_TRACER("TFsfReader::copyOverFTP(const string& fname, const string& target)");
 
     if (mFtpLib)
         delete mFtpLib;
@@ -142,7 +142,7 @@ bool TFsfReader::copyOverFTP(const string& fname, const string& target)
 
     string sUser = TConfig::getFtpUser();
     string sPass = TConfig::getFtpPassword();
-    MSG_DEBUG("Trying to login <" << sUser << ", " << sPass << ">");
+    MSG_DEBUG("Trying to login <" << sUser << ", ********>");
 
     if (!mFtpLib->Login(sUser.c_str(), sPass.c_str()))
     {

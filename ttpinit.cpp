@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2021, 2022 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2232,7 +2232,7 @@ bool TTPInit::loadSurfaceFromController(bool force)
     return true;
 }
 
-vector<string>& TTPInit::getFileList(const string& filter)
+vector<TTPInit::FILELIST_t>& TTPInit::getFileList(const string& filter)
 {
     DECL_TRACER("TTPInit::getFileList(const string& filter)");
 
@@ -2274,13 +2274,15 @@ vector<string>& TTPInit::getFileList(const string& filter)
 
     string tmpFile = getTmpFileName();
     MSG_DEBUG("Reading remote directory / into file " << tmpFile);
-    ftp->Nlst(tmpFile.c_str(), "/");
+//    ftp->Nlst(tmpFile.c_str(), "/");
+    ftp->Dir(tmpFile.c_str(), "/");
     ftp->Quit();
     delete ftp;
     mDirList.clear();
 
     try
     {
+        bool oldNetLinx = false;
         char buffer[1024];
         string uFilter = toUpper((std::string&)filter);
 
@@ -2289,16 +2291,42 @@ vector<string>& TTPInit::getFileList(const string& filter)
         while (ifile.getline(buffer, sizeof(buffer)))
         {
             string buf = buffer;
-            string fname = trim(buf);
-            MSG_DEBUG("FTP line: " << buf << " (" << fname << ")");
+            string fname, sSize;
+            size_t size = 0;
+            MSG_DEBUG("FTP line: " << buf);
+            // We must detect whether we have a new NetLinx or an old one.
+            if (buf.at(42) != ' ')
+                oldNetLinx = true;
+
+            // Filter out the filename and it's size
+            if (oldNetLinx)
+            {
+                size = atoll(buf.substr(27, 12).c_str());
+                fname = buf.substr(53);
+            }
+            else
+            {
+                size = atoll(buf.substr(30, 12).c_str());
+                fname = buf.substr(56);
+            }
 
             if (!filter.empty())
             {
                 if (endsWith(toUpper(buf), uFilter))
-                    mDirList.push_back(trim(fname));
+                {
+                    FILELIST_t fl;
+                    fl.size = size;
+                    fl.fname = fname;
+                    mDirList.push_back(fl);
+                }
             }
             else
-                mDirList.push_back(trim(fname));
+            {
+                FILELIST_t fl;
+                fl.size = size;
+                fl.fname = fname;
+                mDirList.push_back(fl);
+            }
         }
 
         ifile.close();
@@ -2310,13 +2338,16 @@ vector<string>& TTPInit::getFileList(const string& filter)
 
     fs::remove(tmpFile);
 
-    if (mDirList.size() > 0)
+    if (TStreamError::checkFilter(HLOG_DEBUG))
     {
-        vector<string>::iterator iter;
-
-        for (iter = mDirList.begin(); iter != mDirList.end(); ++iter)
+        if (mDirList.size() > 0)
         {
-            MSG_DEBUG("File: " << *iter);
+            vector<FILELIST_t>::iterator iter;
+
+            for (iter = mDirList.begin(); iter != mDirList.end(); ++iter)
+            {
+                MSG_DEBUG("File: " << iter->size << " " << iter->fname);
+            }
         }
     }
 
@@ -2326,6 +2357,18 @@ vector<string>& TTPInit::getFileList(const string& filter)
 int TTPInit::progressCallback(off64_t xfer)
 {
     DECL_TRACER("TTPInit::progressCallback(off64_t xfer)");
+
+    if (_progressBar && xfer > 0)
+    {
+        int percent = 0;
+
+        if (mFileSize > 0)
+            percent = (int)(100.0 / (long double)mFileSize * (long double)xfer);
+        else
+            percent = 50;
+
+        _progressBar(percent);
+    }
 
     if (_processEvents && xfer > 0)
         _processEvents();

@@ -698,7 +698,8 @@ int ftplib::FtpAccess(const char *path, accesstype type, transfermode mode, ftph
             break;
 
         case ftplib::dirverbose:
-            strcpy(buf, "LIST -aL");
+//            strcpy(buf, "LIST -aL");
+            strcpy(buf, "LIST");
             dir = FTPLIB_READ;
             break;
 

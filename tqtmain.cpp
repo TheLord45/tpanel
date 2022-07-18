@@ -66,6 +66,7 @@
 #include "texcept.h"
 #include "ttpinit.h"
 #include "tqtbusy.h"
+#include "tqdownload.h"
 #include "tqtphone.h"
 
 /**
@@ -437,6 +438,7 @@ MainWindow::MainWindow()
         connect(this, &MainWindow::sigSetPhoneState, this, &MainWindow::setPhoneState);
         connect(this, &MainWindow::sigRepaintWindows, this, &MainWindow::repaintWindows);
         connect(this, &MainWindow::sigToFront, this, &MainWindow::toFront);
+        connect(this, &MainWindow::sigOnProgressChanged, this, &MainWindow::onProgressChanged);
         connect(qApp, &QGuiApplication::applicationStateChanged, this, &MainWindow::appStateChanged);
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         QScreen *screen = QGuiApplication::primaryScreen();
@@ -1095,7 +1097,7 @@ void MainWindow::settings()
     int ret = dlg_settings->exec();
     bool rebootAnyway = false;
 
-    if (ret && dlg_settings->hasChanged())
+    if ((ret && dlg_settings->hasChanged()) || (ret && dlg_settings->downloadForce()))
     {
         writeSettings();
 
@@ -1119,6 +1121,8 @@ void MainWindow::settings()
         {
             bool dlYes = true;
 
+            MSG_DEBUG("Surface should be downloaded (Old: " << oldSurface << ", New: " << TConfig::getFtpSurface() << ")");
+
             if (!dlg_settings->downloadForce())
             {
                 QMessageBox msgBox(this);
@@ -1135,19 +1139,25 @@ void MainWindow::settings()
             {
                 TTPInit tpinit;
                 tpinit.regCallbackProcessEvents(bind(&MainWindow::runEvents, this));
+                tpinit.regCallbackProgressBar(bind(&MainWindow::_onProgressChanged, this, std::placeholders::_1));
                 tpinit.setPath(TConfig::getProjectPath());
-                string msg = "Loading file <b>" + TConfig::getFtpSurface() + "</b>.<br>Please wait ...";
+                tpinit.setFileSize(dlg_settings->getSelectedFtpFileSize());
+                string msg = "Loading file <b>" + TConfig::getFtpSurface() + "</b>.";
+                MSG_DEBUG("Download of surface " << TConfig::getFtpSurface() << " was forced!");
 
-                busyIndicator(msg, this);
+//                busyIndicator(msg, this);
+                downloadBar(msg, this);
 
                 if (tpinit.loadSurfaceFromController(true))
                     rebootAnyway = true;
 
-                mBusyDialog->close();
+//                mBusyDialog->close();
+                mDownloadBar->close();
                 mBusy = false;
             }
             else
             {
+                MSG_DEBUG("No change of surface. Old surface " << oldSurface << " was saved again.");
                 TConfig::saveFtpSurface(oldSurface);
                 writeSettings();
             }
@@ -1452,6 +1462,16 @@ void MainWindow::toFront(ulong handle)
 
     if (obj->type == TObject::OBJ_SUBPAGE && obj->object.widget)
         obj->object.widget->raise();
+}
+
+void MainWindow::onProgressChanged(int percent)
+{
+    DECL_TRACER("MainWindow::onProgressChanged(int percent)");
+
+    if (!mDownloadBar || !mBusy)
+        return;
+
+    mDownloadBar->setProgress(percent);
 }
 
 /**
@@ -1885,6 +1905,13 @@ void MainWindow::_setPhoneState(int state, int id)
     DECL_TRACER("MainWindow::_setPhoneState(int state, int id)");
 
     emit sigSetPhoneState(state, id);
+}
+
+void MainWindow::_onProgressChanged(int percent)
+{
+    DECL_TRACER("MainWindow::_onProgressChanged(int percent)");
+
+    emit sigOnProgressChanged(percent);
 }
 
 void MainWindow::doReleaseButton()
@@ -3141,6 +3168,22 @@ void MainWindow::busyIndicator(const string& msg, QWidget* parent)
     mBusyDialog->doResize();
 #endif
     mBusyDialog->show();
+}
+
+void MainWindow::downloadBar(const string &msg, QWidget *parent)
+{
+    DECL_TRACER("void MainWindow::downloadBar(const string &msg, QWidget *parent)");
+
+    if (mBusy)
+        return;
+
+    mBusy = true;
+    mDownloadBar = new TqDownload(msg, parent);
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+    mDownloadBar->setScaleFactor(gScale);
+    mDownloadBar->doResize();
+#endif
+    mDownloadBar->show();
 }
 
 void MainWindow::runEvents()

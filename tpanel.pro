@@ -46,6 +46,7 @@ HEADERS = \
    $$PWD/tqkeypad.h \
    $$PWD/tqtphone.h \
    $$PWD/tqtbusy.h \
+   $$PWD/tqdownload.h \
    $$PWD/texcept.h \
    $$PWD/tsipclient.h \
    $$PWD/timgcache.h \
@@ -96,6 +97,7 @@ SOURCES = \
    $$PWD/tqkeypad.cpp \
    $$PWD/tqtphone.cpp \
    $$PWD/tqtbusy.cpp \
+   $$PWD/tqdownload.cpp \
    $$PWD/tsipclient.cpp \
    $$PWD/texcept.cpp \
    $$PWD/timgcache.cpp \
@@ -224,7 +226,8 @@ FORMS += \
     keypad.ui \
     tqtsettings.ui \
     tqtphone.ui \
-    busy.ui
+    busy.ui \
+    download.ui
 
 LIBS += -lcrypto_1_1 -lssl_1_1 -lEGL -landroid -lmediandk
 

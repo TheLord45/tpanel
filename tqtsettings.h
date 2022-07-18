@@ -22,6 +22,10 @@
 #include <QDialog>
 #include <QAudio>
 
+#include <vector>
+
+#include "ttpinit.h"
+
 namespace Ui
 {
 	class TQtSettings;
@@ -41,6 +45,8 @@ class TQtSettings : public QDialog
         void doResize();
         uint getLogLevel() { return mLogLevel; }
         bool downloadForce() { return mDownloadForce; }
+        std::string getSelectedFtpFile();
+        size_t getSelectedFtpFileSize();
 
     private slots:
         // Logging
@@ -113,6 +119,8 @@ class TQtSettings : public QDialog
         bool mInitRun{false};
         bool mDownloadForce{false};
         double mRatioFont{1.0};
+        int mIndex{0};
+        std::vector<TTPInit::FILELIST_t> mFileList;
 };
 
 #endif
