@@ -41,6 +41,9 @@ class QMoveEvent;
 class QEvent;
 class QSound;
 class QMediaPlayer;
+#ifdef QT6_LINUX
+class QAudioOutput;
+#endif
 class TQtSettings;
 class TQKeyboard;
 class TQKeypad;
@@ -234,6 +237,9 @@ class MainWindow : public QMainWindow, TQManageQueue
         int mLastPressY{-1};                // Remember the last mouse press Y coordinate
         Qt::ScreenOrientations mOrientation{Qt::PrimaryOrientation};
         QMediaPlayer *mMediaPlayer{nullptr};// Class to play sound files.
+#ifdef QT6_LINUX
+        QAudioOutput *mAudioOutput{nullptr};
+#endif
         std::chrono::steady_clock::time_point mTouchStart;           // Time in micro seconds of the start of a touch event
         int mTouchX{0};                        // The X coordinate of the mouse pointer
         int mTouchY{0};                        // The Y coordinate of the mouse pointer

@@ -21,8 +21,10 @@
 #include <QImage>
 #include <QWidget>
 #include <QPropertyAnimation>
+#ifdef QT5_LINUX
 #include <QtMultimedia/QMediaPlayer>
 #include <QtMultimediaWidgets/QVideoWidget>
+#endif
 #include "tobject.h"
 #include "terror.h"
 

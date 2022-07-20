@@ -20,7 +20,9 @@
 #define __TQTSETTINGS_H__
 
 #include <QDialog>
+#ifdef QT5_LINUX
 #include <QAudio>
+#endif
 
 #include <vector>
 

@@ -3,13 +3,13 @@ project(tpanel VERSION 1.3.1)
 
 find_package(PkgConfig)
 
-find_package(Qt5Core)
-find_package(Qt5Gui)
-find_package(Qt5Widgets)
-find_package(Qt5Multimedia)
-find_package(Qt5MultimediaWidgets)
-find_package(Qt5Qml)
-find_package(Qt5QuickWidgets)
+find_package(Qt6Core)
+find_package(Qt6Gui)
+find_package(Qt6Widgets)
+find_package(Qt6Multimedia)
+find_package(Qt6MultimediaWidgets)
+find_package(Qt6Qml)
+find_package(Qt6QuickWidgets)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -56,10 +56,10 @@ if(CMAKE_VERSION VERSION_LESS "3.7.0")
     set(CMAKE_INCLUDE_CURRENT_DIR ON)
 endif()
 
-find_package(Qt5 COMPONENTS Widgets REQUIRED)
-find_package(Qt5 COMPONENTS Multimedia REQUIRED)
-find_package(Qt5 COMPONENTS MultimediaWidgets REQUIRED)
-find_package(Qt5 COMPONENTS Qml QuickWidgets REQUIRED)
+find_package(Qt6 COMPONENTS Widgets REQUIRED)
+find_package(Qt6 COMPONENTS Multimedia REQUIRED)
+find_package(Qt6 COMPONENTS MultimediaWidgets REQUIRED)
+find_package(Qt6 COMPONENTS Qml QuickWidgets REQUIRED)
 
 if (APPLE)
 	set(OSX_INCLUDE -I/opt/local/include -I/usr/local/include)
@@ -115,14 +115,16 @@ set(SOURCES tmain.cpp
 			base64.cpp
 			texpat++.cpp
 			tqtbusy.cpp
+			tqdownload.cpp
 			tpanel.qrc)
 
 add_executable(tpanel ${SOURCES})
 
 add_definitions(-D_REENTRANT)
 add_definitions(-D_GNU_SOURCE)
-add_definitions(-DQT5_LINUX)
-add_definitions(${Qt5Widgets_DEFINITIONS} ${QtQml_DEFINITIONS} ${${Qt5Quick_DEFINITIONS}})
+add_definitions(-DQT6_LINUX)
+add_definitions(${Qt6Widgets_DEFINITIONS} ${QtQml_DEFINITIONS} ${${Qt6Quick_DEFINITIONS}})
+add_compile_definitions(QT_DISABLE_DEPRECATED_BEFORE=0x050F00)
 include_directories(/usr/local/include/skia)
 
 if (DEBUG)
@@ -137,6 +139,6 @@ if(CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
 	target_link_libraries(tpanel stdc++fs)
 endif()
 
-target_link_libraries(tpanel m pthread ssl crypto ftp ${LIBS} ${LIBSKIA_LIBRARY} Qt5::Widgets Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Qml Qt5::QuickWidgets)
+target_link_libraries(tpanel m pthread ssl crypto ftp ${LIBS} ${LIBSKIA_LIBRARY} Qt6::Widgets Qt6::Multimedia Qt6::MultimediaWidgets Qt6::Qml Qt6::QuickWidgets)
 
 install(TARGETS tpanel RUNTIME DESTINATION bin)

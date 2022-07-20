@@ -18,7 +18,9 @@
 #include <QFileDialog>
 #include <QComboBox>
 #include <QMessageBox>
+#ifdef QT5_LINUX
 #include <QAudioOutput>
+#endif
 #include <QScreen>
 #include <QGuiApplication>
 #include <QFont>
@@ -464,8 +466,8 @@ void TQtSettings::doResize()
 
     for (iter = childs.begin(); iter != childs.end(); ++iter)
     {
-        QString name = iter.i->t()->objectName();
-        QObject *obj = iter.i->t();
+        QObject *obj = *iter;
+        QString name = obj->objectName();
 
         if (name.startsWith("tabWidget"))
         {
@@ -480,8 +482,8 @@ void TQtSettings::doResize()
 
             for (iterTab = childsTab.begin(); iterTab != childsTab.end(); ++iterTab)
             {
-                QString namet = iterTab.i->t()->objectName();
-                QObject *objt = iterTab.i->t();
+                QObject *objt = *iterTab;
+                QString namet = objt->objectName();
 
                 if (namet.startsWith("qt_tabwidget_stackedwidget"))
                 {
@@ -490,13 +492,14 @@ void TQtSettings::doResize()
 
                     for (iterStack = childsStack.begin(); iterStack != childsStack.end(); ++iterStack)
                     {
-                        QObjectList tabStack = iterStack.i->t()->children();
+                        QObject *objStack = *iterStack;
+                        QObjectList tabStack = objStack->children();
                         QList<QObject *>::Iterator tabIter;
 
                         for (tabIter = tabStack.begin(); tabIter != tabStack.end(); ++tabIter)
                         {
-                            QString n = tabIter.i->t()->objectName();
-                            QObject *on = tabIter.i->t();
+                            QObject *on = *tabIter;
+                            QString n = on->objectName();
 
                             if (n.startsWith("kiconbutton") || n.startsWith("toolButton"))
                                 scaleObject(dynamic_cast<QToolButton *>(on));

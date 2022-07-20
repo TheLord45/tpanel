@@ -17,7 +17,12 @@
  */
 #include <QPushButton>
 #include <QLabel>
-#include <QSound>
+#ifdef QT5_LINUX
+#   include <QSound>
+#else
+#include <QMediaPlayer>
+#include <QAudioOutput>
+#endif
 
 #include "tqkeypad.h"
 #include "ui_keypad.h"
@@ -161,7 +166,17 @@ void TQKeypad::setKey(Ui::KEYSP_t key)
     {
         std::string snd = getTouchFeedbackSound();
         MSG_DEBUG("Playing sound: " << snd);
+#ifdef QT6_LINUX
+        QMediaPlayer *player = new QMediaPlayer;
+        QAudioOutput *audioOutput = new QAudioOutput;
+        player->setAudioOutput(audioOutput);
+        player->setSource(QUrl::fromLocalFile(snd.c_str()));
+        player->play();
+        delete audioOutput;
+        delete player;
+#else
         QSound::play(snd.c_str());
+#endif
     }
 
     if (gPageManager && gPageManager->getPassThrough() && !mText.empty() &&

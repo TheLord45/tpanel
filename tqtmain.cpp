@@ -1,3 +1,4 @@
+
 /*
  * Copyright (C) 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>
  *
@@ -41,13 +42,19 @@
 #include <QFontDatabase>
 #include <QtMultimediaWidgets/QVideoWidget>
 #include <QtMultimedia/QMediaPlayer>
-#include <QtMultimedia/QMediaPlaylist>
+#ifdef QT5_LINUX
+#   include <QtMultimedia/QMediaPlaylist>
+#else
+#   include <QAudioOutput>
+#endif
 #include <QLayout>
 #include <QSizePolicy>
 #include <QUrl>
 #include <QThread>
-#include <QSound>
-#include <QtSensors/QOrientationSensor>
+#ifdef QT5_LINUX
+#   include <QSound>
+#   include <QtSensors/QOrientationSensor>
+#endif
 #ifdef __ANDROID__
 #include <QAndroidJniObject>
 #endif
@@ -400,9 +407,11 @@ MainWindow::MainWindow()
     createActions();
 
 #ifndef QT_NO_SESSIONMANAGER
+#if defined(QT5_LINUX) && !defined(QT6_LINUX)
     QGuiApplication::setFallbackSessionManagementEnabled(false);
     connect(qApp, &QGuiApplication::commitDataRequest,
             this, &MainWindow::writeSettings);
+#endif
 #endif
     // Some types used to transport data from the layer below.
     qRegisterMetaType<size_t>("size_t");
@@ -494,7 +503,12 @@ MainWindow::~MainWindow()
     prg_stopped = true;
 
     if (mMediaPlayer)
+    {
+#ifdef QT6_LINUX
+        delete mAudioOutput;
+#endif
         delete mMediaPlayer;
+    }
 
     if (gAmxNet && !gAmxNet->isStopped())
         gAmxNet->stop();
@@ -1981,11 +1995,15 @@ int MainWindow::calcVolume(int value)
     DECL_TRACER("TQtSettings::calcVolume(int value)");
 
     // volumeSliderValue is in the range [0..100]
+#ifdef QT5_LINUX
     qreal linearVolume = QAudio::convertVolume(value / qreal(100.0),
                                                QAudio::LogarithmicVolumeScale,
                                                QAudio::LinearVolumeScale);
 
     return qRound(linearVolume * 100);
+#else
+    return value;
+#endif
 }
 
 /******************* Draw elements *************************/
@@ -2542,7 +2560,9 @@ void MainWindow::playVideo(ulong handle, ulong parent, int left, int top, int wi
     else
         MSG_DEBUG("Object " << TObject::handleToString(handle) << " of type " << gObject->objectToString(obj->type) << " found!");
 
+#if defined(QT5_LINUX) && !defined(QT6_LINUX)
     QMediaPlaylist *playlist = new QMediaPlaylist;
+#endif
     QUrl qurl(url.c_str());
 
     if (!user.empty())
@@ -2551,9 +2571,15 @@ void MainWindow::playVideo(ulong handle, ulong parent, int left, int top, int wi
     if (!pw.empty())
         qurl.setPassword(pw.c_str());
 
+#if defined(QT5_LINUX) && !defined(QT6_LINUX)
     playlist->addMedia(qurl);
+#endif
     obj->player = new QMediaPlayer;
+#if defined(QT5_LINUX) && !defined(QT6_LINUX)
     obj->player->setPlaylist(playlist);
+#else
+    obj->player->setSource(qurl);
+#endif
     obj->player->setVideoOutput(obj->object.vwidget);
 
     obj->object.vwidget->show();
@@ -2843,10 +2869,20 @@ void MainWindow::playSound(const string& file)
         return;
 
     if (!mMediaPlayer)
+    {
         mMediaPlayer = new QMediaPlayer;
+#ifdef QT6_LINUX
+        mAudioOutput = new QAudioOutput;
+#endif
+    }
 
+#ifdef QT5_LINUX
     mMediaPlayer->setMedia(QUrl::fromLocalFile(file.c_str()));
     mMediaPlayer->setVolume(calcVolume(TConfig::getSystemVolume()));
+#else
+    mMediaPlayer->setSource(QUrl::fromLocalFile(file.c_str()));
+    mAudioOutput->setVolume(TConfig::getSystemVolume());
+#endif
     mMediaPlayer->play();
 }
 
@@ -2862,8 +2898,13 @@ void MainWindow::muteSound(bool state)
 {
     DECL_TRACER("MainWindow::muteSound(bool state)");
 
+#ifdef QT5_LINUX
     if (mMediaPlayer)
         mMediaPlayer->setMuted(state);
+#else
+    if (mAudioOutput)
+        mAudioOutput->setMuted(state);
+#endif
 }
 
 void MainWindow::playShowList()

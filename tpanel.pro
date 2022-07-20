@@ -218,6 +218,8 @@ equals(ANDROID_TARGET_ARCH,x86_64) {
     $$EXT_LIB_PATH/pjsip/lib/libilbccodec-x86_64-pc-linux-android.a
 }
 
+DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x050F00
+
 RESOURCES += \
     tpanel.qrc
 
