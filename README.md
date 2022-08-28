@@ -24,13 +24,13 @@ First download the source into a directory. Then enter the directory and type th
 To be able to compile the source you need the following credentials installed. Make sure you've installed the developper files of them.
 - Skia
   - Download and compile the source from [Skia](https://skia.org)
-- Qt 5.15
+- Qt 5.15 or Qt 6.3.x (only for desktop!)
 - pjsip
   - Download and compile the source from [pjsip](https://www.pjsip.org)
 - Expat
 - Freetype
 
-Apart from the fact that Skia is not part of your Linux distribution, the other dependencies are (for most distributions).
+Apart from the fact that Skia and maybe pjsip is not part of your Linux distribution, the other dependencies are (for most distributions). But for Android you must cross compile them. Look at the home pages of this projects to find out how.
 
 If everything compiled successfull and installed, you should create a configuration file. Look at the [reference guide](https://github.com/TheLord45/tpanel/tree/main/documentation) of how to do this.
 
@@ -42,12 +42,12 @@ For Android we need the [Android SDK](https://developer.android.com/). In case y
 - openssl (is part of NDK)
 - [pjsip](https://www.pjsip.org)
 
-You can download a ready package with all the necessary libraries and header files from my [server](https://www.theosys.at/download/android_dist.tar.bz2) (2.5Gb!). After you've downloaded this hugh file, unpack it into any directory. The file details are:
+You can download a ready package with all the necessary libraries and header files from my [server](https://www.theosys.at/download/android_dist.tar.bz2) (~ 1Gb!). After you've downloaded this hugh file, unpack it into any directory. The file details are:
 
 - [`android_dist.tar.bz2`](https://www.theosys.at/download/android_dist.tar.bz2)
-- SHA256: `c54634935c48cccd9e16e56827bdb24df5ffe9fdf572f1a7961d1230cc25c090`
+- SHA256: `eb7f474aec318bec4af6052ac23232296fa9a9c43f0bf2640f771781d6afb1fc`
 
-I developped **TPanel** with [QTCreator](https://www.qt.io/product/development-tools). Therefor I would recoment to use this tool to compile **TPanel**. All the following descriptions are for this tool.
+I developped **TPanel** with [QTCreator](https://www.qt.io/product/development-tools). Therefor I would recoment to use this tool to compile **TPanel**. All the following descriptions are for this tool. The easiest way to install it is by using the [Qt maintenance tool](https://www.qt.io/download).
 
 Start `QTCreator` and load the project file `tpanel.pro`. You must set some things to have the correct paths. Go to the build settings of the project. Define the path where you like the binary for Android, the APK-file, to be. Expand the **Build steps** and enter into the line **Additional arguments** the following definitions:
 
@@ -72,7 +72,7 @@ For **Build environment** check **Clear system environment**. Then click on **De
 
 Your Java distribution may be in a different location. Set the variable `JAVA_HOME` to the location on your system. Don't forget to set this path also for the variable `PATH`.
 
-It is possible that you want to use another ndk version then *23.1.7779620*. At the time of writing this documentation, this was the latest one available. You can use of course a newer one.
+It is possible that you want to use another ndk version then *23.1.7779620*. At the time of writing this documentation, this was the latest one available supported by Qt 5.15. If you want to use a newer version make sure your Qt version supports it.
 
 I wrote the Java part for Android to work with Android 10. I use some API function available with Android 10 and above for getting the battery state and the network state. This is the reason why I set `ANDROID_NDK_PLATTFORM` to `android-29`. It is up to you to use a newer API.
 
