@@ -253,15 +253,15 @@ SkBitmap TDrawImage::drawImageButton(SkBitmap& imgRed, SkBitmap& imgMask, int wi
             // Skia has a bug and has changed the red and the blue color
             // channel. Therefor we must change this 2 color channels for
             // Linux based OSs here. On Android this is not necessary.
-#ifdef __ANDROID__
+//#ifdef __ANDROID__
             *wpix = pixel;
-#else   // We've to invert the pixels here to have the correct colors
-            uchar red   = SkColorGetR(pixel);   // This is blue in reality
-            uchar green = SkColorGetG(pixel);
-            uchar blue  = SkColorGetB(pixel);   // This is red in reality
-            uchar al    = SkColorGetA(pixel);
-            *wpix = SkColorSetARGB(al, blue, green, red);
-#endif
+//#else   // We've to invert the pixels here to have the correct colors
+//            uchar red   = SkColorGetR(pixel);   // This is blue in reality
+//            uchar green = SkColorGetG(pixel);
+//            uchar blue  = SkColorGetB(pixel);   // This is red in reality
+//            uchar al    = SkColorGetA(pixel);
+//            *wpix = SkColorSetARGB(al, blue, green, red);
+//#endif
         }
     }
 
@@ -283,15 +283,15 @@ SkColor TDrawImage::baseColor(SkColor basePix, SkColor maskPix, SkColor col1, Sk
 
     if (red && green)
     {
-#ifdef __ANDROID__
-        uint newB = (SkColorGetR(col1) + SkColorGetR(col2) / 2) & 0x0ff;
-        uint newG = (SkColorGetG(col1) + SkColorGetG(col2) / 2) & 0x0ff;
-        uint newR = (SkColorGetB(col1) + SkColorGetB(col2) / 2) & 0x0ff;
-#else
+//#ifdef __ANDROID__
+//        uint newB = (SkColorGetR(col1) + SkColorGetR(col2) / 2) & 0x0ff;
+//        uint newG = (SkColorGetG(col1) + SkColorGetG(col2) / 2) & 0x0ff;
+//        uint newR = (SkColorGetB(col1) + SkColorGetB(col2) / 2) & 0x0ff;
+//#else
         uint newR = (SkColorGetR(col1) + SkColorGetR(col2) / 2) & 0x0ff;
         uint newG = (SkColorGetG(col1) + SkColorGetG(col2) / 2) & 0x0ff;
         uint newB = (SkColorGetB(col1) + SkColorGetB(col2) / 2) & 0x0ff;
-#endif
+//#endif
         uint newA = (SkColorGetA(col1) + SkColorGetA(col2) / 2) & 0x0ff;
 
         return SkColorSetARGB(newA, newR, newG, newB);

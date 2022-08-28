@@ -46,6 +46,7 @@
 #   include <QtMultimedia/QMediaPlaylist>
 #else
 #   include <QAudioOutput>
+#   include <QOrientationReading>
 #endif
 #include <QLayout>
 #include <QSizePolicy>
@@ -55,8 +56,8 @@
 #   include <QSound>
 #   include <QtSensors/QOrientationSensor>
 #endif
-#ifdef __ANDROID__
-#include <QAndroidJniObject>
+#if defined(Q_OS_ANDROID) && defined(QT5_LINUX)
+#include <QtAndroidExtras/QAndroidJniObject>
 #endif
 #include <functional>
 #include <mutex>
@@ -169,8 +170,6 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
             default:
                 mask = Qt::PortraitOrientation;
         }
-
-        MSG_PROTOCOL("Detected orientation: " << mask);
     }
 
     if (!screen)
@@ -178,7 +177,7 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
         MSG_ERROR("Couldn't determine the primary screen!")
         return 1;
     }
-
+#ifdef QT5_LINUX
     if (pmanager->getSettings()->isPortrait())  // portrait?
     {
         MSG_INFO("Orientation set to portrait mode.");
@@ -197,7 +196,7 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
         else
             screen->setOrientationUpdateMask(Qt::LandscapeOrientation);
     }
-
+#endif
     double scale = 1.0;
     // Calculate the scale factor
     if (TConfig::getScale())
@@ -464,7 +463,7 @@ MainWindow::MainWindow()
     }
 
     setUnifiedTitleAndToolBarOnMac(true);
-#ifdef __ANDROID__
+#ifdef Q_OS_ANDROID
     // At least initialize the phone call listener
     if (gPageManager)
         gPageManager->initPhoneState();
@@ -504,7 +503,7 @@ MainWindow::~MainWindow()
 
     if (mMediaPlayer)
     {
-#ifdef QT6_LINUX
+#ifdef QT6_ONLY
         delete mAudioOutput;
 #endif
         delete mMediaPlayer;
@@ -528,7 +527,7 @@ MainWindow::~MainWindow()
     isRunning = false;
 }
 
-#ifdef __ANDROID__
+#ifdef Q_OS_ANDROID
 /**
  * @brief Small thread to invoke the initialization on an Android device.
  *
@@ -1508,7 +1507,11 @@ void MainWindow::appStateChanged(Qt::ApplicationState state)
             MSG_INFO("Switched to mode SUSPEND");
             mHasFocus = false;
 #ifdef Q_OS_ANDROID
+#ifdef QT5_LINUX
             QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
+#else
+            QJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
+#endif
 #endif
         break;
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)      // On a normal desktop we can ignore this signals
@@ -1516,13 +1519,21 @@ void MainWindow::appStateChanged(Qt::ApplicationState state)
             MSG_INFO("Switched to mode INACTIVE");
             mHasFocus = false;
             mWasInactive = true;
+#ifdef QT5_LINUX
             QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
+#else
+            QJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
+#endif
         break;
 
         case Qt::ApplicationHidden:
             MSG_INFO("Switched to mode HIDDEN");
             mHasFocus = false;
+#ifdef QT5_LINUX
             QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
+#else
+            QJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
+#endif
         break;
 #endif
         case Qt::ApplicationActive:
@@ -1548,7 +1559,11 @@ void MainWindow::appStateChanged(Qt::ApplicationState state)
                 mWasInactive = false;
             }
 #ifdef Q_OS_ANDROID
+#ifdef QT5_LINUX
             QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "resumeOrientationListener", "()V");
+#else
+            QJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "resumeOrientationListener", "()V");
+#endif
 #endif
         break;
 #if defined(Q_OS_LINUX) || defined(Q_OS_UNIX)
@@ -1653,7 +1668,7 @@ void MainWindow::_setPage(ulong handle, int width, int height)
     }
 
     emit sigSetPage(handle, width, height);
-#ifndef __ANDROID__
+#ifndef Q_OS_ANDROID
     std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT));
 #endif
 }
@@ -1672,7 +1687,7 @@ void MainWindow::_setSubPage(ulong handle, int left, int top, int width, int hei
     }
 
     emit sigSetSubPage(handle, left, top, width, height, animate);
-#ifndef __ANDROID__
+#ifndef Q_OS_ANDROID
     std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT));
 #endif
 }
@@ -1696,7 +1711,7 @@ void MainWindow::_setBackground(ulong handle, unsigned char *image, size_t size,
         buf.insert(0, (const char *)image, size);
 
     emit sigSetBackground(handle, buf, rowBytes, width, height, color);
-#ifndef __ANDROID__
+#ifndef Q_OS_ANDROID
     std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT));
 #endif
 }
@@ -1715,7 +1730,7 @@ void MainWindow::_dropPage(ulong handle)
 
     emit sigDropPage(handle);
 
-#ifndef __ANDROID__
+#ifndef Q_OS_ANDROID
     std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT));
 #endif
 }
@@ -1734,7 +1749,7 @@ void MainWindow::_dropSubPage(ulong handle)
 
     emit sigDropSubPage(handle);
 
-#ifndef __ANDROID__
+#ifndef Q_OS_ANDROID
     std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT));
 #endif
 }
@@ -1766,7 +1781,7 @@ void MainWindow::_playVideo(ulong handle, ulong parent, int left, int top, int w
     }
 
     emit sigPlayVideo(handle, parent, left, top, width, height, url, user, pw);
-#ifndef __ANDROID__
+#ifndef Q_OS_ANDROID
     std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT));
 #endif
 }
@@ -1793,7 +1808,7 @@ void MainWindow::_inputText(Button::TButton* button, Button::BITMAP_t& bm)
     }
 
     emit sigInputText(button, buf, bm.width, bm.height, bm.rowBytes);
-#ifndef __ANDROID__
+#ifndef Q_OS_ANDROID
     std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT));
 #endif
 }
@@ -1857,14 +1872,16 @@ void MainWindow::_muteSound(bool state)
 
 void MainWindow::_setOrientation(J_ORIENTATION ori)
 {
-#ifdef __ANDROID__
+#ifdef Q_OS_ANDROID
     DECL_TRACER("MainWindow::_setOriantation(J_ORIENTATION ori)");
 
     if (ori == O_FACE_UP || ori == O_FACE_DOWN)
         return;
-
+#ifdef QT5_LINUX
     QAndroidJniObject activity = QAndroidJniObject::callStaticObjectMethod("org/qtproject/qt5/android/QtNative", "activity", "()Landroid/app/Activity;");
-
+#else
+    QJniObject activity = QJniObject::callStaticObjectMethod("org/qtproject/qt/android/QtNative", "activity", "()Landroid/app/Activity;");
+#endif
     if ( activity.isValid() )
     {
         activity.callMethod<void>

@@ -20,6 +20,8 @@
 #include <QMessageBox>
 #ifdef QT5_LINUX
 #include <QAudioOutput>
+#else
+#include <QtCore/private/qandroidextras_p.h>
 #endif
 #include <QScreen>
 #include <QGuiApplication>
@@ -36,10 +38,12 @@
 #include "ui_tqtsettings.h"
 
 #ifdef __ANDROID__
-#include <QtAndroidExtras/QAndroidJniObject>
-#include <QtAndroid>
-#include <QtQml/QQmlFile>
-#include <android/log.h>
+#   ifdef QT5_LINUX
+#       include <QtAndroidExtras/QAndroidJniObject>
+#       include <QtAndroidExtras/QtAndroid>
+#   endif
+#   include <QtQml/QQmlFile>
+#   include <android/log.h>
 #endif
 
 #include "tconfig.h"
@@ -342,11 +346,12 @@ void TQtSettings::on_kiconbutton_logFile_clicked()
     else
         return;
 
-#ifdef __ANDROID__
+#ifdef Q_OS_ANDROID
     QString fileName = fname;
 
     if (fileName.contains("content://"))
     {
+#ifdef QT5_LINUX
         QAndroidJniObject uri = QAndroidJniObject::callStaticObjectMethod(
               "android/net/Uri", "parse", "(Ljava/lang/String;)Landroid/net/Uri;",
               QAndroidJniObject::fromString(fileName).object<jstring>());
@@ -356,7 +361,17 @@ void TQtSettings::on_kiconbutton_logFile_clicked()
                   "org/qtproject/theosys/UriToPath", "getFileName",
                   "(Landroid/net/Uri;Landroid/content/Context;)Ljava/lang/String;",
                   uri.object(), QtAndroid::androidContext().object()).toString();
+#else
+        QJniObject uri = QJniObject::callStaticObjectMethod(
+              "android/net/Uri", "parse", "(Ljava/lang/String;)Landroid/net/Uri;",
+              QJniObject::fromString(fileName).object<jstring>());
 
+        fileName =
+              QJniObject::callStaticObjectMethod(
+                  "org/qtproject/theosys/UriToPath", "getFileName",
+                  "(Landroid/net/Uri;Landroid/content/Context;)Ljava/lang/String;",
+                  uri.object(), QNativeInterface::QAndroidApplication::context()).toString();
+#endif
         if (fileName.length() > 0)
             fname = fileName;
     }

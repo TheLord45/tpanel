@@ -20,13 +20,15 @@
 #include <thread>
 #include <mutex>
 #ifdef __ANDROID__
-#include <QtAndroidExtras/QAndroidJniObject>
-#include <QtAndroid>
-#include <android/log.h>
+#   ifdef QT5_LINUX
+#       include <QtAndroidExtras/QAndroidJniObject>
+#       include <QtAndroidExtras/QtAndroid>
+#   endif
+#   include <android/log.h>
 #endif
 #include <unistd.h>
 #ifndef __ANDROID__
-#include <fstab.h>
+#   include <fstab.h>
 #endif
 
 #include "tpagemanager.h"
@@ -1807,7 +1809,7 @@ bool TPageManager::overlap(int x1, int y1, int w1, int h1, int x2, int y2, int w
         return false;
     }
 
-    return std::max(l1.x, l2.x) < std::min(r1.x, r2.x) &
+    return std::max(l1.x, l2.x) < std::min(r1.x, r2.x) &&
            std::max(l1.y, l2.y) < std::min(r1.y, r2.y);
 }
 
@@ -2598,46 +2600,65 @@ vector<Button::TButton *> TPageManager::collectButtons(vector<MAP_T>& map)
 /****************************************************************************
  * Calls from a Java activity. This is only available for Android OS.
  ****************************************************************************/
-#ifdef __ANDROID__
+#ifdef Q_OS_ANDROID
 void TPageManager::initNetworkState()
 {
     DECL_TRACER("TPageManager::initNetworkState()");
-
+#ifdef QT5_LINUX
     QAndroidJniObject activity = QtAndroid::androidActivity();
     QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/NetworkStatus", "Init", "(Landroid/app/Activity;)V", activity.object());
     activity.callStaticMethod<void>("org/qtproject/theosys/NetworkStatus", "InstallNetworkListener", "()V");
+#else
+    QJniObject activity = QNativeInterface::QAndroidApplication::context();
+    QJniObject::callStaticMethod<void>("org/qtproject/theosys/NetworkStatus", "Init", "(Landroid/app/Activity;)V", activity.object());
+    activity.callStaticMethod<void>("org/qtproject/theosys/NetworkStatus", "InstallNetworkListener", "()V");
+#endif
 }
 
 void TPageManager::stopNetworkState()
 {
     DECL_TRACER("TPageManager::stopNetworkState()");
-
+#ifdef QT5_LINUX
     QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/NetworkStatus", "destroyNetworkListener", "()V");
+#else
+    QJniObject::callStaticMethod<void>("org/qtproject/theosys/NetworkStatus", "destroyNetworkListener", "()V");
+#endif
 }
 
 void TPageManager::initBatteryState()
 {
     DECL_TRACER("TPageManager::initBatteryState()");
-
+#ifdef QT5_LINUX
     QAndroidJniObject activity = QtAndroid::androidActivity();
     QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/BatteryState", "Init", "(Landroid/app/Activity;)V", activity.object());
+#else
+    QJniObject activity = QNativeInterface::QAndroidApplication::context();
+    QJniObject::callStaticMethod<void>("org/qtproject/theosys/BatteryState", "Init", "(Landroid/app/Activity;)V", activity.object());
+#endif
     activity.callStaticMethod<void>("org/qtproject/theosys/BatteryState", "InstallBatteryListener", "()V");
 }
 
 void TPageManager::initPhoneState()
 {
     DECL_TRACER("TPageManager::initPhoneState()");
-
+#ifdef QT5_LINUX
     QAndroidJniObject activity = QtAndroid::androidActivity();
     QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/PhoneCallState", "Init", "(Landroid/app/Activity;)V", activity.object());
+#else
+    QJniObject activity = QNativeInterface::QAndroidApplication::context();
+    QJniObject::callStaticMethod<void>("org/qtproject/theosys/PhoneCallState", "Init", "(Landroid/app/Activity;)V", activity.object());
+#endif
     activity.callStaticMethod<void>("org/qtproject/theosys/PhoneCallState", "InstallPhoneListener", "()V");
 }
 
 void TPageManager::stopBatteryState()
 {
     DECL_TRACER("TPageManager::stopBatteryState()");
-
+#ifdef QT5_LINUX
     QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/BatteryState", "destroyBatteryListener", "()V");
+#else
+    QJniObject::callStaticMethod<void>("org/qtproject/theosys/BatteryState", "destroyBatteryListener", "()V");
+#endif
 }
 
 void TPageManager::informTPanelNetwork(jboolean conn, jint level, jint type)
@@ -2711,8 +2732,13 @@ void TPageManager::initOrientation()
     DECL_TRACER("TPageManager::initOrientation()");
 
     int rotate = getSettings()->getRotate();
+#ifdef QT5_LINUX
     QAndroidJniObject activity = QtAndroid::androidActivity();
     QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "Init", "(Landroid/app/Activity;I)V", activity.object(), rotate);
+#else
+    QJniObject activity = QNativeInterface::QAndroidApplication::context();
+    QJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "Init", "(Landroid/app/Activity;I)V", activity.object(), rotate);
+#endif
     activity.callStaticMethod<void>("org/qtproject/theosys/Orientation", "InstallOrientationListener", "()V");
 }
 #endif  // __ANDROID__
@@ -2762,7 +2788,6 @@ void TPageManager::externalButton(extButtons_t bt, bool checked)
             MSG_WARNING("Missing global class TAmxNet. Can't send a message!");
         }
     }
-
 }
 
 void TPageManager::sendKeyboard(const std::string& text)

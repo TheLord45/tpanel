@@ -106,11 +106,12 @@ void TObject::dropContent(OBJECT_t* obj)
             case OBJ_VIDEO:
                 if (obj->object.vwidget)
                 {
+#ifdef QT5_ONLY
                     delete obj->object.vwidget;
 
                     if (obj->player)
                         delete obj->player;
-
+#endif
                     obj->object.vwidget = nullptr;
                     obj->player = nullptr;
                 }

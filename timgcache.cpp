@@ -133,9 +133,13 @@ bool TImgCache::getBitmap(const string& name, SkBitmap *bm, _IMGCACHE_BMTYPE bmT
 
             if (width && !iter->bitmap.empty())
                 *width = iter->bitmap.info().width();
+            else if (width)
+                *width = 0;
 
             if (height && !iter->bitmap.empty())
                 *height = iter->bitmap.info().height();
+            else if (height)
+                *height = 0;
 
             MSG_DEBUG("Bitmap \"" << iter->name << "\" was found.");
             return true;

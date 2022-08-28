@@ -27,8 +27,14 @@
 #include <unistd.h>
 
 #include <QFile>
-#ifdef __ANDROID__
-#include <QtAndroid>
+#ifdef Q_OS_ANDROID
+#ifdef QT5_LINUX
+#include <QtAndroidExtras/QtAndroid>
+#else
+#include <QtCore>
+#include <QFuture>
+#include <QtCore/private/qandroidextras_p.h>
+#endif
 #endif
 #include <QMap>
 #include <QHash>
@@ -2464,12 +2470,13 @@ void TTPInit::logging(int level, const std::string &msg)
     }
 }
 
-#ifdef __ANDROID__
+#ifdef Q_OS_ANDROID
 bool TTPInit::askPermissions()
 {
     DECL_TRACER("TTPInit::askPermissions()");
 
     QStringList permissions = { "android.permission.READ_EXTERNAL_STORAGE", "android.permission.WRITE_EXTERNAL_STORAGE" };
+#ifdef QT5_LINUX
     QtAndroid::PermissionResultMap perms = QtAndroid::requestPermissionsSync(permissions);
 
     for (auto iter = perms.begin(); iter != perms.end(); ++iter)
@@ -2477,7 +2484,15 @@ bool TTPInit::askPermissions()
         if (iter.value() == QtAndroid::PermissionResult::Denied)
             return false;
     }
+#else
+    for (auto iter = permissions.begin(); iter != permissions.end(); ++iter)
+    {
+        QFuture<QtAndroidPrivate::PermissionResult> result = QtAndroidPrivate::requestPermission(*iter);
 
+        if (result.result() == QtAndroidPrivate::Denied)
+            return false;
+    }
+#endif
     return true;
 }
 #endif

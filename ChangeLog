@@ -3,6 +3,12 @@ ChangeLog
 
 Release: 1.3.3
 ===============================================================================
+2022-08-28 Fixed Qt 5.15.x compiling for Android (Qt 6.3 does not support
+           Android).
+           Fixing cameleon images if size of mask and bitmap differ.
+           Removing preprocessor directives used as a work around for the RGB
+           bug in previous Skia versions.
+
 2022-07-18 Changed source for Qt6.3 library (Qt5 is still supported).
 
 2022-07-14 Added a new progress dialog to show the progress of a file download.

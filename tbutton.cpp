@@ -39,10 +39,10 @@
 #include <include/core/SkImageEncoder.h>
 #include <include/core/SkRRect.h>
 
-#ifdef __ANDROID__
-#include <QtAndroidExtras/QAndroidJniObject>
-#include <QtAndroid>
-#endif
+//#ifdef __ANDROID__
+//#include <QtAndroidExtras/QAndroidJniObject>
+//#include <QtAndroid>
+//#endif
 
 #include "tbutton.h"
 #include "thttpclient.h"
@@ -2826,9 +2826,16 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
     else if ((size_t)inst >= sr.size())
         instance = sr.size() - 1;
 
+    /*
+     * Here we test if we have a cameleon image. If there is a mask (sr[].mi)
+     * and no frame (sr[].bs) then we have a cameleon image. A bitmap is
+     * optional. If there is one it will be used to draw with the mask.
+     * Otherwise the mask may be used as an overlay for a bitmap on another
+     * button below the mask.
+     */
     if (!sr[instance].mi.empty() && sr[instance].bs.empty())       // Chameleon image?
     {
-        MSG_TRACE("Chameleon image consisting of mask " << sr[instance].mi << " and bitmap " << (sr[instance].bm.empty() ? "NONE" : sr[instance].bm) << " ...");
+        MSG_DEBUG("Chameleon image consisting of mask " << sr[instance].mi << " and bitmap " << (sr[instance].bm.empty() ? "NONE" : sr[instance].bm) << " ...");
 
         SkBitmap bmMi;
         SkBitmap bmBm;
@@ -2892,14 +2899,11 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
                 }
             }
 
-            if (imgRed.info().width() == bmBm.info().width() &&
-                imgRed.info().height() == bmBm.info().height())
-            {
+            if (!bmBm.empty())
                 imgMask.installPixels(bmBm.pixmap());
-            }
             else
             {
-                MSG_WARNING("The mask has an invalid size. Will ignore the mask!");
+                MSG_WARNING("No or invalid bitmap! Ignoring bitmap for cameleon image.");
                 imgMask.allocN32Pixels(imgRed.info().width(), imgRed.info().height());
                 imgMask.eraseColor(SK_ColorTRANSPARENT);
                 haveBothImages = false;
@@ -2910,7 +2914,6 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
 
         MSG_DEBUG("Bitmap image size: " << sr[instance].bm_width << " x " << sr[instance].bm_height);
         SkBitmap img = drawImageButton(imgRed, imgMask, sr[instance].mi_width, sr[instance].mi_height, TColor::getSkiaColor(sr[instance].cf), TColor::getSkiaColor(sr[instance].cb));
-//        SkBitmap img = drawImageButton(imgRed, imgMask, imgRed.info().width(), imgRed.info().height(), TColor::getSkiaColor(sr[instance].cf), TColor::getSkiaColor(sr[instance].cb));
 
         if (img.empty())
         {
@@ -6112,16 +6115,7 @@ SkBitmap TButton::drawImageButton(SkBitmap& imgRed, SkBitmap& imgMask, int width
     bool haveBothImages = true;
 
     if (!imgMask.empty())
-    {
         pixmapMask = imgMask.pixmap();
-
-        if (pixmapRed.info().width() != pixmapMask.info().width() ||
-            pixmapRed.info().height() != pixmapMask.info().height())
-        {
-            MSG_WARNING("Image and mask have different sizes!");
-            haveBothImages = false;
-        }
-    }
     else
         haveBothImages = false;
 
@@ -6133,38 +6127,34 @@ SkBitmap TButton::drawImageButton(SkBitmap& imgRed, SkBitmap& imgMask, int width
     {
         for (int iy = 0; iy < height; iy++)
         {
-            SkColor pixelRed = pixmapRed.getColor(ix, iy);
+            SkColor pixelRed;
             SkColor pixelMask;
 
-            if (haveBothImages && !imgMask.empty())
+            if (ix < pixmapRed.info().width() && iy < pixmapRed.info().height())
+                 pixelRed = pixmapRed.getColor(ix, iy);
+            else
+                pixelRed = 0;
+
+            if (haveBothImages && !imgMask.empty() &&
+                    ix < pixmapMask.info().width() && iy < pixmapMask.info().height())
                 pixelMask = pixmapMask.getColor(ix, iy);
             else
                 pixelMask = SkColorSetA(SK_ColorWHITE, 0);
 
             SkColor pixel = baseColor(pixelRed, pixelMask, col1, col2);
             uint32_t alpha = SkColorGetA(pixel);
-            uint32_t *wpix = maskBm.getAddr32(ix, iy);
+            uint32_t *wpix = nullptr;
+
+            if (ix < maskBm.info().width() && iy < maskBm.info().height())
+                wpix = maskBm.getAddr32(ix, iy);
 
             if (!wpix)
-            {
-                MSG_ERROR("No pixel buffer!");
-                break;
-            }
+                continue;
 
             if (alpha == 0)
                 pixel = pixelMask;
-            // Skia has a bug and has changed the red and the blue color
-            // channel. Therefor we must change this 2 color channels for
-            // Linux based OSs here. On Android this is not necessary.
-#ifdef __ANDROID__
+
             *wpix = pixel;
-#else   // We've to invert the pixels here to have the correct colors
-            uchar red   = SkColorGetR(pixel);   // This is blue in reality
-            uchar green = SkColorGetG(pixel);
-            uchar blue  = SkColorGetB(pixel);   // This is red in reality
-            uchar al    = SkColorGetA(pixel);
-            *wpix = SkColorSetARGB(al, blue, green, red);
-#endif
         }
     }
 
@@ -6219,11 +6209,11 @@ SkBitmap TButton::combineImages(SkBitmap& base, SkBitmap& alpha, SkColor col)
             // Skia has a bug and has changed the red and the blue color
             // channel. Therefor we must change this 2 color channels for
             // Linux based OSs here. On Android this is not necessary.
-#ifdef __ANDROID__
+//#ifdef __ANDROID__
             *bpix = SkColorSetARGB(al, red, green, blue);
-#else
-            *bpix = SkColorSetARGB(al, blue, green, red);
-#endif
+//#else
+//            *bpix = SkColorSetARGB(al, blue, green, red);
+//#endif
         }
     }
 

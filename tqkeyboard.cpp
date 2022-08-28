@@ -140,8 +140,8 @@ void TQKeyboard::doResize()
 
     for (iter = childs.begin(); iter != childs.end(); ++iter)
     {
-        QString name = iter.i->t()->objectName();
-        QObject *obj = iter.i->t();
+        QObject *obj = *iter;
+        QString name = obj->objectName();
 
         if (name.startsWith("key_"))
         {

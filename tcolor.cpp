@@ -118,11 +118,11 @@ SkColor TColor::getSkiaColor(const std::string& color)
     DECL_TRACER("TColor::getSkiaColor(const std::string& color)");
 
     COLOR_T col = getAMXColor(color);
-#ifdef __ANDROID__
-    return SkColorSetARGB(col.alpha, col.blue, col.green, col.red); // Workaround for a bug in Skia
-#else
+//#ifdef __ANDROID__
+//    return SkColorSetARGB(col.alpha, col.blue, col.green, col.red); // Workaround for a bug in Skia
+//#else
     return SkColorSetARGB(col.alpha, col.red, col.green, col.blue);
-#endif
+//#endif
 }
 
 ulong TColor::getColor(const std::string& color)

@@ -2,7 +2,7 @@
 # You may attempt to use it for building too, by modifying this file here.
 
 TARGET = tpanel
-QT = core gui widgets multimedia multimediawidgets sensors qml quick quickwidgets androidextras
+QT = core core-private gui widgets multimedia multimediawidgets sensors qml quickwidgets androidextras
 
 # The main application
 HEADERS = \
@@ -218,7 +218,7 @@ equals(ANDROID_TARGET_ARCH,x86_64) {
     $$EXT_LIB_PATH/pjsip/lib/libilbccodec-x86_64-pc-linux-android.a
 }
 
-DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x050F00
+DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x050F00 QT5_LINUX=1
 
 RESOURCES += \
     tpanel.qrc
