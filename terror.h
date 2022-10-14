@@ -155,4 +155,12 @@ class TError : public std::ostream
 
 #define DECL_TRACER(msg)    TTracer _hidden_tracer(msg, __LINE__, (char *)__FILE__);
 
+#define IS_LOG_INFO()       TStreamError::checkFilter(HLOG_INFO)
+#define IS_LOG_WARNING()    TStreamError::checkFilter(HLOG_WARNING)
+#define IS_LOG_ERROR()      TStreamError::checkFilter(HLOG_ERROR)
+#define IS_LOG_TRACE()      TStreamError::checkFilter(HLOG_TRACE)
+#define IS_LOG_DEBUG()      TStreamError::checkFilter(HLOG_DEBUG)
+#define IS_LOG_PROTOCOL()   TStreamError::checkFilter(HLOG_PROTOCOL)
+#define IS_LOG_ALL()        TStreamError::checkFilter(HLOG_ALL)
+
 #endif

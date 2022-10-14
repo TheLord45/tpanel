@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<root>
+	<fontList>
+		<font number="532">
+			<file>amxbold_.ttf</file>
+			<fileSize>13748</fileSize>
+			<faceIndex>0</faceIndex>
+			<name>AMX Bold</name>
+			<subfamilyName>Regular</subfamilyName>
+			<fullName>AMX Bold</fullName>
+			<size>10</size>
+			<usageCount>8</usageCount>
+		</font>
+		<font number="537">
+			<file>webdings.ttf</file>
+			<fileSize>120560</fileSize>
+			<faceIndex>0</faceIndex>
+			<name>Webdings</name>
+			<subfamilyName>Regular</subfamilyName>
+			<fullName>Webdings</fullName>
+			<size>20</size>
+			<usageCount>40</usageCount>
+		</font>
+		<font number="539">
+			<file>ariblk.ttf</file>
+			<fileSize>167592</fileSize>
+			<faceIndex>0</faceIndex>
+			<name>Arial Black</name>
+			<subfamilyName>Regular</subfamilyName>
+			<fullName>Arial Black</fullName>
+			<size>18</size>
+			<usageCount>10</usageCount>
+		</font>
+	</fontList>
+</root>

@@ -87,8 +87,8 @@ ftplib::~ftplib()
 
 void ftplib::sprint_rest(char *buf, off64_t offset)
 {
-#if defined(__APPLE__)
-    sprintf(buf, "REST %lld", offset);
+#if (off64_t >> 32) == 0
+    sprintf(buf, "REST %ld", offset);
 #else
     sprintf(buf, "REST %lld", offset);
 #endif

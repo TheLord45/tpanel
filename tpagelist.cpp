@@ -22,6 +22,23 @@
 #include "tconfig.h"
 #include "terror.h"
 
+#if __cplusplus < 201402L
+#   error "This module requires at least C++14 standard!"
+#else
+#   if __cplusplus < 201703L
+#       include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#       warning "Support for C++14 and experimental filesystem will be removed in a future version!"
+#   else
+#       include <filesystem>
+#       ifdef __ANDROID__
+namespace fs = std::__fs::filesystem;
+#       else
+namespace fs = std::filesystem;
+#       endif
+#   endif
+#endif
+
 using std::string;
 using std::vector;
 using namespace Expat;
@@ -29,8 +46,19 @@ using namespace Expat;
 TPageList::TPageList()
 {
     DECL_TRACER("TPageList::TPageList()");
-    mProject = makeFileName(TConfig::getProjectPath(), "prj.xma");
-    initialize();
+
+    string projectPath = TConfig::getProjectPath();
+    mProject = makeFileName(projectPath, "prj.xma");
+
+    if (fs::exists(mProject))
+        initialize();
+
+    projectPath += "/__system";
+    mSystemProject = makeFileName(projectPath, "prj.xma");
+
+    if (fs::exists(mSystemProject))
+        initialize(true);
+
     // Add the virtual progress page
     PAGELIST_T pl;
     pl.name = "_progress";
@@ -43,26 +71,42 @@ TPageList::~TPageList()
     DECL_TRACER("TPageList::~TPageList()");
 }
 
-void TPageList::initialize()
+void TPageList::initialize(bool system)
 {
-    DECL_TRACER("TPageList::initialize()");
+    DECL_TRACER("TPageList::initialize(bool system)");
 
     TError::clear();
+    string sProject;
 
-    if (mPageList.size() > 0)
-        mPageList.clear();
-
-    if (mSubPageList.size() > 0)
-        mSubPageList.clear();
-
-    if (mProject.empty() || !isValidFile(mProject))
+    if (!system)
     {
-        TError::setErrorMsg("Empty or invalid project file! <" + mProject + ">");
+        if (mPageList.size() > 0)
+            mPageList.clear();
+
+        if (mSubPageList.size() > 0)
+            mSubPageList.clear();
+
+        sProject = mProject;
+    }
+    else
+    {
+        if (mSystemPageList.size() > 0)
+            mSystemPageList.clear();
+
+        if (mSystemSubPageList.size() > 0)
+            mSystemSubPageList.clear();
+
+        sProject = mSystemProject;
+    }
+
+    if (sProject.empty() || !isValidFile(sProject))
+    {
+        TError::setErrorMsg("Empty or invalid project file! <" + sProject + ">");
         MSG_ERROR(TError::getErrorMsg());
         return;
     }
 
-    TExpat xml(mProject);
+    TExpat xml(sProject);
     xml.setEncoding(ENC_CP1250);
 
     if (!xml.parse())
@@ -85,7 +129,7 @@ void TPageList::initialize()
 
         if (attribute.empty())
         {
-            TError::setErrorMsg("Missing element \"pageList\" in file " + mProject);
+            TError::setErrorMsg("Missing element \"pageList\" in file " + sProject);
             MSG_ERROR(TError::getErrorMsg());
             return;
         }
@@ -137,13 +181,17 @@ void TPageList::initialize()
 
             if (attribute.compare("page") == 0)
             {
-//                MSG_PROTOCOL("Added page " << pl.pageID << ", " << pl.name << " to page list.");
-                mPageList.push_back(pl);
+                if (!system)
+                    mPageList.push_back(pl);
+                else
+                    mSystemPageList.push_back(pl);
             }
             else if (attribute.compare("subpage") == 0)
             {
-//                MSG_PROTOCOL("Added subpage " << spl.pageID << ", " << spl.name << " to subpage list.");
-                mSubPageList.push_back(spl);
+                if (!system)
+                    mSubPageList.push_back(spl);
+                else
+                    mSystemSubPageList.push_back(spl);
             }
         }
 
@@ -153,19 +201,33 @@ void TPageList::initialize()
     while ((index = xml.getNextElementIndex("pageList", depth)) != TExpat::npos);
 }
 
-PAGELIST_T TPageList::findPage(const std::string& name)
+PAGELIST_T TPageList::findPage(const std::string& name, bool system)
 {
-    DECL_TRACER("TPageList::findPage(const std::string& name)");
+    DECL_TRACER("TPageList::findPage(const std::string& name, bool system)");
 
     vector<PAGELIST_T>::iterator iter;
     PAGELIST_T page;
 
-    for (iter = mPageList.begin(); iter != mPageList.end(); ++iter)
+    if (!system && mPageList.size() > 0)
     {
-        if (iter->name.compare(name) == 0)
+        for (iter = mPageList.begin(); iter != mPageList.end(); ++iter)
         {
-            page = *iter;
-            return page;
+            if (iter->name.compare(name) == 0)
+            {
+                page = *iter;
+                return page;
+            }
+        }
+    }
+    else if (mSystemPageList.size() > 0)
+    {
+        for (iter = mSystemPageList.begin(); iter != mSystemPageList.end(); ++iter)
+        {
+            if (iter->name.compare(name) == 0)
+            {
+                page = *iter;
+                return page;
+            }
         }
     }
 
@@ -181,12 +243,26 @@ PAGELIST_T TPageList::findPage(int pageID)
     vector<PAGELIST_T>::iterator iter;
     PAGELIST_T page;
 
-    for (iter = mPageList.begin(); iter != mPageList.end(); ++iter)
+    if (pageID < 5000)
     {
-        if (iter->pageID == pageID)
+        for (iter = mPageList.begin(); iter != mPageList.end(); ++iter)
         {
-            page = *iter;
-            return page;
+            if (iter->pageID == pageID)
+            {
+                page = *iter;
+                return page;
+            }
+        }
+    }
+    else
+    {
+        for (iter = mSystemPageList.begin(); iter != mSystemPageList.end(); ++iter)
+        {
+            if (iter->pageID == pageID)
+            {
+                page = *iter;
+                return page;
+            }
         }
     }
 
@@ -195,19 +271,33 @@ PAGELIST_T TPageList::findPage(int pageID)
     return page;
 }
 
-SUBPAGELIST_T TPageList::findSubPage(const std::string& name)
+SUBPAGELIST_T TPageList::findSubPage(const std::string& name, bool system)
 {
-    DECL_TRACER("TPageList::findSubPage(const std::string& name)");
+    DECL_TRACER("TPageList::findSubPage(const std::string& name, bool system)");
 
     vector<SUBPAGELIST_T>::iterator iter;
     SUBPAGELIST_T page;
 
-    for (iter = mSubPageList.begin(); iter != mSubPageList.end(); ++iter)
+    if (!system && mSubPageList.size() > 0)
     {
-        if (iter->name.compare(name) == 0)
+        for (iter = mSubPageList.begin(); iter != mSubPageList.end(); ++iter)
         {
-            page = *iter;
-            return page;
+            if (iter->name.compare(name) == 0)
+            {
+                page = *iter;
+                return page;
+            }
+        }
+    }
+    else if (mSystemSubPageList.size() > 0)
+    {
+        for (iter = mSystemSubPageList.begin(); iter != mSystemSubPageList.end(); ++iter)
+        {
+            if (iter->name.compare(name) == 0)
+            {
+                page = *iter;
+                return page;
+            }
         }
     }
 
@@ -223,12 +313,26 @@ SUBPAGELIST_T TPageList::findSubPage(int pageID)
     vector<SUBPAGELIST_T>::iterator iter;
     SUBPAGELIST_T page;
 
-    for (iter = mSubPageList.begin(); iter != mSubPageList.end(); ++iter)
+    if (pageID < 5000)
     {
-        if (iter->pageID == pageID)
+        for (iter = mSubPageList.begin(); iter != mSubPageList.end(); ++iter)
         {
-            page = *iter;
-            return page;
+            if (iter->pageID == pageID)
+            {
+                page = *iter;
+                return page;
+            }
+        }
+    }
+    else
+    {
+        for (iter = mSystemSubPageList.begin(); iter != mSystemSubPageList.end(); ++iter)
+        {
+            if (iter->pageID == pageID)
+            {
+                page = *iter;
+                return page;
+            }
         }
     }
 

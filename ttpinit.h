@@ -48,6 +48,7 @@ class TTPInit
         int progressCallback(off64_t xfer);
         void setFileSize(off64_t fs) { mFileSize = fs; }
         off64_t getFileSize() { return mFileSize; }
+        off64_t getFileSize(const std::string& file);
         void regCallbackProcessEvents(std::function<void ()> pe) { _processEvents = pe; }
         void regCallbackProgressBar(std::function<void (int percent)> pb) { _progressBar = pb; }
 

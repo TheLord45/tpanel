@@ -69,7 +69,15 @@ using std::bind;
 using namespace Button;
 using namespace Expat;
 
-#define MAX_BUFFER      65536
+#define MAX_BUFFER          65536
+
+#define RLOG_INFO           0x00fe
+#define RLOG_WARNING        0x00fd
+#define RLOG_ERROR          0x00fb
+#define RLOG_TRACE          0x00f7
+#define RLOG_DEBUG          0x00ef
+#define RLOG_PROTOCOL       0x00f8
+#define RLOG_ALL            0x00e0
 
 extern TIcons *gIcons;
 extern amx::TAmxNet *gAmxNet;
@@ -132,37 +140,6 @@ SYSBORDER_t sysBorders[] = {
     { 34, (char *)"Bevel Inset -S",      0, (char *)"inset",   4,   0, false },
     { 35, (char *)"Bevel Raised -S",     0, (char *)"outset",  4,   0, false },
     {  0, nullptr, 0, nullptr, 0, 0 }
-};
-
-SYSBUTTONS_t sysButtons[] = {
-    {    8, MULTISTATE_BARGRAPH,  12, 0,  11 },  // Connection status
-    {    9, BARGRAPH,              2, 0, 100 },  // System volume
-    {   17, GENERAL,               2, 0,   0 },  // Button sounds on/off
-    {   73, GENERAL,               2, 0,   0 },  // Enter setup page
-    {   80, GENERAL,               2, 0,   0 },  // Shutdown program
-    {   81, MULTISTATE_BARGRAPH,   6, 1,   6 },  // Network signal stength
-    {  122, TEXT_INPUT,            2, 0,   0 },  // IP Address of server or domain name
-    {  123, TEXT_INPUT,            2, 9,   0 },  // Channel number of panel
-    {  124, TEXT_INPUT,            2, 0,   0 },  // The network port number (1319)
-    {  141, GENERAL,               2, 0,   0 },  // Standard time
-    {  142, GENERAL,               2, 0,   0 },  // Time AM/PM
-    {  143, GENERAL,               2, 0,   0 },  // 24 hour time
-    {  151, GENERAL,               2, 0,   0 },  // Date weekday
-    {  152, GENERAL,               2, 0,   0 },  // Date mm/dd
-    {  153, GENERAL,               2, 0,   0 },  // Date dd/mm
-    {  154, GENERAL,               2, 0,   0 },  // Date mm/dd/yyyy
-    {  155, GENERAL,               2, 0,   0 },  // Date dd/mm/yyyy
-    {  156, GENERAL,               2, 0,   0 },  // Date month dd, yyyy
-    {  157, GENERAL,               2, 0,   0 },  // Date dd month, yyyy
-    {  158, GENERAL,               2, 0,   0 },  // Date yyyy-mm-dd
-    {  171, GENERAL,               2, 0,   0 },  // Sytem volume up
-    {  172, GENERAL,               2, 0,   0 },  // Sytem volume down
-    {  173, GENERAL,               2, 0,   0 },  // Sytem mute toggle
-    {  199, TEXT_INPUT,            2, 0,   0 },  // Technical name of panel
-    {  234, GENERAL,               2, 0,   0 },  // Battery charging/not charging
-    {  242, BARGRAPH,              2, 0, 100 },  // Battery level
-    { 1101, TEXT_INPUT,            2, 0,   0 },  // Path and name of the logfile
-    {    0, NONE,                  0, 0,   0 }   // Terminate
 };
 
 SYSTEF_t sysTefs[] = {
@@ -327,163 +304,179 @@ size_t TButton::initialize(TExpat *xml, size_t index)
             bi = xml->convertElementToInt(content);
             MSG_DEBUG("Processing button index: " << bi);
         }
-        else if (ename.compare("na") == 0)
+        else if (ename.compare("na") == 0)          // Name
             na = content;
-        else if (ename.compare("bd") == 0)
+        else if (ename.compare("bd") == 0)          // Description
             bd = content;
-        else if (ename.compare("lt") == 0)
+        else if (ename.compare("lt") == 0)          // Left
             lt = xml->convertElementToInt(content);
-        else if (ename.compare("tp") == 0)
+        else if (ename.compare("tp") == 0)          // Top
             tp = xml->convertElementToInt(content);
-        else if (ename.compare("wt") == 0)
+        else if (ename.compare("wt") == 0)          // Width
             wt = xml->convertElementToInt(content);
-        else if (ename.compare("ht") == 0)
+        else if (ename.compare("ht") == 0)          // Height
             ht = xml->convertElementToInt(content);
-        else if (ename.compare("zo") == 0)
+        else if (ename.compare("zo") == 0)          // Z-Order
             zo = xml->convertElementToInt(content);
-        else if (ename.compare("hs") == 0)
+        else if (ename.compare("hs") == 0)          // bounding
             hs = content;
-        else if (ename.compare("bs") == 0)
+        else if (ename.compare("bs") == 0)          // border style
             bs = content;
-        else if (ename.compare("fb") == 0)
+        else if (ename.compare("fb") == 0)          // feedback type
             fb = getButtonFeedback(content);
-        else if (ename.compare("ap") == 0)
+        else if (ename.compare("ap") == 0)          // address port
             ap = xml->convertElementToInt(content);
-        else if (ename.compare("ad") == 0)
+        else if (ename.compare("ad") == 0)          // address code
             ad = xml->convertElementToInt(content);
-        else if (ename.compare("ch") == 0)
+        else if (ename.compare("ch") == 0)          // channel code
             ch = xml->convertElementToInt(content);
-        else if (ename.compare("cp") == 0)
+        else if (ename.compare("cp") == 0)          // channel port
             cp = xml->convertElementToInt(content);
-        else if (ename.compare("lp") == 0)
+        else if (ename.compare("lp") == 0)          // level port
             lp = xml->convertElementToInt(content);
-        else if (ename.compare("lv") == 0)
+        else if (ename.compare("lv") == 0)          // level code
             lv = xml->convertElementToInt(content);
-        else if (ename.compare("dr") == 0)
+        else if (ename.compare("dr") == 0)          // level direction
             dr = content;
-        else if (ename.compare("co") == 0)
+        else if (ename.compare("co") == 0)          // command port
             co = xml->convertElementToInt(content);
-        else if (ename.compare("cm") == 0)
+        else if (ename.compare("cm") == 0)          // commands to send on button hit
             cm.push_back(content);
-        else if (ename.compare("va") == 0)
+        else if (ename.compare("va") == 0)          // ?
             va = xml->convertElementToInt(content);
-        else if (ename.compare("rm") == 0)
+        else if (ename.compare("rm") == 0)          // State count
             rm = xml->convertElementToInt(content);
-        else if (ename.compare("nu") == 0)
+        else if (ename.compare("nu") == 0)          // Animate time up
             nu = xml->convertElementToInt(content);
-        else if (ename.compare("nd") == 0)
+        else if (ename.compare("nd") == 0)          // Animate time down
             nd = xml->convertElementToInt(content);
-        else if (ename.compare("ar") == 0)
+        else if (ename.compare("ar") == 0)          // Auto repeat state
             ar = xml->convertElementToInt(content);
-        else if (ename.compare("ru") == 0)
+        else if (ename.compare("ru") == 0)          // Animate time up (bargraph on click)
             ru = xml->convertElementToInt(content);
-        else if (ename.compare("rd") == 0)
+        else if (ename.compare("rd") == 0)          // Animate time down (bargraph on click)
             rd = xml->convertElementToInt(content);
-        else if (ename.compare("lu") == 0)
+        else if (ename.compare("lu") == 0)          // Animate time up (bargraph)
             lu = xml->convertElementToInt(content);
-        else if (ename.compare("ld") == 0)
+        else if (ename.compare("ld") == 0)          // Animate time down (bargraph)
             ld = xml->convertElementToInt(content);
-        else if (ename.compare("rv") == 0)
+        else if (ename.compare("rv") == 0)          // ?
             rv = xml->convertElementToInt(content);
-        else if (ename.compare("rl") == 0)
+        else if (ename.compare("rl") == 0)          // Bargraph range low
             rl = xml->convertElementToInt(content);
-        else if (ename.compare("rh") == 0)
+        else if (ename.compare("rh") == 0)          // Bargraph range high
             rh = xml->convertElementToInt(content);
-        else if (ename.compare("ri") == 0)
+        else if (ename.compare("ri") == 0)          // Bargraph inverted (0 = normal, 1 = inverted)
             ri = xml->convertElementToInt(content);
-        else if (ename.compare("rn") == 0)
+        else if (ename.compare("rn") == 0)          // Bargraph: Range drag increment
             rn = xml->convertElementToInt(content);
-        else if (ename.compare("lf") == 0)
+        else if (ename.compare("lf") == 0)          // Bargraph function
             lf = content;
-        else if (ename.compare("sd") == 0)
+        else if (ename.compare("sd") == 0)          // Name/Type of slider for a bargraph
             sd = content;
-        else if (ename.compare("sc") == 0)
+        else if (ename.compare("sc") == 0)          // Color of slider (for bargraph)
             sc = content;
-        else if (ename.compare("mt") == 0)
+        else if (ename.compare("mt") == 0)          // Length of text area
             mt = xml->convertElementToInt(content);
-        else if (ename.compare("dt") == 0)
+        else if (ename.compare("dt") == 0)          // Textarea multiple/single line
             dt = content;
-        else if (ename.compare("im") == 0)
+        else if (ename.compare("im") == 0)          // Input mask of a text area
             im = content;
-        else if (ename.compare("op") == 0)
+        else if (ename.compare("op") == 0)          // String the button send
             op = content;
-        else if (ename.compare("pc") == 0)
+        else if (ename.compare("pc") == 0)          // Password character for text area (single line)
             pc = content;
-        else if (ename.compare("hd") == 0)
+        else if (ename.compare("ta") == 0)          // Listbox table channel
+            ta = xml->convertElementToInt(content);
+        else if (ename.compare("ti") == 0)          // Listbox table address channel of rows
+            ti = xml->convertElementToInt(content);
+        else if (ename.compare("tr") == 0)          // Listbox number of rows
+            tr = xml->convertElementToInt(content);
+        else if (ename.compare("tc") == 0)          // Listbox number of columns
+            tc = xml->convertElementToInt(content);
+        else if (ename.compare("tj") == 0)          // Listbox row height
+            tj = xml->convertElementToInt(content);
+        else if (ename.compare("tk") == 0)          // Listbox preferred row height
+            tk = xml->convertElementToInt(content);
+        else if (ename.compare("of") == 0)          // Listbox list offset: 0=disabled/1=enabled
+            of = xml->convertElementToInt(content);
+        else if (ename.compare("tg") == 0)          // Listbox managed: 0=no/1=yes
+            tg = xml->convertElementToInt(content);
+        else if (ename.compare("hd") == 0)          // 1 = Hidden, 0 = Normal visible
             hd = xml->convertElementToInt(content);
-        else if (ename.compare("da") == 0)
+        else if (ename.compare("da") == 0)          // 1 = Disabled, 0 = Normal active
             da = xml->convertElementToInt(content);
-        else if (ename.compare("ac") == 0)
+        else if (ename.compare("ac") == 0)          // Direction of text (guess)
         {
-            ac_di = xml->getAttributeInt("di", attrs);
+            ac_di = xml->getAttributeInt("di", attrs);  // 0 = left to right; 1 = right to left
         }
-        else if (ename.compare("pf") == 0)
+        else if (ename.compare("pf") == 0)          // Function call
         {
             PUSH_FUNC_T pf;
             pf.pfName = content;
             pf.pfType = xml->getAttribute("type", attrs);
             pushFunc.push_back(pf);
         }
-        else if (ename.compare("sr") == 0)
+        else if (ename.compare("sr") == 0)          // Section state resources
         {
             SR_T bsr;
-            bsr.number = xml->getAttributeInt("number", attrs);
+            bsr.number = xml->getAttributeInt("number", attrs); // State number
             string e;
 
             while ((index = xml->getNextElementFromIndex(index, &e, &content, &attrs)) != TExpat::npos)
             {
-                if (e.compare("do") == 0)
+                if (e.compare("do") == 0)           // Draw order
                     bsr._do = content;
-                else if (e.compare("bs") == 0)
+                else if (e.compare("bs") == 0)      // Frame type
                     bsr.bs = content;
-                else if (e.compare("mi") == 0)
+                else if (e.compare("mi") == 0)      // Chameleon image
                     bsr.mi = content;
-                else if (e.compare("cb") == 0)
+                else if (e.compare("cb") == 0)      // Border color
                     bsr.cb = content;
-                else if (e.compare("cf") == 0)
+                else if (e.compare("cf") == 0)      // Fill color
                     bsr.cf = content;
-                else if (e.compare("ct") == 0)
+                else if (e.compare("ct") == 0)      // Text color
                     bsr.ct = content;
-                else if (e.compare("ec") == 0)
+                else if (e.compare("ec") == 0)      // Text effect color
                     bsr.ec = content;
-                else if (e.compare("bm") == 0)
+                else if (e.compare("bm") == 0)      // Bitmap image
                 {
                     bsr.bm = content;
                     bsr.dynamic = ((xml->getAttributeInt("dynamic", attrs) == 1) ? true : false);
                 }
-                else if (e.compare("sd") == 0)
+                else if (e.compare("sd") == 0)      // Sound file
                     bsr.sd = content;
-                else if (e.compare("sb") == 0)
+                else if (e.compare("sb") == 0)      // index external graphic
                     bsr.sb = xml->convertElementToInt(content);
-                else if (e.compare("ii") == 0)
+                else if (e.compare("ii") == 0)      // Icon index
                     bsr.ii = xml->convertElementToInt(content);
-                else if (e.compare("ji") == 0)
+                else if (e.compare("ji") == 0)      // Icon/bitmap orientation
                     bsr.ji = xml->convertElementToInt(content);
-                else if (e.compare("jb") == 0)
+                else if (e.compare("jb") == 0)      // Bitmap orientation
                     bsr.jb = xml->convertElementToInt(content);
-                else if (e.compare("bx") == 0)
+                else if (e.compare("bx") == 0)      // Absolute image position X
                     bsr.bx = xml->convertElementToInt(content);
-                else if (e.compare("by") == 0)
+                else if (e.compare("by") == 0)      // Absolute image position Y
                     bsr.by = xml->convertElementToInt(content);
-                else if (e.compare("ix") == 0)
+                else if (e.compare("ix") == 0)      // Absolute Icon position X
                     bsr.ix = xml->convertElementToInt(content);
-                else if (e.compare("iy") == 0)
+                else if (e.compare("iy") == 0)      // Absolute Icon position Y
                     bsr.iy = xml->convertElementToInt(content);
-                else if (e.compare("fi") == 0)
+                else if (e.compare("fi") == 0)      // Font index
                     bsr.fi = xml->convertElementToInt(content);
-                else if (e.compare("te") == 0)
+                else if (e.compare("te") == 0)      // Text
                     bsr.te = content;
-                else if (e.compare("jt") == 0)
+                else if (e.compare("jt") == 0)      // Text orientation
                     bsr.jt = (TEXT_ORIENTATION)xml->convertElementToInt(content);
-                else if (e.compare("tx") == 0)
+                else if (e.compare("tx") == 0)      // Absolute text position X
                     bsr.tx = xml->convertElementToInt(content);
-                else if (e.compare("ty") == 0)
+                else if (e.compare("ty") == 0)      // Absolute text position Y
                     bsr.ty = xml->convertElementToInt(content);
-                else if (e.compare("ww") == 0)
+                else if (e.compare("ww") == 0)      // Word wrap
                     bsr.ww = xml->convertElementToInt(content);
-                else if (e.compare("et") == 0)
+                else if (e.compare("et") == 0)      // Text effects
                     bsr.et = xml->convertElementToInt(content);
-                else if (e.compare("oo") == 0)
+                else if (e.compare("oo") == 0)      // Opacity
                     bsr.oo = xml->convertElementToInt(content);
 
                 oldIndex = index;
@@ -595,6 +588,12 @@ FONT_T TButton::getFont()
         return FONT_T();
     }
 
+    if (type == LISTBOX && _getGlobalSettings)
+    {
+        _getGlobalSettings(this);
+        mActInstance = 0;
+    }
+
     return mFonts->getFont(sr[mActInstance].fi);
 }
 
@@ -633,6 +632,8 @@ BUTTONTYPE TButton::getButtonType(const string& bt)
         return TAKE_NOTE;
     else if (bt.compare("sub-page view") == 0)
         return SUBPAGE_VIEW;
+    else if (bt.compare("listBox") == 0)
+        return LISTBOX;
 
     return NONE;
 }
@@ -767,7 +768,7 @@ void TButton::refresh()
 
 bool TButton::makeElement(int instance)
 {
-    DECL_TRACER("TButton::makeElement()");
+    DECL_TRACER("TButton::makeElement(int instance)");
 
     if (prg_stopped)
         return false;
@@ -782,9 +783,11 @@ bool TButton::makeElement(int instance)
         inst = instance;
     }
 
+    bool isSystem = isSystemButton();
+
     if (type == MULTISTATE_GENERAL && ar == 1)
         return drawButtonMultistateAni();
-    else if (type == BARGRAPH && isSystemButton() && lv == 9)   // System volume button
+    else if (type == BARGRAPH && isSystem && lv == 9)   // System volume button
         return drawBargraph(inst, TConfig::getSystemVolume());
     else if (type == BARGRAPH)
         return drawBargraph(inst, mLastLevel);
@@ -792,27 +795,73 @@ bool TButton::makeElement(int instance)
         return drawMultistateBargraph(mLastLevel, true);
     else if (type == TEXT_INPUT)
     {
-        if (isSystemButton() && !mSystemReg)
+        if (isSystem && !mSystemReg)
             registerSystemButton();
 
         drawTextArea(mActInstance);
     }
-    else if (isSystemButton() && ch == 17)  // System button sound ON/OFF
+    else if (type == LISTBOX)
     {
-        if (TConfig::getSystemSoundState())
-            inst = mActInstance = 1;
-        else
-            inst = mActInstance = 0;
+        MSG_DEBUG("List " << na << " found.");
 
-        return drawButton(inst);
+        if (_getListContent && !mSystemReg)
+        {
+            mListContent = _getListContent(mHandle, ap, ta, ti, tr, tc);
+            mChanged = true;
+        }
+
+        if (isSystem)
+            mSystemReg = true;
+
+        // FIXME: Enter code do draw the background box
+        drawList();
     }
-    else if (isSystemButton() && ch == 173) // System mute setting
+    else if (isSystem && type == GENERAL)
     {
-        if (TConfig::getMuteState())
-            inst = mActInstance = 1;
-        else
-            inst = mActInstance = 0;
+        TConfig::setTemporary(true);
 
+        if (isSystemCheckBox(ch))
+        {
+            int in = getButtonInstance(0, ch);
+
+            if (in >= 0)
+            {
+                inst = mActInstance = in;
+#ifndef __ANDROID__
+                if (ch == 2070 && sr[0].oo < 0) // scale to fit disabled
+                {
+                    sr[0].oo = 128;
+                    mChanged = true;
+                }
+#else
+                if (ch == 2071 && sr[0].oo < 0) // show banner disabled
+                {
+                    sr[0].oo = 128;
+                    mChanged = true;
+                }
+#endif
+                if (ch == 2073)                 // Force toolbar is only available if toolbar is not suppressed
+                {
+                    if (TConfig::getToolbarSuppress() && sr[0].oo < 0)
+                    {
+                        sr[0].oo = 128;
+                        mChanged = true;
+                    }
+                    else if (!TConfig::getToolbarSuppress() && sr[0].oo > 0)
+                    {
+                        sr[0].oo = -1;
+                        mChanged = true;
+                    }
+                }
+            }
+        }
+        else if (isSystemTextLine(ad) && ad != SYSTEM_ITEM_FTPSURFACE)
+        {
+            sr[0].te = sr[1].te = fillButtonText(ad, 0);
+        }
+
+        TConfig::setTemporary(false);
+        MSG_DEBUG("Drawing system button " << ch << " with instance " << inst);
         return drawButton(inst);
     }
     else
@@ -1008,6 +1057,37 @@ bool TButton::setTextOnly(const string& txt, int instance)
         inst++;
     }
 
+    if (isSystemButton())
+    {
+        TConfig::setTemporary(true);
+        // If we've an input line or the text line of a "combobox" then we'll
+        // save the changed value here.
+        switch(ad)
+        {
+            case SYSTEM_ITEM_NETLINX_IP:        TConfig::saveController(txt); break;
+            case SYSTEM_ITEM_NETLINX_CHANNEL:   TConfig::saveChannel(atoi(txt.c_str())); break;
+            case SYSTEM_ITEM_NETLINX_PORT:      TConfig::savePort(atoi(txt.c_str())); break;
+            case SYSTEM_ITEM_NETLINX_PTYPE:     TConfig::savePanelType(txt); break;
+
+            case SYSTEM_ITEM_SYSTEMSOUND:       TConfig::saveSystemSoundFile(txt); break;
+            case SYSTEM_ITEM_SINGLEBEEP:        TConfig::saveSingleBeepFile(txt); break;
+            case SYSTEM_ITEM_DOUBLEBEEP:        TConfig::saveDoubleBeepFile(txt); break;
+
+            case SYSTEM_ITEM_SIPPROXY:          TConfig::setSIPproxy(txt); break;
+            case SYSTEM_ITEM_SIPPORT:           TConfig::setSIPport(atoi(txt.c_str())); break;
+            case SYSTEM_ITEM_SIPSTUN:           TConfig::setSIPstun(txt); break;
+            case SYSTEM_ITEM_SIPDOMAIN:         TConfig::setSIPdomain(txt); break;
+            case SYSTEM_ITEM_SIPUSER:           TConfig::setSIPuser(txt); break;
+            case SYSTEM_ITEM_SIPPASSWORD:       TConfig::setSIPpassword(txt); break;
+
+            case SYSTEM_ITEM_LOGLOGFILE:        TConfig::saveLogFile(txt); break;
+
+            case SYSTEM_ITEM_FTPUSER:           TConfig::saveFtpUser(txt); break;
+            case SYSTEM_ITEM_FTPPASSWORD:       TConfig::saveFtpPassword(txt); break;
+            case SYSTEM_ITEM_FTPSURFACE:        TConfig::saveFtpSurface(txt); break;
+        }
+    }
+
     return true;
 }
 
@@ -1130,6 +1210,16 @@ bool TButton::setTextColor(const string& color, int instance)
 {
     DECL_TRACER("TButton::setTextColor(const string& color, int instance)");
 
+    if (!setTextColorOnly(color, instance))
+        return false;
+
+    return makeElement(instance);
+}
+
+bool TButton::setTextColorOnly(const string& color, int instance)
+{
+    DECL_TRACER("TButton::setTextColorOnly(const string& color, int instance)");
+
     if (instance >= 0 && (size_t)instance >= sr.size())
     {
         MSG_ERROR("Instance " << instance << " does not exist!");
@@ -1158,7 +1248,7 @@ bool TButton::setTextColor(const string& color, int instance)
         mChanged = true;
     }
 
-    return makeElement(instance);
+    return true;
 }
 
 bool TButton::setDrawOrder(const string& order, int instance)
@@ -1653,6 +1743,16 @@ bool TButton::setFont(int id, int instance)
 {
     DECL_TRACER("TButton::setFont(int id)");
 
+    if (!setFontOnly(id, instance))
+        return false;
+
+    return makeElement(instance);
+}
+
+bool TButton::setFontOnly(int id, int instance)
+{
+    DECL_TRACER("TButton::setFontOnly(int id)");
+
     if (instance >= 0 && (size_t)instance >= sr.size())
     {
         MSG_ERROR("Instance " << instance << " does not exist!");
@@ -1681,7 +1781,7 @@ bool TButton::setFont(int id, int instance)
         inst++;
     }
 
-    return makeElement(instance);
+    return true;
 }
 
 void TButton::setLeft(int left)
@@ -1928,8 +2028,18 @@ void TButton::setTextJustification(int j, int x, int y, int instance)
 {
     DECL_TRACER("TButton::setTextJustification(int j, int x, int y, int instance)");
 
-    if (j < 0 || j > 9 || instance >= (int)sr.size())
+    if (!setTextJustificationOnly(j, x, y, instance))
         return;
+
+    makeElement();
+}
+
+bool TButton::setTextJustificationOnly(int j, int x, int y, int instance)
+{
+    DECL_TRACER("TButton::setTextJustificationOnly(int j, int x, int y, int instance)");
+
+    if (j < 0 || j > 9 || instance >= (int)sr.size())
+        return false;
 
     if (instance < 0)
     {
@@ -1961,7 +2071,7 @@ void TButton::setTextJustification(int j, int x, int y, int instance)
         }
     }
 
-    makeElement();
+    return true;
 }
 
 string TButton::getText(int inst)
@@ -2007,16 +2117,27 @@ void TButton::setTextEffectColor(const string& ec, int instance)
 {
     DECL_TRACER("TButton::setTextEffectColor(const string& ec, int inst)");
 
+    if (!setTextEffectColorOnly(ec, instance))
+        return;
+
+    if (visible)
+        makeElement();
+}
+
+bool TButton::setTextEffectColorOnly(const string& ec, int instance)
+{
+    DECL_TRACER("TButton::setTextEffectColorOnly(const string& ec, int inst)");
+
     if ((size_t)instance >= sr.size())
     {
         MSG_ERROR("Instance " << instance << " does not exist!");
-        return;
+        return false;
     }
 
     if (!TColor::isValidAMXcolor(ec))
     {
         MSG_PROTOCOL("Invalid color >" << ec << "< ignored!");
-        return;
+        return false;
     }
 
     int inst = instance;
@@ -2041,8 +2162,7 @@ void TButton::setTextEffectColor(const string& ec, int instance)
         inst++;
     }
 
-    if (visible)
-        makeElement();
+    return true;
 }
 
 int TButton::getTextEffect(int inst)
@@ -2625,7 +2745,7 @@ void TButton::registerSystemButton()
         return;
 
     // If this is a special system button, register it to receive the state
-    if (ap == 0 && ad == 8)     // Connection status?
+    if (ap == 0 && ad == SYSTEM_ITEM_CONNSTATE)     // Connection status?
     {
         MSG_TRACE("Try to register button " << na << " as connection status ...");
 
@@ -2639,7 +2759,7 @@ void TButton::registerSystemButton()
             MSG_WARNING("Network class not initialized!");
 
     }
-    else if (ap == 0 && ((ad >= 141 && ad <= 143) || (ad >= 151 && ad <= 158))) // time or date
+    else if (ap == 0 && ((ad >= SYSTEM_ITEM_STANDARDTIME && ad <= SYSTEM_ITEM_TIME24) || (ad >= SYSTEM_ITEM_DATEWEEKDAY && ad <= SYSTEM_ITEM_DATEYYYYMMDD))) // time or date
     {
         MSG_TRACE("Try to register button " << na << " as time/date ...");
 
@@ -2652,7 +2772,7 @@ void TButton::registerSystemButton()
         else
             MSG_WARNING("Network class not initialized!");
 
-        if (ad >= 141 && ad <= 143 && !mTimer)
+        if (ad >= SYSTEM_ITEM_STANDARDTIME && ad <= SYSTEM_ITEM_TIME24 && !mTimer)
         {
             mTimer = new TTimer;
             mTimer->setInterval(std::chrono::milliseconds(1000));   // 1 second
@@ -2660,40 +2780,42 @@ void TButton::registerSystemButton()
             mTimer->run();
         }
     }
-    else if (ap == 0 && (ad == 242 || ad == 234))   // Battery status
+    else if (ap == 0 && (ad == SYSTEM_ITEM_BATTERYLEVEL || ad == SYSTEM_ITEM_BATTERYCHARGING))   // Battery status
     {
         if (gPageManager)
             gPageManager->regCallbackBatteryState(bind(&TButton::funcBattery, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), mHandle);
+
+        mSystemReg = true;
     }
-    else if (lp == 0 && lv == 81)
+    else if (lp == 0 && lv == SYSTEM_ITEM_CONNSTRENGTH)       // Network connection strength
     {
         if (gPageManager)
             gPageManager->regCallbackNetState(bind(&TButton::funcNetworkState, this, std::placeholders::_1), mHandle);
+
+        mSystemReg = true;
     }
-    else if (ap == 0 && ad == 122)      // IP Address of server
+    else if (lp == 0 && lv == SYSTEM_ITEM_SYSVOLUME)        // System volume
     {
-        sr[0].te = sr[1].te = TConfig::getController();
+        mLastLevel = TConfig::getSystemVolume();
         mChanged = true;
+        mSystemReg = true;
     }
-    else if (ap == 0 && ad == 123)      // Channel number of panel
+    else if (cp == 0 && type == GENERAL && ch > 0 && isSystemCheckBox(ch))
     {
-        sr[0].te = sr[1].te = std::to_string(TConfig::getChannel());
-        mChanged = true;
+        int inst = getButtonInstance(0, ch);
+
+        if (inst >= 0)
+        {
+            mActInstance = inst;
+            mChanged = true;
+            mSystemReg = true;
+        }
     }
-    else if (ap == 0 && ad == 124)      // Network port number of the controller
+    else if (ap == 0 && ad > 0 && isSystemTextLine(ad))
     {
-        sr[0].te = sr[1].te = std::to_string(TConfig::getPort());
+        sr[0].te = sr[1].te = fillButtonText(ad, 0);
         mChanged = true;
-    }
-    else if (ap == 0 && ad == 199)      // Technical name of panel
-    {
-        sr[0].te = sr[1].te = TConfig::getPanelType();
-        mChanged = true;
-    }
-    else if (ap == 0 && ad == 1101)     // Path and name of the logfile
-    {
-        sr[0].te = sr[1].te = TConfig::getLogFile();
-        mChanged = true;
+        mSystemReg = true;
     }
 }
 
@@ -4108,29 +4230,31 @@ bool TButton::buttonIcon(SkBitmap* bm, int instance)
 
     if (!gIcons)
     {
-        gIcons = new TIcons();
-
-        if (TError::isError())
-        {
-            MSG_ERROR("Error initializing icons!");
-            return false;
-        }
+        MSG_WARNING("No icons were defined!");
+        return true;
     }
 
     string file = gIcons->getFile(sr[instance].ii);
+
+    if (file.empty())
+    {
+        MSG_WARNING("The icon " << sr[instance].ii << " was not found in table!");
+        return true;
+    }
+
     MSG_DEBUG("Loading icon file " << file);
     sk_sp<SkData> image;
     SkBitmap icon;
 
     if (!(image = readImage(file)))
-        return false;
+        return true;
 
     DecodeDataToBitmap(image, &icon);
 
     if (icon.empty())
     {
         MSG_WARNING("Could not create an icon for element " << sr[instance].ii << " on button " << bi << " (" << na << ")");
-        return false;
+        return true;
     }
 
     SkImageInfo info = icon.info();
@@ -4665,6 +4789,7 @@ bool TButton::buttonBorder(SkBitmap* bm, int inst)
             if (imgL.empty())
                 return false;
 
+            mBorderWidth = imgL.info().width();
             MSG_DEBUG("Got images " << bd.l << " and " << bda.l << " with size " << imgL.info().width() << " x " << imgL.info().height());
             imgBL = retrieveBorderImage(bd.bl, bda.bl, color, bgColor);
 
@@ -4738,12 +4863,14 @@ bool TButton::buttonBorder(SkBitmap* bm, int inst)
             case 1: // Single Frame
             case 2: // Double Frame
             case 3: // Quad Frame
+                mBorderWidth = sysBorders[borderIndex].width;
                 paint.setStrokeWidth(sysBorders[borderIndex].width);
                 canvas.drawRect(calcRect(wt, ht, sysBorders[borderIndex].width), paint);
             break;
 
             case 4: // Picture Frame
                 {
+                    mBorderWidth = 2;
                     paint.setStrokeWidth(2);
                     SkRect rect = SkRect::MakeXYWH(0, 0, wt, ht);
                     canvas.drawRect(rect, paint);
@@ -4779,6 +4906,7 @@ bool TButton::buttonBorder(SkBitmap* bm, int inst)
                 else
                     lineWidth = sysBorders[borderIndex].width;
 
+                mBorderWidth = lineWidth;
                 paint.setStrokeWidth(1.0);
                 paint.setStyle(SkPaint::kFill_Style);
                 MSG_DEBUG("Line width: " << lineWidth << ", radius: " << radius);
@@ -4803,6 +4931,7 @@ bool TButton::buttonBorder(SkBitmap* bm, int inst)
             case 26:    // AMX Elite Inset -M
             case 28:    // AMX Elite Inset -S
                 {
+                    mBorderWidth = sysBorders[borderIndex].width;
                     borderColor = TColor::getSkiaColor(sr[instance].cb);
                     vector<SkColor> cols = TColor::colorRange(borderColor, sysBorders[borderIndex].width, 40, TColor::DIR_LIGHT_DARK_LIGHT);
                     vector<SkColor>::iterator iter;
@@ -4823,6 +4952,7 @@ bool TButton::buttonBorder(SkBitmap* bm, int inst)
             case 27:    // AMX Elite Raised -M
             case 29:    // AMX Elite Raised -S
             {
+                mBorderWidth = sysBorders[borderIndex].width;
                 borderColor = TColor::getSkiaColor(sr[instance].cb);
                 vector<SkColor> cols = TColor::colorRange(borderColor, sysBorders[borderIndex].width, 40, TColor::DIR_DARK_LIGHT_DARK);
                 vector<SkColor>::iterator iter;
@@ -4842,6 +4972,7 @@ bool TButton::buttonBorder(SkBitmap* bm, int inst)
             case 30:    // BevelInset -L
             case 32:    // Bevel Inset -M
             case 34:    // Bevel Inset -S
+                mBorderWidth = sysBorders[borderIndex].width;
                 borderColor = TColor::getSkiaColor(sr[instance].cb);
                 red = std::min((int)SkColorGetR(borderColor) + 20, 255);
                 green = std::min((int)SkColorGetG(borderColor) + 20, 255);
@@ -4888,6 +5019,7 @@ bool TButton::buttonBorder(SkBitmap* bm, int inst)
             case 31:    // Bevel Raised _L
             case 33:    // Bevel Raised _M
             case 35:    // Bevel Raised _S
+                mBorderWidth = sysBorders[borderIndex].width;
                 borderColor = TColor::getSkiaColor(sr[instance].cb);
                 red = std::min((int)SkColorGetR(borderColor) + 10, 255);
                 green = std::min((int)SkColorGetG(borderColor) + 10, 255);
@@ -5267,7 +5399,7 @@ bool TButton::drawButton(int instance, bool show)
 
 bool TButton::drawTextArea(int instance)
 {
-    DECL_TRACER("TButton::drawTextArea(int instance, bool show)");
+    DECL_TRACER("TButton::drawTextArea(int instance)");
 
     if (prg_stopped)
         return false;
@@ -5407,7 +5539,7 @@ bool TButton::drawTextArea(int instance)
             bm.top = rtop;
             bm.width = rwidth;
             bm.height = rheight;
-            gPageManager->getCallbackInputText()(this, bm);
+            gPageManager->getCallbackInputText()(this, bm, mBorderWidth);
         }
     }
 
@@ -5586,6 +5718,142 @@ bool TButton::drawMultistateBargraph(int level, bool show)
     }
 
     mutex_button.unlock();
+    return true;
+}
+
+bool TButton::drawList(bool show)
+{
+    DECL_TRACER("TButton::drawList(bool show)");
+
+    if (!mChanged)
+    {
+        showLastButton();
+        return true;
+    }
+
+    getDrawOrder(sr[0]._do, (DRAW_ORDER *)&mDOrder);
+
+    if (TError::isError())
+        return false;
+
+    SkBitmap imgButton;
+    imgButton.allocN32Pixels(wt, ht);
+
+    for (int i = 0; i < ORD_ELEM_COUNT; i++)
+    {
+        if (mDOrder[i] == ORD_ELEM_FILL)
+        {
+            if (!buttonFill(&imgButton, 0))
+                return false;
+        }
+        else if (mDOrder[i] == ORD_ELEM_BITMAP)
+        {
+            if (!sr[0].dynamic && !buttonBitmap(&imgButton, 0))
+                return false;
+            else if (sr[0].dynamic && !buttonDynamic(&imgButton, 0, false))
+                return false;
+        }
+        else if (mDOrder[i] == ORD_ELEM_ICON)
+        {
+            if (!buttonIcon(&imgButton, 0))
+                return false;
+        }
+        else if (mDOrder[i] == ORD_ELEM_BORDER)
+        {
+            if (!buttonBorder(&imgButton, 0))
+                return false;
+        }
+    }
+
+    if (mGlobalOO >= 0 || sr[0].oo >= 0) // Take overall opacity into consideration
+    {
+        SkBitmap ooButton;
+        int w = imgButton.width();
+        int h = imgButton.height();
+        ooButton.allocN32Pixels(w, h, true);
+        SkCanvas canvas(ooButton);
+        SkIRect irect = SkIRect::MakeXYWH(0, 0, w, h);
+        SkRegion region;
+        region.setRect(irect);
+        SkScalar oo;
+
+        if (mGlobalOO >= 0 && sr[0].oo >= 0)
+        {
+            oo = std::min((SkScalar)mGlobalOO, (SkScalar)sr[0].oo);
+            MSG_DEBUG("Set global overal opacity to " << oo);
+        }
+        else if (sr[0].oo >= 0)
+        {
+            oo = (SkScalar)sr[0].oo;
+            MSG_DEBUG("Set overal opacity to " << oo);
+        }
+        else
+        {
+            oo = (SkScalar)mGlobalOO;
+            MSG_DEBUG("Set global overal opacity to " << oo);
+        }
+
+        SkScalar alpha = 1.0 / 255.0 * oo;
+        MSG_DEBUG("Calculated alpha value: " << alpha);
+        SkPaint paint;
+        paint.setAlphaf(alpha);
+        paint.setImageFilter(SkImageFilters::AlphaThreshold(region, 0.0, alpha, nullptr));
+        sk_sp<SkImage> _image = SkImage::MakeFromBitmap(imgButton);
+        canvas.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
+        imgButton.erase(SK_ColorTRANSPARENT, {0, 0, w, h});
+        imgButton = ooButton;
+    }
+
+    mLastImage = imgButton;
+    mChanged = false;
+
+    if (!prg_stopped)
+    {
+        int rwidth = wt;
+        int rheight = ht;
+        int rleft = lt;
+        int rtop = tp;
+        size_t rowBytes = imgButton.info().minRowBytes();
+#ifdef _SCALE_SKIA_
+        if (gPageManager && gPageManager->getScaleFactor() != 1.0)
+        {
+            size_t rowBytes = imgButton.info().minRowBytes();
+            rwidth = (int)((double)wt * gPageManager->getScaleFactor());
+            rheight = (int)((double)ht * gPageManager->getScaleFactor());
+            rleft = (int)((double)lt * gPageManager->getScaleFactor());
+            rtop = (int)((double)tp * gPageManager->getScaleFactor());
+
+            SkPaint paint;
+            paint.setBlendMode(SkBlendMode::kSrc);
+            paint.setFilterQuality(kHigh_SkFilterQuality);
+            // Calculate new dimension
+            SkImageInfo info = imgButton.info();
+            int width = (int)((double)info.width() * gPageManager->getScaleFactor());
+            int height = (int)((double)info.height() * gPageManager->getScaleFactor());
+            // Create a canvas and draw new image
+            sk_sp<SkImage> im = SkImage::MakeFromBitmap(imgButton);
+            imgButton.allocN32Pixels(width, height);
+            imgButton.eraseColor(SK_ColorTRANSPARENT);
+            SkCanvas can(imgButton, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+            SkRect rect = SkRect::MakeXYWH(0, 0, width, height);
+            can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
+            rowBytes = imgButton.info().minRowBytes();
+            mLastImage = imgButton;
+        }
+#endif
+        if (show && gPageManager && gPageManager->getCallbackListBox())
+        {
+            BITMAP_t bm;
+            bm.buffer = (unsigned char *)imgButton.getPixels();
+            bm.rowBytes = rowBytes;
+            bm.left = rleft;
+            bm.top = rtop;
+            bm.width = rwidth;
+            bm.height = rheight;
+            gPageManager->getCallbackListBox()(this, bm, mBorderWidth);
+        }
+    }
+
     return true;
 }
 
@@ -6374,7 +6642,7 @@ void TButton::showLastButton()
     if (!_displayButton && gPageManager)
         _displayButton = gPageManager->getCallbackDB();
 
-    if (!prg_stopped && visible && _displayButton)
+    if (!prg_stopped && visible)
     {
         ulong parent = mHandle & 0xffff0000;
         size_t rowBytes = mLastImage.info().minRowBytes();
@@ -6391,7 +6659,37 @@ void TButton::showLastButton()
             rtop = (int)((double)tp * gPageManager->getScaleFactor());
         }
 #endif
-        _displayButton(mHandle, parent, (unsigned char *)mLastImage.getPixels(), rwidth, rheight, rowBytes, rleft, rtop);
+        if (type == TEXT_INPUT)
+        {
+            if (gPageManager && gPageManager->getCallbackInputText())
+            {
+                BITMAP_t bm;
+                bm.buffer = (unsigned char *)mLastImage.getPixels();
+                bm.rowBytes = rowBytes;
+                bm.left = rleft;
+                bm.top = rtop;
+                bm.width = rwidth;
+                bm.height = rheight;
+                gPageManager->getCallbackInputText()(this, bm, mBorderWidth);
+            }
+        }
+        else if (type == LISTBOX)
+        {
+            if (gPageManager && gPageManager->getCallbackListBox())
+            {
+                BITMAP_t bm;
+                bm.buffer = (unsigned char *)mLastImage.getPixels();
+                bm.rowBytes = rowBytes;
+                bm.left = rleft;
+                bm.top = rtop;
+                bm.width = rwidth;
+                bm.height = rheight;
+                gPageManager->getCallbackListBox()(this, bm, mBorderWidth);
+            }
+        }
+        else if (_displayButton)
+            _displayButton(mHandle, parent, (unsigned char *)mLastImage.getPixels(), rwidth, rheight, rowBytes, rleft, rtop);
+
         mChanged = false;
     }
 }
@@ -6427,6 +6725,15 @@ void TButton::hide(bool total)
             rtop = (int)((double)tp * gPageManager->getScaleFactor());
         }
 #endif
+        if (type == TEXT_INPUT)
+        {
+            if (gPageManager && gPageManager->getCallDropButton())
+                gPageManager->getCallDropButton()(mHandle);
+
+            visible = false;
+            return;
+        }
+
         SkBitmap imgButton;
         size_t rowBytes = 0;
 
@@ -6850,13 +7157,14 @@ bool TButton::doClick(int x, int y, bool pressed)
 #endif
     if (type == GENERAL)
     {
-        MSG_DEBUG("Button type: GENERAL");
+        MSG_DEBUG("Button type: GENERAL; System button: " << (isSystem ? "YES" : "NO") << "; CH: " << cp << ":" << ch << "; AD: " << ap << ":" << ad);
 
-        if (isSystem && ch == 17)   // Button sounds on/off
+        if (isSystem && ch == SYSTEM_ITEM_SOUNDSWITCH)   // Button sounds on/off
         {
             if (pressed)
             {
                 MSG_TRACE("System button sounds are toggled ...");
+                TConfig::setTemporary(false);
                 bool sstate = TConfig::getSystemSoundState();
 
                 if (sstate)
@@ -6867,11 +7175,10 @@ bool TButton::doClick(int x, int y, bool pressed)
                 TConfig::saveSystemSoundState(!sstate);
                 TConfig::saveSettings();
                 mChanged = true;
-                drawButton(mActInstance, false);
-                showLastButton();
+                drawButton(mActInstance, true);
             }
         }
-        else if (isSystem && ch == 73)  // Enter setup page
+        else if (isSystem && ch == SYSTEM_ITEM_SETUPPAGE)  // Enter setup page
         {
             if (pressed)
             {
@@ -6879,7 +7186,7 @@ bool TButton::doClick(int x, int y, bool pressed)
                     gPageManager->callSetupPage();
             }
         }
-        else if (isSystem && ch == 80)  // Shutdown program
+        else if (isSystem && ch == SYSTEM_ITEM_SHUTDOWN)  // Shutdown program
         {
             if (pressed)
             {
@@ -6887,14 +7194,16 @@ bool TButton::doClick(int x, int y, bool pressed)
                     gPageManager->callShutdown();
             }
         }
-        else if (isSystem && ch == 171)     // System volume up
+        else if (isSystem && ch == SYSTEM_ITEM_VOLUMEUP)     // System volume up
         {
+            TConfig::setTemporary(true);
             int vol = TConfig::getSystemVolume() + 10;
 
             if (vol > 100)
                 vol = 100;
 
-            TConfig::saveSystemVolume(vol);
+            if (pressed)
+                TConfig::saveSystemVolume(vol);
 
             if (pressed)
                 mActInstance = instance = 1;
@@ -6903,11 +7212,12 @@ bool TButton::doClick(int x, int y, bool pressed)
 
             mChanged = true;
             drawButton(mActInstance, true);
-            int channel = TConfig::getChannel();
-            int system = TConfig::getSystem();
 
-            if (gPageManager)
+            if (pressed && gPageManager)
             {
+                int channel = TConfig::getChannel();
+                int system = TConfig::getSystem();
+
                 amx::ANET_COMMAND cmd;
                 cmd.MC = 0x000a;
                 cmd.device1 = channel;
@@ -6922,14 +7232,16 @@ bool TButton::doClick(int x, int y, bool pressed)
                 gPageManager->doCommand(cmd);
             }
         }
-        else if (isSystem && ch == 172)     // System volume down
+        else if (isSystem && ch == SYSTEM_ITEM_VOLUMEDOWN)     // System volume down
         {
+            TConfig::setTemporary(true);
             int vol = TConfig::getSystemVolume() - 10;
 
             if (vol < 0)
                 vol = 0;
 
-            TConfig::saveSystemVolume(vol);
+            if (pressed)
+                TConfig::saveSystemVolume(vol);
 
             if (pressed)
                 mActInstance = instance = 1;
@@ -6938,11 +7250,12 @@ bool TButton::doClick(int x, int y, bool pressed)
 
             mChanged = true;
             drawButton(mActInstance, true);
-            int channel = TConfig::getChannel();
-            int system = TConfig::getSystem();
 
-            if (gPageManager)
+            if (pressed && gPageManager)
             {
+                int channel = TConfig::getChannel();
+                int system = TConfig::getSystem();
+
                 amx::ANET_COMMAND cmd;
                 cmd.MC = 0x000a;
                 cmd.device1 = channel;
@@ -6957,10 +7270,11 @@ bool TButton::doClick(int x, int y, bool pressed)
                 gPageManager->doCommand(cmd);
             }
         }
-        else if (isSystem && ch == 173)     // System mute
+        else if (isSystem && ch == SYSTEM_ITEM_VOLUMEMUTE)     // System mute
         {
             if (pressed)
             {
+                TConfig::setTemporary(true);
                 bool mute = TConfig::getMuteState();
 
                 if (mute)
@@ -6974,8 +7288,413 @@ bool TButton::doClick(int x, int y, bool pressed)
                     gPageManager->getCallMuteSound()(!mute);
 
                 mChanged = true;
-                drawButton(mActInstance, false);
-                showLastButton();
+                drawButton(mActInstance, true);
+            }
+        }
+        else if (isSystem && ch == SYSTEM_ITEM_BTSAVESETTINGS)     // System button OK: Save settings
+        {
+            if (pressed)
+            {
+                mActInstance = instance = 1;
+                TConfig::setTemporary(true);
+                TConfig::saveSettings();
+                drawButton(mActInstance, true);
+
+                if (gPageManager)
+                    gPageManager->hideSetup();
+            }
+            else
+            {
+                mActInstance = instance = 0;
+                drawButton(mActInstance, true);
+            }
+        }
+        else if (isSystem && ch == SYSTEM_ITEM_BTCANCELSETTINGS)     // System button Cancel: Cancel settings changes
+        {
+            if (pressed)
+            {
+                mActInstance = instance = 1;
+                TConfig::reset();
+                drawButton(mActInstance, true);
+
+                if (gPageManager)
+                    gPageManager->hideSetup();
+            }
+            else
+            {
+                mActInstance = instance = 0;
+                drawButton(mActInstance, true);
+            }
+        }
+        else if (isSystem && ch == SYSTEM_ITEM_SIPENABLE)     // SIP: enabled/disabled
+        {
+            if (pressed)
+            {
+                TConfig::setTemporary(true);
+                bool st = TConfig::getSIPstatus();
+                mActInstance = instance = (st ? 0 : 1);
+                mChanged = true;
+                TConfig::setSIPstatus(!st);
+                drawButton(mActInstance, true);
+            }
+        }
+        else if (isSystem && ch == SYSTEM_ITEM_DEBUGINFO)    // Debug info
+        {
+            if (pressed)
+            {
+                TConfig::setTemporary(true);
+                uint ll = TConfig::getLogLevelBits();
+                bool st = (ll & HLOG_INFO) ? true : false;
+                mActInstance = instance = (st ? 0 : 1);
+                ll = (st ? (ll &= RLOG_INFO) : (ll |= HLOG_INFO));
+                mChanged = true;
+                TConfig::saveLogLevel(ll);
+                drawButton(mActInstance, true);
+            }
+        }
+        else if (isSystem && ch == SYSTEM_ITEM_DEBUGWARNING)    // Debug warning
+        {
+            if (pressed)
+            {
+                TConfig::setTemporary(true);
+                uint ll = TConfig::getLogLevelBits();
+                bool st = (ll & HLOG_WARNING) ? true : false;
+                mActInstance = instance = (st ? 0 : 1);
+                ll = (st ? (ll &= RLOG_WARNING) : (ll |= HLOG_WARNING));
+                mChanged = true;
+                TConfig::saveLogLevel(ll);
+                drawButton(mActInstance, true);
+            }
+        }
+        else if (isSystem && ch == SYSTEM_ITEM_DEBUGERROR)    // Debug error
+        {
+            if (pressed)
+            {
+                TConfig::setTemporary(true);
+                uint ll = TConfig::getLogLevelBits();
+                bool st = (ll & HLOG_ERROR) ? true : false;
+                mActInstance = instance = (st ? 0 : 1);
+                ll = (st ? (ll &= RLOG_ERROR) : (ll |= HLOG_ERROR));
+                mChanged = true;
+                TConfig::saveLogLevel(ll);
+                drawButton(mActInstance, true);
+            }
+        }
+        else if (isSystem && ch == SYSTEM_ITEM_DEBUGTRACE)    // Debug trace
+        {
+            if (pressed)
+            {
+                TConfig::setTemporary(true);
+                uint ll = TConfig::getLogLevelBits();
+                bool st = (ll & HLOG_TRACE) ? true : false;
+                mActInstance = instance = (st ? 0 : 1);
+                ll = (st ? (ll &= RLOG_TRACE) : (ll |= HLOG_TRACE));
+                mChanged = true;
+                TConfig::saveLogLevel(ll);
+                drawButton(mActInstance, true);
+            }
+        }
+        else if (isSystem && ch == SYSTEM_ITEM_DEBUGDEBUG)    // Debug debug
+        {
+            if (pressed)
+            {
+                TConfig::setTemporary(true);
+                uint ll = TConfig::getLogLevelBits();
+                bool st = (ll & HLOG_DEBUG) ? true : false;
+                mActInstance = instance = (st ? 0 : 1);
+                ll = (st ? (ll &= RLOG_DEBUG) : (ll |= HLOG_DEBUG));
+                mChanged = true;
+                TConfig::saveLogLevel(ll);
+                drawButton(mActInstance, true);
+            }
+        }
+        else if (isSystem && ch == SYSTEM_ITEM_DEBUGPROTOCOL)    // Debug protocol
+        {
+            if (pressed)
+            {
+                TConfig::setTemporary(true);
+                uint ll = TConfig::getLogLevelBits();
+                bool st = (ll & HLOG_PROTOCOL) == HLOG_PROTOCOL ? true : false;
+                mActInstance = instance = (st ? 0 : 1);
+                ll = (st ? (ll &= RLOG_PROTOCOL) : (ll |= HLOG_PROTOCOL));
+                mChanged = true;
+                TConfig::saveLogLevel(ll);
+                drawButton(mActInstance, true);
+
+                if (gPageManager)
+                    gPageManager->updateActualPage();
+            }
+        }
+        else if (isSystem && ch == SYSTEM_ITEM_DEBUGALL)    // Debug all
+        {
+            if (pressed)
+            {
+                TConfig::setTemporary(true);
+                uint ll = TConfig::getLogLevelBits();
+                bool st = (ll & HLOG_ALL) == HLOG_ALL ? true : false;
+                mActInstance = instance = (st ? 0 : 1);
+                ll = (st ? (ll &= RLOG_ALL) : (ll |= HLOG_ALL));
+                mChanged = true;
+                TConfig::saveLogLevel(ll);
+                drawButton(mActInstance, true);
+
+                if (gPageManager)
+                    gPageManager->updateActualPage();
+            }
+        }
+        else if (isSystem && ch == SYSTEM_ITEM_DEBUGPROFILE)    // Log profiling
+        {
+            if (pressed)
+            {
+                TConfig::setTemporary(true);
+                bool st = TConfig::getProfiling();
+                mActInstance = instance = (st ? 0 : 1);
+                mChanged = true;
+                TConfig::saveProfiling(!st);
+                drawButton(mActInstance, true);
+            }
+        }
+        else if (isSystem && ch == SYSTEM_ITEM_DEBUGLONG)    // Log long format
+        {
+            if (pressed)
+            {
+                TConfig::setTemporary(true);
+                bool st = TConfig::isLongFormat();
+                mActInstance = instance = (st ? 0 : 1);
+                mChanged = true;
+                TConfig::saveFormat(!st);
+                drawButton(mActInstance, true);
+            }
+        }
+        else if (isSystem && ch == SYSTEM_ITEM_LOGRESET)    // Log reset path
+        {
+            if (pressed)
+            {
+                char *HOME = getenv("HOME");
+                string logFile = TConfig::getLogFile();
+
+                if (HOME)
+                {
+                    logFile = HOME;
+                    logFile += "/tpanel/tpanel.log";
+                }
+
+                ulong handle = (SYSTEM_PAGE_LOGGING << 16) | SYSTEM_PAGE_LOG_TXLOGFILE;
+                TConfig::setTemporary(true);
+                TConfig::saveLogFile(logFile);
+                MSG_DEBUG("Setting text \"" << logFile << "\" to button " << TObject::handleToString(handle));
+
+                if (gPageManager)
+                    gPageManager->setTextToButton(handle, logFile, true);
+            }
+        }
+        else if (isSystem && ch == SYSTEM_ITEM_LOGFILEOPEN) // Log file dialog
+        {
+            if (pressed && gPageManager && gPageManager->getFileDialogFunction())
+            {
+                TConfig::setTemporary(true);
+                ulong handle = (SYSTEM_PAGE_LOGGING << 16) | SYSTEM_PAGE_LOG_TXLOGFILE;
+                string currFile = TConfig::getLogFile();
+                gPageManager->getFileDialogFunction()(handle, currFile, "*.log *.txt", "log");
+            }
+        }
+        else if (isSystem && ch == SYSTEM_ITEM_FTPDOWNLOAD)    // FTP download surface button
+        {
+            if (pressed)
+            {
+                TConfig::setTemporary(false);
+                string surfaceOld = TConfig::getFtpSurface();
+                TConfig::setTemporary(true);
+                string surfaceNew = TConfig::getFtpSurface();
+
+                MSG_DEBUG("Surface difference: Old: " << surfaceOld << ", New: " << surfaceNew);
+
+                if (gPageManager && gPageManager->getDownloadSurface())
+                {
+                    size_t size = gPageManager->getFtpSurfaceSize(surfaceNew);
+                    gPageManager->getDownloadSurface()(surfaceNew, size);
+                }
+            }
+        }
+        else if (isSystem && ch == SYSTEM_ITEM_FTPPASSIVE)    // FTP passive mode
+        {
+            if (pressed)
+            {
+                TConfig::setTemporary(true);
+                bool st = TConfig::getFtpPassive();
+                mActInstance = instance = (st ? 0 : 1);
+                mChanged = true;
+                TConfig::saveFtpPassive(!st);
+                drawButton(mActInstance, true);
+            }
+        }
+        else if (isSystem && ch == SYSTEM_ITEM_SOUNDPLAYSYSSOUND)    // Play system sound
+        {
+            if (pressed)
+            {
+                TConfig::setTemporary(true);
+                string sound = TConfig::getSystemSound();
+
+                if (sound.empty() && gPageManager && gPageManager->getCallPlaySound())
+                    gPageManager->getCallPlaySound()(sound);
+            }
+        }
+        else if (isSystem && ch == SYSTEM_ITEM_SOUNDPLAYBEEP)    // Play single beep
+        {
+            if (pressed)
+            {
+                TConfig::setTemporary(true);
+                string sound = TConfig::getSingleBeepSound();
+
+                if (!sound.empty() && gPageManager && gPageManager->getCallPlaySound())
+                    gPageManager->getCallPlaySound()(sound);
+            }
+        }
+        else if (isSystem && ch == SYSTEM_ITEM_SOUNDPLAYDBEEP)    // Play double beep
+        {
+            if (pressed)
+            {
+                TConfig::setTemporary(true);
+                string sound = TConfig::getDoubleBeepSound();
+
+                if (!sound.empty() && gPageManager && gPageManager->getCallPlaySound())
+                    gPageManager->getCallPlaySound()(sound);
+            }
+        }
+        else if (isSystem && ch == SYSTEM_ITEM_SIPIPV4)    // SIP: IPv4
+        {
+            if (pressed)
+            {
+                TConfig::setTemporary(true);
+                bool st = TConfig::getSIPnetworkIPv4();
+                mActInstance = instance = (st ? 0 : 1);
+                mChanged = true;
+                TConfig::setSIPnetworkIPv4(!st);
+                drawButton(mActInstance, true);
+            }
+        }
+        else if (isSystem && ch == SYSTEM_ITEM_SIPIPV6)    // SIP: IPv6
+        {
+            if (pressed)
+            {
+                TConfig::setTemporary(true);
+                bool st = TConfig::getSIPnetworkIPv6();
+                mActInstance = instance = (st ? 0 : 1);
+                mChanged = true;
+                TConfig::setSIPnetworkIPv6(!st);
+                drawButton(mActInstance, true);
+            }
+        }
+        else if (isSystem && ch == SYSTEM_ITEM_SIPIPHONE)    // SIP: internal phone
+        {
+            if (pressed)
+            {
+                TConfig::setTemporary(true);
+                bool st = TConfig::getSIPiphone();
+                mActInstance = instance = (st ? 0 : 1);
+                mChanged = true;
+                TConfig::setSIPiphone(!st);
+                drawButton(mActInstance, true);
+            }
+        }
+#ifdef __ANDROID__
+        else if (isSystem && ch == SYSTEM_ITEM_VIEWSCALEFIT)    // Scale to fit
+        {
+            if (pressed)
+            {
+                TConfig::setTemporary(true);
+                bool st = TConfig::getScale();
+                mActInstance = instance = (st ? 0 : 1);
+                mChanged = true;
+                TConfig::saveScale(!st);
+                drawButton(mActInstance, true);
+            }
+        }
+        else if (isSystem && ch == SYSTEM_ITEM_VIEWBANNER)    // Show banner (disabled)
+        {
+            if (sr[0].oo < 0)
+            {
+                sr[0].oo = 128;
+                mChanged = true;
+                mActInstance = 0;
+                drawButton(mActInstance, true);
+            }
+        }
+#else
+        else if (isSystem && ch == SYSTEM_ITEM_VIEWSCALEFIT)    // Scale to fit (disabled)
+        {
+            if (sr[0].oo < 0)
+            {
+                sr[0].oo = 128;
+                mChanged = true;
+                mActInstance = 0;
+                drawButton(mActInstance, true);
+            }
+        }
+        else if (isSystem && ch == SYSTEM_ITEM_VIEWBANNER)    // Show banner
+        {
+            if (pressed)
+            {
+                TConfig::setTemporary(true);
+                bool st = TConfig::showBanner();
+                mActInstance = instance = (st ? 0 : 1);
+                mChanged = true;
+                TConfig::saveBanner(st);
+                drawButton(mActInstance, true);
+            }
+        }
+#endif
+        else if (isSystem && ch == SYSTEM_ITEM_VIEWNOTOOLBAR)    // Suppress toolbar
+        {
+            if (pressed)
+            {
+                TConfig::setTemporary(true);
+                bool st = TConfig::getToolbarSuppress();
+                mActInstance = instance = (st ? 0 : 1);
+                mChanged = true;
+                TConfig::saveToolbarSuppress(!st);
+                drawButton(mActInstance, true);
+            }
+        }
+        else if (isSystem && ch == SYSTEM_ITEM_VIEWTOOLBAR)    // Force toolbar
+        {
+            if (pressed)
+            {
+                TConfig::setTemporary(true);
+
+                if (TConfig::getToolbarSuppress())
+                {
+                    if (sr[0].oo < 0)
+                    {
+                        sr[0].oo = 128;
+                        mChanged = true;
+                        mActInstance = 0;
+                        drawButton(mActInstance, true);
+                    }
+                }
+                else
+                {
+                    if (sr[0].oo >= 0)
+                        sr[0].oo = -1;
+
+                    bool st = TConfig::getToolbarForce();
+                    mActInstance = instance = (st ? 0 : 1);
+                    mChanged = true;
+                    TConfig::saveToolbarForce(!st);
+                    drawButton(mActInstance, true);
+                }
+            }
+        }
+        else if (isSystem && ch == SYSTEM_ITEM_VIEWROTATE)    // Lock rotation
+        {
+            if (pressed)
+            {
+                TConfig::setTemporary(true);
+                bool st = TConfig::getRotationFixed();
+                mActInstance = instance = (st ? 0 : 1);
+                mChanged = true;
+                TConfig::setRotationFixed(!st);
+                drawButton(mActInstance, true);
             }
         }
         else if (fb == FB_MOMENTARY)
@@ -7162,7 +7881,7 @@ bool TButton::doClick(int x, int y, bool pressed)
             return false;
 
         // Handle click
-        if (isSystemButton() && lv == 9)    // System volume button
+        if (isSystem && lv == 9)    // System volume button
         {
             TConfig::saveSystemVolume(level);
             TConfig::saveSettings();
@@ -7268,7 +7987,7 @@ bool TButton::doClick(int x, int y, bool pressed)
 
                         TSettings *settings = gPageManager->getSettings();
 
-                        if (settings->getPowerUpPage().compare(page->getName()) != 0)
+                        if (settings && settings->getPowerUpPage().compare(page->getName()) != 0)
                             gPageManager->setPage(settings->getPowerUpPage());
                     }
                 }
@@ -7351,7 +8070,7 @@ bool TButton::doClick(int x, int y, bool pressed)
             {
                 cmd.data.message_string.length = iter->length();
                 memset(&cmd.data.message_string.content, 0, sizeof(cmd.data.message_string.content));
-                strncpy((char *)&cmd.data.message_string.content, iter->c_str(), sizeof(cmd.data.message_string.content));
+                strncpy((char *)&cmd.data.message_string.content, iter->c_str(), sizeof(cmd.data.message_string.content)-1);
                 gPageManager->doCommand(cmd);
             }
         }
@@ -7550,21 +8269,16 @@ bool TButton::isSystemButton()
 {
     DECL_TRACER("TButton::isSystemButton()");
 
-    int i = 0;
-
-    while (sysButtons[i].channel)
-    {
-        if (sysButtons[i].type == MULTISTATE_BARGRAPH && lp == 0 && lv == sysButtons[i].channel)
-            return true;
-        else if (sysButtons[i].type == BARGRAPH && lp == 0 && lv == sysButtons[i].channel)
-            return true;
-        else if (ap == 0 && ad == sysButtons[i].channel)
-            return true;
-        else if (cp == 0 && ch == sysButtons[i].channel)
-            return true;
-
-        i++;
-    }
+    if (type == MULTISTATE_BARGRAPH && lp == 0 && TSystem::isSystemButton(lv))
+        return true;
+    else if (type == BARGRAPH && lp == 0 && TSystem::isSystemButton(lv))
+        return true;
+    else if (type == LISTBOX && ap == 0 && ad > 0 && ti >= SYSTEM_PAGE_START)
+        return true;
+    else if (ap == 0 && TSystem::isSystemButton(ad))
+        return true;
+    else if (cp == 0 && TSystem::isSystemButton(ch))
+        return true;
 
     return false;
 }

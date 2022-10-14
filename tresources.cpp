@@ -32,12 +32,32 @@
 #include <sys/stat.h>
 
 #include "tresources.h"
+#include "tpagemanager.h"
 #include "terror.h"
 #include "tconfig.h"
+
+#if __cplusplus < 201402L
+#   error "This module requires at least C++14 standard!"
+#else
+#   if __cplusplus < 201703L
+#       include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#       warning "Support for C++14 and experimental filesystem will be removed in a future version!"
+#   else
+#       include <filesystem>
+#       ifdef __ANDROID__
+namespace fs = std::__fs::filesystem;
+#       else
+namespace fs = std::filesystem;
+#       endif
+#   endif
+#endif
 
 using std::string;
 using std::endl;
 using std::vector;
+
+extern TPageManager *gPageManager;
 
 typedef struct
 {
@@ -203,8 +223,8 @@ SkString GetResourcePath(const char* resource, _RESOURCE_TYPE rs)
         case RESTYPE_SYSSLIDER: pth = "/__system/graphics/sliders/"; break;
     }
 
-    string path = TConfig::getProjectPath() + pth + resource;
-
+    string projectPath = ((gPageManager && gPageManager->isSetupActive()) ? TConfig::getSystemProjectPath() : TConfig::getProjectPath());
+    string path = projectPath + pth + resource;
     return SkString(path);
 }
 

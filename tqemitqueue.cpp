@@ -126,9 +126,9 @@ bool TQManageQueue::getButton(ulong* handle, ulong* parent, unsigned char ** buf
     return false;
 }
 
-void TQManageQueue::addInText(ulong handle, Button::TButton* button, Button::BITMAP_t bm)
+void TQManageQueue::addInText(ulong handle, Button::TButton* button, Button::BITMAP_t bm, int frame)
 {
-    DECL_TRACER("TQManageQueue::addInText(ulong handle, Button::TButton* button, Button::BITMAP_t bm)");
+    DECL_TRACER("TQManageQueue::addInText(ulong handle, Button::TButton* button, Button::BITMAP_t bm, int frame)");
 
     TQEmitQueue *eq = addEntity(ET_INTEXT);
 
@@ -138,12 +138,29 @@ void TQManageQueue::addInText(ulong handle, Button::TButton* button, Button::BIT
     eq->handle = handle;
     eq->button = button;
     eq->bm = bm;
+    eq->frame = frame;
     removeDuplicates();
 }
 
-bool TQManageQueue::getInText(ulong* handle, Button::TButton ** button, Button::BITMAP_t* bm)
+void TQManageQueue::addListBox(Button::TButton* button, Button::BITMAP_t bm, int frame)
 {
-    DECL_TRACER("TQManageQueue::getInText(ulong* handle, Button::TButton ** button, Button::BITMAP_t* bm)");
+    DECL_TRACER("TQManageQueue::addListBox(Button::TButton* button, Button::BITMAP_t bm, int frame)");
+
+    TQEmitQueue *eq = addEntity(ET_LISTBOX);
+
+    if (!eq)
+        return;
+
+    eq->handle = button->getHandle();
+    eq->button = button;
+    eq->bm = bm;
+    eq->frame = frame;
+    removeDuplicates();
+}
+
+bool TQManageQueue::getInText(ulong* handle, Button::TButton ** button, Button::BITMAP_t* bm, int *frame)
+{
+    DECL_TRACER("TQManageQueue::getInText(ulong* handle, Button::TButton ** button, Button::BITMAP_t* bm, int *frame)");
 
     TQEmitQueue *eq = mEmitQueue;
 
@@ -154,6 +171,7 @@ bool TQManageQueue::getInText(ulong* handle, Button::TButton ** button, Button::
             *handle = eq->handle;
             *button = eq->button;
             *bm = eq->bm;
+            *frame = eq->frame;
             return true;
         }
     }

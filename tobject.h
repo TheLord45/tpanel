@@ -20,9 +20,9 @@
 #define __TOBJECT_H__
 
 #include <string>
-#include <QtGlobal>
-#include <QtWidgets>
+
 #include "tsubpage.h"
+#include "tqeditline.h"
 
 QT_BEGIN_NAMESPACE
 class QLabel;
@@ -32,6 +32,7 @@ class QLineEdit;
 class QMediaPlayer;
 class QVideoWidget;
 class QPropertyAnimation;
+class QListWidget;
 QT_END_NAMESPACE
 
 class TObject
@@ -45,6 +46,7 @@ class TObject
             OBJ_BUTTON,
             OBJ_TEXT,
             OBJ_INPUT,
+            OBJ_LIST,
             OBJ_VIDEO
         }OBJECT_TYPE;
 
@@ -53,8 +55,8 @@ class TObject
             QVideoWidget *vwidget{nullptr}; // A video window
             QLabel *label;                  // For buttons
             QWidget *widget;                // For subpage
-            QTextEdit *multitext;           // For multiple text lines with input
-            QLineEdit *linetext;            // For single input lines
+            TQEditLine *plaintext;          // For text input
+            QListWidget *list;              // For lists
         }_OBJ;
 
         typedef struct OBJECT_t
@@ -67,6 +69,8 @@ class TObject
             int top{0};
             int width{0};
             int height{0};
+            int rows{0};
+            int cols{0};
             QPropertyAnimation *animation{nullptr};
             ANIMATION_t animate;
             bool aniDirection{false};
@@ -89,8 +93,8 @@ class TObject
         OBJECT_t *findFirstWindow();
         OBJECT_t *findNextWindow(OBJECT_t *obj);
         void cleanMarked();
-        void removeAllChilds(ulong handle);
-        void removeObject(ulong handle);
+        void removeAllChilds(ulong handle, bool drop=true);
+        void removeObject(ulong handle, bool drop=true);
 
         static std::string handleToString(ulong handle)
         {
@@ -100,7 +104,7 @@ class TObject
         }
 
         static std::string objectToString(OBJECT_TYPE o);
-        void dropContent(OBJECT_t *obj);
+        void dropContent(OBJECT_t *obj, bool lock=true);
 
     private:
         OBJECT_t *mObject{nullptr};

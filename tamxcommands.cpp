@@ -17,6 +17,7 @@
  */
 
 #include "tamxcommands.h"
+#include "tpagemanager.h"
 #include "terror.h"
 #include "tresources.h"
 #include "tconfig.h"
@@ -24,6 +25,23 @@
 
 #include <string>
 #include <vector>
+
+#if __cplusplus < 201402L
+#   error "This module requires at least C++14 standard!"
+#else
+#   if __cplusplus < 201703L
+#       include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#       warning "Support for C++14 and experimental filesystem will be removed in a future version!"
+#   else
+#       include <filesystem>
+#       ifdef __ANDROID__
+namespace fs = std::__fs::filesystem;
+#       else
+namespace fs = std::filesystem;
+#       endif
+#   endif
+#endif
 
 using std::string;
 using std::vector;
@@ -246,153 +264,45 @@ TAmxCommands::TAmxCommands()
 TAmxCommands::~TAmxCommands()
 {
     DECL_TRACER("TAmxCommands::~TAmxCommands()");
+
+    if (mMap && mSystemMap && mMap != mSystemMap)
+    {
+        delete mMap;
+        delete mSystemMap;
+    }
+    else if (mMap)
+        delete mMap;
+    else if (mSystemMap)
+        delete mSystemMap;
 }
 
 bool TAmxCommands::readMap()
 {
     DECL_TRACER("TAmxCommands::readMap()");
 
-    string path = makeFileName(TConfig::getProjectPath(), "map.xma");
-    vector<string> elements = { "cm", "am", "lm", "bm", "sm", "strm", "pm" };
+    bool err = false;
+    string projectPath = TConfig::getProjectPath();
 
-    if (!isValidFile())
+    if (fs::exists(projectPath + "/prj.xma"))
     {
-        MSG_ERROR("File \"" << path << "\" is not a regular readable file!");
-        return false;
+        mMap = new TMap(projectPath);
+        err = mMap->haveError();
     }
 
-    TExpat xml(path);
-    xml.setEncoding(ENC_CP1250);
+    projectPath += "/__system";
 
-    if (!xml.parse())
-        return false;
-
-    int depth = 0;
-    size_t index = 0;
-    vector<string>::iterator mapIter;
-    size_t oldIndex = 0;
-
-    if (elements.size() == 0)
-        return false;
-
-    for (mapIter = elements.begin(); mapIter != elements.end(); ++mapIter)
+    if (fs::exists(projectPath + "/prj.xma"))
     {
-        if ((index = xml.getElementIndex(*mapIter, &depth)) == TExpat::npos)
-        {
-            MSG_WARNING("Element \"" << *mapIter << "\" was not found!");
-            continue;
-        }
+        mSystemMap = new TMap(projectPath);
 
-        MAP_T map;
-        MAP_BM_T mapBm;
-        MAP_PM_T mapPm;
-        string name, content;
-
-        while ((index = xml.getNextElementFromIndex(index, &name, nullptr, nullptr)) != TExpat::npos)
-        {
-            string el = name;
-
-            if (el.compare("me") == 0)
-            {
-                while ((index = xml.getNextElementFromIndex(index, &name, &content, nullptr)) != TExpat::npos)
-                {
-                    string e = name;
-
-                    if (mapIter->compare("cm") == 0 || mapIter->compare("am") == 0 ||
-                        mapIter->compare("lm") == 0 || mapIter->compare("strm") == 0)
-                    {
-                        if (e.compare("p") == 0)
-                            map.p = xml.convertElementToInt(content);
-                        else if (e.compare("c") == 0)
-                            map.c = xml.convertElementToInt(content);
-                        else if (e.compare("ax") == 0)
-                            map.ax = xml.convertElementToInt(content);
-                        else if (e.compare("pg") == 0)
-                            map.pg = xml.convertElementToInt(content);
-                        else if (e.compare("bt") == 0)
-                            map.bt = xml.convertElementToInt(content);
-                        else if (e.compare("pn") == 0)
-                            map.pn = content;
-                        else if (e.compare("bn") == 0)
-                            map.bn = content;
-                    }
-                    else if (mapIter->compare("bm") == 0)
-                    {
-                        while ((index = xml.getNextElementFromIndex(index, &name, &content, nullptr)) != TExpat::npos)
-                        {
-                            string im = name;
-
-                            if (im.compare("i") == 0)
-                                mapBm.i = content;
-                            else if (im.compare("id") == 0)
-                                mapBm.id = xml.convertElementToInt(content);
-                            else if (im.compare("rt") == 0)
-                                mapBm.rt = xml.convertElementToInt(content);
-                            else if (im.compare("pg") == 0)
-                                mapBm.pg = xml.convertElementToInt(content);
-                            else if (im.compare("bt") == 0)
-                                mapBm.bt = xml.convertElementToInt(content);
-                            else if (im.compare("st") == 0)
-                                mapBm.st = xml.convertElementToInt(content);
-                            else if (im.compare("sl") == 0)
-                                mapBm.sl = xml.convertElementToInt(content);
-                            else if (im.compare("pn") == 0)
-                                mapBm.pn = content;
-                            else if (im.compare("bn") == 0)
-                                mapBm.bn = content;
-
-                            oldIndex = index;
-                        }
-
-                        mMap.map_bm.push_back(mapBm);
-
-                        if (index == TExpat::npos)
-                            index = oldIndex + 1;
-                    }
-                    else if (mapIter->compare("sm") == 0)
-                    {
-                        if (e.compare("i") == 0)
-                            mMap.map_sm.push_back(content);
-                    }
-                    else if (mapIter->compare("pm") == 0)
-                    {
-                        if (e.compare("a") == 0)
-                            mapPm.a = xml.convertElementToInt(content);
-                        else if (e.compare("t") == 0)
-                            mapPm.t = content;
-                        else if (e.compare("pg") == 0)
-                            mapPm.pg = xml.convertElementToInt(content);
-                        else if (e.compare("bt") == 0)
-                            mapPm.bt = xml.convertElementToInt(content);
-                        else if (e.compare("pn") == 0)
-                            mapPm.pn = content;
-                        else if (e.compare("bn") == 0)
-                            mapPm.bn = content;
-                    }
-
-                    oldIndex = index;
-                }
-
-                if (mapIter->compare("cm") == 0)
-                    mMap.map_cm.push_back(map);
-                else if (mapIter->compare("am") == 0)
-                    mMap.map_am.push_back(map);
-                else if (mapIter->compare("lm") == 0)
-                    mMap.map_lm.push_back(map);
-                else if (mapIter->compare("strm") == 0)
-                    mMap.map_strm.push_back(map);
-                else if (mapIter->compare("pm") == 0)
-                    mMap.map_pm.push_back(mapPm);
-
-                if (index == TExpat::npos)
-                    index = oldIndex + 1;
-            }
-
-            oldIndex = index;
-        }
+        if (!err)
+            err = mSystemMap->haveError();
     }
 
-    return true;
+    if (!mMap)
+        mMap = mSystemMap;
+
+    return !err;
 }
 
 vector<string> TAmxCommands::getFields(string& msg, char sep)
@@ -438,46 +348,17 @@ vector<string> TAmxCommands::getFields(string& msg, char sep)
     return flds;
 }
 
-vector<MAP_T> TAmxCommands::findButtons(int port, vector<int>& channels, MAP_TYPE mt)
+vector<TMap::MAP_T> TAmxCommands::findButtons(int port, vector<int>& channels, TMap::MAP_TYPE mt)
 {
-    DECL_TRACER("TAmxCommands::findButtons(int port, vector<int>& channels, MAP_TYPE mt)");
+    DECL_TRACER("TAmxCommands::findButtons(int port, vector<int>& channels, TMap::MAP_TYPE mt)");
 
-    vector<MAP_T> map;
-    vector<int>::iterator iter;
+    vector<TMap::MAP_T> map;
 
-    if (channels.empty())
-    {
-        MSG_WARNING("Got empty channel list!");
-        return map;
-    }
+    if (gPageManager && gPageManager->isSetupActive())
+        map = mSystemMap->findButtons(port, channels, mt);
+    else
+        map = mMap->findButtons(port, channels, mt);
 
-    vector<MAP_T> localMap;
-
-    switch (mt)
-    {
-        case TYPE_AM:   localMap = mMap.map_am; break;
-        case TYPE_CM:   localMap = mMap.map_cm; break;
-        case TYPE_LM:   localMap = mMap.map_lm; break;
-    }
-
-    if (localMap.empty())
-    {
-        MSG_WARNING("The internal list of elements is empty!")
-        return map;
-    }
-
-    for (iter = channels.begin(); iter != channels.end(); ++iter)
-    {
-        vector<MAP_T>::iterator mapIter;
-
-        for (mapIter = localMap.begin(); mapIter != localMap.end(); ++mapIter)
-        {
-            if (mapIter->p == port && mapIter->c == *iter)
-                map.push_back(*mapIter);
-        }
-    }
-
-    MSG_DEBUG("Found " << map.size() << " buttons.");
     return map;
 }
 
@@ -485,110 +366,45 @@ string TAmxCommands::findImage(int bt, int page, int instance)
 {
     DECL_TRACER("TAmxCommands::findImage(int bt, int page, int instance)");
 
-    vector<MAP_BM_T> mapBm = mMap.map_bm;
-    vector<MAP_BM_T>::iterator iter;
+    if (page < SYSTEM_PAGE_START)
+        return mMap->findImage(bt, page, instance);
 
-    if (mapBm.empty())
-        return string();
-
-    for (iter = mapBm.begin(); iter != mapBm.end(); ++iter)
-    {
-        if (iter->bt == bt && iter->pg == page && !iter->i.empty())
-        {
-            if (instance >= 0 && iter->st == (instance + 1))
-                return iter->i;
-            else if (instance < 0)
-                return iter->i;
-        }
-    }
-
-    return string();
+    return mSystemMap->findImage(bt, page, instance);
 }
 
 string TAmxCommands::findImage(const string& name)
 {
     DECL_TRACER("TAmxCommands::findImage(const string& name)");
 
-    vector<MAP_BM_T> mapBm = mMap.map_bm;
-    vector<MAP_BM_T>::iterator iter;
+    string str = mMap->findImage(name);
 
-    if (mapBm.empty() || name.empty())
-        return string();
+    if (str.empty())
+        return mSystemMap->findImage(name);
 
-    size_t cnt = 0;
-
-    for (iter = mapBm.begin(); iter != mapBm.end(); ++iter)
-    {
-        if (!iter->i.empty() && iter->i.find(name) != string::npos)
-        {
-            size_t pos = iter->i.find_last_of(".");
-
-            if (pos != string::npos)
-            {
-                string left = iter->i.substr(0, pos);
-MSG_DEBUG("Found candidate: " << iter->i << " (" << left << ")");
-                if (left == name)
-                    return iter->i;
-            }
-        }
-
-        cnt++;
-    }
-
-    MSG_WARNING("No image with name " << name << " in table found!");
-    MSG_DEBUG("Searched " << cnt << " entries for image " << name);
-    return string();
+    return str;
 }
 
-vector<MAP_T> TAmxCommands::findButtonByName(const string& name)
+vector<TMap::MAP_T> TAmxCommands::findButtonByName(const string& name)
 {
     DECL_TRACER("TAmxCommands::findButtonByName(const string& name)");
 
-    vector<MAP_T> map;
+    vector<TMap::MAP_T> map = mMap->findButtonByName(name);
 
-    if (mMap.map_cm.empty())
-    {
-        MSG_WARNING("The internal list of elements is empty!")
-        return map;
-    }
+    if (map.empty())
+        return mSystemMap->findButtonByName(name);
 
-    vector<MAP_T>::iterator mapIter;
-
-    for (mapIter = mMap.map_cm.begin(); mapIter != mMap.map_cm.end(); ++mapIter)
-    {
-        if (mapIter->bn == name)
-            map.push_back(*mapIter);
-    }
-
-    MSG_DEBUG("Found " << map.size() << " buttons.");
     return map;
 }
 
-vector<MAP_T> TAmxCommands::findBargraphs(int port, vector<int>& channels)
+vector<TMap::MAP_T> TAmxCommands::findBargraphs(int port, vector<int>& channels)
 {
     DECL_TRACER("TAmxCommands::findBargraphs(int port, vector<int>& channels)");
 
-    vector<MAP_T> map;
-    vector<int>::iterator iter;
+    vector<TMap::MAP_T> map = mMap->findBargraphs(port, channels);
 
-    if (channels.size() == 0)
-        return map;
+    if (map.empty())
+        return mSystemMap->findBargraphs(port, channels);
 
-    for (iter = channels.begin(); iter != channels.end(); ++iter)
-    {
-        vector<MAP_T>::iterator mapIter;
-
-        if (mMap.map_lm.size() > 0)
-        {
-            for (mapIter = mMap.map_lm.begin(); mapIter != mMap.map_lm.end(); ++mapIter)
-            {
-                if (mapIter->p == port && mapIter->c == *iter)
-                    map.push_back(*mapIter);
-            }
-        }
-    }
-
-    MSG_DEBUG("Found " << map.size() << " buttons.");
     return map;
 }
 
@@ -596,25 +412,14 @@ vector<string> TAmxCommands::findSounds()
 {
     DECL_TRACER("TAmxCommands::findSounds()");
 
-    return mMap.map_sm;
+    return mMap->findSounds();      // This is enough because there are no sounds in the system settings
 }
 
 bool TAmxCommands::soundExist(const string& sname)
 {
     DECL_TRACER("TAmxCommands::soundExist(const string sname)");
 
-    if (mMap.map_sm.size() == 0)
-        return false;
-
-    vector<string>::iterator iter;
-
-    for (iter = mMap.map_sm.begin(); iter != mMap.map_sm.end(); ++iter)
-    {
-        if (iter->compare(sname) == 0)
-            return true;
-    }
-
-    return false;
+    return mMap->soundExist(sname);
 }
 
 bool TAmxCommands::parseCommand(int device, int port, const string& cmd)

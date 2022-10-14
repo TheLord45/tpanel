@@ -45,6 +45,7 @@
 #include "tconfig.h"
 #include "tfsfreader.h"
 #include "tdirectory.h"
+#include "tpagemanager.h"
 #include "tresources.h"
 
 #if __cplusplus < 201402L
@@ -92,18 +93,33 @@ bool TTPInit::createPanelConfigs()
     DECL_TRACER("TTPInit::createPanelConfigs()");
 
     vector<string> resFiles = {
-        ":ressources/external.xma",
-        ":ressources/fnt.xma",
-        ":ressources/icon.xma",
-        ":ressources/_main.xml",
-        ":ressources/manifest.xma",
-        ":ressources/map.xma",
-        ":ressources/pal_001.xma",
-        ":ressources/prj.xma",
-        ":ressources/_setup.xml",
-        ":ressources/table.xma",
-        ":ressources/fonts/arial.ttf",
-        ":ressources/images/theosys_logo.png"
+        ":ressources/__system/Controller.xml",
+        ":ressources/__system/DoubleBeep.xml",
+        ":ressources/__system/external.xma",
+        ":ressources/__system/fnt.xma",
+        ":ressources/__system/fonts/arial.ttf",
+        ":ressources/__system/fonts/amxbold_.ttf",
+        ":ressources/__system/fonts/ariblk.ttf",
+        ":ressources/__system/fonts/webdings.ttf",
+        ":ressources/__system/icon.xma",
+        ":ressources/__system/Logging.xml",
+        ":ressources/__system/images/setup_download_green.png",
+        ":ressources/__system/images/setup_download_red.png",
+        ":ressources/__system/images/setup_fileopen.png",
+        ":ressources/__system/images/setup_note.png",
+        ":ressources/__system/images/setup_reset.png",
+        ":ressources/__system/images/theosys_logo.png",
+        ":ressources/__system/manifest.xma",
+        ":ressources/__system/map.xma",
+        ":ressources/__system/pal_001.xma",
+        ":ressources/__system/prj.xma",
+        ":ressources/__system/SingleBeep.xml",
+        ":ressources/__system/SIP.xml",
+        ":ressources/__system/Sound.xml",
+        ":ressources/__system/SystemSound.xml",
+        ":ressources/__system/table.xma",
+        ":ressources/__system/TP4FileName.xml",
+        ":ressources/__system/View.xml"
     };
 
     bool err = false;
@@ -2002,6 +2018,16 @@ bool TTPInit::createDirectoryStructure()
     if (!_makeDir(pfad))
         return false;
 
+    pfad = mPath + "/__system/fonts";
+
+    if (!_makeDir(pfad))
+        return false;
+
+    pfad = mPath + "/__system/images";
+
+    if (!_makeDir(pfad))
+        return false;
+
     pfad = mPath + "/__system/graphics";
 
     if (!_makeDir(pfad))
@@ -2178,11 +2204,20 @@ bool TTPInit::loadSurfaceFromController(bool force)
 
     TFsfReader reader;
     reader.regCallbackProgress(bind(&TTPInit::progressCallback, this, std::placeholders::_1));
-    string target = mPath + "/" + TConfig::getFtpSurface();
+    bool temp = TConfig::getTemporary();
+
+    if (gPageManager && gPageManager->isSetupActive())
+        TConfig::setTemporary(true);
+    else
+        TConfig::setTemporary(false);
+
+    string surface = TConfig::getFtpSurface();
+    TConfig::setTemporary(temp);
+    string target = mPath + "/" + surface;
     size_t pos = 0;
 
     if ((pos = mPath.find_last_of("/")) != string::npos)
-        target = mPath.substr(0, pos) + "/" + TConfig::getFtpSurface();
+        target = mPath.substr(0, pos) + "/" + surface;
 
     if (!force)
     {
@@ -2205,7 +2240,7 @@ bool TTPInit::loadSurfaceFromController(bool force)
         dir.dropDir(mPath + "/sounds");
     }
 
-    if (!reader.copyOverFTP(TConfig::getFtpSurface(), target))
+    if (!reader.copyOverFTP(surface, target))
     {
         if (TConfig::getFtpDownloadTime() == 0)
             createPanelConfigs();
@@ -2226,6 +2261,7 @@ bool TTPInit::loadSurfaceFromController(bool force)
     {
         createDirectoryStructure();
         createSystemConfigs();
+        createPanelConfigs();
     }
 
     if (_processEvents)
@@ -2280,7 +2316,6 @@ vector<TTPInit::FILELIST_t>& TTPInit::getFileList(const string& filter)
 
     string tmpFile = getTmpFileName();
     MSG_DEBUG("Reading remote directory / into file " << tmpFile);
-//    ftp->Nlst(tmpFile.c_str(), "/");
     ftp->Dir(tmpFile.c_str(), "/");
     ftp->Quit();
     delete ftp;
@@ -2382,6 +2417,39 @@ int TTPInit::progressCallback(off64_t xfer)
     return 1;
 }
 
+off64_t TTPInit::getFileSize(const string& file)
+{
+    DECL_TRACER("TTPInit::getFileSize(const string& file)");
+
+    vector<FILELIST_t>::iterator iter;
+
+    if (!mDirList.empty())
+    {
+        for (iter = mDirList.begin(); iter != mDirList.end(); ++iter)
+        {
+            if (iter->fname == file)
+                return iter->size;
+        }
+    }
+
+    // Here we know that we've no files in our cache. Therefor we'll read from
+    // the NetLinx, if possible.
+    getFileList(".tp4");
+
+    if (mDirList.empty())
+        return 0;
+
+    // Now search again for the file.
+    for (iter = mDirList.begin(); iter != mDirList.end(); ++iter)
+    {
+        if (iter->fname == file)
+            return iter->size;
+    }
+
+    // The file doesn't exist, or we couldn't read from a NetLinx.
+    return 0;
+}
+
 bool TTPInit::isSystemDefault()
 {
     DECL_TRACER("TTPInit::isSystemDefault()");
@@ -2389,6 +2457,13 @@ bool TTPInit::isSystemDefault()
     try
     {
         string marker = mPath + SYSTEM_DEFAULT;
+
+        if (fs::exists(mPath + "/prj.xma"))
+            return false;
+
+        if (fs::exists(mPath + "/__system/prj.xma"))
+            return true;
+
         return fs::exists(marker);
     }
     catch (std::exception& e)
@@ -2440,6 +2515,11 @@ bool TTPInit::reinitialize()
     if (!createDirectoryStructure())
     {
         MSG_WARNING("Error creating the directory structure!");
+    }
+
+    if (!createSystemConfigs())
+    {
+        MSG_WARNING("Error creating system graphics!");
     }
 
     if (!createPanelConfigs())

@@ -36,6 +36,7 @@
 #include "ttimer.h"
 #include "timagerefresh.h"
 #include "tsystemdraw.h"
+#include "tsystem.h"
 
 #define ORD_ELEM_COUNT  5
 
@@ -49,20 +50,6 @@ struct RESOURCE_T;
 
 namespace Button
 {
-    typedef enum BUTTONTYPE
-    {
-        NONE,
-        GENERAL,
-        MULTISTATE_GENERAL,
-        BARGRAPH,
-        MULTISTATE_BARGRAPH,
-        JOISTICK,
-        TEXT_INPUT,
-        COMPUTER_CONTROL,
-        TAKE_NOTE,
-        SUBPAGE_VIEW
-    } BUTTONTYPE;
-
     typedef struct SYSBORDER_t
     {
         int id{0};                  // Internal unique ID number
@@ -73,15 +60,6 @@ namespace Button
         int radius{0};              // Radius for rounded corners
         bool calc{false};           // TRUE = Calculated inside, FALSE = Read from images
     }SYSBORDER_t;
-
-    typedef struct SYSBUTTONS_t
-    {
-        int channel{0};             // Channel number
-        BUTTONTYPE type{NONE};      // Type of button
-        int states{0};              // Maximum number of states
-        int ll{0};                  // Level low range
-        int lh{0};                  // Level high range
-    }SYSBUTTONS_t;
 
     typedef struct SYSTEF_t         // Text effect names
     {
@@ -321,7 +299,7 @@ namespace Button
         SkBitmap bitmap;
     }BITMAP_CACHE;
 
-    class TButton
+    class TButton : public TSystem
     {
         public:
             TButton();
@@ -403,6 +381,7 @@ namespace Button
             std::string getTextColor(int inst=0);
             std::string getTextEffectColor(int inst=0);
             void setTextEffectColor(const std::string& ec, int inst=-1);
+            bool setTextEffectColorOnly(const std::string& ec, int inst=-1);
             int getTextEffect(int inst=0);
             void setTextEffect(int et, int inst=-1);
             std::string getTextEffectName(int inst=0);
@@ -438,6 +417,11 @@ namespace Button
             void setGlobalOpacity(int oo) { if (oo >= 0 && oo <= 255) mGlobalOO = oo; }
             void setVisible(bool v) { visible = v; hd = (v ? 0 : 1); }
             bool isVisible() { return visible; }
+            bool haveListContent() { return _getListContent != nullptr; }
+            bool haveListRow() { return _getListRow != nullptr; }
+            std::function<std::vector<std::string>(ulong handle, int ap, int ta, int ti, int rows, int columns)> getCallbackListContent() { return _getListContent; }
+            std::function<std::string(int ti, int row)> getCallbackListRow() { return _getListRow; }
+            std::function<void (TButton *button)> getCallbackGlobalSettings() { return _getGlobalSettings; };
 
             /**
              * @brief setBitmap Sets a new bitmap to the button
@@ -474,7 +458,13 @@ namespace Button
              */
             bool setOpacity(int op, int instance);
             int getOpacity(int inst=0);
+            int getListAp() { return ap; }
+            int getListTa() { return ta; }
+            int getListTi() { return ti; }
+            int getListNumRows() { return tr; }
+            int getListNumCols() { return tc; }
             bool setFont(int id, int instance);
+            bool setFontOnly(int id, int instance);
             void setTop(int top);
             void setLeft(int left);
             void setLeftTop(int left, int top);
@@ -486,6 +476,7 @@ namespace Button
             void setIconJustification(int j, int x, int y, int instance);
             int getTextJustification(int *x, int *y, int instance);
             void setTextJustification(int j, int x, int y, int instance);
+            bool setTextJustificationOnly(int j, int x, int y, int instance);
             bool startAnimation(int start, int end, int time);
             /**
              * @brief registerSystemButton registers the button as a system button.
@@ -623,7 +614,21 @@ namespace Button
              */
             bool setFillColor(const std::string& color, int instance);
             /**
-             * @brief setTextColor Set the text color.
+             * @brief setTextColor set the text color.
+             * Set the text color to the specified color. Only if the
+             * specified text color is not the same as the current color. It
+             * redraws the button if the color changed.
+             * Note: Color can be assigned by color name (without spaces),
+             * number or R,G,B value (RRGGBB or RRGGBBAA).
+             * @param color     the color
+             * @param instance
+             * The instance number involved.
+             * @return
+             * On error returns FALSE.
+             */
+            bool setTextColor(const std::string& color, int instance);
+            /**
+             * @brief setTextColorOnly set the text color only.
              * Set the text color to the specified color. Only if the
              * specified text color is not the same as the current color.
              * Note: Color can be assigned by color name (without spaces),
@@ -634,7 +639,7 @@ namespace Button
              * @return
              * On error returns FALSE.
              */
-            bool setTextColor(const std::string& color, int instance);
+            bool setTextColorOnly(const std::string& color, int instance);
             /**
              * @brief setDrawOrder - Set the button draw order.
              * Determines what order each layer of the button is drawn.
@@ -718,7 +723,24 @@ namespace Button
              * with a user name and password, if there is one.
              */
             void regCallPlayVideo(std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw)> playVideo) { _playVideo = playVideo; };
-
+            /**
+             * Registers a callback function to get the content of a list.
+             * This function is called to get from the parent the content of
+             * a list.
+             */
+            void regCallListContent(std::function<std::vector<std::string>(ulong handle, int ap, int ta, int ti, int rows, int columns)> getListCtnt) { _getListContent = getListCtnt; }
+            /**
+             * Registers a callback function to get the global settings of the
+             * global page/subpage.
+             */
+            void regCallGlobalSettings(std::function<void (TButton *button)> getGlobalSettings) { _getGlobalSettings = getGlobalSettings; };
+            /**
+             * Registers a callback function to get the content of a particular
+             * row of the list. This function is called for each row detected
+             * in a list. If a row contains more than one column then the
+             * columns are separated by a "|" symbol.
+             */
+            void regCallListRow(std::function<std::string(int ti, int row)> getListRow) { _getListRow = getListRow; }
             /**
              * Make a pixel array and call the callback function to display the
              * image. If there is no callback function registered, nothing
@@ -805,6 +827,16 @@ namespace Button
              */
             bool drawMultistateBargraph(int level, bool show=true);
             /**
+             * Draws the background and the frame, if any, of the box. It takes
+             * the number of rows in account.
+             *
+             * @param show  Optional: If set to false the button will not be
+             * shown.
+             * @return If everything went well, TRUE is returned. If an error
+             * occurred it returns FALSE.
+             */
+            bool drawList(bool show=true);
+            /**
              * Show the button with it's current state.
              */
             void show();
@@ -872,6 +904,20 @@ namespace Button
              * @return TRUE if it is clickable, FALSE otherwise.
              */
             bool isClickable(int x = -1, int y = -1);
+            /**
+             * Returns the password character.
+             *
+             * @return An integer representing the password character. If there
+             * is no password character 0 is returned.
+             */
+            uint getPasswordChar() { return (pc.empty() ? 0 : pc[0]); }
+            /**
+             * Returns the rows of the list in case this button is a list.
+             * Otherwise an empty list is returned.
+             *
+             * @return A vector list containing the rows of the list.
+             */
+            std::vector<std::string>& getListContent() { return mListContent; }
 
         protected:
             BUTTONTYPE getButtonType(const std::string& bt);
@@ -888,6 +934,9 @@ namespace Button
         private:
             std::function<void (ulong handle, ulong parent, unsigned char *buffer, int width, int height, int pixline, int left, int top)> _displayButton{nullptr};
             std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw)> _playVideo{nullptr};
+            std::function<std::vector<std::string>(ulong handle, int ap, int ta, int ti, int rows, int columns)> _getListContent{nullptr};
+            std::function<std::string(int ti, int row)> _getListRow{nullptr};
+            std::function<void (TButton *button)> _getGlobalSettings{nullptr};
 
             POSITION_t calcImagePosition(int width, int height, CENTER_CODE cc, int number, int line = 0);
             IMAGE_SIZE_t calcImageSize(int imWidth, int imHeight, int instance, bool aspect=false);
@@ -957,6 +1006,14 @@ namespace Button
             int cp{1};              // Channel port (default: 1)
             int lp{1};              // Level port (default: 1)
             int lv{0};              // Level code
+            int ta{0};              // Listbox table channel
+            int ti{0};              // Listbox table index number of rows (all rows have this number in "cp")
+            int tr{0};              // Listbox number of rows
+            int tc{0};              // Listbox number of columns
+            int tj{0};              // Listbox row height
+            int tk{0};              // Listbox preferred row height
+            int of{0};              // Listbox list offset: 0=disabled/1=enabled
+            int tg{0};              // Listbox managed: 0=no/1=yes
             int co{0};              // Command port
             std::vector<std::string> cm;         // Commands to send on each button hit
             std::string dr;         // Level "horizontal" or "vertical"
@@ -975,7 +1032,7 @@ namespace Button
             int rh{0};              // Range high
             int ri{0};              // Bargraph inverted (0 = normal, 1 = inverted)
             int rn{0};              // Bargraph: Range drag increment
-            int ac_di{0};           // ???
+            int ac_di{0};           // (guess) Direction of text: 0 = left to right (default); 1 = right to left
             int hd{0};              // 1 = Hidden, 0 = Normal visible
             int da{0};              // 1 = Disabled, 0 = Normal active
             std::string lf;         // Bargraph function: empty = display only, active, active centering, drag, drag centering
@@ -1013,6 +1070,8 @@ namespace Button
             ulong mAniRunTime{0};   // The time in milliseconds an animation should run. 0 = run forever.
             BITMAP_CACHE mBCDummy;  // A dummy retuned in case no cache exists or the element was not found.
             bool mChanged{true};    // TRUE=Something changed --> button must be redrawn
+            int mBorderWidth{0};    // If there is a border this is set to the pixels the border is using
+            std::vector<std::string> mListContent;  // The content of a list, if this button is one
     };
 
     typedef struct BUTTONS_T

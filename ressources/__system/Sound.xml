@@ -1,0 +1,980 @@
+<?xml version="1.0"?>
+<root>
+    <page type="page">
+        <pageID>5005</pageID>
+        <name>Sound</name>
+        <width>1280</width>
+        <height>800</height>
+        <button type="general">
+            <bi>1</bi>
+            <na>Background</na>
+            <lt>12</lt>
+            <tp>8</tp>
+            <wt>1257</wt>
+            <ht>667</ht>
+            <zo>1</zo>
+            <bs></bs>
+            <rl>0</rl>
+            <rh>255</rh>
+            <ac di="0"/>
+            <sr number="1">
+                <bs>Single Line</bs>
+                <cb>Black</cb>
+                <cf>Grey1</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>20</fi>
+            </sr>
+            <sr number="2">
+                <bs>Single Line</bs>
+                <cb>Black</cb>
+                <cf>Grey1</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>20</fi>
+            </sr>
+        </button>
+        <button type="general">
+            <bi>2</bi>
+            <na>tabLogging</na>
+            <lt>20</lt>
+            <tp>20</tp>
+            <wt>220</wt>
+            <ht>50</ht>
+            <zo>2</zo>
+            <bs>Single Line</bs>
+            <rl>0</rl>
+            <rh>255</rh>
+            <ac di="0"/>
+            <pf type="stan">Logging</pf>
+            <sr number="1">
+                <bs>Single Line</bs>
+                <cb>Black</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>24</fi>
+                <te>Logging</te>
+            </sr>
+            <sr number="2">
+                <bs>Single Line</bs>
+                <cb>Black</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>539</fi>
+                <te>Logging</te>
+            </sr>
+        </button>
+        <button type="general">
+            <bi>3</bi>
+            <na>tabNetLinx</na>
+            <lt>240</lt>
+            <tp>20</tp>
+            <wt>220</wt>
+            <ht>50</ht>
+            <zo>3</zo>
+            <bs></bs>
+            <rl>0</rl>
+            <rh>255</rh>
+            <ac di="0"/>
+            <pf type="stan">Controller</pf>
+            <sr number="1">
+                <bs>Single Line</bs>
+                <cb>Black</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>24</fi>
+                <te>NetLinx</te>
+            </sr>
+            <sr number="2">
+                <bs>Single Line</bs>
+                <cb>Black</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>24</fi>
+                <te>NetLinx</te>
+            </sr>
+        </button>
+        <button type="general">
+            <bi>4</bi>
+            <na>tabSIP</na>
+            <lt>460</lt>
+            <tp>20</tp>
+            <wt>220</wt>
+            <ht>50</ht>
+            <zo>4</zo>
+            <bs></bs>
+            <rl>0</rl>
+            <rh>255</rh>
+            <ac di="0"/>
+            <pf type="stan">SIP</pf>
+            <sr number="1">
+                <bs>Single Line</bs>
+                <cb>Black</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>24</fi>
+                <te>SIP</te>
+            </sr>
+            <sr number="2">
+                <bs>Single Line</bs>
+                <cb>Black</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>24</fi>
+                <te>SIP</te>
+            </sr>
+        </button>
+        <button type="general">
+            <bi>5</bi>
+            <na>tabView</na>
+            <lt>680</lt>
+            <tp>20</tp>
+            <wt>220</wt>
+            <ht>50</ht>
+            <zo>5</zo>
+            <bs>Single Line</bs>
+            <rl>0</rl>
+            <rh>255</rh>
+            <ac di="0"/>
+            <pf type="stan">View</pf>
+            <sr number="1">
+                <bs>Single Line</bs>
+                <cb>Black</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>24</fi>
+                <te>View</te>
+            </sr>
+            <sr number="2">
+                <bs>Single Line</bs>
+                <cb>Black</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>24</fi>
+                <te>View</te>
+            </sr>
+        </button>
+        <button type="general">
+            <bi>6</bi>
+            <na>tabSound</na>
+            <lt>900</lt>
+            <tp>20</tp>
+            <wt>220</wt>
+            <ht>50</ht>
+            <zo>6</zo>
+            <bs></bs>
+            <rl>0</rl>
+            <rh>255</rh>
+            <ac di="0"/>
+            <sr number="1">
+                <bs>Quad Line</bs>
+                <cb>Black</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>539</fi>
+                <te>Sound</te>
+            </sr>
+            <sr number="2">
+                <bs>Quad Line</bs>
+                <cb>Black</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>24</fi>
+                <te>Sound</te>
+            </sr>
+        </button>
+        <button type="general">
+            <bi>7</bi>
+            <na>btOK</na>
+            <lt>850</lt>
+            <tp>700</tp>
+            <wt>160</wt>
+            <ht>50</ht>
+            <zo>7</zo>
+            <bs></bs>
+            <fb>momentary</fb>
+            <ap>0</ap>
+            <cp>0</cp>
+            <ch>412</ch>
+            <rl>0</rl>
+            <rh>255</rh>
+            <ac di="0"/>
+            <sr number="1">
+                <bs>AMX Elite Raised -M</bs>
+                <cb>Black</cb>
+                <cf>Grey3</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>24</fi>
+                <te>OK</te>
+            </sr>
+            <sr number="2">
+                <bs>AMX Elite Inset -M</bs>
+                <cb>Black</cb>
+                <cf>Grey3</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>24</fi>
+                <te>OK</te>
+            </sr>
+        </button>
+        <button type="general">
+            <bi>8</bi>
+            <na>btCancel</na>
+            <lt>1026</lt>
+            <tp>700</tp>
+            <wt>160</wt>
+            <ht>50</ht>
+            <zo>8</zo>
+            <bs></bs>
+            <fb>momentary</fb>
+            <ap>0</ap>
+            <cp>0</cp>
+            <ch>413</ch>
+            <rl>0</rl>
+            <rh>255</rh>
+            <ac di="0"/>
+            <sr number="1">
+                <bs>AMX Elite Raised -M</bs>
+                <cb>Black</cb>
+                <cf>Grey3</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>24</fi>
+                <te>Cancel</te>
+            </sr>
+            <sr number="2">
+                <bs>AMX Elite Inset -M</bs>
+                <cb>Black</cb>
+                <cf>Grey3</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>24</fi>
+                <te>Cancel</te>
+            </sr>
+        </button>
+        <button type="general">
+            <bi>9</bi>
+            <na>lbSystemSound</na>
+            <lt>40</lt>
+            <tp>100</tp>
+            <wt>200</wt>
+            <ht>30</ht>
+            <zo>9</zo>
+            <bs></bs>
+            <rl>0</rl>
+            <rh>255</rh>
+            <ac di="0"/>
+            <sr number="1">
+                <bs></bs>
+                <cb>Black</cb>
+                <cf>Transparent</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>21</fi>
+                <te>System sound</te>
+                <jt>4</jt>
+            </sr>
+            <sr number="2">
+                <bs></bs>
+                <cb>LightBlue</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>21</fi>
+                <te>System sound</te>
+                <jt>4</jt>
+            </sr>
+        </button>
+        <button type="general">
+            <bi>10</bi>
+            <na>txSystemSound</na>
+            <lt>260</lt>
+            <tp>100</tp>
+            <wt>605</wt>
+            <ht>30</ht>
+            <zo>10</zo>
+            <bs></bs>
+            <ap>0</ap>
+            <ad>1143</ad>
+            <cp>0</cp>
+            <rl>0</rl>
+            <rh>255</rh>
+            <ac di="0"/>
+            <sr number="1">
+                <bs>Single Line</bs>
+                <cb>Black</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <jt>4</jt>
+                <fi>21</fi>
+            </sr>
+            <sr number="2">
+                <bs>Single Line</bs>
+                <cb>Black</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <jt>4</jt>
+                <fi>1</fi>
+            </sr>
+        </button>
+        <button type="general">
+            <bi>11</bi>
+            <na>btCbSystemSound</na>
+            <lt>864</lt>
+            <tp>100</tp>
+            <wt>20</wt>
+            <ht>30</ht>
+            <zo>11</zo>
+            <bs></bs>
+            <rl>0</rl>
+            <rh>255</rh>
+            <ac di="0"/>
+            <pf type="sToggle">SystemSound</pf>
+            <sr number="1">
+                <bs>Single Line</bs>
+                <cb>Black</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>532</fi>
+                <te>Z</te>
+            </sr>
+            <sr number="2">
+                <bs>Single Line</bs>
+                <cb>Black</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>532</fi>
+                <te>Z</te>
+            </sr>
+        </button>
+        <button type="general">
+            <bi>12</bi>
+            <na>txSingleBeep</na>
+            <lt>260</lt>
+            <tp>140</tp>
+            <wt>605</wt>
+            <ht>30</ht>
+            <zo>12</zo>
+            <bs></bs>
+            <ap>0</ap>
+            <ad>404</ad>
+            <cp>0</cp>
+            <rl>0</rl>
+            <rh>255</rh>
+            <ac di="0"/>
+            <sr number="1">
+                <bs>Single Line</bs>
+                <cb>Black</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <jt>4</jt>
+                <fi>21</fi>
+            </sr>
+            <sr number="2">
+                <bs>Single Line</bs>
+                <cb>Black</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <jt>4</jt>
+                <fi>1</fi>
+            </sr>
+        </button>
+        <button type="general">
+            <bi>13</bi>
+            <na>btCbSingleBeep</na>
+            <lt>864</lt>
+            <tp>140</tp>
+            <wt>20</wt>
+            <ht>30</ht>
+            <zo>13</zo>
+            <bs></bs>
+            <rl>0</rl>
+            <rh>255</rh>
+            <ac di="0"/>
+            <pf type="sToggle">SingleBeep</pf>
+            <sr number="1">
+                <bs>Single Line</bs>
+                <cb>Black</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>532</fi>
+                <te>Z</te>
+            </sr>
+            <sr number="2">
+                <bs>Single Line</bs>
+                <cb>Black</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>532</fi>
+                <te>Z</te>
+            </sr>
+        </button>
+        <button type="general">
+            <bi>14</bi>
+            <na>txDoubleBeep</na>
+            <lt>260</lt>
+            <tp>180</tp>
+            <wt>605</wt>
+            <ht>30</ht>
+            <zo>14</zo>
+            <bs></bs>
+            <ap>0</ap>
+            <ad>405</ad>
+            <cp>0</cp>
+            <rl>0</rl>
+            <rh>255</rh>
+            <ac di="0"/>
+            <sr number="1">
+                <bs>Single Line</bs>
+                <cb>Black</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <jt>4</jt>
+                <fi>21</fi>
+            </sr>
+            <sr number="2">
+                <bs>Single Line</bs>
+                <cb>Black</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <jt>4</jt>
+                <fi>1</fi>
+            </sr>
+        </button>
+        <button type="general">
+            <bi>15</bi>
+            <na>btCbDoubleBeep</na>
+            <lt>864</lt>
+            <tp>180</tp>
+            <wt>20</wt>
+            <ht>30</ht>
+            <zo>15</zo>
+            <bs></bs>
+            <rl>0</rl>
+            <rh>255</rh>
+            <ac di="0"/>
+            <pf type="sToggle">DoubleBeep</pf>
+            <sr number="1">
+                <bs>Single Line</bs>
+                <cb>Black</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>532</fi>
+                <te>Z</te>
+            </sr>
+            <sr number="2">
+                <bs>Single Line</bs>
+                <cb>Black</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>532</fi>
+                <te>Z</te>
+            </sr>
+        </button>
+        <button type="general">
+            <bi>16</bi>
+            <na>lbSingleBeep</na>
+            <lt>40</lt>
+            <tp>140</tp>
+            <wt>200</wt>
+            <ht>30</ht>
+            <zo>16</zo>
+            <bs></bs>
+            <rl>0</rl>
+            <rh>255</rh>
+            <ac di="0"/>
+            <sr number="1">
+                <bs></bs>
+                <cb>Black</cb>
+                <cf>Transparent</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>21</fi>
+                <te>Single beep</te>
+                <jt>4</jt>
+            </sr>
+            <sr number="2">
+                <bs></bs>
+                <cb>LightBlue</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>21</fi>
+                <te>Single beep</te>
+                <jt>4</jt>
+            </sr>
+        </button>
+        <button type="general">
+            <bi>17</bi>
+            <na>lbDoubleBeep</na>
+            <lt>40</lt>
+            <tp>180</tp>
+            <wt>200</wt>
+            <ht>30</ht>
+            <zo>17</zo>
+            <bs></bs>
+            <rl>0</rl>
+            <rh>255</rh>
+            <ac di="0"/>
+            <sr number="1">
+                <bs></bs>
+                <cb>Black</cb>
+                <cf>Transparent</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>21</fi>
+                <te>Double beep</te>
+                <jt>4</jt>
+            </sr>
+            <sr number="2">
+                <bs></bs>
+                <cb>LightBlue</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>21</fi>
+                <te>Double beep</te>
+                <jt>4</jt>
+            </sr>
+        </button>
+        <button type="general">
+            <bi>18</bi>
+            <na>lbSystemSoundState</na>
+            <lt>40</lt>
+            <tp>220</tp>
+            <wt>200</wt>
+            <ht>30</ht>
+            <zo>18</zo>
+            <bs></bs>
+            <rl>0</rl>
+            <rh>255</rh>
+            <ac di="0"/>
+            <sr number="1">
+                <bs></bs>
+                <cb>Black</cb>
+                <cf>Transparent</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>21</fi>
+                <te>System sound</te>
+                <jt>4</jt>
+            </sr>
+            <sr number="2">
+                <bs></bs>
+                <cb>LightBlue</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>21</fi>
+                <te>System sound</te>
+                <jt>4</jt>
+            </sr>
+        </button>
+        <button type="general">
+            <bi>19</bi>
+            <na>lbVolume</na>
+            <lt>40</lt>
+            <tp>260</tp>
+            <wt>200</wt>
+            <ht>30</ht>
+            <zo>19</zo>
+            <bs></bs>
+            <rl>0</rl>
+            <rh>255</rh>
+            <ac di="0"/>
+            <sr number="1">
+                <bs></bs>
+                <cb>Black</cb>
+                <cf>Transparent</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>21</fi>
+                <te>Volume</te>
+                <jt>4</jt>
+            </sr>
+            <sr number="2">
+                <bs></bs>
+                <cb>LightBlue</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>21</fi>
+                <te>Volume</te>
+                <jt>4</jt>
+            </sr>
+        </button>
+        <button type="general">
+            <bi>20</bi>
+            <na>lbGain</na>
+            <lt>40</lt>
+            <tp>300</tp>
+            <wt>200</wt>
+            <ht>30</ht>
+            <zo>20</zo>
+            <bs></bs>
+            <rl>0</rl>
+            <rh>255</rh>
+            <ac di="0"/>
+            <sr number="1">
+                <bs></bs>
+                <cb>Black</cb>
+                <cf>Transparent</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>21</fi>
+                <te>Gain</te>
+                <jt>4</jt>
+            </sr>
+            <sr number="2">
+                <bs></bs>
+                <cb>LightBlue</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>21</fi>
+                <te>Gain</te>
+                <jt>4</jt>
+            </sr>
+        </button>
+        <button type="general">
+            <bi>21</bi>
+            <na>lbPlayTestSound</na>
+            <lt>40</lt>
+            <tp>340</tp>
+            <wt>200</wt>
+            <ht>30</ht>
+            <zo>21</zo>
+            <bs></bs>
+            <rl>0</rl>
+            <rh>255</rh>
+            <ac di="0"/>
+            <sr number="1">
+                <bs></bs>
+                <cb>Black</cb>
+                <cf>Transparent</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>21</fi>
+                <te>Play test sound</te>
+                <jt>4</jt>
+            </sr>
+            <sr number="2">
+                <bs></bs>
+                <cb>LightBlue</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>21</fi>
+                <te>Play test sound</te>
+                <jt>4</jt>
+            </sr>
+        </button>
+        <button type="general">
+            <bi>22</bi>
+            <na>cbSystemSound</na>
+            <lt>260</lt>
+            <tp>220</tp>
+            <wt>30</wt>
+            <ht>30</ht>
+            <zo>22</zo>
+            <bs></bs>
+            <ap>0</ap>
+            <cp>0</cp>
+            <ch>17</ch>
+            <rl>0</rl>
+            <rh>255</rh>
+            <ac di="0"/>
+            <sr number="1">
+                <bs>Single Line</bs>
+                <cb>Black</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>537</fi>
+            </sr>
+            <sr number="2">
+                <bs>Single Line</bs>
+                <cb>Black</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>537</fi>
+                <te>a</te>
+            </sr>
+        </button>
+        <button type="general">
+            <bi>23</bi>
+            <na>lbPlaySystemSoundState</na>
+            <lt>305</lt>
+            <tp>220</tp>
+            <wt>186</wt>
+            <ht>30</ht>
+            <zo>23</zo>
+            <bs></bs>
+            <rl>0</rl>
+            <rh>255</rh>
+            <ac di="0"/>
+            <sr number="1">
+                <bs></bs>
+                <cb>Black</cb>
+                <cf>Transparent</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>21</fi>
+                <te>Play system sound</te>
+                <jt>4</jt>
+            </sr>
+            <sr number="2">
+                <bs></bs>
+                <cb>LightBlue</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>21</fi>
+                <te>Play system sound</te>
+                <jt>4</jt>
+            </sr>
+        </button>
+        <button type="bargraph">
+            <bi>24</bi>
+            <na>slVolume</na>
+            <lt>260</lt>
+            <tp>260</tp>
+            <wt>625</wt>
+            <ht>30</ht>
+            <zo>24</zo>
+            <bs></bs>
+            <dr>horizontal</dr>
+            <ap>0</ap>
+            <cp>0</cp>
+            <lp>0</lp>
+            <lv>9</lv>
+            <lf>active</lf>
+            <rl>0</rl>
+            <rh>100</rh>
+            <rn>256</rn>
+            <sc>White</sc>
+            <ac di="0"/>
+            <sr number="1">
+                <bs>Circle 25</bs>
+                <cb>Black</cb>
+                <cf>Grey5</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>20</fi>
+            </sr>
+            <sr number="2">
+                <bs>Circle 25</bs>
+                <cb>Black</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>20</fi>
+            </sr>
+        </button>
+        <button type="bargraph">
+            <bi>25</bi>
+            <na>slGain</na>
+            <lt>260</lt>
+            <tp>300</tp>
+            <wt>625</wt>
+            <ht>30</ht>
+            <zo>25</zo>
+            <bs></bs>
+            <dr>horizontal</dr>
+            <ap>0</ap>
+            <cp>0</cp>
+            <lp>0</lp>
+            <lv>6</lv>
+            <lf>active</lf>
+            <rl>0</rl>
+            <rh>100</rh>
+            <rn>256</rn>
+            <sc>White</sc>
+            <ac di="0"/>
+            <sr number="1">
+                <bs>Circle 25</bs>
+                <cb>Black</cb>
+                <cf>Grey5</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>20</fi>
+            </sr>
+            <sr number="2">
+                <bs>Circle 25</bs>
+                <cb>Black</cb>
+                <cf>White</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <fi>20</fi>
+            </sr>
+        </button>
+        <button type="general">
+            <bi>26</bi>
+            <na>btPlaySystemSound</na>
+            <lt>902</lt>
+            <tp>100</tp>
+            <wt>58</wt>
+            <ht>30</ht>
+            <zo>26</zo>
+            <bs></bs>
+            <ap>0</ap>
+            <cp>0</cp>
+            <ch>2050</ch>
+            <rl>0</rl>
+            <rh>255</rh>
+            <ac di="0"/>
+            <sr number="1">
+                <bs></bs>
+                <cb>VeryLightYellow</cb>
+                <cf>Transparent</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <bm>setup_note.png</bm>
+                <fi>20</fi>
+            </sr>
+            <sr number="2">
+                <bs></bs>
+                <cb>LightBlue</cb>
+                <cf>Transparent</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <bm>setup_note.png</bm>
+                <fi>20</fi>
+            </sr>
+        </button>
+        <button type="general">
+            <bi>27</bi>
+            <na>btPlaySingleBeep</na>
+            <lt>902</lt>
+            <tp>140</tp>
+            <wt>58</wt>
+            <ht>30</ht>
+            <zo>27</zo>
+            <bs></bs>
+            <ap>0</ap>
+            <cp>0</cp>
+            <ch>2051</ch>
+            <rl>0</rl>
+            <rh>255</rh>
+            <ac di="0"/>
+            <sr number="1">
+                <bs></bs>
+                <cb>VeryLightYellow</cb>
+                <cf>Transparent</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <bm>setup_note.png</bm>
+                <fi>20</fi>
+            </sr>
+            <sr number="2">
+                <bs></bs>
+                <cb>LightBlue</cb>
+                <cf>Transparent</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <bm>setup_note.png</bm>
+                <fi>20</fi>
+            </sr>
+        </button>
+        <button type="general">
+            <bi>28</bi>
+            <na>btPlayDoubleBeep</na>
+            <lt>902</lt>
+            <tp>180</tp>
+            <wt>58</wt>
+            <ht>30</ht>
+            <zo>28</zo>
+            <bs></bs>
+            <ap>0</ap>
+            <cp>0</cp>
+            <ch>2052</ch>
+            <rl>0</rl>
+            <rh>255</rh>
+            <ac di="0"/>
+            <sr number="1">
+                <bs></bs>
+                <cb>VeryLightYellow</cb>
+                <cf>Transparent</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <bm>setup_note.png</bm>
+                <fi>20</fi>
+            </sr>
+            <sr number="2">
+                <bs></bs>
+                <cb>LightBlue</cb>
+                <cf>Transparent</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <bm>setup_note.png</bm>
+                <fi>20</fi>
+            </sr>
+        </button>
+        <button type="general">
+            <bi>29</bi>
+            <na>btPlayTestSound</na>
+            <lt>260</lt>
+            <tp>340</tp>
+            <wt>58</wt>
+            <ht>30</ht>
+            <zo>29</zo>
+            <bs></bs>
+            <ap>0</ap>
+            <cp>0</cp>
+            <ch>159</ch>
+            <rl>0</rl>
+            <rh>255</rh>
+            <ac di="0"/>
+            <sr number="1">
+                <bs></bs>
+                <cb>VeryLightYellow</cb>
+                <cf>Transparent</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <bm>setup_note.png</bm>
+                <fi>20</fi>
+            </sr>
+            <sr number="2">
+                <bs></bs>
+                <cb>LightBlue</cb>
+                <cf>Transparent</cf>
+                <ct>Black</ct>
+                <ec>#000000FF</ec>
+                <bm>setup_note.png</bm>
+                <fi>20</fi>
+            </sr>
+        </button>
+        <sr number="1">
+            <bs></bs>
+            <cb></cb>
+            <cf>White</cf>
+            <ct>Black</ct>
+            <ec>#000000FF</ec>
+            <fi>20</fi>
+        </sr>
+    </page>
+</root>

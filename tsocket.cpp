@@ -577,7 +577,9 @@ void TSocket::initSSL()
         return;
 
     SSL_library_init();
+#if OPENSSL_SHLIB_VERSION < 3
     ERR_load_BIO_strings();
+#endif
     ERR_load_crypto_strings();
     SSL_load_error_strings();
     mSSLInitialized = true;

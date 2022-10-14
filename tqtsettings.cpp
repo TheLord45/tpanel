@@ -20,7 +20,7 @@
 #include <QMessageBox>
 #ifdef QT5_LINUX
 #include <QAudioOutput>
-#else
+#elif defined(QT6_LINUX) && defined(__ANDROID__)
 #include <QtCore/private/qandroidextras_p.h>
 #endif
 #include <QScreen>
@@ -33,7 +33,6 @@
 #include "tdirectory.h"
 #include "tresources.h"
 #include "tpagemanager.h"
-#include "tfont.h"
 #include "terror.h"
 #include "ui_tqtsettings.h"
 
@@ -524,6 +523,10 @@ void TQtSettings::doResize()
                                 scaleObject(cb);
 #ifdef __ANDROID__
                                 cb->setPalette(qt_fusionPalette());
+                                QSize size = cb->size();
+                                QString ss = QString("spacing:%1;indicator:{width:%2px;height:%3px;}").arg(scale(5)).arg(size.height()).arg(size.height());
+                                MSG_PROTOCOL("CheckBox style sheet: " << ss.toStdString());
+                                cb->setStyleSheet(ss);
 #endif
                             }
                             else if (n.startsWith("lineEdit"))

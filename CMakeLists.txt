@@ -79,6 +79,7 @@ set(SOURCES tmain.cpp
 			tpagemanager.cpp
 			tpage.cpp
 			tsubpage.cpp
+			tpageinterface.cpp
 			tbutton.cpp
 			tvalidatefile.cpp
 			tresources.cpp
@@ -98,6 +99,7 @@ set(SOURCES tmain.cpp
 			tqemitqueue.cpp
 			tamxnet.cpp
 			tamxcommands.cpp
+			tmap.cpp
 			tdrawimage.cpp
 			tdirectory.cpp
 			texpand.cpp
@@ -112,10 +114,12 @@ set(SOURCES tmain.cpp
 			expand.cpp
 			tsipclient.cpp
 			texcept.cpp
+			tsystem.cpp
 			base64.cpp
 			texpat++.cpp
 			tqtbusy.cpp
 			tqdownload.cpp
+			tqeditline.cpp
 			tpanel.qrc)
 
 add_executable(tpanel ${SOURCES})
@@ -131,7 +135,7 @@ if (DEBUG)
    add_definitions(-g)
 endif(DEBUG)
 
-add_definitions(-pedantic -fexceptions -Wextra)
+add_definitions(-pedantic -fexceptions -Wextra -Wno-attributes)
 
 find_library(LIBSKIA_LIBRARY NAMES skia HINTS /usr/local/lib/skia)
 

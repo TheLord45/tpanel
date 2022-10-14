@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,6 +30,23 @@
 #include "tconfig.h"
 #include "terror.h"
 
+#if __cplusplus < 201402L
+#   error "This module requires at least C++14 standard!"
+#else
+#   if __cplusplus < 201703L
+#       include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#       warning "Support for C++14 and experimental filesystem will be removed in a future version!"
+#   else
+#       include <filesystem>
+#       ifdef __ANDROID__
+namespace fs = std::__fs::filesystem;
+#       else
+namespace fs = std::filesystem;
+#       endif
+#   endif
+#endif
+
 using std::string;
 using std::vector;
 using namespace Button;
@@ -42,13 +59,22 @@ TSubPage::TSubPage(const string& name)
 {
     DECL_TRACER("TSubPage::TSubPage(const string& path)");
     TError::clear();
-    string path = makeFileName(TConfig::getProjectPath(), name);
+
+    string projectPath = ((gPageManager && gPageManager->isSetupActive()) ? TConfig::getSystemProjectPath() : TConfig::getProjectPath());
+
+    if (!fs::exists(projectPath + "/prj.xma"))
+    {
+        MSG_ERROR("Directory " << projectPath << " doesn't exist!");
+        return;
+    }
+
+    string path = makeFileName(projectPath, name);
 
     if (isValidFile())
         mFName = getFileName();
     else
     {
-        MSG_ERROR("Either the path \"" << TConfig::getProjectPath() << "\" or the file name \"" << name << "\" is invalid!");
+        MSG_ERROR("Either the path \"" << projectPath << "\" or the file name \"" << name << "\" is invalid!");
         TError::setError();
         return;
     }
@@ -83,7 +109,7 @@ TSubPage::~TSubPage()
 
     MSG_DEBUG("Destroing subpage " << mSubpage.pageID << ": " << mSubpage.name);
 
-    BUTTONS_T *b = mButtons;
+    BUTTONS_T *b = TPageInterface::getButtons();
     BUTTONS_T *next = nullptr;
 
     while (b)
@@ -97,7 +123,7 @@ TSubPage::~TSubPage()
         b = next;
     }
 
-    mButtons = nullptr;
+    setButtons(nullptr);
 }
 
 void TSubPage::initialize()
@@ -137,7 +163,7 @@ void TSubPage::initialize()
         return;
     }
 
-    mSubpage.popupType = xml.getAttribute("popupType", attrs);  // ??
+    mSubpage.popupType = xml.getAttribute("popupType", attrs);  // popup or subpage
 
     while ((index = xml.getNextElementFromIndex(index, &ename, &content, &attrs)) != TExpat::npos)
     {
@@ -170,8 +196,9 @@ void TSubPage::initialize()
             try
             {
                 TButton *button = new TButton();
+                TPageInterface::registerListCallback<TSubPage>(button, this);
                 button->setPalette(mPalette);
-                button->setFonts(mFonts);
+                button->setFonts(getFonts());
                 index = button->initialize(&xml, index);
                 button->setParentSize(mSubpage.width, mSubpage.height);
                 button->registerCallback(_displayButton);
@@ -254,6 +281,8 @@ void TSubPage::initialize()
             index = oldIndex + 1;
     }
 
+    setSR(mSubpage.sr);
+/*
     if (TStreamError::checkFilter(HLOG_DEBUG))
     {
         MSG_DEBUG("PageID: " << mSubpage.pageID);
@@ -280,7 +309,7 @@ void TSubPage::initialize()
             pos++;
         }
     }
-
+*/
     // Here the sort function could be called. But it's not necessary because
     // the buttons are stored in ascending Z order. Therefor the following
     // method call is commented out.
@@ -382,7 +411,7 @@ void TSubPage::show()
 
             if (!mSubpage.sr[0].te.empty())
             {
-                if (!drawText(&target))
+                if (!drawText(mSubpage, &target))
                     return;
             }
 
@@ -427,7 +456,7 @@ void TSubPage::show()
     {
         MSG_DEBUG("Drawing a text only on background image ...");
 
-        if (!drawText(&target))
+        if (!drawText(mSubpage, &target))
             return;
 
         SkImageInfo info = target.info();
@@ -446,16 +475,17 @@ void TSubPage::show()
     }
 
     // Draw the buttons
-    BUTTONS_T *button = mButtons;
+    BUTTONS_T *button = TPageInterface::getButtons();
 
     while (button)
     {
         if (button->button)
         {
             MSG_DEBUG("Drawing button " << button->button->getButtonIndex() << ": " << button->button->getButtonName());
+            TPageInterface::registerListCallback<TSubPage>(button->button, this);
             button->button->registerCallback(_displayButton);
             button->button->regCallPlayVideo(_playVideo);
-            button->button->setFonts(mFonts);
+            button->button->setFonts(getFonts());
             button->button->setPalette(mPalette);
             button->button->createButtons();
 
@@ -481,7 +511,7 @@ void TSubPage::drop()
 
     stopTimer();
     // Set all elements of subpage invisible
-    BUTTONS_T *bt = mButtons;
+    BUTTONS_T *bt = TPageInterface::getButtons();
 
     while (bt)
     {
@@ -491,49 +521,6 @@ void TSubPage::drop()
 
     mZOrder = -1;
     mVisible = false;
-}
-
-BUTTONS_T *TSubPage::addButton(TButton* button)
-{
-    DECL_TRACER("*TSubPage::addButton(TButton* button)");
-
-    if (!button)
-    {
-        MSG_ERROR("Parameter is NULL!");
-        TError::setError();
-        return nullptr;
-    }
-
-    try
-    {
-        BUTTONS_T *chain = new BUTTONS_T;
-        chain->button = button;
-        chain->next = nullptr;
-        chain->previous = nullptr;
-        BUTTONS_T *bts = mButtons;
-
-        if (bts)
-        {
-            BUTTONS_T *p = bts;
-
-            while (p && p->next)
-                p = p->next;
-
-            p->next = chain;
-            chain->previous = p;
-        }
-        else
-            mButtons = chain;
-
-        return chain;
-    }
-    catch (std::exception& e)
-    {
-        MSG_ERROR("Memory error: " << e.what());
-        TError::setError();
-    }
-
-    return nullptr;
 }
 
 void TSubPage::startTimer()
@@ -577,129 +564,6 @@ void TSubPage::runTimer()
     mTimerRunning = false;
 }
 
-bool TSubPage::hasButton(int id)
-{
-    DECL_TRACER("TSubPage::hasButton(int id)");
-
-    BUTTONS_T *bt = mButtons;
-
-    while (bt)
-    {
-        if (bt->button && bt->button->getButtonIndex() == id)
-            return true;
-
-        bt = bt->next;
-    }
-
-    return false;
-}
-
-TButton *TSubPage::getButton(int id)
-{
-    DECL_TRACER("TSubPage::getButton(int id)");
-
-    BUTTONS_T *bt = mButtons;
-
-    while (bt)
-    {
-        if (bt->button && bt->button->getButtonIndex() == id)
-            return bt->button;
-
-        bt = bt->next;
-    }
-
-    return nullptr;
-}
-
-vector<TButton *> TSubPage::getButtons(int ap, int ad)
-{
-    DECL_TRACER("TSubPage::getButtons(int ap, int ad)");
-
-    vector<TButton *> list;
-    BUTTONS_T *bt = mButtons;
-
-    while (bt)
-    {
-        if (bt->button->getAddressPort() == ap && bt->button->getAddressChannel() == ad)
-            list.push_back(bt->button);
-
-        bt = bt->next;
-    }
-
-    return list;
-}
-
-std::vector<TButton *> TSubPage::getAllButtons()
-{
-    DECL_TRACER("TSubPage::getAllButtons()");
-
-    vector<TButton *> list;
-    BUTTONS_T *bt = mButtons;
-
-    while(bt)
-    {
-        list.push_back(bt->button);
-        bt = bt->next;
-    }
-
-    return list;
-}
-
-/*
- * Sort the button according to their Z-order.
- * The button with the highest Z-order will be the last button in the chain.
- * The algorithm is a bubble sort algorithm.
- */
-bool TSubPage::sortButtons()
-{
-    DECL_TRACER("TSubPage::sortButtons()");
-
-    bool turned = true;
-
-    while (turned)
-    {
-        BUTTONS_T *button = mButtons;
-        turned = false;
-
-        while (button)
-        {
-            int zo = button->button->getZOrder();
-
-            if (button->previous)
-            {
-                if (zo < button->previous->button->getZOrder())
-                {
-                    BUTTONS_T *pprev = button->previous->previous;
-                    BUTTONS_T *prev = button->previous;
-                    BUTTONS_T *next = button->next;
-
-                    if (pprev)
-                        pprev->next = button;
-
-                    prev->next = next;
-                    prev->previous = button;
-                    button->next = prev;
-                    button->previous = pprev;
-
-                    if (!pprev)
-                        mButtons = button;
-
-                    button = next;
-
-                    if (next)
-                        next->previous = prev;
-
-                    turned = true;
-                    continue;
-                }
-            }
-
-            button = button->next;
-        }
-    }
-
-    return true;
-}
 #ifdef _SCALE_SKIA_
 void TSubPage::calcPosition(int im_width, int im_height, int *left, int *top, bool scale)
 #else
@@ -783,341 +647,6 @@ void TSubPage::calcPosition(int im_width, int im_height, int *left, int *top)
         *top = 0;
 }
 
-int TSubPage::numberLines(const string& str)
-{
-    DECL_TRACER("TButton::numberLines(const string& str)");
-
-    int lines = 1;
-
-    for (size_t i = 0; i < str.length(); i++)
-    {
-        if (str.at(i) == '\n')
-            lines++;
-    }
-
-    return lines;
-}
-
-int TSubPage::calcLineHeight(string text, SkFont& font)
-{
-    DECL_TRACER("TButton::calcLineHeight(string text, SkFont& font)");
-
-    sk_sp<SkTextBlob> blob = SkTextBlob::MakeFromString(text.c_str(), font);
-    SkRect rect = blob.get()->bounds();
-    return rect.height();
-}
-
-Button::POSITION_t TSubPage::calcImagePosition(int width, int height, Button::CENTER_CODE cc, int line)
-{
-    DECL_TRACER("TButton::calcImagePosition(int with, int height, CENTER_CODE code, int number)");
-
-    SR_T act_sr;
-    POSITION_t position;
-    int ix, iy;
-
-    if (mSubpage.sr.size() == 0)
-        return position;
-
-    act_sr = mSubpage.sr.at(0);
-//    int border_size = getBorderSize(act_sr.bs);
-    int border_size = 0;
-    int code, border = border_size;
-    string dbgCC;
-    int rwt = 0, rht = 0;
-
-    switch (cc)
-    {
-        case SC_ICON:
-            code = act_sr.ji;
-            ix = act_sr.ix;
-            iy = act_sr.iy;
-            border = border_size = 0;
-            dbgCC = "ICON";
-            rwt = width;
-            rht = height;
-            break;
-
-        case SC_BITMAP:
-            code = act_sr.jb;
-            ix = act_sr.bx;
-            iy = act_sr.by;
-            dbgCC = "BITMAP";
-            rwt = std::min(mSubpage.width - border * 2, width);
-            rht = std::min(mSubpage.height - border_size * 2, height);
-            break;
-
-        case SC_TEXT:
-            code = act_sr.jt;
-            ix = act_sr.tx;
-            iy = act_sr.ty;
-            dbgCC = "TEXT";
-            border += 4;
-            rwt = std::min(mSubpage.width - border * 2, width);
-            rht = std::min(mSubpage.height - border_size * 2, height);
-            break;
-    }
-
-    if (width > rwt || height > rht)
-        position.overflow = true;
-
-    switch (code)
-    {
-        case 0: // absolute position
-            position.left = ix;
-
-            if (cc == SC_TEXT)
-                position.top = iy + height * line;
-            else
-                position.top = iy;
-
-            if (cc == SC_BITMAP && ix < 0 && rwt < width)
-                position.left *= -1;
-
-            if (cc == SC_BITMAP && iy < 0 && rht < height)
-                position.top += -1;
-
-            position.width = rwt;
-            position.height = rht;
-            break;
-
-        case 1: // top, left
-            if (cc == SC_TEXT)
-            {
-                position.left = border;
-                position.top = height * line;
-            }
-
-            position.width = rwt;
-            position.height = rht;
-            break;
-
-        case 2: // center, top
-            if (cc == SC_TEXT)
-                position.top = height * line;
-
-            position.left = (mSubpage.width - rwt) / 2;
-            position.height = rht;
-            position.width = rwt;
-            break;
-
-        case 3: // right, top
-            position.left = mSubpage.width - rwt;
-
-            if (cc == SC_TEXT)
-            {
-                position.left = (((position.left - border) < 0) ? 0 : position.left - border);
-                position.top = height * line;
-            }
-
-            position.width = rwt;
-            position.height = rht;
-            break;
-
-        case 4: // left, middle
-            if (cc == SC_TEXT)
-            {
-                position.left = border;
-                position.top = ((mSubpage.height - rht) / 2) + (height / 2 * line);
-            }
-            else
-                position.top = (mSubpage.height - rht) / 2;
-
-            position.width = rwt;
-            position.height = rht;
-            break;
-
-        case 6: // right, middle
-            position.left = mSubpage.width - rwt;
-
-            if (cc == SC_TEXT)
-            {
-                position.left = (((position.left - border) < 0) ? 0 : position.left - border);
-                position.top = ((mSubpage.height - rht) / 2) + (height / 2 * line);
-            }
-            else
-                position.top = (mSubpage.height - rht) / 2;
-
-            position.width = rwt;
-            position.height = rht;
-            break;
-
-        case 7: // left, bottom
-            if (cc == SC_TEXT)
-            {
-                position.left = border_size;
-                position.top = (mSubpage.height - rht) - height * line;
-            }
-            else
-                position.top = mSubpage.height - rht;
-
-            position.width = rwt;
-            position.height = rht;
-            break;
-
-        case 8: // center, bottom
-            position.left = (mSubpage.width - rwt) / 2;
-
-            if (cc == SC_TEXT)
-                position.top = (mSubpage.height - rht) - height * line;
-            else
-                position.top = mSubpage.height - rht;
-
-            position.width = rwt;
-            position.height = rht;
-            break;
-
-        case 9: // right, bottom
-            position.left = mSubpage.width - rwt;
-
-            if (cc == SC_TEXT)
-            {
-                position.left = (((position.left - border) < 0) ? 0 : position.left - border);
-                position.top = (mSubpage.height - rht) - height * line;
-            }
-            else
-                position.top = mSubpage.height - rht;
-            break;
-
-        default: // center, middle
-            position.left = (mSubpage.width - rwt) / 2;
-
-            if (cc == SC_TEXT)
-                position.top = ((mSubpage.height - rht) / 2) + (height / 2 * line);
-            else
-                position.top = (mSubpage.height - rht) / 2;
-
-            position.width = rwt;
-            position.height = rht;
-    }
-
-    MSG_DEBUG("Type: " << dbgCC << ", PosType=" << code << ", Position: x=" << position.left << ", y=" << position.top << ", w=" << position.width << ", h=" << position.height << ", Overflow: " << (position.overflow ? "YES" : "NO"));
-    position.valid = true;
-    return position;
-}
-
-bool TSubPage::drawText(SkBitmap *img)
-{
-    MSG_TRACE("TSubPage::drawText(SkImage& img)");
-
-    if (mSubpage.sr[0].te.empty())
-        return true;
-
-    MSG_DEBUG("Searching for font number " << mSubpage.sr[0].fi << " with text " << mSubpage.sr[0].te);
-    FONT_T font = mFonts->getFont(mSubpage.sr[0].fi);
-
-    if (!font.file.empty())
-    {
-        SkCanvas canvas(*img, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
-        sk_sp<SkTypeface> typeFace = mFonts->getTypeFace(mSubpage.sr[0].fi);
-
-        if (!typeFace)
-        {
-            MSG_ERROR("Error creating type face " << font.fullName);
-            TError::setError();
-            return false;
-        }
-
-        SkScalar fontSizePt = ((SkScalar)font.size * 1.322);
-        SkFont skFont(typeFace, fontSizePt);
-
-        SkPaint paint;
-        paint.setAntiAlias(true);
-        SkColor color = TColor::getSkiaColor(mSubpage.sr[0].ct);
-        paint.setColor(color);
-        paint.setStyle(SkPaint::kFill_Style);
-
-        SkFontMetrics metrics;
-        skFont.getMetrics(&metrics);
-        int lines = numberLines(mSubpage.sr[0].te);
-
-        if (lines > 1 || mSubpage.sr[0].ww)
-        {
-            vector<string> textLines;
-
-            if (!mSubpage.sr[0].ww)
-                textLines = ::splitLine(mSubpage.sr[0].te);
-            else
-            {
-                textLines = splitLine(mSubpage.sr[0].te, mSubpage.width, mSubpage.height, skFont, paint);
-                lines = textLines.size();
-            }
-
-            int lineHeight = calcLineHeight(mSubpage.sr[0].te, skFont);
-            int totalHeight = lineHeight * lines;
-
-            if (totalHeight > mSubpage.height)
-            {
-                lines = mSubpage.height / lineHeight;
-                totalHeight = lineHeight * lines;
-            }
-
-            MSG_DEBUG("Line height: " << lineHeight);
-            POSITION_t position = calcImagePosition(mSubpage.width, totalHeight, SC_TEXT, 1);
-            MSG_DEBUG("Position frame: l: " << position.left << ", t: " << position.top << ", w: " << position.width << ", h: " << position.height);
-
-            if (!position.valid)
-            {
-                MSG_ERROR("Error calculating the text position!");
-                TError::setError();
-                return false;
-            }
-
-            vector<string>::iterator iter;
-            int line = 0;
-
-            for (iter = textLines.begin(); iter != textLines.end(); iter++)
-            {
-                sk_sp<SkTextBlob> blob = SkTextBlob::MakeFromString(iter->c_str(), skFont);
-                SkRect rect;
-                skFont.measureText(iter->c_str(), iter->length(), SkTextEncoding::kUTF8, &rect, &paint);
-                POSITION_t pos = calcImagePosition(rect.width(), lineHeight, SC_TEXT, 1);
-
-                if (!pos.valid)
-                {
-                    MSG_ERROR("Error calculating the text position!");
-                    TError::setError();
-                    return false;
-                }
-                MSG_DEBUG("Triing to print line: " << *iter);
-
-                SkScalar startX = (SkScalar)pos.left;
-                SkScalar startY = (SkScalar)position.top + lineHeight * line;
-                MSG_DEBUG("x=" << startX << ", y=" << startY);
-                canvas.drawTextBlob(blob, startX, startY + lineHeight / 2 + 4, paint);
-                line++;
-
-                if (line > lines)
-                    break;
-            }
-        }
-        else    // single line
-        {
-            sk_sp<SkTextBlob> blob = SkTextBlob::MakeFromString(mSubpage.sr[0].te.c_str(), skFont);
-            SkRect rect;
-            skFont.measureText(mSubpage.sr[0].te.c_str(), mSubpage.sr[0].te.length(), SkTextEncoding::kUTF8, &rect, &paint);
-            POSITION_t position = calcImagePosition(rect.width(), (rect.height() * (float)lines), SC_TEXT, 0);
-
-            if (!position.valid)
-            {
-                MSG_ERROR("Error calculating the text position!");
-                TError::setError();
-                return false;
-            }
-
-            MSG_DEBUG("Printing line " << mSubpage.sr[0].te);
-            SkScalar startX = (SkScalar)position.left;
-            SkScalar startY = (SkScalar)position.top + metrics.fCapHeight; // + metrics.fLeading; // (metrics.fAscent * -1.0);
-            canvas.drawTextBlob(blob, startX, startY, paint);
-        }
-    }
-    else
-    {
-        MSG_WARNING("No font file name found for font " << mSubpage.sr[0].fi);
-    }
-
-    return true;
-}
-
 RECT_T TSubPage::getRegion()
 {
     DECL_TRACER("TSubPage::getRegion()");
@@ -1134,7 +663,11 @@ void TSubPage::doClick(int x, int y, bool pressed)
 {
     DECL_TRACER("TSubPage::doClick(int x, int y)");
 
-    BUTTONS_T *button = mButtons;
+    BUTTONS_T *button = TPageInterface::getButtons();
+
+    if (!button)
+        return;
+
     // Find last button
     while (button && button->next)
         button = button->next;

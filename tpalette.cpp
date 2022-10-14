@@ -22,6 +22,23 @@
 #include "tresources.h"
 #include "texpat++.h"
 
+#if __cplusplus < 201402L
+#   error "This module requires at least C++14 standard!"
+#else
+#   if __cplusplus < 201703L
+#       include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#       warning "Support for C++14 and experimental filesystem will be removed in a future version!"
+#   else
+#       include <filesystem>
+#       ifdef __ANDROID__
+namespace fs = std::__fs::filesystem;
+#       else
+namespace fs = std::filesystem;
+#       endif
+#   endif
+#endif
+
 using std::string;
 using std::vector;
 using std::map;
@@ -31,11 +48,15 @@ using namespace Expat;
 TPalette::TPalette()
 {
     DECL_TRACER("TPalette::TPalette()");
+
+    mPath = TConfig::getProjectPath();
 }
 
 TPalette::TPalette(const std::string& file)
 {
     DECL_TRACER("TPalette::TPalette(const std::string& file)");
+
+    mPath = TConfig::getProjectPath();
     initialize(file);
 }
 
@@ -48,7 +69,10 @@ void TPalette::initialize(const std::string& file)
 {
     DECL_TRACER("TPalette::initialize(const std::string& file)");
 
-    makeFileName(TConfig::getProjectPath(), file);
+    if (!fs::exists(mPath + "/prj.xma"))
+        mPath += "/__system";
+
+    makeFileName(mPath, file);
     string path;
 
     if (isValidFile())

@@ -9,6 +9,7 @@ HEADERS = \
    $$PWD/base64.h \
    $$PWD/config.h \
    $$PWD/tamxcommands.h \
+   $$PWD/tmap.h \
    $$PWD/tamxnet.h \
    $$PWD/tsocket.h \
    $$PWD/tbutton.h \
@@ -26,6 +27,7 @@ HEADERS = \
    $$PWD/tpage.h \
    $$PWD/tpagelist.h \
    $$PWD/tpagemanager.h \
+   $$PWD/tpageinterface.h \
    $$PWD/tpalette.h \
    $$PWD/tprjresources.h \
    $$PWD/tqtmain.h \
@@ -52,6 +54,7 @@ HEADERS = \
    $$PWD/timgcache.h \
    $$PWD/tsystemsound.h \
    $$PWD/tsystemdraw.h \
+   $$PWD/tsystem.h \
    $$PWD/texpat++.h \
    $$PWD/tvector.h \
    $$PWD/ftplib/ftplib.h
@@ -59,6 +62,7 @@ HEADERS = \
 SOURCES = \
    $$PWD/base64.cpp \
    $$PWD/tamxcommands.cpp \
+   $$PWD/tmap.cpp \
    $$PWD/tamxnet.cpp \
    $$PWD/tsocket.cpp \
    $$PWD/tbutton.cpp \
@@ -77,6 +81,7 @@ SOURCES = \
    $$PWD/tpage.cpp \
    $$PWD/tpagelist.cpp \
    $$PWD/tpagemanager.cpp \
+   $$PWD/tpageinterface.cpp \
    $$PWD/tpalette.cpp \
    $$PWD/tprjresources.cpp \
    $$PWD/tqtmain.cpp \
@@ -103,6 +108,7 @@ SOURCES = \
    $$PWD/timgcache.cpp \
    $$PWD/tsystemsound.cpp \
    $$PWD/tsystemdraw.cpp \
+   $$PWD/tsystem.cpp \
    $$PWD/texpat++.cpp \
    $$PWD/ftplib/ftplib.cpp
 

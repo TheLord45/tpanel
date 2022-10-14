@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -47,6 +47,7 @@ using std::endl;
 bool TConfig::mInitialized{false};
 int TConfig::mChannel{0};
 bool TConfig::mMute{false};
+bool TConfig::mTemporary{false};
 
 /**
  * @struct SETTINGS
@@ -114,7 +115,8 @@ struct SETTINGS
 };
 
 typedef struct SETTINGS settings_t;
-static settings_t localSettings;    //!< Global defines settings used in class TConfig.
+static settings_t localSettings;        //!< Global defines settings used in class TConfig.
+static settings_t localSettings_temp;   //!< Global defines settings temporary settings
 
 /**
  * @brief TConfig::TConfig constructor
@@ -151,13 +153,33 @@ bool TConfig::reReadConfig()
     return readConfig();
 }
 
+void TConfig::setTemporary(bool tmp)
+{
+    DECL_TRACER("TConfig::setTemporary(bool tmp)");
+
+    mTemporary = tmp;
+}
+
+void TConfig::reset()
+{
+    DECL_TRACER("TConfig::reset()");
+
+    localSettings_temp = localSettings;
+    mTemporary = false;
+}
+
 /**
  * @brief TConfig::setProgName Sets the name of the application.
  * @param pname The name of the application.
  */
 void TConfig::setProgName(const std::string& pname)
 {
-    localSettings.pname = pname;
+    if (mTemporary)
+        localSettings_temp.pname = pname;
+    else
+        localSettings.pname = pname;
+
+    mTemporary = false;
 }
 
 /**
@@ -166,7 +188,7 @@ void TConfig::setProgName(const std::string& pname)
  */
 std::string & TConfig::getProgName()
 {
-    return localSettings.pname;
+    return mTemporary ? localSettings_temp.pname : localSettings.pname;
 }
 
 /**
@@ -182,10 +204,12 @@ int TConfig::getChannel()
 {
     DECL_TRACER("TConfig::getChannel()");
 
-    if (mChannel > 0 && mChannel != localSettings.ID)
+    int ID = mTemporary ? localSettings_temp.ID : localSettings.ID;
+
+    if (mChannel > 0 && mChannel != ID)
         return mChannel;
 
-    return localSettings.ID;
+    return ID;
 }
 
 /**
@@ -195,7 +219,7 @@ int TConfig::getChannel()
  */
 std::string& TConfig::getConfigFileName()
 {
-    return localSettings.name;
+    return mTemporary ? localSettings_temp.name : localSettings.name;
 }
 
 /**
@@ -208,7 +232,7 @@ std::string& TConfig::getConfigFileName()
  */
 std::string& TConfig::getConfigPath()
 {
-    return localSettings.path;
+    return mTemporary ? localSettings_temp.path : localSettings.path;
 }
 
 /**
@@ -222,7 +246,7 @@ std::string& TConfig::getController()
 {
     DECL_TRACER("TConfig::getController()");
 
-    return localSettings.server;
+    return mTemporary ? localSettings_temp.server : localSettings.server;
 }
 
 /**
@@ -238,7 +262,7 @@ int TConfig::getSystem()
 {
     DECL_TRACER("TConfig::getSystem()");
 
-    return localSettings.system;
+    return mTemporary ? localSettings_temp.system :  localSettings.system;
 }
 
 /**
@@ -255,7 +279,7 @@ std::string& TConfig::getFirmVersion()
 {
     DECL_TRACER("TConfig::getFirmVersion()");
 
-    return localSettings.version;
+    return mTemporary ? localSettings_temp.version : localSettings.version;
 }
 
 /**
@@ -268,7 +292,7 @@ std::string& TConfig::getFirmVersion()
  */
 std::string& TConfig::getLogFile()
 {
-    return localSettings.logFile;
+    return mTemporary ? localSettings_temp.logFile : localSettings.logFile;
 }
 
 /**
@@ -291,7 +315,7 @@ std::string& TConfig::getLogFile()
  */
 string& TConfig::getLogLevel()
 {
-    return localSettings.logLevel;
+    return mTemporary ? localSettings_temp.logLevel : localSettings.logLevel;
 }
 
 /**
@@ -305,7 +329,7 @@ uint TConfig::getLogLevelBits()
 {
     DECL_TRACER("TConfig::getLogLevelBits()");
 
-    return localSettings.logLevelBits;
+    return mTemporary ? localSettings_temp.logLevelBits : localSettings.logLevelBits;
 }
 /**
  * @brief TConfig::getPanelType the AMX type name of the panel.
@@ -319,7 +343,7 @@ std::string& TConfig::getPanelType()
 {
     DECL_TRACER("TConfig::getPanelType()");
 
-    return localSettings.ptype;
+    return mTemporary ? localSettings_temp.ptype : localSettings.ptype;
 }
 
 /**
@@ -334,7 +358,7 @@ int TConfig::getPort()
 {
     DECL_TRACER("TConfig::getPort()");
 
-    return localSettings.port;
+    return mTemporary ? localSettings_temp.port : localSettings.port;
 }
 
 /**
@@ -350,6 +374,19 @@ string& TConfig::getProjectPath()
     return localSettings.project;
 }
 
+/**
+ * @brief TConfig::getSystemProjectPath returns the path to the AMX setup
+ * configuration files.
+ *
+ * The path was read from the configuration file. This path contains all the
+ * files needed to display the setup elements of the setup dialog.
+ *
+ * @return The path to the AMX setup configuration files.
+ */
+string TConfig::getSystemProjectPath()
+{
+    return localSettings.project + "/__system";
+}
 
 string TConfig::getSystemPath(SYSTEMRESOURCE_t sres)
 {
@@ -375,10 +412,17 @@ bool TConfig::saveLogFile(const string &file)
 {
     DECL_TRACER("TConfig::saveLogFile(const string &file)");
 
-    if (file.empty() || localSettings.logFile.compare(file) == 0)
+    string logFile = mTemporary ? localSettings_temp.logFile : localSettings.logFile;
+
+    if (file.empty() || logFile.compare(file) == 0)
         return false;
 
-    localSettings.logFile = file;
+    if (mTemporary)
+        localSettings_temp.logFile = file;
+    else
+        localSettings.logFile = file;
+
+    mTemporary = false;
     return true;
 }
 
@@ -391,9 +435,19 @@ bool TConfig::saveLogLevel(const string &level)
             level.find(SLOG_PROTOCOL) == string::npos && level.find(SLOG_ALL) == string::npos)
         return false;
 
-    localSettings.logLevel = level;
-    localSettings.logLevelBits = logLevelStrToBits(level);
+    if (mTemporary)
+    {
+        localSettings_temp.logLevel = level;
+        localSettings_temp.logLevelBits = logLevelStrToBits(level);
+    }
+    else
+    {
+        localSettings.logLevel = level;
+        localSettings.logLevelBits = logLevelStrToBits(level);
+    }
+
     MSG_INFO("New log level: " << level);
+    mTemporary = false;
     return true;
 }
 
@@ -405,9 +459,19 @@ bool TConfig::saveLogLevel(uint level)
             !(level&HLOG_ERROR) && !(level&HLOG_TRACE) && !(level&HLOG_DEBUG))
         return false;
 
-    localSettings.logLevelBits = level;
-    localSettings.logLevel = logLevelBitsToString(level);
-    MSG_INFO("New log level from bits: " << localSettings.logLevel);
+    if (mTemporary)
+    {
+        localSettings_temp.logLevelBits = level;
+        localSettings_temp.logLevel = logLevelBitsToString(level);
+    }
+    else
+    {
+        localSettings.logLevelBits = level;
+        localSettings.logLevel = logLevelBitsToString(level);
+        MSG_INFO("New log level from bits: " << localSettings.logLevel);
+    }
+
+    mTemporary = false;
     return true;
 }
 
@@ -418,7 +482,12 @@ bool TConfig::saveChannel(int channel)
     if (channel < 10000 || channel > 12000)
         return false;
 
-    localSettings.ID = channel;
+    if (mTemporary)
+        localSettings_temp.ID = channel;
+    else
+        localSettings.ID = channel;
+
+    mTemporary = false;
     return true;
 }
 
@@ -426,7 +495,12 @@ bool TConfig::saveController(const string &cnt)
 {
     DECL_TRACER("TConfig::saveController(const string &cnt)");
 
-    localSettings.server = cnt;
+    if (mTemporary)
+        localSettings_temp.server = cnt;
+    else
+        localSettings.server = cnt;
+
+    mTemporary = false;
     return true;
 }
 
@@ -434,7 +508,12 @@ bool TConfig::savePanelType(const string &pt)
 {
     DECL_TRACER("TConfig::savePanelType(const string &pt)");
 
-    localSettings.ptype = pt;
+    if (mTemporary)
+        localSettings_temp.ptype = pt;
+    else
+        localSettings.ptype = pt;
+
+    mTemporary = false;
     return true;
 }
 
@@ -445,7 +524,12 @@ bool TConfig::savePort(int port)
     if (port < 1024 || port > 32767)
         return false;
 
-    localSettings.port = port;
+    if (mTemporary)
+        localSettings_temp.port = port;
+    else
+        localSettings.port = port;
+
+    mTemporary = false;
     return true;
 }
 
@@ -456,113 +540,193 @@ bool TConfig::saveProjectPath(const string &path)
     if (path.empty())
         return false;
 
-    localSettings.project = path;
+    if (mTemporary)
+        localSettings_temp.project = path;
+    else
+        localSettings.project = path;
+
+    mTemporary = false;
     return true;
 }
 
 void TConfig::saveFormat(bool format)
 {
-    DECL_TRACER("TConfig::saveFormat(bool format)");
+    DECL_TRACER(string("TConfig::saveFormat(bool format) ") + (format ? "[TRUE]" : "[FALSE]"));
 
-    localSettings.longformat = format;
+    if (mTemporary)
+        localSettings_temp.longformat = format;
+    else
+        localSettings.longformat = format;
+
+    mTemporary = false;
 }
 
 void TConfig::saveScale(bool scale)
 {
     DECL_TRACER("TConfig::saveScale(bool scale)");
 
-    localSettings.scale = scale;
+    if (mTemporary)
+        localSettings_temp.scale = scale;
+    else
+        localSettings.scale = scale;
+
+    mTemporary = false;
 }
 
 void TConfig::saveBanner(bool banner)
 {
     DECL_TRACER("TConfig::saveBanner(bool banner)");
 
-    localSettings.noBanner = banner;
+    if (mTemporary)
+        localSettings_temp.noBanner = banner;
+    else
+        localSettings.noBanner = banner;
+
+    mTemporary = false;
 }
 
 void TConfig::saveToolbarForce(bool tb)
 {
     DECL_TRACER("TConfig::saveToolbarForce(bool tb)");
 
-    localSettings.tbforce = tb;
+    if (mTemporary)
+        localSettings_temp.tbforce = tb;
+    else
+        localSettings.tbforce = tb;
+
+    mTemporary = false;
 }
 
 void TConfig::saveToolbarSuppress(bool tb)
 {
     DECL_TRACER("TConfig::saveToolbarSuppress(bool tb)");
 
-    localSettings.tbsuppress = tb;
+    if (mTemporary)
+        localSettings_temp.tbsuppress = tb;
+    else
+        localSettings.tbsuppress = tb;
+
+    mTemporary = false;
 }
 
 void TConfig::saveProfiling(bool prof)
 {
     DECL_TRACER("TConfig::saveProfiling(bool prof)");
 
-    localSettings.profiling = prof;
+    if (mTemporary)
+        localSettings_temp.profiling = prof;
+    else
+        localSettings.profiling = prof;
+
+    mTemporary = false;
 }
 
 void TConfig::saveButtonCache(size_t size)
 {
     DECL_TRACER("TConfig::saveButtonCache(size_t size)");
 
-    localSettings.max_cache = size;
+    if (mTemporary)
+        localSettings_temp.max_cache = size;
+    else
+        localSettings.max_cache = size;
+
+    mTemporary = false;
 }
 
 void TConfig::savePassword1(const std::string& pw)
 {
     DECL_TRACER("TConfig::savePassword1(const std::string& pw)");
 
-    localSettings.password1 = pw;
+    if (mTemporary)
+        localSettings_temp.password1 = pw;
+    else
+        localSettings.password1 = pw;
+
+    mTemporary = false;
 }
 
 void TConfig::savePassword2(const std::string& pw)
 {
     DECL_TRACER("TConfig::savePassword2(const std::string& pw)");
 
-    localSettings.password2 = pw;
+    if (mTemporary)
+        localSettings_temp.password2 = pw;
+    else
+        localSettings.password2 = pw;
+
+    mTemporary = false;
 }
 
 void TConfig::savePassword3(const std::string& pw)
 {
     DECL_TRACER("TConfig::savePassword3(const std::string& pw)");
 
-    localSettings.password3 = pw;
+    if (mTemporary)
+        localSettings_temp.password3 = pw;
+    else
+        localSettings.password3 = pw;
+
+    mTemporary = false;
 }
 
 void TConfig::savePassword4(const std::string& pw)
 {
     DECL_TRACER("TConfig::savePassword4(const std::string& pw)");
 
-    localSettings.password4 = pw;
+    if (mTemporary)
+        localSettings_temp.password4 = pw;
+    else
+        localSettings.password4 = pw;
+
+    mTemporary = false;
 }
 
 void TConfig::saveSystemSoundFile(const std::string& snd)
 {
     DECL_TRACER("TConfig::saveSystemSoundFile(const std::string& snd)");
 
-    localSettings.systemSound = snd;
+    if (mTemporary)
+        localSettings_temp.systemSound = snd;
+    else
+        localSettings.systemSound = snd;
+
+    mTemporary = false;
 }
 
 void TConfig::saveSystemSoundState(bool state)
 {
     DECL_TRACER("TConfig::saveSystemSoundState(bool state)");
 
-    localSettings.systemSoundState = state;
+    if (mTemporary)
+        localSettings_temp.systemSoundState = state;
+    else
+        localSettings.systemSoundState = localSettings_temp.systemSoundState = state;
+
+    mTemporary = false;
 }
 
 void TConfig::saveSingleBeepFile(const std::string& snd)
 {
     DECL_TRACER("TConfig::saveSingleBeepFile(const std::string& snd)");
 
-    localSettings.systemSingleBeep = snd;
+    if (mTemporary)
+        localSettings_temp.systemSingleBeep = snd;
+    else
+        localSettings.systemSingleBeep = snd;
+
+    mTemporary = false;
 }
 
 void TConfig::saveDoubleBeepFile(const std::string& snd)
 {
     DECL_TRACER("TConfig::saveDoubleBeepFile(const std::string& snd)");
 
-    localSettings.systemDoubleBeep = snd;
+    if (mTemporary)
+        localSettings_temp.systemDoubleBeep = snd;
+    else
+        localSettings.systemDoubleBeep = snd;
+
+    mTemporary = false;
 }
 
 void TConfig::saveSystemVolume(int volume)
@@ -572,7 +736,12 @@ void TConfig::saveSystemVolume(int volume)
     if (volume < 0 || volume > 100)
         return;
 
-    localSettings.systemVolume = volume;
+    if (mTemporary)
+        localSettings_temp.systemVolume = volume;
+    else
+        localSettings.systemVolume = volume;
+
+    mTemporary = false;
 }
 
 void TConfig::saveSystemGain(int gain)
@@ -582,217 +751,307 @@ void TConfig::saveSystemGain(int gain)
     if (gain < 0 || gain > 100)
         return;
 
-    localSettings.systemGain = gain;
+    if (mTemporary)
+        localSettings_temp.systemGain = gain;
+    else
+        localSettings.systemGain = gain;
+
+    mTemporary = false;
 }
 
 void TConfig::saveFtpUser(const string& user)
 {
     DECL_TRACER("TConfig::saveFtpUser(const string& user)");
 
-    localSettings.ftpUser = user;
+    if (mTemporary)
+        localSettings_temp.ftpUser = user;
+    else
+        localSettings.ftpUser = user;
+
+    mTemporary = false;
 }
 
 void TConfig::saveFtpPassword(const string& pw)
 {
     DECL_TRACER("TConfig::saveFtpPassword(const string& pw)");
 
-    localSettings.ftpPassword = pw;
+    if (mTemporary)
+        localSettings_temp.ftpPassword = pw;
+    else
+        localSettings.ftpPassword = pw;
+
+    mTemporary = false;
 }
 
 void TConfig::saveFtpSurface(const string& fname)
 {
     DECL_TRACER("TConfig::saveFtpSurface(const string& fname)");
 
-    localSettings.ftpSurface = fname;
+    if (mTemporary)
+        localSettings_temp.ftpSurface = fname;
+    else
+        localSettings.ftpSurface = fname;
+
+    mTemporary = false;
 }
 
 void TConfig::saveFtpPassive(bool mode)
 {
     DECL_TRACER("TConfig::saveFtpPassive(bool mode)");
 
-    localSettings.ftpPassive = mode;
+    if (mTemporary)
+        localSettings_temp.ftpPassive = mode;
+    else
+        localSettings.ftpPassive = mode;
+
+    mTemporary = false;
 }
 
 void TConfig::saveFtpDownloadTime(time_t t)
 {
     DECL_TRACER("TConfig::saveFtpDownloadTime(time_t t)");
 
-    localSettings.ftpLastDownload = t;
+    if (mTemporary)
+        localSettings_temp.ftpLastDownload = t;
+    else
+        localSettings.ftpLastDownload = t;
+
+    mTemporary = false;
 }
 
 std::string& TConfig::getSIPproxy()
 {
     DECL_TRACER("TConfig::getSIPproxy()");
 
-    return localSettings.sip_proxy;
+    return mTemporary ? localSettings_temp.sip_proxy : localSettings.sip_proxy;
 }
 
 void TConfig::setSIPproxy(const std::string& address)
 {
     DECL_TRACER("TConfig::setSIPproxy(const std::string& address)");
 
-    localSettings.sip_proxy = address;
+    if (mTemporary)
+        localSettings_temp.sip_proxy = address;
+    else
+        localSettings.sip_proxy = address;
+
+    mTemporary = false;
 }
 
 int TConfig::getSIPport()
 {
     DECL_TRACER("TConfig::getSIPport()");
 
-    return localSettings.sip_port;
+    return mTemporary ? localSettings_temp.sip_port : localSettings.sip_port;
 }
 
 void TConfig::setSIPport(int port)
 {
     DECL_TRACER("TConfig::setSIPport(int port)");
 
-    localSettings.sip_port = port;
+    if (mTemporary)
+        localSettings_temp.sip_port = port;
+    else
+        localSettings.sip_port = port;
+
+    mTemporary = false;
 }
 
 int TConfig::getSIPportTLS()
 {
     DECL_TRACER("TConfig::getSIPportTLS()");
 
-    return localSettings.sip_portTLS;
+    return mTemporary ? localSettings_temp.sip_portTLS : localSettings.sip_portTLS;
 }
 
 void TConfig::setSIPportTLS(int port)
 {
     DECL_TRACER("TConfig::setSIPportTLS(int port)");
 
-    localSettings.sip_portTLS = port;
+    if (mTemporary)
+        localSettings_temp.sip_portTLS = port;
+    else
+        localSettings.sip_portTLS = port;
+
+    mTemporary = false;
 }
 
 std::string& TConfig::getSIPstun()
 {
     DECL_TRACER("TConfig::getSIPstun()");
 
-    return localSettings.sip_stun;
+    return mTemporary ? localSettings_temp.sip_stun : localSettings.sip_stun;
 }
 
 void TConfig::setSIPstun(const std::string& address)
 {
     DECL_TRACER("TConfig::setSIPstun(const std::string& address)");
 
-    localSettings.sip_stun = address;
+    if (mTemporary)
+        localSettings_temp.sip_stun = address;
+    else
+        localSettings.sip_stun = address;
+
+    mTemporary = false;
 }
 
 std::string& TConfig::getSIPdomain()
 {
     DECL_TRACER("TConfig::getSIPdomain()");
 
-    return localSettings.sip_domain;
+    return mTemporary ? localSettings_temp.sip_domain : localSettings.sip_domain;
 }
 
 void TConfig::setSIPdomain(const std::string& domain)
 {
     DECL_TRACER("TConfig::setSIPdomain(const std::string& domain)");
 
-    localSettings.sip_domain = domain;
+    if (mTemporary)
+        localSettings_temp.sip_domain = domain;
+    else
+        localSettings.sip_domain = domain;
+
+    mTemporary = false;
 }
 
 std::string& TConfig::getSIPuser()
 {
     DECL_TRACER("TConfig::getSIPuser()");
 
-    return localSettings.sip_user;
+    return mTemporary ? localSettings_temp.sip_user : localSettings.sip_user;
 }
 
 void TConfig::setSIPuser(const std::string& user)
 {
     DECL_TRACER("TConfig::setSIPuser(const std::string& user)");
 
-    localSettings.sip_user = user;
+    if (mTemporary)
+        localSettings_temp.sip_user = user;
+    else
+        localSettings.sip_user = user;
+
+    mTemporary = false;
 }
 
 std::string& TConfig::getSIPpassword()
 {
     DECL_TRACER("TConfig::getSIPpassword()");
 
-    return localSettings.sip_password;
+    return mTemporary ? localSettings_temp.sip_password : localSettings.sip_password;
 }
 
 void TConfig::setSIPpassword(const std::string& pw)
 {
     DECL_TRACER("TConfig::setSIPpassword(const std::string& pw)");
 
-    localSettings.sip_password = pw;
+    if (mTemporary)
+        localSettings_temp.sip_password = pw;
+    else
+        localSettings.sip_password = pw;
+
+    mTemporary = false;
 }
 
 bool TConfig::getSIPstatus()
 {
     DECL_TRACER("TConfig::getSIPstatus()");
 
-    return localSettings.sip_enabled;
+    return mTemporary ? localSettings_temp.sip_enabled : localSettings.sip_enabled;
 }
 
 bool TConfig::getSIPnetworkIPv4()
 {
     DECL_TRACER("TConfig::getSIPnetworkIPv4()");
 
-    return localSettings.sip_ipv4;
+    return mTemporary ? localSettings_temp.sip_ipv4 : localSettings.sip_ipv4;
 }
 
 void TConfig::setSIPnetworkIPv4(bool state)
 {
     DECL_TRACER("TConfig::setSIPnetworkIPv4(bool state)");
 
-    localSettings.sip_ipv4 = state;
+    if (mTemporary)
+        localSettings_temp.sip_ipv4 = state;
+    else
+        localSettings.sip_ipv4 = state;
+
+    mTemporary = false;
 }
 
 bool TConfig::getSIPnetworkIPv6()
 {
     DECL_TRACER("TConfig::getSIPnetworkIPv6()");
 
-    return localSettings.sip_ipv6;
+    return mTemporary ? localSettings_temp.sip_ipv6 : localSettings.sip_ipv6;
 }
 
 void TConfig::setSIPnetworkIPv6(bool state)
 {
     DECL_TRACER("TConfig::setSIPnetworkIPv6(bool state)");
 
-    localSettings.sip_ipv6 = state;
+    if (mTemporary)
+        localSettings_temp.sip_ipv6 = state;
+    else
+        localSettings.sip_ipv6 = state;
+
+    mTemporary = false;
 }
 
 void TConfig::setSIPiphone(bool state)
 {
     DECL_TRACER("TConfig::setSIPiphone(bool state)");
 
-    localSettings.sip_iphone = state;
+    if (mTemporary)
+        localSettings_temp.sip_iphone = state;
+    else
+        localSettings.sip_iphone = state;
+
+    mTemporary = false;
 }
 
 bool TConfig::getSIPiphone()
 {
     DECL_TRACER("TConfig::getSIPiphone()");
 
-    return localSettings.sip_iphone;
+    return mTemporary ? localSettings_temp.sip_iphone : localSettings.sip_iphone;
 }
 
 TConfig::SIP_FIREWALL_t TConfig::getSIPfirewall()
 {
     DECL_TRACER("TConfig::getSIPfirewall()");
 
-    return localSettings.sip_firewall;
+    return mTemporary ? localSettings_temp.sip_firewall : localSettings.sip_firewall;
 }
 
 string TConfig::getSIPfirewallStr()
 {
     DECL_TRACER("TConfig::getSIPfirewallStr()");
 
-    return sipFirewallToString(localSettings.sip_firewall);
+    return sipFirewallToString(mTemporary ? localSettings_temp.sip_firewall : localSettings.sip_firewall);
 }
 
 void TConfig::setSIPfirewall(TConfig::SIP_FIREWALL_t fw)
 {
     DECL_TRACER("TConfig::setSIPfirewall(TConfig::SIP_FIREWALL_t fw)")
 
-    localSettings.sip_firewall = fw;
+    if (mTemporary)
+        localSettings_temp.sip_firewall = fw;
+    else
+        localSettings.sip_firewall = fw;
+
+    mTemporary = false;
 }
 
 void TConfig::setSIPstatus(bool state)
 {
     DECL_TRACER("TConfig::setSIPstatus(bool state)");
 
-    localSettings.sip_enabled = state;
+    if (mTemporary)
+        localSettings_temp.sip_enabled = state;
+    else
+        localSettings.sip_enabled = state;
+
+    mTemporary = false;
 }
 
 bool TConfig::saveSettings()
@@ -802,6 +1061,15 @@ bool TConfig::saveSettings()
     try
     {
         string fname = localSettings.path + "/" + localSettings.name;
+
+        if (mTemporary)
+        {
+            localSettings = localSettings_temp;
+            MSG_INFO("Temporary settings were copied over.");
+        }
+
+        mTemporary = false;
+        MSG_DEBUG("Saving to file " << fname);
         ofstream file(fname);
         string lines = "LogFile=" + localSettings.logFile + "\n";
         lines += "LogLevel=" + localSettings.logLevel + "\n";
@@ -861,8 +1129,12 @@ bool TConfig::saveSettings()
         return false;
     }
 
-    TError::Current()->setLogLevel(localSettings.logLevel);
-    TError::Current()->setLogFile(localSettings.logFile);
+    if (mTemporary)
+    {
+        TError::Current()->setLogLevel(localSettings.logLevel);
+        TError::Current()->setLogFile(localSettings.logFile);
+    }
+
     return true;
 }
 
@@ -876,7 +1148,7 @@ bool TConfig::saveSettings()
  */
 bool TConfig::isLongFormat()
 {
-    return localSettings.longformat;
+    return mTemporary ? localSettings_temp.longformat : localSettings.longformat;
 }
 
 /**
@@ -890,7 +1162,7 @@ bool TConfig::showBanner()
 {
     DECL_TRACER("TConfig::showBanner()");
 
-    return !localSettings.noBanner;
+    return mTemporary ? (!localSettings_temp.noBanner) : (!localSettings.noBanner);
 }
 
 /**
@@ -904,31 +1176,34 @@ bool TConfig::getScale()
 {
     DECL_TRACER("TConfig::getScale()");
 
-    return localSettings.scale;
+    return mTemporary ? localSettings_temp.scale : localSettings.scale;
 }
 
 bool TConfig::getToolbarForce()
 {
     DECL_TRACER("TConfig::getToolbarForce()");
 
-    return localSettings.tbforce;
+    return mTemporary ? localSettings_temp.tbforce : localSettings.tbforce;
 }
 
 bool TConfig::getToolbarSuppress()
 {
     DECL_TRACER("TConfig::getToolbarSuppress()");
 
-    return localSettings.tbsuppress;
+    return mTemporary ? localSettings_temp.tbsuppress : localSettings.tbsuppress;
 }
 
 bool TConfig::getProfiling()
 {
-    return localSettings.profiling;
+    return mTemporary ? localSettings_temp.profiling : localSettings.profiling;
 }
 
 size_t TConfig::getButttonCache()
 {
-    if (localSettings.max_cache > 0)
+    if (mTemporary && localSettings_temp.max_cache > 0)
+        return localSettings_temp.max_cache;
+
+    if (!mTemporary && localSettings.max_cache > 0)
         return localSettings.max_cache * 1000 * 1000;
 
     return 0;
@@ -938,70 +1213,75 @@ string & TConfig::getPassword1()
 {
     DECL_TRACER("TConfig::getPassword1()");
 
-    return localSettings.password1;
+    return mTemporary ? localSettings_temp.password1 : localSettings.password1;
 }
 
 string & TConfig::getPassword2()
 {
     DECL_TRACER("TConfig::getPassword2()");
 
-    return localSettings.password2;
+    return mTemporary ? localSettings_temp.password2 : localSettings.password2;
 }
 
 string & TConfig::getPassword3()
 {
     DECL_TRACER("TConfig::getPassword3()");
 
-    return localSettings.password3;
+    return mTemporary ? localSettings_temp.password3 : localSettings.password3;
 }
 
 string & TConfig::getPassword4()
 {
     DECL_TRACER("TConfig::getPassword4()");
 
-    return localSettings.password4;
+    return mTemporary ? localSettings_temp.password4 : localSettings.password4;
 }
 
 string & TConfig::getSystemSound()
 {
     DECL_TRACER("TConfig::getSystemSound()");
 
-    return localSettings.systemSound;
+    return mTemporary ? localSettings_temp.systemSound : localSettings.systemSound;
 }
 
 bool TConfig::getSystemSoundState()
 {
     DECL_TRACER("TConfig::getSystemSoundState()");
 
-    return localSettings.systemSoundState;
+    return mTemporary ? localSettings_temp.systemSoundState : localSettings.systemSoundState;
 }
 
 int TConfig::getSystemVolume()
 {
     DECL_TRACER("TConfig::getSystemVolume()");
 
-    return localSettings.systemVolume;
+    return mTemporary ? localSettings_temp.systemVolume : localSettings.systemVolume;
 }
 
 int TConfig::getSystemGain()
 {
     DECL_TRACER("TConfig::getSystemGain()");
 
-    return localSettings.systemGain;
+    return mTemporary ? localSettings_temp.systemGain : localSettings.systemGain;
 }
 
 bool TConfig::getRotationFixed()
 {
     DECL_TRACER("TConfig::getRotationFixed()");
 
-    return localSettings.systemRotationFix;
+    return mTemporary ? localSettings_temp.systemRotationFix : localSettings.systemRotationFix;
 }
 
 void TConfig::setRotationFixed(bool fix)
 {
     DECL_TRACER("TConfig::setRotationFixed(bool fix)");
 
-    localSettings.systemRotationFix = fix;
+    if (mTemporary)
+        localSettings_temp.systemRotationFix = fix;
+    else
+        localSettings.systemRotationFix = fix;
+
+    mTemporary = false;
 }
 
 void TConfig::setSystemChannel(int ch)
@@ -1016,56 +1296,56 @@ string& TConfig::getSingleBeepSound()
 {
     DECL_TRACER("TConfig::getSingleBeepSound()");
 
-    return localSettings.systemSingleBeep;
+    return mTemporary ? localSettings_temp.systemSingleBeep : localSettings.systemSingleBeep;
 }
 
 string& TConfig::getDoubleBeepSound()
 {
     DECL_TRACER("TConfig::getDoubleBeepSound()");
 
-    return localSettings.systemDoubleBeep;
+    return mTemporary ? localSettings_temp.systemDoubleBeep : localSettings.systemDoubleBeep;
 }
 
 string& TConfig::getUUID()
 {
     DECL_TRACER("TConfig::getUUID()");
 
-    return localSettings.uuid;
+    return mTemporary ? localSettings_temp.uuid : localSettings.uuid;
 }
 
 string& TConfig::getFtpUser()
 {
     DECL_TRACER("TConfig::getFtpUser()");
 
-    return localSettings.ftpUser;
+    return mTemporary ? localSettings_temp.ftpUser : localSettings.ftpUser;
 }
 
 string& TConfig::getFtpPassword()
 {
     DECL_TRACER("TConfig::getFtpPassword()");
 
-    return localSettings.ftpPassword;
+    return mTemporary ? localSettings_temp.ftpPassword : localSettings.ftpPassword;
 }
 
 string& TConfig::getFtpSurface()
 {
     DECL_TRACER("TConfig::getFtpSurface()");
 
-    return localSettings.ftpSurface;
+    return mTemporary ? localSettings_temp.ftpSurface : localSettings.ftpSurface;
 }
 
 bool TConfig::getFtpPassive()
 {
     DECL_TRACER("TConfig::getFtpPassive()");
 
-    return localSettings.ftpPassive;
+    return mTemporary ? localSettings_temp.ftpPassive : localSettings.ftpPassive;
 }
 
 time_t TConfig::getFtpDownloadTime()
 {
     DECL_TRACER("TConfig::getFtpDownloadTime()");
 
-    return localSettings.ftpLastDownload;
+    return mTemporary ? localSettings_temp.ftpLastDownload : localSettings.ftpLastDownload;
 }
 
 /**
@@ -1095,7 +1375,7 @@ bool TConfig::isTrue(const string& boolean)
  */
 bool TConfig::certCheck()
 {
-    return localSettings.certCheck;
+    return mTemporary ? localSettings_temp.certCheck : localSettings.certCheck;
 }
 
 /**
@@ -1296,11 +1576,16 @@ bool TConfig::findConfig()
         {
             localSettings.path = mPath.substr(0, pos);
             localSettings.name = mPath.substr(pos+1);
+            localSettings_temp.path = localSettings.path;
+            localSettings_temp.name = localSettings.name;
             mCFile = mPath;
             return !mCFile.empty();
         }
 
+        localSettings.path = ".";
         localSettings.name = mPath;
+        localSettings_temp.path = localSettings.path;
+        localSettings_temp.name = localSettings.name;
         mCFile = mPath;
         return !mCFile.empty();
     }
@@ -1400,6 +1685,8 @@ bool TConfig::findConfig()
         }
     }
 
+    localSettings_temp = localSettings;
+
     if (!found)
     {
         MSG_WARNING("This seems to be the first start because of missing configuration file. Will try to create a default one ...");
@@ -1417,6 +1704,7 @@ bool TConfig::findConfig()
                 cfg.write(content.c_str(), content.size());
                 cfg.close();
 
+                localSettings_temp = localSettings;
                 string path = localSettings.path + "/tpanel";
                 TTPInit init(path);
             }
@@ -1434,6 +1722,7 @@ bool TConfig::findConfig()
             sFileName.clear();
             localSettings.name.clear();
             localSettings.path.clear();
+            localSettings_temp = localSettings;
         }
     }
 #endif
@@ -1454,6 +1743,7 @@ bool TConfig::readConfig()
 {
     ifstream fs;
 
+    mTemporary = false;
     // First initialize the defaults
     localSettings.ID = 0;
     localSettings.port = 1397;
@@ -1489,6 +1779,7 @@ bool TConfig::readConfig()
     }
     catch (const fstream::failure e)
     {
+        localSettings_temp = localSettings;
         cerr << "TConfig::readConfig: Error on file " << mCFile << ": " << e.what() << endl;
         TError::setError();
         return false;
@@ -1680,8 +1971,10 @@ bool TConfig::readConfig()
         uuid_unparse_lower(uuid, sUUID);
         localSettings.uuid.assign(sUUID);
 #endif
+        localSettings_temp = localSettings;
         saveSettings();
     }
+
     if (TStreamError::checkFilter(HLOG_DEBUG))
     {
         MSG_INFO("Selected Parameters:");
@@ -1730,6 +2023,7 @@ bool TConfig::readConfig()
         MSG_INFO("    SIP enabled:  " << (localSettings.sip_enabled ? "YES" : "NO"));
     }
 
+    localSettings_temp = localSettings;
     return true;
 }
 

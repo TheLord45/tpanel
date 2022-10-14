@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,6 +30,23 @@
 #include "tdrawimage.h"
 #include "texpat++.h"
 #include "tobject.h"
+
+#if __cplusplus < 201402L
+#   error "This module requires at least C++14 standard!"
+#else
+#   if __cplusplus < 201703L
+#       include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#       warning "Support for C++14 and experimental filesystem will be removed in a future version!"
+#   else
+#       include <filesystem>
+#       ifdef __ANDROID__
+namespace fs = std::__fs::filesystem;
+#       else
+namespace fs = std::filesystem;
+#       endif
+#   endif
+#endif
 
 using std::string;
 using std::vector;
@@ -76,8 +93,8 @@ TPage::~TPage()
 {
     DECL_TRACER("TPage::~TPage()");
 
-    MSG_DEBUG("Destroing page " << pageID << ": " << name);
-    BUTTONS_T *p = mButtons;
+    MSG_DEBUG("Destroing page " << mPage.pageID << ": " << mPage.name);
+    BUTTONS_T *p = getButtons();
     BUTTONS_T *next = nullptr;
 
     while (p)
@@ -88,7 +105,7 @@ TPage::~TPage()
         p = next;
     }
 
-    mButtons = nullptr;
+    setButtons(nullptr);
 
     PAGECHAIN_T *pc = mSubPages;
     PAGECHAIN_T *pc_next = nullptr;
@@ -108,7 +125,18 @@ TPage::~TPage()
 void TPage::initialize(const string& nm)
 {
     DECL_TRACER("TPage::initialize(const string& name)");
-    makeFileName(TConfig::getProjectPath(), nm);
+
+    string projectPath = ((gPageManager && gPageManager->isSetupActive()) ? TConfig::getSystemProjectPath() : TConfig::getProjectPath());
+
+    if (!fs::exists(projectPath + "/prj.xma"))
+    {
+        MSG_ERROR("Directory " << projectPath << " doesn't exist!");
+        return;
+    }
+
+    makeFileName(projectPath, nm);
+
+    MSG_DEBUG("Using path: " << projectPath << " and file: " << nm);
 
     if (isValidFile())
         mPath = getFileName();
@@ -149,22 +177,24 @@ void TPage::initialize(const string& nm)
         string e = ename;
 
         if (e.compare("pageID") == 0)
-            pageID = xml.convertElementToInt(content);
+            mPage.pageID = xml.convertElementToInt(content);
         else if (e.compare("name") == 0)
-            name = content;
+            mPage.name = content;
         else if (e.compare("width") == 0)
-            width = xml.convertElementToInt(content);
+            mPage.width = xml.convertElementToInt(content);
         else if (e.compare("height") == 0)
-            height = xml.convertElementToInt(content);
+            mPage.height = xml.convertElementToInt(content);
         else if (e.compare("button") == 0)
         {
             TButton *button = new TButton();
+            TPageInterface::registerListCallback<TPage>(button, this);
+
             button->setPalette(mPalette);
-            button->setFonts(mFonts);
+            button->setFonts(getFonts());
             button->registerCallback(_displayButton);
             button->regCallPlayVideo(_playVideo);
             index = button->initialize(&xml, index);
-            button->setParentSize(width, height);
+            button->setParentSize(mPage.width, mPage.height);
 
             if (TError::isError())
             {
@@ -173,7 +203,7 @@ void TPage::initialize(const string& nm)
                 return;
             }
 
-            button->setHandle(((pageID << 16) & 0xffff0000) | button->getButtonIndex());
+            button->setHandle(((mPage.pageID << 16) & 0xffff0000) | button->getButtonIndex());
             button->createButtons();
             addButton(button);
             index++;        // Jump over the end tag of the button.
@@ -227,12 +257,14 @@ void TPage::initialize(const string& nm)
         }
     }
 
+    setSR(sr);
+
     if (TStreamError::checkFilter(HLOG_DEBUG))
     {
-        MSG_DEBUG("PageID: " << pageID);
-        MSG_DEBUG("Name  : " << name);
-        MSG_DEBUG("Width : " << width);
-        MSG_DEBUG("Height: " << height);
+        MSG_DEBUG("PageID: " << mPage.pageID);
+        MSG_DEBUG("Name  : " << mPage.name);
+        MSG_DEBUG("Width : " << mPage.width);
+        MSG_DEBUG("Height: " << mPage.height);
 
         vector<SR_T>::iterator iter;
         size_t pos = 1;
@@ -251,10 +283,17 @@ void TPage::initialize(const string& nm)
         }
     }
 
-    if (mButtons)
+    if (TPageInterface::getButtons())
         sortButtons();
 }
+/*
+void TPage::registerListCallback(TButton *button)
+{
+    DECL_TRACER("TPage::registerListCallback(TButton *button)");
 
+    TPageInterface::registerListCallback<TPage>(button, this);
+}
+*/
 void TPage::addProgress()
 {
     DECL_TRACER("TPage::addProgress()");
@@ -266,11 +305,11 @@ void TPage::addProgress()
     }
 
     Button::SR_T bsr;
-    pageID = 300;
-    name = "_progress";
-    width = gPageManager->getSettings()->getWith();
-    height = gPageManager->getSettings()->getHeight();
-    double unit = (double)height / 10.0;
+    mPage.pageID = 300;
+    mPage.name = "_progress";
+    mPage.width = gPageManager->getSettings()->getWith();
+    mPage.height = gPageManager->getSettings()->getHeight();
+    double unit = (double)mPage.height / 10.0;
     MSG_DEBUG("One unit is " << unit);
     // Background of page
     bsr.number = 1;
@@ -282,12 +321,12 @@ void TPage::addProgress()
     sr.push_back(bsr);
     // Text field 1 to show status messages
     Button::EXTBUTTON_t bt;
-    bt.type = Button::GENERAL;
+    bt.type = GENERAL;
     bt.bi = 1;
     bt.na = "Line1";
     bt.tp = (int)(unit * 2.0);
-    bt.lt = (int)(((double)width - ((double)width / 100.0 * 80.0)) / 2.0);
-    bt.wt = (int)((double)width / 100.0 * 80.0);    // Line take 80% of available width
+    bt.lt = (int)(((double)mPage.width - ((double)mPage.width / 100.0 * 80.0)) / 2.0);
+    bt.wt = (int)((double)mPage.width / 100.0 * 80.0);    // Line take 80% of available width
     bt.ht = (int)(unit / 100.0 * 80.0);
     MSG_DEBUG("Dimensions button 1: lt: " << bt.lt << ", tp: " << bt.tp << ", wt: " << bt.wt << ", ht: " << bt.ht);
     bt.zo = 1;
@@ -299,11 +338,11 @@ void TPage::addProgress()
     bt.sr.push_back(bsr);
     TButton *button = new TButton();
     button->setPalette(mPalette);
-    button->setFonts(mFonts);
+    button->setFonts(getFonts());
     button->registerCallback(_displayButton);
     button->regCallPlayVideo(_playVideo);
     button->createSoftButton(bt);
-    button->setParentSize(width, height);
+    button->setParentSize(mPage.width, mPage.height);
 
     if (TError::isError())
     {
@@ -312,7 +351,7 @@ void TPage::addProgress()
         return;
     }
 
-    button->setHandle(((pageID << 16) & 0xffff0000) | bt.bi);
+    button->setHandle(((mPage.pageID << 16) & 0xffff0000) | bt.bi);
     button->createButtons();
     addButton(button);
     // Text field 2 to show status messages
@@ -324,11 +363,11 @@ void TPage::addProgress()
     bt.ad = 161;
     button = new TButton();
     button->setPalette(mPalette);
-    button->setFonts(mFonts);
+    button->setFonts(getFonts());
     button->registerCallback(_displayButton);
     button->regCallPlayVideo(_playVideo);
     button->createSoftButton(bt);
-    button->setParentSize(width, height);
+    button->setParentSize(mPage.width, mPage.height);
 
     if (TError::isError())
     {
@@ -337,16 +376,16 @@ void TPage::addProgress()
         return;
     }
 
-    button->setHandle(((pageID << 16) & 0xffff0000) | bt.bi);
+    button->setHandle(((mPage.pageID << 16) & 0xffff0000) | bt.bi);
     button->createButtons();
     addButton(button);
     // Progress bar 1 (overall status)
-    bt.type = Button::BARGRAPH;
+    bt.type = BARGRAPH;
     bt.bi = 3;
     bt.na = "Bar1";
     bt.tp = (int)(unit * 3.0);
-    bt.lt = (int)(((double)width - ((double)width / 100.0 * 80.0)) / 2.0);
-    bt.wt = (int)((double)width / 100.0 * 80.0);    // Line take 80% of available width
+    bt.lt = (int)(((double)mPage.width - ((double)mPage.width / 100.0 * 80.0)) / 2.0);
+    bt.wt = (int)((double)mPage.width / 100.0 * 80.0);    // Line take 80% of available width
     bt.ht = (int)unit;
     MSG_DEBUG("Dimensions bargraph 1: lt: " << bt.lt << ", tp: " << bt.tp << ", wt: " << bt.wt << ", ht: " << bt.ht);
     bt.zo = 3;
@@ -369,11 +408,11 @@ void TPage::addProgress()
     bt.sr.push_back(bsr);
     button = new TButton();
     button->setPalette(mPalette);
-    button->setFonts(mFonts);
+    button->setFonts(getFonts());
     button->registerCallback(_displayButton);
     button->regCallPlayVideo(_playVideo);
     button->createSoftButton(bt);
-    button->setParentSize(width, height);
+    button->setParentSize(mPage.width, mPage.height);
 
     if (TError::isError())
     {
@@ -382,7 +421,7 @@ void TPage::addProgress()
         return;
     }
 
-    button->setHandle(((pageID << 16) & 0xffff0000) | bt.bi);
+    button->setHandle(((mPage.pageID << 16) & 0xffff0000) | bt.bi);
     button->createButtons();
     addButton(button);
     // Progress bar 2 (details)
@@ -395,11 +434,11 @@ void TPage::addProgress()
     bt.lv = 163;
     button = new TButton();
     button->setPalette(mPalette);
-    button->setFonts(mFonts);
+    button->setFonts(getFonts());
     button->registerCallback(_displayButton);
     button->regCallPlayVideo(_playVideo);
     button->createSoftButton(bt);
-    button->setParentSize(width, height);
+    button->setParentSize(mPage.width, mPage.height);
 
     if (TError::isError())
     {
@@ -408,7 +447,7 @@ void TPage::addProgress()
         return;
     }
 
-    button->setHandle(((pageID << 16) & 0xffff0000) | bt.bi);
+    button->setHandle(((mPage.pageID << 16) & 0xffff0000) | bt.bi);
     button->createButtons();
     addButton(button);
 }
@@ -429,17 +468,17 @@ void TPage::show()
     }
 
     bool haveImage;
-    ulong handle = (pageID << 16) & 0xffff0000;
-    MSG_DEBUG("Processing page " << pageID);
+    ulong handle = (mPage.pageID << 16) & 0xffff0000;
+    MSG_DEBUG("Processing page " << mPage.pageID);
     SkBitmap target;
-    target.allocN32Pixels(width, height);
+    target.allocN32Pixels(mPage.width, mPage.height);
     target.eraseColor(TColor::getSkiaColor(sr[0].cf));
     // Draw the background, if any
     if (sr.size() > 0 && (!sr[0].bm.empty() || !sr[0].mi.empty()))
     {
         TDrawImage dImage;
-        dImage.setWidth(width);
-        dImage.setHeight(height);
+        dImage.setWidth(mPage.width);
+        dImage.setHeight(mPage.height);
 
         if (!sr[0].bm.empty())
         {
@@ -508,7 +547,7 @@ void TPage::show()
 
             if (!sr[0].te.empty())
             {
-                if (!drawText(&target))
+                if (!drawText(mPage, &target))
                     return;
             }
 
@@ -553,7 +592,7 @@ void TPage::show()
     {
         MSG_DEBUG("Drawing text on background image ...");
 
-        if (!drawText(&target))
+        if (!drawText(mPage, &target))
             return;
 
         SkImageInfo info = target.info();
@@ -572,7 +611,7 @@ void TPage::show()
     }
 
     // Draw the buttons
-    BUTTONS_T *button = mButtons;
+    BUTTONS_T *button = TPageInterface::getButtons();
 
     while (button)
     {
@@ -581,7 +620,8 @@ void TPage::show()
             MSG_DEBUG("Drawing button " << button->button->getButtonIndex() << ": " << button->button->getButtonName());
             button->button->registerCallback(_displayButton);
             button->button->regCallPlayVideo(_playVideo);
-            button->button->setFonts(mFonts);
+            TPageInterface::registerListCallback<TPage>(button->button, this);
+            button->button->setFonts(getFonts());
             button->button->setPalette(mPalette);
             button->button->createButtons();
 
@@ -596,341 +636,6 @@ void TPage::show()
 
     // Mark page as visible
     mVisible = true;
-}
-
-int TPage::numberLines(const string& str)
-{
-    DECL_TRACER("TPage::numberLines(const string& str)");
-
-    int lines = 1;
-
-    for (size_t i = 0; i < str.length(); i++)
-    {
-        if (str.at(i) == '\n')
-            lines++;
-    }
-
-    return lines;
-}
-
-int TPage::calcLineHeight(const string& text, SkFont& font)
-{
-    DECL_TRACER("TButton::calcLineHeight(const string& text, SkFont& font)");
-
-    sk_sp<SkTextBlob> blob = SkTextBlob::MakeFromString(text.c_str(), font);
-    SkRect rect = blob.get()->bounds();
-    return rect.height();
-}
-
-Button::POSITION_t TPage::calcImagePosition(int width, int height, Button::CENTER_CODE cc, int line)
-{
-    DECL_TRACER("TButton::calcImagePosition(int with, int height, CENTER_CODE code, int number)");
-
-    SR_T act_sr;
-    POSITION_t position;
-    int ix, iy;
-
-    if (sr.size() == 0)
-        return position;
-
-    act_sr = sr.at(0);
-    //    int border_size = getBorderSize(act_sr.bs);
-    int border_size = 0;
-    int code, border = border_size;
-    string dbgCC;
-    int rwt = 0, rht = 0;
-
-    switch (cc)
-    {
-        case SC_ICON:
-            code = act_sr.ji;
-            ix = act_sr.ix;
-            iy = act_sr.iy;
-            border = border_size = 0;
-            dbgCC = "ICON";
-            rwt = width;
-            rht = height;
-            break;
-
-        case SC_BITMAP:
-            code = act_sr.jb;
-            ix = act_sr.bx;
-            iy = act_sr.by;
-            dbgCC = "BITMAP";
-            rwt = std::min(this->width - border * 2, width);
-            rht = std::min(this->height - border_size * 2, height);
-            break;
-
-        case SC_TEXT:
-            code = act_sr.jt;
-            ix = act_sr.tx;
-            iy = act_sr.ty;
-            dbgCC = "TEXT";
-            border += 4;
-            rwt = std::min(this->width - border * 2, width);
-            rht = std::min(this->height - border_size * 2, height);
-            break;
-    }
-
-    if (width > rwt || height > rht)
-        position.overflow = true;
-
-    switch (code)
-    {
-        case 0: // absolute position
-            position.left = ix;
-
-            if (cc == SC_TEXT)
-                position.top = iy + height * line;
-            else
-                position.top = iy;
-
-            if (cc == SC_BITMAP && ix < 0 && rwt < width)
-                position.left *= -1;
-
-            if (cc == SC_BITMAP && iy < 0 && rht < height)
-                position.top += -1;
-
-            position.width = rwt;
-            position.height = rht;
-            break;
-
-        case 1: // top, left
-            if (cc == SC_TEXT)
-            {
-                position.left = border;
-                position.top = height * line;
-            }
-
-            position.width = rwt;
-            position.height = rht;
-            break;
-
-        case 2: // center, top
-            if (cc == SC_TEXT)
-                position.top = height * line;
-
-            position.left = (this->width - rwt) / 2;
-            position.height = rht;
-            position.width = rwt;
-            break;
-
-        case 3: // right, top
-            position.left = this->width - rwt;
-
-            if (cc == SC_TEXT)
-            {
-                position.left = (((position.left - border) < 0) ? 0 : position.left - border);
-                position.top = height * line;
-            }
-
-            position.width = rwt;
-            position.height = rht;
-            break;
-
-        case 4: // left, middle
-            if (cc == SC_TEXT)
-            {
-                position.left = border;
-                position.top = ((this->height - rht) / 2) + (height / 2 * line);
-            }
-            else
-                position.top = (this->height - rht) / 2;
-
-            position.width = rwt;
-            position.height = rht;
-            break;
-
-        case 6: // right, middle
-            position.left = this->width - rwt;
-
-            if (cc == SC_TEXT)
-            {
-                position.left = (((position.left - border) < 0) ? 0 : position.left - border);
-                position.top = ((this->height - rht) / 2) + (height / 2 * line);
-            }
-            else
-                position.top = (this->height - rht) / 2;
-
-            position.width = rwt;
-            position.height = rht;
-            break;
-
-        case 7: // left, bottom
-            if (cc == SC_TEXT)
-            {
-                position.left = border_size;
-                position.top = (this->height - rht) - height * line;
-            }
-            else
-                position.top = this->height - rht;
-
-            position.width = rwt;
-            position.height = rht;
-            break;
-
-        case 8: // center, bottom
-            position.left = (this->width - rwt) / 2;
-
-            if (cc == SC_TEXT)
-                position.top = (this->height - rht) - height * line;
-            else
-                position.top = this->height - rht;
-
-            position.width = rwt;
-            position.height = rht;
-            break;
-
-        case 9: // right, bottom
-            position.left = this->width - rwt;
-
-            if (cc == SC_TEXT)
-            {
-                position.left = (((position.left - border) < 0) ? 0 : position.left - border);
-                position.top = (this->height - rht) - height * line;
-            }
-            else
-                position.top = this->height - rht;
-            break;
-
-        default: // center, middle
-            position.left = (this->width - rwt) / 2;
-
-            if (cc == SC_TEXT)
-                position.top = ((this->height - rht) / 2) + (height / 2 * line);
-            else
-                position.top = (this->height - rht) / 2;
-
-            position.width = rwt;
-            position.height = rht;
-    }
-
-    MSG_DEBUG("Type: " << dbgCC << ", PosType=" << code << ", Position: x=" << position.left << ", y=" << position.top << ", w=" << position.width << ", h=" << position.height << ", Overflow: " << (position.overflow ? "YES" : "NO"));
-    position.valid = true;
-    return position;
-}
-
-bool TPage::drawText(SkBitmap *img)
-{
-    MSG_TRACE("TSubPage::drawText(SkImage& img)");
-
-    if (sr[0].te.empty())
-        return true;
-
-    MSG_DEBUG("Searching for font number " << sr[0].fi << " with text " << sr[0].te);
-    FONT_T font = mFonts->getFont(sr[0].fi);
-
-    if (!font.file.empty())
-    {
-        SkCanvas canvas(*img, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
-        sk_sp<SkTypeface> typeFace = mFonts->getTypeFace(sr[0].fi);
-
-        if (!typeFace)
-        {
-            MSG_ERROR("Error creating type face " << font.fullName);
-            TError::setError();
-            return false;
-        }
-
-        SkScalar fontSizePt = ((SkScalar)font.size * 1.322);
-        SkFont skFont(typeFace, fontSizePt);
-
-        SkPaint paint;
-        paint.setAntiAlias(true);
-        SkColor color = TColor::getSkiaColor(sr[0].ct);
-        paint.setColor(color);
-        paint.setStyle(SkPaint::kFill_Style);
-
-        SkFontMetrics metrics;
-        skFont.getMetrics(&metrics);
-        int lines = numberLines(sr[0].te);
-
-        if (lines > 1 || sr[0].ww)
-        {
-            vector<string> textLines;
-
-            if (!sr[0].ww)
-                textLines = ::splitLine(sr[0].te);
-            else
-            {
-                textLines = splitLine(sr[0].te, width, height, skFont, paint);
-                lines = textLines.size();
-            }
-
-            int lineHeight = calcLineHeight(sr[0].te, skFont);
-            int totalHeight = lineHeight * lines;
-
-            if (totalHeight > height)
-            {
-                lines = height / lineHeight;
-                totalHeight = lineHeight * lines;
-            }
-
-            MSG_DEBUG("Line height: " << lineHeight);
-            POSITION_t position = calcImagePosition(width, totalHeight, SC_TEXT, 1);
-            MSG_DEBUG("Position frame: l: " << position.left << ", t: " << position.top << ", w: " << position.width << ", h: " << position.height);
-
-            if (!position.valid)
-            {
-                MSG_ERROR("Error calculating the text position!");
-                TError::setError();
-                return false;
-            }
-
-            vector<string>::iterator iter;
-            int line = 0;
-
-            for (iter = textLines.begin(); iter != textLines.end(); ++iter)
-            {
-                sk_sp<SkTextBlob> blob = SkTextBlob::MakeFromString(iter->c_str(), skFont);
-                SkRect rect;
-                skFont.measureText(iter->c_str(), iter->length(), SkTextEncoding::kUTF8, &rect, &paint);
-                POSITION_t pos = calcImagePosition(rect.width(), lineHeight, SC_TEXT, 1);
-
-                if (!pos.valid)
-                {
-                    MSG_ERROR("Error calculating the text position!");
-                    TError::setError();
-                    return false;
-                }
-                MSG_DEBUG("Triing to print line: " << *iter);
-
-                SkScalar startX = (SkScalar)pos.left;
-                SkScalar startY = (SkScalar)position.top + lineHeight * line;
-                MSG_DEBUG("x=" << startX << ", y=" << startY);
-                canvas.drawTextBlob(blob, startX, startY + lineHeight / 2 + 4, paint);
-                line++;
-
-                if (line > lines)
-                    break;
-            }
-        }
-        else    // single line
-        {
-            sk_sp<SkTextBlob> blob = SkTextBlob::MakeFromString(sr[0].te.c_str(), skFont);
-            SkRect rect;
-            skFont.measureText(sr[0].te.c_str(), sr[0].te.length(), SkTextEncoding::kUTF8, &rect, &paint);
-            POSITION_t position = calcImagePosition(rect.width(), (rect.height() * (float)lines), SC_TEXT, 0);
-
-            if (!position.valid)
-            {
-                MSG_ERROR("Error calculating the text position!");
-                TError::setError();
-                return false;
-            }
-
-            MSG_DEBUG("Printing line " << sr[0].te);
-            SkScalar startX = (SkScalar)position.left;
-            SkScalar startY = (SkScalar)position.top + metrics.fCapHeight; // + metrics.fLeading; // (metrics.fAscent * -1.0);
-            canvas.drawTextBlob(blob, startX, startY, paint);
-        }
-    }
-    else
-    {
-        MSG_WARNING("No font file name found for font " << sr[0].fi);
-    }
-
-    return true;
 }
 
 PAGECHAIN_T *TPage::addSubPage(TSubPage* pg)
@@ -1200,182 +905,6 @@ TSubPage *TPage::getLastSubPage()
     return pg->subpage;
 }
 
-BUTTONS_T *TPage::addButton(TButton* button)
-{
-    DECL_TRACER("*TPage::addButton(TButton* button)");
-
-    if (!button)
-    {
-        MSG_ERROR("Parameter is NULL!");
-        TError::setError();
-        return nullptr;
-    }
-
-    BUTTONS_T *chain = new BUTTONS_T;
-    BUTTONS_T *bts = mButtons;
-    chain->button = button;
-    chain->next = nullptr;
-    chain->previous = nullptr;
-
-    if (bts)
-    {
-        BUTTONS_T *p = bts;
-
-        while (p && p->next)
-            p = p->next;
-
-        p->next = chain;
-        chain->previous = p;
-    }
-    else
-        mButtons = chain;
-
-    return chain;
-}
-
-bool TPage::hasButton(int id)
-{
-    DECL_TRACER("TPage::hasButton(int id)");
-
-    BUTTONS_T *bt = mButtons;
-
-    while (bt)
-    {
-        if (bt->button && bt->button->getButtonIndex() == id)
-            return true;
-
-        bt = bt->next;
-    }
-
-    return false;
-}
-
-TButton *TPage::getButton(int id)
-{
-    DECL_TRACER("TPage::getButton(int id)");
-
-    BUTTONS_T *bt = mButtons;
-
-    while (bt)
-    {
-        if (bt->button && bt->button->getButtonIndex() == id)
-            return bt->button;
-
-        bt = bt->next;
-    }
-
-    return nullptr;
-}
-
-std::vector<TButton *> TPage::getButtons(int ap, int ad)
-{
-    DECL_TRACER("TSubPage::getButtons(int ap, int ad)");
-
-    std::vector<TButton *> list;
-    BUTTONS_T *bt = mButtons;
-
-    while (bt)
-    {
-        if (bt->button->getAddressPort() == ap && bt->button->getAddressChannel() == ad)
-            list.push_back(bt->button);
-
-        bt = bt->next;
-    }
-
-    return list;
-}
-
-std::vector<TButton *> TPage::getAllButtons()
-{
-    DECL_TRACER("TPage::getAllButtons()");
-
-    std::vector<TButton *> list;
-    BUTTONS_T *bt = mButtons;
-
-    while (bt)
-    {
-        list.push_back(bt->button);
-        bt = bt->next;
-    }
-
-    return list;
-}
-
-TButton *TPage::getFirstButton()
-{
-    DECL_TRACER("TButton::getFirstButton()");
-
-    mLastButton = 0;
-
-    if (mButtons)
-        return mButtons->button;
-
-    return nullptr;
-}
-
-TButton *TPage::getNextButton()
-{
-    DECL_TRACER("TPage::getNextButton()");
-
-    BUTTONS_T *but = mButtons;
-    int count = 0;
-    mLastButton++;
-
-    while (but)
-    {
-        if (but->button && count == mLastButton)
-            return but->button;
-
-        but = but->next;
-        count++;
-    }
-
-    return nullptr;
-}
-
-TButton *TPage::getLastButton()
-{
-    DECL_TRACER("TPage::getLastButton()");
-
-    BUTTONS_T *but = mButtons;
-    mLastButton = 0;
-
-    while (but && but->next)
-    {
-        mLastButton++;
-        but = but->next;
-    }
-
-    if (!but)
-        return nullptr;
-
-    return but->button;
-}
-
-TButton *TPage::getPreviousButton()
-{
-    DECL_TRACER("TPage::getPreviousButton()");
-
-    BUTTONS_T *but = mButtons;
-    int count = 0;
-
-    if (mLastButton)
-        mLastButton--;
-    else
-        return nullptr;
-
-    while (but)
-    {
-        if (but->button && count == mLastButton)
-            return but->button;
-
-        but = but->next;
-        count++;
-    }
-
-    return nullptr;
-}
-
 void TPage::drop()
 {
     DECL_TRACER("TPage::drop()");
@@ -1391,7 +920,7 @@ void TPage::drop()
     }
 
     // remove all buttons, if there are any
-    BUTTONS_T *bt = mButtons;
+    BUTTONS_T *bt = TPageInterface::getButtons();
 
     while (bt)
     {
@@ -1411,8 +940,8 @@ void TPage::calcPosition(int im_width, int im_height, int *left, int *top)
 {
     DECL_TRACER("TPage::calcPosition(int im_width, int im_height, int *left, int *top)");
 
-    int nw = width;
-    int nh = height;
+    int nw = mPage.width;
+    int nh = mPage.height;
 #ifdef _SCALE_SKIA_
     if (scale && gPageManager && gPageManager->getScaleFactor() != 1.0)
     {
@@ -1523,62 +1052,6 @@ void TPage::sortSubpages()
         }
     }
     while (turned);
-}
-
-/*
- * Sort the button according to their Z-order.
- * The button with the highest Z-order will be the last button in the chain.
- * The algorithm is a bubble sort algorithm.
- */
-bool TPage::sortButtons()
-{
-    DECL_TRACER("TPage::sortButtons()");
-
-    bool turned = true;
-
-    while (turned)
-    {
-        BUTTONS_T *button = mButtons;
-        turned = false;
-
-        while (button)
-        {
-            int zo = button->button->getZOrder();
-
-            if (button->previous)
-            {
-                if (zo < button->previous->button->getZOrder())
-                {
-                    BUTTONS_T *pprev = button->previous->previous;
-                    BUTTONS_T *prev = button->previous;
-                    BUTTONS_T *next = button->next;
-
-                    if (pprev)
-                        pprev->next = button;
-
-                    prev->next = next;
-                    prev->previous = button;
-                    button->next = prev;
-                    button->previous = pprev;
-
-                    if (!pprev)
-                        mButtons = button;
-
-                    button = next;
-
-                    if (next)
-                        next->previous = prev;
-
-                    turned = true;
-                    continue;
-                }
-            }
-
-            button = button->next;
-        }
-    }
-
-    return true;
 }
 
 int TPage::getNextZOrder()

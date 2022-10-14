@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -53,10 +53,7 @@ bool TValidateFile::isValidFile(const string& file)
     struct stat buffer;
 
     if (stat (file.c_str(), &buffer) != 0)
-    {
-        MSG_WARNING("File access error (" << file << "): " << strerror(errno));
         return false;
-    }
 
     if ((buffer.st_mode & S_IFREG) > 0)
         return true;

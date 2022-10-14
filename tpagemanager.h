@@ -79,14 +79,18 @@ class TPageManager : public TAmxCommands
         TPageManager();
         ~TPageManager();
 
-        bool readPages();                           //!< Read all pages and subpages
-        bool readPage(const std::string& name);     //!< Read the page with name \p name
-        bool readPage(int ID);                      //!< Read the page with id \p ID
-        bool readSubPage(const std::string& name);  //!< Read the subpage with name \p name
-        bool readSubPage(int ID);                   //!< Read the subpage with ID \p ID
+        bool readPages();                               //!< Read all pages and subpages
+        bool readPage(const std::string& name);         //!< Read the page with name \p name
+        bool readPage(int ID);                          //!< Read the page with id \p ID
+        bool readSubPage(const std::string& name);      //!< Read the subpage with name \p name
+        bool readSubPage(int ID);                       //!< Read the subpage with ID \p ID
+        void updateActualPage();                        //!< Updates all elements of the actual page
+        void updateSubpage(int ID);                     //!< Updates all elements of a subpage
+        void updateSubpage(const std::string& name);    //!< Updates all elements of a subpage
 
         TPageList *getPageList() { return mPageList; }      //!< Get the list of all pages
         TSettings *getSettings() { return mTSettings; }     //!< Get the (system) settings of the panel
+        TSettings *getSystemSettings() { return mSystemSettings; } //!< Get the system settings of the setup pages
 
         TPage *getActualPage();                             //!< Get the actual page
         int getActualPageNumber() { return mActualPage; }   //!< Get the ID of the actual page
@@ -102,11 +106,12 @@ class TPageManager : public TAmxCommands
 
         TPage *getPage(int pageID);
         TPage *getPage(const std::string& name);
-        bool setPage(int PageID);
+        bool setPage(int PageID, bool forget=false);
         bool setPage(const std::string& name, bool forget=false);
         TSubPage *getSubPage(int pageID);
         TSubPage *getSubPage(const std::string& name);
         TSubPage *deliverSubPage(const std::string& name, TPage **pg=nullptr);
+        TSubPage *deliverSubPage(int number, TPage **pg=nullptr);
         bool havePage(const std::string& name);
         bool haveSubPage(const std::string& name);
         bool haveSubPage(int id);
@@ -119,6 +124,7 @@ class TPageManager : public TAmxCommands
         void setDPI(const double dpi) { mDPI = dpi; }
 
         void registerCallbackDB(std::function<void(ulong handle, ulong parent, unsigned char *buffer, int width, int height, int pixline, int left, int top)> displayButton) { _displayButton = displayButton; }
+        void registerDropButton(std::function<void(ulong hanlde)> dropButton) { _dropButton = dropButton; }
         void registerCBsetVisible(std::function<void(ulong handle, bool state)> setVisible) { _setVisible = setVisible; }
         void registerCallbackSP(std::function<void (ulong handle, int width, int height)> setPage) { _setPage = setPage; }
         void registerCallbackSSP(std::function<void (ulong handle, int left, int top, int width, int height, ANIMATION_t animate)> setSubPage) { _setSubPage = setSubPage; }
@@ -138,7 +144,8 @@ class TPageManager : public TAmxCommands
         void regCallDropPage(std::function<void (ulong handle)> callDropPage) { _callDropPage = callDropPage; }
         void regCallDropSubPage(std::function<void (ulong handle)> callDropSubPage) { _callDropSubPage = callDropSubPage; }
         void regCallPlayVideo(std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw)> callPlayVideo) { _callPlayVideo = callPlayVideo; };
-        void regCallInputText(std::function<void (Button::TButton *button, Button::BITMAP_t& bm)> callInputText) { _callInputText = callInputText; }
+        void regCallInputText(std::function<void (Button::TButton *button, Button::BITMAP_t& bm, int frame)> callInputText) { _callInputText = callInputText; }
+        void regCallListBox(std::function<void (Button::TButton *button, Button::BITMAP_t& bm, int frame)> callListBox) { _callListBox = callListBox; }
         void regCallbackKeyboard(std::function<void (const std::string& init, const std::string& prompt, bool priv)> callKeyboard) { _callKeyboard = callKeyboard; }
         void regCallbackKeypad(std::function<void (const std::string& init, const std::string& prompt, bool priv)> callKeypad) { _callKeypad = callKeypad; }
         void regCallResetKeyboard(std::function<void ()> callResetKeyboard) { _callResetKeyboard = callResetKeyboard; }
@@ -157,11 +164,15 @@ class TPageManager : public TAmxCommands
         void regSetPhoneNumber(std::function<void (const std::string& number)> setPhoneNumber) { _setPhoneNumber = setPhoneNumber; }
         void regSetPhoneStatus(std::function<void (const std::string& msg)> setPhoneStatus) { _setPhoneStatus = setPhoneStatus; }
         void regSetPhoneState(std::function<void (int state, int id)> setPhoneState) { _setPhoneState = setPhoneState; }
+        void regDisplayMessage(std::function<void (const std::string& msg, const std::string& title)> msg) { _displayMessage = msg; }
+        void regFileDialogFunction(std::function<void (ulong handle, const std::string& path, const std::string& extension, const std::string& suffix)> fdlg) { _fileDialog = fdlg; }
 #ifdef __ANDROID__
         void regOnOrientationChange(std::function<void (int orientation)> orientationChange) { _onOrientationChange = orientationChange; }
 #endif
         void regRepaintWindows(std::function<void ()> repaintWindows) { _repaintWindows = repaintWindows; }
         void regToFront(std::function<void (ulong handle)> toFront) { _toFront = toFront; }
+        void regSetMainWindowSize(std::function<void (int width, int height)> setSize) { _setMainWindowSize = setSize; }
+        void regDownloadSurface(std::function<void (const std::string& file, size_t size)> dl) { _downloadSurface = dl; }
 
         /**
          * The following function must be called to start non graphics part
@@ -212,8 +223,9 @@ class TPageManager : public TAmxCommands
          *
          * @param handle    The handle of a button.
          * @param txt       The text usualy comming from an input line.
+         * @param redraw    If this is set to true the button is redrawn.
          */
-        void setTextToButton(ulong handle, const std::string& txt);
+        void setTextToButton(ulong handle, const std::string& txt, bool redraw=false);
         /**
          * Iterates through all active subpages of the active page and drops
          * them.
@@ -226,7 +238,7 @@ class TPageManager : public TAmxCommands
          */
         void closeGroup(const std::string& group);
         /**
-         * Displays a the subpage \p name. If the subpage is part of a group
+         * Displays the subpage \p name. If the subpage is part of a group
          * the open subpage in the group is closed, if there was one open. Then
          * the subpage is displayed. If the subpage is not already in the
          * internal buffer it's configuration file is read and the page is
@@ -236,11 +248,31 @@ class TPageManager : public TAmxCommands
          */
         void showSubPage(const std::string& name);
         /**
+         * Displays the subpage \p number. If the subpage is part of a group
+         * the open subpage in the group is closed, if there was one open. Then
+         * the subpage is displayed. If the subpage is not already in the
+         * internal buffer it's configuration file is read and the page is
+         * created.
+         *
+         * @param name  The name of the subpage to display.
+         */
+        void showSubPage(int number, bool force=false);
+        /**
          * Hides the subpage \p name.
          *
          * @param name  The name of the subpage to hide.
          */
         void hideSubPage(const std::string& name);
+        /**
+         * This is called whenever an input button finished or changed it's
+         * content. It is called out of the class TQEditLine.
+         * The method writes the content into the text area of the button the
+         * handle points to.
+         *
+         * @param handle   The handle of the button.
+         * @param content  The content of the text area.
+         */
+        void inputButtonFinished(ulong handle, const std::string& content);
 #ifdef _SCALE_SKIA_
         void setScaleFactor(double scale) { mScaleFactor = scale; }
         double getScaleFactor() { return mScaleFactor; }
@@ -277,7 +309,7 @@ class TPageManager : public TAmxCommands
         void startUp();
         /**
          * This starts a thread running the command loop. Each event from the
-         * Netlinx is entered into a vector array (doCommand()) and this this
+         * Netlinx is entered into a vector array (doCommand()) and this
          * method starts the event loop as a thread running as long as this
          * class exists.
          */
@@ -297,14 +329,73 @@ class TPageManager : public TAmxCommands
          * An ANET_COMMAND structure containing the received command.
          */
         void doCommand(const amx::ANET_COMMAND& cmd);
-
+        /**
+         * Returns the state of setup. If the setup pages are active it returns
+         * TRUE.
+         *
+         * @return State of setup pages
+         */
+        bool isSetupActive() { return mSetupActive; }
+        /**
+         * Activates the setup pages unless they are not visible already.
+         */
+        void showSetup();
+        /**
+         * Deactivates the setup pages and restores the previous normal page.
+         */
+        void hideSetup();
+        /**
+         * Determines the page or subpage the handle points to and returns the
+         * selected row of a list, if there is one.
+         * The row index starts by 1!
+         *
+         * @param handle    The handle of the button.
+         * @return If the button is a list and a row was selected then a number
+         * grater than 0 is returned. Otherwise -1 is returned.
+         */
+        int getSelectedRow(ulong handle);
+        /**
+         * Finds the page or subpage and returns the selected item as a string.
+         * If there was no list, or no items in the list, or nothing selected,
+         * an empty string is returned.
+         *
+         * @param handle    The handle of the button
+         * @return The string of the selected item or an empty string.
+         */
+        std::string getSelectedItem(ulong handle);
+        /**
+         * Finds the corresponding list and sets the selected row. The \b row
+         * must be a value starting by 1. It must not be bigger that items in
+         * the list.
+         *
+         * @param handle    The handle of the button
+         * @param row       The number of the selected row.
+         */
+        void setSelectedRow(ulong handle, int row, const std::string& text);
+#ifdef _SCALE_SKIA_
+        /**
+         * Set the scale factor for the system setup pages. On a desktop this
+         * factor is in relation to the size of the normal pages, if there any.
+         * On a mobile device the factor is in relation to the resolution of
+         * the display.
+         * The scale factor is calculated in qtmain.cpp: MainWindow::calcScaleSetup()
+         *
+         * @param scale  The overall scale factor. This is used for calculations
+         * and ensures that the ratio of the objects is maintained.
+         * @param sw     The scale factor for the width.
+         * @param sh     The scale factor for the height.
+         */
+        void setSetupScaleFactor(double scale, double sw, double sh);
+#endif
         // Callbacks who will be registered by the graphical surface.
         std::function<void (ulong handle, ulong parent, unsigned char *buffer, int width, int height, int pixline, int left, int top)> getCallbackDB() { return _displayButton; }
+        std::function<void (ulong handle)> getCallDropButton() { return _dropButton; }
         std::function<void (ulong handle, bool state)> getVisible() { return _setVisible; };
         std::function<void (ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color)> getCallbackBG() { return _setBackground; }
         std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw)> getCallbackPV() { return _callPlayVideo; }
         std::function<void (ulong handle, int width, int height)> getCallbackSetPage() { return _setPage; }
-        std::function<void (Button::TButton *button, Button::BITMAP_t& bm)> getCallbackInputText() { return _callInputText; }
+        std::function<void (Button::TButton *button, Button::BITMAP_t& bm, int frame)> getCallbackInputText() { return _callInputText; }
+        std::function<void (Button::TButton *button, Button::BITMAP_t& bm, int frame)> getCallbackListBox() { return _callListBox; }
         std::function<void (ulong handle, int left, int top, int width, int height, ANIMATION_t animate)> getCallbackSetSubPage() { return _setSubPage; }
         std::function<void (ulong handle)> getCallDropPage() { return _callDropPage; }
         std::function<void (ulong handle)> getCallDropSubPage() { return _callDropSubPage; }
@@ -317,6 +408,10 @@ class TPageManager : public TAmxCommands
         std::function<void (const std::string& msg)> getSetPhoneStatus() { return _setPhoneStatus; }
         std::function<void (int state, int id)> getSetPhoneState() { return _setPhoneState; }
         std::function<void (ulong handle)> getToFront() { return _toFront; }
+        std::function<void (int width, int height)> getMainWindowSizeFunc() { return _setMainWindowSize; }
+        std::function<void (const std::string& file, size_t size)> getDownloadSurface() { return _downloadSurface; }
+        std::function<void (const std::string& msg, const std::string& title)> getDisplayMessage() { return _displayMessage; }
+        std::function<void (ulong handle, const std::string& path, const std::string& extension, const std::string& suffix)> getFileDialogFunction() { return _fileDialog; }
 #ifdef __ANDROID__
         std::function<void (int orientation)> onOrientationChange() { return _onOrientationChange; }
 #endif
@@ -340,6 +435,26 @@ class TPageManager : public TAmxCommands
         void phonePickup(int id);
         void phoneHangup(int id);
 #endif
+        void addFtpSurface(const std::string& file, size_t size) { mFtpSurface.push_back(_FTP_SURFACE_t{file, size}); };
+
+        inline size_t getFtpSurfaceSize(const std::string& file)
+        {
+            if (mFtpSurface.empty())
+                return 0;
+
+            std::vector<_FTP_SURFACE_t>::iterator iter;
+
+            for (iter = mFtpSurface.begin(); iter != mFtpSurface.end(); ++iter)
+            {
+                if (iter->file == file)
+                    return iter->size;
+            }
+
+            return 0;
+        }
+
+        void clearFtpSurface() { mFtpSurface.clear(); }
+
     protected:
         PAGELIST_T findPage(const std::string& name);
         PAGELIST_T findPage(int ID);
@@ -356,6 +471,7 @@ class TPageManager : public TAmxCommands
 
     private:
         std::function<void (ulong handle, ulong parent, unsigned char *buffer, int width, int height, int pixline, int left, int top)> _displayButton{nullptr};
+        std::function<void (ulong handle)> _dropButton{nullptr};
         std::function<void (ulong handle, bool state)> _setVisible{nullptr};
         std::function<void (ulong handle, int width, int height)> _setPage{nullptr};
         std::function<void (ulong handle, int left, int top, int width, int height, ANIMATION_t animate)> _setSubPage{nullptr};
@@ -364,7 +480,8 @@ class TPageManager : public TAmxCommands
         std::function<void (ulong handle)> _callDropPage{nullptr};
         std::function<void (ulong handle)> _callDropSubPage{nullptr};
         std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw)> _callPlayVideo{nullptr};
-        std::function<void (Button::TButton *button, Button::BITMAP_t& bm)> _callInputText{nullptr};
+        std::function<void (Button::TButton *button, Button::BITMAP_t& bm, int frame)> _callInputText{nullptr};
+        std::function<void (Button::TButton *button, Button::BITMAP_t& bm, int frame)> _callListBox{nullptr};
         std::function<void (const std::string& init, const std::string& prompt, bool priv)> _callKeyboard{nullptr};
         std::function<void (const std::string& init, const std::string& prompt, bool priv)> _callKeypad{nullptr};
         std::function<void ()> _callResetKeyboard{nullptr};
@@ -381,9 +498,19 @@ class TPageManager : public TAmxCommands
         std::function<void (int state, int id)> _setPhoneState{nullptr};
         std::function<void ()> _repaintWindows{nullptr};
         std::function<void (uint handle)> _toFront{nullptr};
+        std::function<void (int width, int height)> _setMainWindowSize{nullptr};
+        std::function<void (const std::string& file, size_t size)> _downloadSurface{nullptr};
+        std::function<void (const std::string& msg, const std::string& title)> _displayMessage{nullptr};
+        std::function<void (ulong handle, const std::string& path, const std::string& extension, const std::string& suffix)> _fileDialog{nullptr};
 #ifdef __ANDROID__
         std::function<void (int orientation)> _onOrientationChange{nullptr};
 #endif
+        typedef struct _FTP_SURFACE_t
+        {
+            std::string file;
+            size_t size{0};
+        }_FTP_SURFACE_t;
+
         /**
          * @brief doOverlap checks for overlapping objects
          *
@@ -406,7 +533,7 @@ class TPageManager : public TAmxCommands
          * If there are some pages not yet in memory, they will be created just
          * to be able to set the button(s).
          */
-        std::vector<Button::TButton *> collectButtons(std::vector<MAP_T>& map);
+        std::vector<Button::TButton *> collectButtons(std::vector<TMap::MAP_T>& map);
         /**
          * This internal function frees and destroys all settings, loaded pages
          * and sub pages as well as all buttons ens elements belonging to this
@@ -419,10 +546,12 @@ class TPageManager : public TAmxCommands
          * flag is set.
          */
         bool destroyAll();
+
         bool overlap(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int h2);
-        TPage *loadPage(PAGELIST_T& pl);
+        TPage *loadPage(PAGELIST_T& pl, bool *refresh=nullptr);
         void setButtonCallbacks(Button::TButton *bt);
         bool sendCustomEvent(int value1, int value2, int value3, const std::string& msg, int evType, int cp, int cn);
+        void reloadSystemPage(TPage *page);
 #ifndef _NOSIP_
         std::string sipStateToString(TSIPClient::SIP_STATE_t s);
 #endif
@@ -549,6 +678,7 @@ class TPageManager : public TAmxCommands
 
         int mActualPage{0};                             // The number of the actual visible page
         int mPreviousPage{0};                           // The number of the previous page
+        int mSavedPage{0};                              // The number of the last normal page. This is set immediately before a setup page is shown
         int mFirstLeftPixel{0};                         // Pixels to add to left (x) mouse coordinate
         int mFirstTopPixel{0};                          // Pixels to add to top (y) mouse position
         std::string mActualGroupName;                   // The name of the actual group
@@ -559,6 +689,7 @@ class TPageManager : public TAmxCommands
         PCHAIN_T *mPchain{nullptr};                     // Pointer to chain of pages in memory
         SPCHAIN_T *mSPchain{nullptr};                   // Pointer to chain of subpages in memory for the actual page
         TSettings *mTSettings{nullptr};                 // Pointer to basic settings for the panel
+        TSettings *mSystemSettings{nullptr};            // Pointer to basic system settings for setup
         TPalette *mPalette{nullptr};                    // Pointer to the color handler
         TFont *mFonts{nullptr};                         // Pointer to the font handler
         TExternal *mExternal{nullptr};                  // Pointer to the external buttons (if any)
@@ -576,6 +707,9 @@ class TPageManager : public TAmxCommands
         double mDPI{96.0};                              // DPI (Dots Per Inch) of the primary display.
         std::atomic<bool> cmdLoop_busy{false};          // As long as this is true the command loop thread is active
         std::thread mThreadCommand;                     // Thread handle for command loop thread.
+        bool mSetupActive{false};                       // TRUE = Setup pages are active
+        std::vector<int> mSavedSubpages;                // When setup pages are called this contains the actual open subpages
+        std::vector<_FTP_SURFACE_t> mFtpSurface;        // Contains a list of TP4 surface files gained from a NetLinx.
         // SIP
 #ifndef _NOSIP_
         bool mPHNautoanswer{false};                     // The state of the SIP autoanswer
@@ -585,6 +719,10 @@ class TPageManager : public TAmxCommands
         double mScaleFactor{1.0};                       // The scale factor to zoom or shrink all components
         double mScaleFactorWidth{1.0};                  // The individual scale factor for the width
         double mScaleFactorHeight{1.0};                 // The individual scale factor for the height
+
+        double mScaleSystem{1.0};                       // The scale factor for the system setup pages
+        double mScaleSystemWidth{1.0};                  // The width scale factor for the system setup pages
+        double mScaleSystemHeight{1.0};                 // The height scale factor for the system setup pages
 #endif
 #ifdef __ANDROID__
         int mNetState{0};                               // On Android remembers the type of connection to the network (cell or wifi)

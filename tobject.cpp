@@ -24,6 +24,8 @@
 #ifdef QT5_LINUX
 #include <QtMultimedia/QMediaPlayer>
 #include <QtMultimediaWidgets/QVideoWidget>
+#else
+#include <QTextLayout>
 #endif
 #include "tobject.h"
 #include "terror.h"
@@ -64,11 +66,12 @@ void TObject::clear(bool force)
     mObject = nullptr;
 }
 
-void TObject::dropContent(OBJECT_t* obj)
+void TObject::dropContent(OBJECT_t* obj, bool lock)
 {
-    DECL_TRACER("TObject::dropContent(OBJECT_t* obj)");
+    DECL_TRACER("TObject::dropContent(OBJECT_t* obj, bool lock)");
 
-    mutex_obj.lock();
+    if (lock)
+        mutex_obj.lock();
 
     try
     {
@@ -76,45 +79,47 @@ void TObject::dropContent(OBJECT_t* obj)
         {
             case OBJ_TEXT:
             case OBJ_INPUT:
-                if (obj->object.multitext)
+                if (obj->object.plaintext)
                 {
-                    obj->object.multitext = nullptr;
+                    obj->object.plaintext->close();
+                    obj->object.plaintext = nullptr;
                 }
-
-                if (obj->object.linetext)
-                    obj->object.linetext = nullptr;
 
                 obj->wid = 0;
             break;
 
             case OBJ_BUTTON:
                 if (obj->object.label)
-                {
                     obj->object.label = nullptr;
-                }
             break;
 
+            // This are the parent widgets (windows) and must be deleted.
+            // If this widgets are deleted, Qt deletes their children.
             case OBJ_PAGE:
             case OBJ_SUBPAGE:
                 if (obj->object.widget)
                 {
-                    delete obj->object.widget;
+                    obj->object.widget->close();        // This deletes all childs and the window itself
                     obj->object.widget = nullptr;
                 }
-                break;
+            break;
 
             case OBJ_VIDEO:
                 if (obj->object.vwidget)
                 {
-#ifdef QT5_ONLY
-                    delete obj->object.vwidget;
-
+#ifdef QT5_LINUX
                     if (obj->player)
                         delete obj->player;
 #endif
                     obj->object.vwidget = nullptr;
                     obj->player = nullptr;
                 }
+            break;
+
+            case OBJ_LIST:
+                if (obj->object.list)
+                    obj->object.list = nullptr;
+            break;
 
             default:
                 break;
@@ -125,7 +130,8 @@ void TObject::dropContent(OBJECT_t* obj)
         MSG_ERROR("Error freeing an object: " << e.what());
     }
 
-    mutex_obj.unlock();
+    if (lock)
+        mutex_obj.unlock();
 }
 
 TObject::OBJECT_t *TObject::addObject()
@@ -138,9 +144,9 @@ TObject::OBJECT_t *TObject::addObject()
     obj->object.vwidget = nullptr;
     obj->player = nullptr;
     obj->object.label = nullptr;
-    obj->object.multitext = nullptr;
-    obj->object.linetext = nullptr;
+    obj->object.plaintext = nullptr;
     obj->object.widget = nullptr;
+    obj->object.list = nullptr;
 
     if (!mObject)
         mObject = obj;
@@ -306,9 +312,9 @@ TObject::OBJECT_t *TObject::findNextWindow(TObject::OBJECT_t *obj)
     return nullptr;
 }
 
-void TObject::removeObject(ulong handle)
+void TObject::removeObject(ulong handle, bool drop)
 {
-    DECL_TRACER("TObject::removeObject(ulong handle)");
+    DECL_TRACER("TObject::removeObject(ulong handle, bool drop)");
 
     mutex_obj.lock();
     OBJECT_t *obj = mObject;
@@ -321,11 +327,19 @@ void TObject::removeObject(ulong handle)
             if (!prev)
             {
                 mObject = obj->next;
+
+                if (drop)
+                    dropContent(obj, false);
+
                 delete obj;
             }
             else
             {
                 prev->next = obj->next;
+
+                if (drop)
+                    dropContent(obj, false);
+
                 delete obj;
             }
 
@@ -340,9 +354,9 @@ void TObject::removeObject(ulong handle)
     mutex_obj.unlock();
 }
 
-void TObject::removeAllChilds(ulong handle)
+void TObject::removeAllChilds(ulong handle, bool drop)
 {
-    DECL_TRACER("TObject::removeAllChilds(ulong handle)");
+    DECL_TRACER("TObject::removeAllChilds(ulong handle, bool drop)");
 
     mutex_obj.lock();
     OBJECT_t *obj = mObject;
@@ -355,6 +369,10 @@ void TObject::removeAllChilds(ulong handle)
             if (!prev)
             {
                 mObject = obj->next;
+
+                if (drop)
+                    dropContent(obj, false);
+
                 delete obj;
                 obj = mObject;
                 continue;
@@ -362,6 +380,10 @@ void TObject::removeAllChilds(ulong handle)
             else
             {
                 prev->next = obj->next;
+
+                if (drop)
+                    dropContent(obj, false);
+
                 delete obj;
                 obj = prev;
             }
@@ -387,7 +409,10 @@ void TObject::cleanMarked()
         if (obj->remove && (!obj->animation || obj->animation->state() != QAbstractAnimation::Running))
         {
             if (obj->type == OBJ_SUBPAGE && obj->object.widget)
+            {
                 delete obj->object.widget;
+                obj->object.widget = nullptr;
+            }
 
             if (!prev)
             {
@@ -422,6 +447,7 @@ string TObject::objectToString(TObject::OBJECT_TYPE o)
         case OBJ_SUBPAGE: return "SUBPAGE"; break;
         case OBJ_TEXT:    return "TEXT"; break;
         case OBJ_VIDEO:   return "VIDEO"; break;
+        case OBJ_LIST:    return "LIST"; break;
     }
 
     return string();   // Should not happen but is needed to satisfy the compiler.

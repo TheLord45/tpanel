@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,6 +22,23 @@
 #include "tconfig.h"
 #include "ttpinit.h"
 
+#if __cplusplus < 201402L
+#   error "This module requires at least C++14 standard!"
+#else
+#   if __cplusplus < 201703L
+#       include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#       warning "Support for C++14 and experimental filesystem will be removed in a future version!"
+#   else
+#       include <filesystem>
+#       ifdef __ANDROID__
+namespace fs = std::__fs::filesystem;
+#       else
+namespace fs = std::filesystem;
+#       endif
+#   endif
+#endif
+
 using std::string;
 using std::vector;
 using namespace Expat;
@@ -30,6 +47,8 @@ TSettings::TSettings(const string& path)
     : mPath(path)
 {
     DECL_TRACER("TSettings::TSettings(const string& path)");
+
+    MSG_DEBUG("Loading from path: " << path);
     loadSettings(true);
 }
 

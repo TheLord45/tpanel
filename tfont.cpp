@@ -19,6 +19,23 @@
 #include <codecvt>
 #include <mutex>
 
+#if __cplusplus < 201402L
+#   error "This module requires at least C++14 standard!"
+#else
+#   if __cplusplus < 201703L
+#       include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#       warning "Support for C++14 and experimental filesystem will be removed in a future version!"
+#   else
+#       include <filesystem>
+#       ifdef __ANDROID__
+namespace fs = std::__fs::filesystem;
+#       else
+namespace fs = std::filesystem;
+#       endif
+#   endif
+#endif
+
 #include "tresources.h"
 #include "tfont.h"
 #include "texpat++.h"
@@ -289,9 +306,13 @@ void TFont::initialize()
         mFonts.insert(pair<int, FONT_T>(font.number, font));
     }
 
+    // Now the fonts for setup pages
+    systemFonts(true);
+
     // read the individual fonts from file
     TError::clear();
-    string path = makeFileName(TConfig::getProjectPath(), "fnt.xma");
+    string projectPath = TConfig::getProjectPath();
+    string path = makeFileName(projectPath, "fnt.xma");
 
     if (!isValidFile())
     {
@@ -375,11 +396,16 @@ void TFont::initialize()
     mutex_font.unlock();
 }
 
-bool TFont::systemFonts()
+bool TFont::systemFonts(bool setup)
 {
-    DECL_TRACER("TFont::systemFonts()");
+    DECL_TRACER("TFont::systemFonts(bool setup)");
 
-    string path = makeFileName(TConfig::getProjectPath(), "__system/graphics/fnt.xma");
+    string path;
+
+    if (setup)
+        path = makeFileName(TConfig::getSystemProjectPath(), "/fnt.xma");
+    else
+        path = makeFileName(TConfig::getSystemProjectPath(), "/graphics/fnt.xma");
 
     if (!isValidFile())
     {
@@ -599,7 +625,17 @@ sk_sp<SkTypeface> TFont::getTypeFace(int number)
         }
     }
     else
+    {
         path = TConfig::getProjectPath() + "/fonts/" + iter->second.file;
+
+        if (!fs::exists(path))
+        {
+            string pth = TConfig::getProjectPath() + "/__system/fonts/" + iter->second.file;
+
+            if (fs::exists(pth))
+                path = pth;
+        }
+    }
 
     sk_sp<SkTypeface> tf;
     MSG_DEBUG("Loading font \"" << path << "\" ...");
@@ -696,6 +732,8 @@ vector<string> TFont::getFontPathList()
 
     vector<string> list;
     string path = TConfig::getProjectPath() + "/fonts";
+    list.push_back(path);
+    path = TConfig::getProjectPath() + "/__system/fonts";
     list.push_back(path);
     path = TConfig::getProjectPath() + "/__system/graphics/fonts";
     list.push_back(path);

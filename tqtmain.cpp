@@ -46,8 +46,8 @@
 #   include <QtMultimedia/QMediaPlaylist>
 #else
 #   include <QAudioOutput>
-#   include <QOrientationReading>
 #endif
+#include <QListWidget>
 #include <QLayout>
 #include <QSizePolicy>
 #include <QUrl>
@@ -55,6 +55,8 @@
 #ifdef QT5_LINUX
 #   include <QSound>
 #   include <QtSensors/QOrientationSensor>
+#else
+#   include <QPlainTextEdit>
 #endif
 #if defined(Q_OS_ANDROID) && defined(QT5_LINUX)
 #include <QtAndroidExtras/QAndroidJniObject>
@@ -76,6 +78,24 @@
 #include "tqtbusy.h"
 #include "tqdownload.h"
 #include "tqtphone.h"
+#include "tqeditline.h"
+
+#if __cplusplus < 201402L
+#   error "This module requires at least C++14 standard!"
+#else
+#   if __cplusplus < 201703L
+#       include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#       warning "Support for C++14 and experimental filesystem will be removed in a future version!"
+#   else
+#       include <filesystem>
+#       ifdef __ANDROID__
+namespace fs = std::__fs::filesystem;
+#       else
+namespace fs = std::filesystem;
+#       endif
+#   endif
+#endif
 
 /**
  * @def THREAD_WAIT
@@ -262,6 +282,27 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
     }
 #endif  // defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
 
+    double setupScaleFactor = 1.0;
+
+    if (pmanager->getSettings() != pmanager->getSystemSettings())
+    {
+        int _w = pmanager->getSettings()->getWith();
+        int _h = pmanager->getSettings()->getHeight();
+        int _sw = pmanager->getSystemSettings()->getWith();
+        int _sh = pmanager->getSystemSettings()->getHeight();
+
+        if (_w != _sw || _h != _sh)
+        {
+            double scaleW = (double)_w / (double)_sw;
+            double scaleH = (double)_h / (double)_sh;
+
+            if (_w > _h && (scaleW * (double)_sh) <= _h)
+                setupScaleFactor = scaleW;
+            else
+                setupScaleFactor = scaleH;
+        }
+    }
+
     // Initialize the application
     pmanager->setDPI(QGuiApplication::primaryScreen()->logicalDotsPerInch());
     QCoreApplication::setOrganizationName(TConfig::getProgName().c_str());
@@ -284,6 +325,9 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
     mainWin.setStyleSheet("QMainWindow {background: 'black';}");    // Keep the background black. Helps to save battery on OLED displays.
     mainWin.grabGesture(Qt::PinchGesture);
     mainWin.grabGesture(Qt::SwipeGesture);
+
+    if (setupScaleFactor != 1.0 && setupScaleFactor > 0.0)
+        mainWin.setSetupScaleFactor(setupScaleFactor);
 
     mainWin.show();
     return app.exec();
@@ -380,7 +424,9 @@ MainWindow::MainWindow()
                                        std::placeholders::_7,
                                        std::placeholders::_8,
                                        std::placeholders::_9));
-    gPageManager->regCallInputText(bind(&MainWindow::_inputText, this, std::placeholders::_1, std::placeholders::_2));
+    gPageManager->regCallInputText(bind(&MainWindow::_inputText, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+    gPageManager->regCallListBox(bind(&MainWindow::_listBox, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+    gPageManager->registerDropButton(bind(&MainWindow::_dropButton, this, std::placeholders::_1));
     gPageManager->regCallbackKeyboard(bind(&MainWindow::_showKeyboard, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
     gPageManager->regCallbackKeypad(bind(&MainWindow::_showKeypad, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
     gPageManager->regCallResetKeyboard(bind(&MainWindow::_resetKeyboard, this));
@@ -401,6 +447,14 @@ MainWindow::MainWindow()
 #endif
     gPageManager->regRepaintWindows(bind(&MainWindow::_repaintWindows, this));
     gPageManager->regToFront(bind(&MainWindow::_toFront, this, std::placeholders::_1));
+    gPageManager->regSetMainWindowSize(bind(&MainWindow::_setSizeMainWindow, this, std::placeholders::_1, std::placeholders::_2));
+    gPageManager->regDownloadSurface(bind(&MainWindow::_downloadSurface, this, std::placeholders::_1, std::placeholders::_2));
+    gPageManager->regDisplayMessage(bind(&MainWindow::_displayMessage, this, std::placeholders::_1, std::placeholders::_2));
+    gPageManager->regFileDialogFunction(bind(&MainWindow::_fileDialog, this,
+                                             std::placeholders::_1,
+                                             std::placeholders::_2,
+                                             std::placeholders::_3,
+                                             std::placeholders::_4));
 
     gPageManager->deployCallbacks();
     createActions();
@@ -433,6 +487,7 @@ MainWindow::MainWindow()
         connect(this, &MainWindow::sigDropSubPage, this, &MainWindow::dropSubPage);
         connect(this, &MainWindow::sigPlayVideo, this, &MainWindow::playVideo);
         connect(this, &MainWindow::sigInputText, this, &MainWindow::inputText);
+        connect(this, &MainWindow::sigListBox, this, &MainWindow::listBox);
         connect(this, &MainWindow::sigKeyboard, this, &MainWindow::showKeyboard);
         connect(this, &MainWindow::sigKeypad, this, &MainWindow::showKeypad);
         connect(this, &MainWindow::sigShowSetup, this, &MainWindow::showSetup);
@@ -447,6 +502,10 @@ MainWindow::MainWindow()
         connect(this, &MainWindow::sigRepaintWindows, this, &MainWindow::repaintWindows);
         connect(this, &MainWindow::sigToFront, this, &MainWindow::toFront);
         connect(this, &MainWindow::sigOnProgressChanged, this, &MainWindow::onProgressChanged);
+        connect(this, &MainWindow::sigSetSizeMainWindow, this, &MainWindow::setSizeMainWindow);
+        connect(this, &MainWindow::sigDownloadSurface, this, &MainWindow::downloadSurface);
+        connect(this, &MainWindow::sigDisplayMessage, this, &MainWindow::displayMessage);
+        connect(this, &MainWindow::sigFileDialog, this, &MainWindow::fileDialog);
         connect(qApp, &QGuiApplication::applicationStateChanged, this, &MainWindow::appStateChanged);
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         QScreen *screen = QGuiApplication::primaryScreen();
@@ -578,6 +637,13 @@ void MainWindow::_toFront(ulong handle)
     DECL_TRACER("MainWindow::_toFront(ulong handle)");
 
     emit sigToFront(handle);
+}
+
+void MainWindow::_downloadSurface(const string &file, size_t size)
+{
+    DECL_TRACER("MainWindow::_downloadSurface(const string &file, size_t size)");
+
+    emit sigDownloadSurface(file, size);
 }
 
 /**
@@ -979,6 +1045,9 @@ void MainWindow::mousePressEvent(QMouseEvent* event)
 {
     DECL_TRACER("MainWindow::mousePressEvent(QMouseEvent* event)");
 
+    if (!gPageManager)
+        return;
+
     if(event->button() == Qt::LeftButton)
     {
         int x = event->x();
@@ -987,7 +1056,12 @@ void MainWindow::mousePressEvent(QMouseEvent* event)
         mLastPressX = x;
         mLastPressY = y;
 
-        if (isScaled())
+        if (gPageManager->isSetupActive() && isSetupScaled())
+        {
+            x = (int)((double)x / mSetupScaleFactor);
+            y = (int)((double)y / mSetupScaleFactor);
+        }
+        else if (isScaled())
         {
             x = (int)((double)x / mScaleFactor);
             y = (int)((double)y / mScaleFactor);
@@ -1025,7 +1099,12 @@ void MainWindow::mouseReleaseEvent(QMouseEvent* event)
 
         mLastPressX = mLastPressY = -1;
 
-        if (isScaled())
+        if (gPageManager->isSetupActive() && isSetupScaled())
+        {
+            x = (int)((double)x / mSetupScaleFactor);
+            y = (int)((double)y / mSetupScaleFactor);
+        }
+        else if (isScaled())
         {
             x = (int)((double)x / mScaleFactor);
             y = (int)((double)y / mScaleFactor);
@@ -1044,8 +1123,9 @@ void MainWindow::mouseReleaseEvent(QMouseEvent* event)
 
         x = event->x();
         y = event->y();
-        int width = scale(gPageManager->getSettings()->getWith());
-        int height = scale(gPageManager->getSettings()->getHeight());
+        bool setupActive = gPageManager->isSetupActive();
+        int width = (setupActive ? scaleSetup(gPageManager->getSystemSettings()->getWith()) : scale(gPageManager->getSettings()->getWith()));
+        int height = (setupActive ? scaleSetup(gPageManager->getSystemSettings()->getHeight()) : scale(gPageManager->getSettings()->getHeight()));
         MSG_DEBUG("Coordinates: x1=" << mTouchX << ", y1=" << mTouchY << ", x2=" << x << ", y2=" << y << ", width=" << width << ", height=" << height);
 
         if (mTouchX < x && (x - mTouchX) > (width / 3))
@@ -1066,6 +1146,11 @@ void MainWindow::settings()
 {
     DECL_TRACER("MainWindow::settings()");
 
+    if (gPageManager)
+    {
+        gPageManager->showSetup();
+        return;
+    }
     // Save some old values to decide whether to start over or not.
     string oldHost = TConfig::getController();
     int oldPort = TConfig::getPort();
@@ -1477,6 +1562,208 @@ void MainWindow::toFront(ulong handle)
         obj->object.widget->raise();
 }
 
+void MainWindow::downloadSurface(const string &file, size_t size)
+{
+    DECL_TRACER("MainWindow::downloadSurface(const string &file, size_t size)");
+
+    if (mBusy)
+        return;
+
+    QMessageBox msgBox(this);
+    msgBox.setText(QString("Should the surface <b>") + file.c_str() + "</b> be installed?<br><i><u>Hint</u>: This will also save all current made settings.</i>");
+    msgBox.addButton(QMessageBox::Yes);
+    msgBox.addButton(QMessageBox::No);
+    int ret = msgBox.exec();
+
+    if (ret == QMessageBox::Yes)
+    {
+        TTPInit tpinit;
+        tpinit.regCallbackProcessEvents(bind(&MainWindow::runEvents, this));
+        tpinit.regCallbackProgressBar(bind(&MainWindow::_onProgressChanged, this, std::placeholders::_1));
+        tpinit.setPath(TConfig::getProjectPath());
+
+        if (size)
+            tpinit.setFileSize(size);
+        else
+        {
+            size = tpinit.getFileSize(file);
+
+            if (!size)
+            {
+                displayMessage("File <b>" + file + "</b> either doesn't exist on " + TConfig::getController() + " or the NetLinx is not reachable!", "Error");
+                return;
+            }
+
+            tpinit.setFileSize(size);
+        }
+
+        string msg = "Loading file <b>" + file + "</b>.";
+
+        downloadBar(msg, this);
+        bool reboot = false;
+
+        if (tpinit.loadSurfaceFromController(true))
+            reboot = true;
+        else
+            displayMessage("Error downloading file <b>" + file + "</b>!", "Error");
+
+        mDownloadBar->close();
+        TConfig::setTemporary(true);
+        TConfig::saveSettings();
+
+        if (reboot)
+        {
+            // Start over by exiting this class
+            MSG_INFO("Program will start over!");
+            _restart_ = true;
+            prg_stopped = true;
+            killed = true;
+
+            if (gAmxNet)
+                gAmxNet->stop();
+
+            close();
+        }
+    }
+
+    mBusy = false;
+}
+
+void MainWindow::displayMessage(const string &msg, const string &title)
+{
+    DECL_TRACER("MainWindow::displayMessage(const string &msg, const string &title)");
+
+    QMessageBox msgBox(this);
+    msgBox.setText(QString(msg.c_str()));
+
+    if (!title.empty())
+        msgBox.setWindowTitle(title.c_str());
+
+    msgBox.addButton(QMessageBox::Ok);
+    msgBox.exec();
+}
+
+void MainWindow::fileDialog(ulong handle, const string &path, const std::string& extension, const std::string& suffix)
+{
+    DECL_TRACER("MainWindow::fileDialog(ulong handle, const string &path, const std::string& extension, const std::string& suffix)");
+
+    std::string pt = path;
+
+    if (fs::exists(path) && fs::is_regular_file(path))
+    {
+        size_t pos = pt.find_last_of("/");
+
+        if (pos != std::string::npos)
+            pt = pt.substr(0, pos);
+        else
+        {
+            char hv0[4096];
+            getcwd(hv0, sizeof(hv0));
+            pt = hv0;
+        }
+    }
+
+    QString actPath(pt.c_str());
+    QFileDialog fdialog(this, tr("File"), actPath, tr(extension.c_str()));
+    fdialog.setAcceptMode(QFileDialog::AcceptSave);
+
+    if (!suffix.empty())
+        fdialog.setDefaultSuffix(suffix.c_str());
+
+    fdialog.setOption(QFileDialog::DontConfirmOverwrite);
+    QString fname;
+
+    if (fdialog.exec())
+    {
+        QDir dir = fdialog.directory();
+        QStringList list = fdialog.selectedFiles();
+
+        if (list.size() > 0)
+            fname = dir.absoluteFilePath(list.at(0));
+        else
+            return;
+    }
+    else
+        return;
+
+#ifdef Q_OS_ANDROID
+    // In case of Android (or IOS) we get some kind of URL instead of a clear
+    // path. Because of this we must call some Java API functions to find the
+    // real path.
+    QString fileName = fname;
+
+    if (fileName.contains("content://"))
+    {
+#ifdef QT5_LINUX
+        QAndroidJniObject uri = QAndroidJniObject::callStaticObjectMethod(
+            "android/net/Uri", "parse", "(Ljava/lang/String;)Landroid/net/Uri;",
+            QAndroidJniObject::fromString(fileName).object<jstring>());
+
+        fileName = QAndroidJniObject::callStaticObjectMethod(
+            "org/qtproject/theosys/UriToPath", "getFileName",
+            "(Landroid/net/Uri;Landroid/content/Context;)Ljava/lang/String;",
+            uri.object(), QtAndroid::androidContext().object()).toString();
+#else   // QT5_LINUX
+        // For QT6 the API has slightly changed. Especialy the class name to
+        // call Java objects.
+        QJniObject uri = QJniObject::callStaticObjectMethod(
+            "android/net/Uri", "parse", "(Ljava/lang/String;)Landroid/net/Uri;",
+            QJniObject::fromString(fileName).object<jstring>());
+
+        fileName = QJniObject::callStaticObjectMethod(
+            "org/qtproject/theosys/UriToPath", "getFileName",
+            "(Landroid/net/Uri;Landroid/content/Context;)Ljava/lang/String;",
+            uri.object(), QNativeInterface::QAndroidApplication::context()).toString();
+#endif  // QT5_LINUX
+        if (fileName.length() > 0)
+            fname = fileName;
+    }
+    else
+    {
+        MSG_WARNING("Not an Uri? (" << fname.toStdString() << ")");
+    }
+#endif  // Q_OS_ANDROID
+
+    if (gPageManager)
+        gPageManager->setTextToButton(handle, fname.toStdString(), true);
+}
+
+void MainWindow::on_tlistCallback_currentItemChanged(QListWidgetItem *current, QListWidgetItem *previous)
+{
+    DECL_TRACER("MainWindow::on_tlistCallback_currentItemChanged(QListWidgetItem *current, QListWidgetItem *previous)");
+
+    if (!current || current == previous)
+        return;
+
+    if (!gObject)
+    {
+        MSG_ERROR(_NO_OBJECT);
+        return;
+    }
+
+    QListWidget *w = current->listWidget();
+    TObject::OBJECT_t *objWindow = gObject->findFirstWindow();
+
+    while(objWindow)
+    {
+        TObject::OBJECT_t *objItem = gObject->findFirstChild(objWindow->handle);
+
+        while (objItem)
+        {
+            if (objItem->type == TObject::OBJ_LIST && objItem->object.list == w)
+            {
+                int row = objItem->object.list->currentRow();
+                gPageManager->setSelectedRow(objItem->handle, row + 1, current->text().toStdString());
+                return;
+            }
+
+            objItem = gObject->findNextChild(objItem->handle);
+        }
+
+        objWindow = gObject->findNextWindow(objWindow);
+    }
+}
+
 void MainWindow::onProgressChanged(int percent)
 {
     DECL_TRACER("MainWindow::onProgressChanged(int percent)");
@@ -1786,16 +2073,16 @@ void MainWindow::_playVideo(ulong handle, ulong parent, int left, int top, int w
 #endif
 }
 
-void MainWindow::_inputText(Button::TButton* button, Button::BITMAP_t& bm)
+void MainWindow::_inputText(Button::TButton* button, Button::BITMAP_t& bm, int frame)
 {
-    DECL_TRACER("MainWindow::_inputText(Button::TButton* button, Button::BITMAP_t& bm)");
+    DECL_TRACER("MainWindow::_inputText(Button::TButton* button, Button::BITMAP_t& bm, int frame)");
 
-    if (prg_stopped)
+    if (prg_stopped || !button)
         return;
 
     if (!mHasFocus)
     {
-        addInText(button->getHandle(), button, bm);
+        addInText(button->getHandle(), button, bm, frame);
         return;
     }
 
@@ -1807,10 +2094,34 @@ void MainWindow::_inputText(Button::TButton* button, Button::BITMAP_t& bm)
         buf.insert(0, (const char *)bm.buffer, size);
     }
 
-    emit sigInputText(button, buf, bm.width, bm.height, bm.rowBytes);
+    emit sigInputText(button, buf, bm.width, bm.height, frame, bm.rowBytes);
 #ifndef Q_OS_ANDROID
     std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT));
 #endif
+}
+
+void MainWindow::_listBox(Button::TButton* button, Button::BITMAP_t& bm, int frame)
+{
+    DECL_TRACER("MainWindow::_listBox(Button::TButton* button, Button::BITMAP_t& bm, int frame)");
+
+    if (prg_stopped || !button)
+        return;
+
+    if (!mHasFocus)
+    {
+        addListBox(button, bm, frame);
+        return;
+    }
+
+    QByteArray buf;
+
+    if (bm.buffer && bm.rowBytes > 0)
+    {
+        size_t size = bm.width * bm.height * (bm.rowBytes / bm.width);
+        buf.insert(0, (const char *)bm.buffer, size);
+    }
+
+    emit sigListBox(button, buf, bm.width, bm.height, frame, bm.rowBytes);
 }
 
 void MainWindow::_showKeyboard(const std::string& init, const std::string& prompt, bool priv)
@@ -1945,6 +2256,33 @@ void MainWindow::_onProgressChanged(int percent)
     emit sigOnProgressChanged(percent);
 }
 
+void MainWindow::_displayMessage(const string &msg, const string &title)
+{
+    DECL_TRACER("MainWindow::_displayMessage(const string &msg, const string &title)");
+
+    emit sigDisplayMessage(msg, title);
+}
+
+void MainWindow::_fileDialog(ulong handle, const string &path, const std::string& extension, const std::string& suffix)
+{
+    DECL_TRACER("MainWindow::_fileDialog(ulong handle, const string &path, const std::string& extension, const std::string& suffix)");
+
+    if (!handle || path.empty())
+    {
+        MSG_WARNING("Invalid parameter handle or no path!");
+        return;
+    }
+
+    emit sigFileDialog(handle, path, extension, suffix);
+}
+
+void MainWindow::_setSizeMainWindow(int width, int height)
+{
+    DECL_TRACER("MainWindow::_setSizeMainWindow(int width, int height)");
+
+    emit sigSetSizeMainWindow(width, height);
+}
+
 void MainWindow::doReleaseButton()
 {
     DECL_TRACER("MainWindow::doReleaseButton()");
@@ -2023,6 +2361,66 @@ int MainWindow::calcVolume(int value)
 #endif
 }
 
+void MainWindow::calcScaleSetup()
+{
+    DECL_TRACER("MainWindow::calcScaleSetup()");
+
+    if (!gPageManager)
+        return;
+
+    double width = 0.0;
+    double height = 0.0;
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+    QList<QScreen *> screens = QGuiApplication::screens();
+    QRect screenGeometry = screens.at(0)->availableGeometry();
+    int screenWidth = screenGeometry.width();
+    int screenHeight = screenGeometry.height();
+    int minWidth = gPageManager->getSystemSettings()->getWith();
+    int minHeight = gPageManager->getSystemSettings()->getHeight();
+
+    if (gPageManager->getSystemSettings()->isPortrait())  // portrait?
+    {
+        width = std::min(screenWidth, screenHeight);
+        height = std::max(screenHeight, screenWidth);
+    }
+    else
+    {
+        width = std::max(screenWidth, screenHeight);
+        height = std::min(screenHeight, screenWidth);
+    }
+#else
+    int screenWidth = gPageManager->getSettings()->getWith();
+    int screenHeight = gPageManager->getSettings()->getHeight();
+    int minWidth = gPageManager->getSystemSettings()->getWith();
+    int minHeight = gPageManager->getSystemSettings()->getHeight();
+
+    if (gPageManager->getSystemSettings()->isPortrait())  // portrait?
+    {
+        width = std::min(screenWidth, screenHeight);
+        height = std::max(screenHeight, screenWidth);
+    }
+    else
+    {
+        width = std::max(screenWidth, screenHeight);
+        height = std::min(screenHeight, screenWidth);
+    }
+#endif
+    if (!TConfig::getToolbarSuppress() && TConfig::getToolbarForce())
+        minWidth += 48;
+
+    MSG_INFO("Dimension of AMX screen:" << minWidth << " x " << minHeight);
+    MSG_INFO("Screen size: " << width << " x " << height);
+    // The scale factor is always calculated in difference to the prefered
+    // size of the original AMX panel.
+    double scaleFactorW = width / minWidth;
+    double scaleFactorH = height / minHeight;
+    double scale = std::min(scaleFactorW, scaleFactorH);
+    MSG_INFO("Calculated scale factor: " << scale);
+#ifdef _SCALE_SKIA_
+    gPageManager->setSetupScaleFactor(scale, scaleFactorW, scaleFactorH);
+#endif
+}
+
 /******************* Draw elements *************************/
 
 void MainWindow::displayButton(ulong handle, ulong parent, QByteArray buffer, int width, int height, int pixline, int left, int top)
@@ -2036,11 +2434,6 @@ void MainWindow::displayButton(ulong handle, ulong parent, QByteArray buffer, in
     }
 
     draw_mutex.lock();
-
-    if (isScaled())
-    {
-        MSG_DEBUG("Scaling to factor " << mScaleFactor);
-    }
 
     TObject::OBJECT_t *obj = gObject->findObject(handle);
     TObject::OBJECT_t *par = gObject->findObject(parent);
@@ -2092,10 +2485,21 @@ void MainWindow::displayButton(ulong handle, ulong parent, QByteArray buffer, in
 
         obj->type = TObject::OBJ_BUTTON;
         obj->handle = handle;
-        obj->width = scale(width);
-        obj->height = scale(height);
-        obj->left = scale(left);
-        obj->top = scale(top);
+
+        if (gPageManager->isSetupActive())
+        {
+            obj->width = scaleSetup(width);
+            obj->height = scaleSetup(height);
+            obj->left = scaleSetup(left);
+            obj->top = scaleSetup(top);
+        }
+        else
+        {
+            obj->width = scale(width);
+            obj->height = scale(height);
+            obj->left = scale(left);
+            obj->top = scale(top);
+        }
 
         if (par->type == TObject::OBJ_PAGE)
             obj->object.label = new QLabel("", mBackground);
@@ -2112,54 +2516,57 @@ void MainWindow::displayButton(ulong handle, ulong parent, QByteArray buffer, in
     else
         MSG_DEBUG("Object " << TObject::handleToString(handle) << " of type " << TObject::objectToString(obj->type) << " found!");
 
-    try
+    if (obj->type != TObject::OBJ_INPUT)
     {
-        if (buffer.size() > 0 && pixline > 0)
+        try
         {
-            MSG_DEBUG("Setting image for " << TObject::handleToString(handle) << " ...");
-            QImage img((unsigned char *)buffer.data(), width, height, pixline, QImage::Format_ARGB32);  // Original size
-
-            if (img.isNull() || !img.valid(width-1, height-1))
+            if (buffer.size() > 0 && pixline > 0)
             {
-                MSG_ERROR("Unable to create a valid image!");
-                draw_mutex.unlock();
-                return;
-            }
+                MSG_DEBUG("Setting image for " << TObject::handleToString(handle) << " ...");
+                QImage img((unsigned char *)buffer.data(), width, height, pixline, QImage::Format_ARGB32);  // Original size
 
-            QSize size(obj->width, obj->height);
-            QPixmap pixmap;
-            bool ret = false;
+                if (img.isNull() || !img.valid(width-1, height-1))
+                {
+                    MSG_ERROR("Unable to create a valid image!");
+                    draw_mutex.unlock();
+                    return;
+                }
 
-            if (isScaled())
-                ret = pixmap.convertFromImage(img.scaled(size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation)); // Scaled size
-            else
-                ret = pixmap.convertFromImage(img);
+                QSize size(obj->width, obj->height);
+                QPixmap pixmap;
+                bool ret = false;
 
-            if (!ret || pixmap.isNull())
-            {
-                MSG_ERROR("Unable to create a pixmap out of an image!");
-                draw_mutex.unlock();
-                return;
+                if (isScaled() || (gPageManager && gPageManager->isSetupActive()))
+                    ret = pixmap.convertFromImage(img.scaled(size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation)); // Scaled size
+                else
+                    ret = pixmap.convertFromImage(img);
+
+                if (!ret || pixmap.isNull())
+                {
+                    MSG_ERROR("Unable to create a pixmap out of an image!");
+                    draw_mutex.unlock();
+                    return;
+                }
+
+                if (obj->object.label)
+                    obj->object.label->setPixmap(pixmap);
+                else
+                {
+                    MSG_WARNING("Object " << TObject::handleToString(handle) << " does not exist any more!");
+                }
             }
 
             if (obj->object.label)
-                obj->object.label->setPixmap(pixmap);
-            else
-            {
-                MSG_WARNING("Object " << TObject::handleToString(handle) << " does not exist any more!");
-            }
+                obj->object.label->show();
         }
-
-        if (obj->object.label)
-            obj->object.label->show();
-    }
-    catch(std::exception& e)
-    {
-        MSG_ERROR("Error drawing button " << TObject::handleToString(handle) << ": " << e.what());
-    }
-    catch(...)
-    {
-        MSG_ERROR("Unexpected exception occured [MainWindow::displayButton()]");
+        catch(std::exception& e)
+        {
+            MSG_ERROR("Error drawing button " << TObject::handleToString(handle) << ": " << e.what());
+        }
+        catch(...)
+        {
+            MSG_ERROR("Unexpected exception occured [MainWindow::displayButton()]");
+        }
     }
 
     gObject->cleanMarked();     // We want to be sure to have no dead entries.
@@ -2208,7 +2615,12 @@ void MainWindow::setPage(ulong handle, int width, int height)
     draw_mutex.lock();
 
     QSize qs = menuBar()->sizeHint();
-    this->setMinimumSize(scale(width), scale(height) + qs.height());
+
+    if (gPageManager && gPageManager->isSetupActive())
+        setMinimumSize(scaleSetup(width), scaleSetup(height) + qs.height());
+    else
+        setMinimumSize(scale(width), scale(height) + qs.height());
+
     TObject::OBJECT_t *obj = gObject->findObject(handle);
 
     if (!obj)
@@ -2224,9 +2636,18 @@ void MainWindow::setPage(ulong handle, int width, int height)
         }
 
         obj->handle = handle;
-        obj->height = scale(height);
-        obj->width = scale(width);
         obj->type = TObject::OBJ_PAGE;
+
+        if (gPageManager && gPageManager->isSetupActive())
+        {
+            obj->height = scaleSetup(height);
+            obj->width = scaleSetup(width);
+        }
+        else
+        {
+            obj->height = scale(height);
+            obj->width = scale(width);
+        }
     }
 
     bool newBackground = false;
@@ -2292,7 +2713,16 @@ void MainWindow::setSubPage(ulong handle, int left, int top, int width, int heig
         MSG_DEBUG("Scaling to factor " << mScaleFactor);
     }
 
-    TObject::OBJECT_t *obj = gObject->addObject();
+    TObject::OBJECT_t *obj = gObject->findObject(handle);
+
+    if (obj)
+    {
+        MSG_DEBUG("Object " << TObject::handleToString(handle) << " exists. Deleting it and create a new one!");
+        gObject->removeAllChilds(handle, false);
+        gObject->removeObject(handle, false);
+    }
+
+    obj = gObject->addObject();
 
     if (!obj)
     {
@@ -2302,10 +2732,25 @@ void MainWindow::setSubPage(ulong handle, int left, int top, int width, int heig
         return;
     }
 
-    int scLeft = scale(left);
-    int scTop = scale(top);
-    int scWidth = scale(width);
-    int scHeight = scale(height);
+    int scLeft;
+    int scTop;
+    int scWidth;
+    int scHeight;
+
+    if (gPageManager && gPageManager->isSetupActive())
+    {
+        scLeft = scaleSetup(left);
+        scTop = scaleSetup(top);
+        scWidth = scaleSetup(width);
+        scHeight = scaleSetup(height);
+    }
+    else
+    {
+        scLeft = scale(left);
+        scTop = scale(top);
+        scWidth = scale(width);
+        scHeight = scale(height);
+    }
 
     obj->type = TObject::OBJ_SUBPAGE;
     obj->handle = handle;
@@ -2348,7 +2793,7 @@ void MainWindow::setBackground(ulong handle, QByteArray image, size_t rowBytes, 
 
     TObject::OBJECT_t *obj = gObject->findObject(handle);
 
-    if (!obj)
+    if (!obj || obj->remove)
     {
         MSG_WARNING("No object " << TObject::handleToString(handle) << " found!");
         draw_mutex.unlock();
@@ -2360,6 +2805,20 @@ void MainWindow::setBackground(ulong handle, QByteArray image, size_t rowBytes, 
     if (obj->type == TObject::OBJ_BUTTON || obj->type == TObject::OBJ_SUBPAGE)
     {
         MSG_DEBUG("Processing object " << gObject->objectToString(obj->type));
+
+        if (obj->type == TObject::OBJ_BUTTON && !obj->object.label)
+        {
+            MSG_ERROR("The label of the object " << TObject::handleToString(handle) << " was not initialized!");
+            draw_mutex.unlock();
+            return;
+        }
+        else if (obj->type == TObject::OBJ_SUBPAGE && !obj->object.widget)
+        {
+            MSG_ERROR("The widget of the object " << TObject::handleToString(handle) << " was not initialized!");
+            draw_mutex.unlock();
+            return;
+        }
+
         QPixmap pix(obj->width, obj->height);
         pix.fill(QColor::fromRgba(qRgba(TColor::getRed(color),TColor::getGreen(color),TColor::getBlue(color),TColor::getAlpha(color))));
 
@@ -2368,7 +2827,7 @@ void MainWindow::setBackground(ulong handle, QByteArray image, size_t rowBytes, 
             MSG_DEBUG("Setting image of size " << image.size() << " (" << width << " x " << height << ")");
             QImage img((unsigned char *)image.data(), width, height, rowBytes, QImage::Format_ARGB32);
 
-            if (isScaled())
+            if (isScaled() || (gPageManager && gPageManager->isSetupActive()))
             {
                 QSize size(obj->width, obj->height);
                 pix.convertFromImage(img.scaled(size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
@@ -2390,7 +2849,6 @@ void MainWindow::setBackground(ulong handle, QByteArray image, size_t rowBytes, 
             QPalette palette;
             palette.setBrush(QPalette::Window, QBrush(pix));
             obj->object.widget->setPalette(palette);
-
             obj->object.widget->show();
         }
     }
@@ -2407,6 +2865,8 @@ void MainWindow::setBackground(ulong handle, QByteArray image, size_t rowBytes, 
             newBackground = true;
             MSG_DEBUG("New background image added to page with size " << obj->width << " x " << obj->height);
         }
+        else if (mBackground->width() != obj->width || mBackground->height() != obj->height)
+            mBackground->setFixedSize(obj->width, obj->height);
 
         QPixmap pix(obj->width, obj->height);
         pix.fill(QColor::fromRgba(qRgba(TColor::getRed(color),TColor::getGreen(color),TColor::getBlue(color),TColor::getAlpha(color))));
@@ -2524,9 +2984,22 @@ void MainWindow::dropButton(ulong handle)
         obj->object.label->close();
         obj->object.label = nullptr;
     }
+    else if ((obj->type == TObject::OBJ_INPUT || obj->type == TObject::OBJ_TEXT) && obj->object.plaintext)
+    {
+        obj->object.plaintext->close();
+        obj->object.plaintext = nullptr;
+    }
 
     gObject->removeObject(handle);
     draw_mutex.unlock();
+}
+
+void MainWindow::setSizeMainWindow(int width, int height)
+{
+    DECL_TRACER("MainWindow::setSizeMainWindow(int width, int height)");
+
+    QRect geo = geometry();
+    setGeometry(geo.x(), geo.y(), width, height + menuBar()->height());
 }
 
 void MainWindow::playVideo(ulong handle, ulong parent, int left, int top, int width, int height, const string& url, const string& user, const string& pw)
@@ -2567,10 +3040,22 @@ void MainWindow::playVideo(ulong handle, ulong parent, int left, int top, int wi
 
         obj->type = TObject::OBJ_VIDEO;
         obj->handle = handle;
-        obj->width = width;
-        obj->height = height;
-        obj->left = left;
-        obj->top = top;
+
+        if (gPageManager && gPageManager->isSetupActive())
+        {
+            obj->width = scaleSetup(width);
+            obj->height = scaleSetup(height);
+            obj->left = scaleSetup(left);
+            obj->top = scaleSetup(top);
+        }
+        else
+        {
+            obj->width = scale(width);
+            obj->height = scale(height);
+            obj->left = scale(left);
+            obj->top = scale(top);
+        }
+
         obj->object.vwidget = new QVideoWidget(par->object.widget);
         obj->object.vwidget->installEventFilter(this);
     }
@@ -2603,9 +3088,9 @@ void MainWindow::playVideo(ulong handle, ulong parent, int left, int top, int wi
     obj->player->play();
 }
 
-void MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, int height, size_t pixline)
+void MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, int height, int frame, size_t pixline)
 {
-    DECL_TRACER("MainWindow::inputText(Button::TButton* button)");
+    DECL_TRACER("MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, int height, int frame, size_t pixline)");
 
     if (!gObject)
     {
@@ -2623,7 +3108,7 @@ void MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, i
     ulong parent = button->getParent();
     TObject::OBJECT_t *obj = gObject->findObject(handle);
     TObject::OBJECT_t *par = gObject->findObject(parent);
-    MSG_TRACE("Processing button " << TObject::handleToString(handle) << " from parent " << gObject->handleToString(parent));
+    MSG_TRACE("Processing button " << TObject::handleToString(handle) << " from parent " << gObject->handleToString(parent) << " with frame width " << frame);
 
     if (!par)
     {
@@ -2645,31 +3130,38 @@ void MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, i
 
         obj->type = TObject::OBJ_INPUT;
         obj->handle = handle;
-        obj->width = scale(width);
-        obj->height = scale(height);
-        obj->left = scale(button->getLeftPosition());
-        obj->top = scale(button->getTopPosition());
 
-        if (button->isSingleLine())
+        if (gPageManager && gPageManager->isSetupActive())
         {
-            obj->object.linetext = new QLineEdit(button->getText().c_str(), par->object.widget);
-            obj->object.linetext->setFixedSize(obj->width, obj->height);
-            obj->object.linetext->move(obj->left, obj->top);
-//            obj->object.linetext->setAutoFillBackground(true);
-            obj->object.linetext->installEventFilter(this);
-            obj->object.linetext->connect(obj->object.linetext, &QLineEdit::editingFinished, this, &MainWindow::textSingleLineReturn);
-            obj->wid = obj->object.linetext->winId();
+            obj->width = scaleSetup(width);
+            obj->height = scaleSetup(height);
+            obj->left = scaleSetup(button->getLeftPosition());
+            obj->top = scaleSetup(button->getTopPosition());
         }
         else
         {
-            obj->object.multitext = new QTextEdit(button->getText().c_str(), par->object.widget);
-            obj->object.multitext->setFixedSize(obj->width, obj->height);
-            obj->object.multitext->move(obj->left, obj->top);
-//            obj->object.multitext->setAutoFillBackground(true);
-            obj->object.multitext->installEventFilter(this);
-            obj->object.multitext->connect(obj->object.multitext, &QTextEdit::textChanged, this, &MainWindow::textChangedMultiLine);
-            obj->wid = obj->object.multitext->winId();
+            obj->width = scale(width);
+            obj->height = scale(height);
+            obj->left = scale(button->getLeftPosition());
+            obj->top = scale(button->getTopPosition());
         }
+
+        string text = button->getText();
+
+        if (par->type == TObject::OBJ_PAGE)
+            obj->object.plaintext = new TQEditLine(text, mBackground, button->isMultiLine());
+        else
+            obj->object.plaintext = new TQEditLine(text, par->object.widget, button->isMultiLine());
+
+        obj->object.plaintext->setHandle(handle);
+        obj->object.plaintext->setAutoFillBackground(true);
+        obj->object.plaintext->setFixedSize(obj->width, obj->height);
+        obj->object.plaintext->move(obj->left, obj->top);
+        obj->object.plaintext->setPadding(frame, frame, frame, frame);
+        obj->object.plaintext->installEventFilter(this);
+        obj->object.plaintext->setWordWrapMode(button->getTextWordWrap());
+        obj->object.plaintext->setPasswordChar(button->getPasswordChar());
+        obj->wid = obj->object.plaintext->winId();
 
         if (!buf.size() || pixline == 0)
         {
@@ -2682,7 +3174,9 @@ void MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, i
         QPixmap pix(width, height);
         QImage img((uchar *)buf.data(), width, height, QImage::Format_ARGB32);
 
-        if (isScaled())
+        if (gPageManager && gPageManager->isSetupActive())
+            pix.convertFromImage(img.scaled(scaleSetup(width), scaleSetup(height), Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
+        else if (isScaled())
             pix.convertFromImage(img.scaled(scale(width), scale(height), Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
         else
             pix.convertFromImage(img);
@@ -2720,7 +3214,12 @@ void MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, i
 
         QFont ft;
         ft.setFamily(font.name.c_str());
-        ft.setPointSize(font.size);
+
+        if (gPageManager && gPageManager->isSetupActive())
+            ft.setPointSize(scaleSetup(font.size));
+        else
+            ft.setPointSize(font.size);
+
         MSG_DEBUG("Using font \"" << font.name << "\" with size " << font.size << "pt.");
 
         switch (button->getFontStyle())
@@ -2745,34 +3244,209 @@ void MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, i
         palette.setColor(QPalette::Base, cfcolor);
         palette.setColor(QPalette::Text, txcolor);
         //        pix.save("frame.png");
+        palette.setBrush(QPalette::Base, QBrush(pix));
 
-        if (button->isSingleLine())
+        obj->object.plaintext->setFont(ft);
+        obj->object.plaintext->setPalette(palette);
+        obj->object.plaintext->show();
+    }
+    else
+    {
+        MSG_DEBUG("Object " << TObject::handleToString(handle) << " of type " << gObject->objectToString(obj->type) << " found!");
+
+        string text = button->getText();
+        obj->object.plaintext->setText(text);
+        gObject->cleanMarked();     // We want to be sure to have no dead entries.
+        obj->object.plaintext->show();
+    }
+}
+
+void MainWindow::listBox(Button::TButton* button, QByteArray buffer, int width, int height, int frame, size_t pixline)
+{
+    DECL_TRACER("MainWindow::listBox(Button::TButton* button, QByteArray buffer, int width, int height, int frame, size_t pixline)");
+
+    if (!gObject)
+    {
+        MSG_ERROR(_NO_OBJECT);
+        return;
+    }
+
+    if (!button)
+    {
+        MSG_WARNING("No valid button!");
+        return;
+    }
+
+    ulong handle = button->getHandle();
+    ulong parent = button->getParent();
+    TObject::OBJECT_t *obj = gObject->findObject(handle);
+    TObject::OBJECT_t *par = gObject->findObject(parent);
+    MSG_TRACE("Processing list " << TObject::handleToString(handle) << " from parent " << gObject->handleToString(parent) << " with frame width " << frame);
+
+    if (!par)
+    {
+        MSG_WARNING("List has no parent! Ignoring it.");
+        return;
+    }
+
+    if (!obj)
+    {
+        MSG_DEBUG("Adding new list object ...");
+        obj = gObject->addObject();
+
+        if (!obj)
         {
-            MSG_DEBUG("Initializing a single line ...");
-//            palette.setBrush(QPalette::Base, QBrush(pix));
-            obj->object.linetext->setFont(ft);
-            obj->object.linetext->setPalette(palette);
-            obj->object.linetext->setMaxLength(button->getTextMaxChars());
-//            obj->object.linetext->setFrame(false);
-            obj->object.linetext->setText(button->getText().c_str());
-            obj->object.linetext->show();
+            MSG_ERROR("Error creating a list object!");
+            TError::setError();
+            return;
+        }
+
+        obj->type = TObject::OBJ_LIST;
+        obj->handle = handle;
+        obj->rows = button->getListNumRows();
+        obj->cols = button->getListNumCols();
+
+        if (gPageManager && gPageManager->isSetupActive())
+        {
+            obj->width = scaleSetup(width);
+            obj->height = scaleSetup(height);
+            obj->left = scaleSetup(button->getLeftPosition());
+            obj->top = scaleSetup(button->getTopPosition());
         }
         else
         {
-            MSG_DEBUG("Initializing a multiline text area ...");
-            palette.setBrush(QPalette::Base, QBrush(pix));
-            obj->object.multitext->setPalette(palette);
-            obj->object.multitext->setFont(ft);
-            obj->object.multitext->setAcceptRichText(false);
-            obj->object.multitext->setText(button->getText().c_str());
-
-            if (button->getTextWordWrap())
-                obj->object.multitext->setWordWrapMode(QTextOption::WordWrap);
-            else
-                obj->object.multitext->setWordWrapMode(QTextOption::NoWrap);
-
-            obj->object.multitext->show();
+            obj->width = scale(width);
+            obj->height = scale(height);
+            obj->left = scale(button->getLeftPosition());
+            obj->top = scale(button->getTopPosition());
         }
+
+        vector<string> listContent = button->getListContent();
+
+        if (par->type == TObject::OBJ_PAGE)
+            obj->object.list = new QListWidget(mBackground);
+        else
+            obj->object.list = new QListWidget(par->object.widget);
+
+        QString objName = "tlistCallback";
+        obj->object.list->setObjectName(objName);
+        obj->object.list->setAutoFillBackground(true);
+        obj->object.list->setFixedSize(obj->width, obj->height);
+        obj->object.list->move(obj->left, obj->top);
+        obj->object.list->installEventFilter(this);
+        connect(obj->object.list, &QListWidget::currentItemChanged, this, &MainWindow::on_tlistCallback_currentItemChanged);
+
+        if (!buffer.size() || pixline == 0)
+        {
+            MSG_ERROR("No image!");
+            TError::setError();
+            return;
+        }
+
+        MSG_DEBUG("Background image size: " << width << " x " << height << ", rowBytes: " << pixline);
+        QPixmap pix(width, height);
+        QImage img((uchar *)buffer.data(), width, height, QImage::Format_ARGB32);
+
+        if (gPageManager && gPageManager->isSetupActive())
+            pix.convertFromImage(img.scaled(scaleSetup(width), scaleSetup(height), Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
+        else if (isScaled())
+            pix.convertFromImage(img.scaled(scale(width), scale(height), Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
+        else
+            pix.convertFromImage(img);
+
+        // Load the font
+        FONT_T font = button->getFont();
+        int fontID = 0;
+        vector<string> fontList = TFont::getFontPathList();
+        vector<string>::iterator iter;
+        string ffile;
+
+        for (iter = fontList.begin(); iter != fontList.end(); ++iter)
+        {
+            TValidateFile vf;
+
+            if (!vf.isValidFile(*iter + "/" + font.file))
+                continue;
+
+            ffile = *iter + "/" + font.file;
+            break;
+        }
+
+        if (ffile.empty())
+        {
+            MSG_ERROR("Font " << font.file << " doesn't exists!");
+            return;
+        }
+
+        if ((fontID = QFontDatabase::addApplicationFont(ffile.c_str())) == -1)
+        {
+            MSG_ERROR("Font " << ffile << " could not be loaded!");
+            TError::setError();
+            return;
+        }
+
+        QFont ft;
+        ft.setFamily(font.name.c_str());
+
+//        if (gPageManager && gPageManager->isSetupActive())
+//            ft.setPointSize(scaleSetup(font.size));
+//        else
+            ft.setPointSize(font.size);
+
+        MSG_DEBUG("Using font \"" << font.name << "\" with size " << font.size << "pt.");
+
+        switch (button->getFontStyle())
+        {
+            case FONT_BOLD:     ft.setBold(true); break;
+            case FONT_ITALIC:   ft.setItalic(true); break;
+            case FONT_BOLD_ITALIC:
+                ft.setBold(true);
+                ft.setItalic(true);
+            break;
+
+            default:
+                ft.setBold(false);
+                ft.setItalic(false);
+        }
+
+        QPalette palette;
+        TColor::COLOR_T textColor = TColor::getAMXColor(button->getTextColor());
+        TColor::COLOR_T fillColor = TColor::getAMXColor(button->getFillColor());
+        QColor txcolor(QColor::fromRgba(qRgba(textColor.red, textColor.green, textColor.blue, textColor.alpha)));
+        QColor cfcolor(QColor::fromRgba(qRgba(fillColor.red, fillColor.green, fillColor.blue, fillColor.alpha)));
+        palette.setColor(QPalette::Base, cfcolor);
+        palette.setColor(QPalette::Text, txcolor);
+        //        pix.save("frame.png");
+        palette.setBrush(QPalette::Base, QBrush(pix));
+
+        obj->object.list->setFont(ft);
+        obj->object.list->setPalette(palette);
+        // Add content
+        if (!listContent.empty())
+        {
+            vector<string>::iterator iter;
+
+            if (obj->object.list->count() > 0)
+                obj->object.list->clear();
+
+            MSG_DEBUG("Adding " << listContent.size() << " entries to list.");
+            string selected = gPageManager->getSelectedItem(handle);
+            int index = 0;
+
+            for (iter = listContent.begin(); iter != listContent.end(); ++iter)
+            {
+                obj->object.list->addItem(iter->c_str());
+
+                if (selected == *iter)
+                    obj->object.list->setCurrentRow(index);
+
+                index++;
+            }
+        }
+        else
+            MSG_DEBUG("No items for list!");
+
+        obj->object.list->show();
     }
     else
         MSG_DEBUG("Object " << TObject::handleToString(handle) << " of type " << gObject->objectToString(obj->type) << " found!");
@@ -2872,8 +3546,12 @@ void MainWindow::sendVirtualKeys(const string& str)
 void MainWindow::showSetup()
 {
     DECL_TRACER("MainWindow::showSetup()");
-
-    settings();
+//#ifndef __ANDROID__
+//    settings();
+//#else
+    if (gPageManager)
+        gPageManager->showSetup();
+//#endif
 }
 
 void MainWindow::playSound(const string& file)
@@ -2940,6 +3618,7 @@ void MainWindow::playShowList()
         int top = 0;
         int width = 0;
         int height = 0;
+        int frame = 0;
         unsigned char *image;
         size_t size = 0;
         size_t rowBytes = 0;
@@ -2982,7 +3661,7 @@ void MainWindow::playShowList()
             break;
 
             case ET_INTEXT:
-                if (getInText(&handle, &button, &bm))
+                if (getInText(&handle, &button, &bm, &frame))
                 {
                     QByteArray buf;
 
@@ -2992,7 +3671,7 @@ void MainWindow::playShowList()
                         buf.insert(0, (const char *)bm.buffer, size);
                     }
 
-                    emit sigInputText(button, buf, bm.width, bm.height, bm.rowBytes);
+                    emit sigInputText(button, buf, bm.width, bm.height, bm.rowBytes, frame);
                 }
             break;
 
@@ -3052,6 +3731,28 @@ int MainWindow::scale(int value)
         return value;
 
     return (int)((double)value * mScaleFactor);
+}
+
+int MainWindow::scaleSetup(int value)
+{
+    DECL_TRACER("MainWindow::scaleSetup(int value)");
+
+    if (value <= 0 || mSetupScaleFactor == 1.0)
+        return value;
+
+    double val = (double)value * mSetupScaleFactor;
+
+    if (mScaleFactor > 0.0 && mScaleFactor != 1.0)
+        return (int)(val * mScaleFactor);
+MSG_DEBUG("Scaled value " << value << " to " << (int)val << " with factor " << mSetupScaleFactor);
+    return (int)val;
+}
+
+bool MainWindow::isSetupScaled()
+{
+    DECL_TRACER("MainWindow::isSetupScaled()");
+
+    return (mSetupScaleFactor > 0.0 && mSetupScaleFactor != 1.0);
 }
 
 void MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool in)

@@ -44,6 +44,8 @@
 using std::string;
 using std::vector;
 
+static std::vector<std::string> mAllSounds;    // Cache
+
 TSystemSound::TSystemSound(const string& path)
         : mPath(path)
 {
@@ -145,39 +147,45 @@ bool TSystemSound::readAllSystemSounds()
     if (!mValid)
         return false;
 
-    try
+    if (mAllSounds.empty())
     {
-        for(auto& p: fs::directory_iterator(mPath))
+        try
         {
-            string f = fs::path(p.path()).filename();
-
-            if (f.at(0) == '.' || fs::is_directory(p.path()))
-                continue;
-
-            if (fs::is_regular_file(p.path()))
+            for(auto& p: fs::directory_iterator(mPath))
             {
-                MSG_DEBUG("Found sound file " << f);
+                string f = fs::path(p.path()).filename();
 
-                if (startsWith(f, "singleBeep"))
-                    mSinglePeeps.push_back(f);
-                else if (startsWith(f, "doubleBeep"))
-                    mDoubleBeeps.push_back(f);
-                else if (startsWith(f, "audio"))
-                    mTestSound = f;
-                else if (startsWith(f, "docked"))
-                    mDocked = f;
-                else if (startsWith(f, "ringback"))
-                    mRingBack = f;
-                else if (startsWith(f, "ringtone"))
-                    mRingTone = f;
+                if (f.at(0) == '.' || fs::is_directory(p.path()))
+                    continue;
+
+                if (fs::is_regular_file(p.path()))
+                {
+                    MSG_DEBUG("Found sound file " << f);
+                    mAllSounds.push_back(f);
+
+                    if (startsWith(f, "singleBeep"))
+                        mSinglePeeps.push_back(f);
+                    else if (startsWith(f, "doubleBeep"))
+                        mDoubleBeeps.push_back(f);
+                    else if (startsWith(f, "audio"))
+                        mTestSound = f;
+                    else if (startsWith(f, "docked"))
+                        mDocked = f;
+                    else if (startsWith(f, "ringback"))
+                        mRingBack = f;
+                    else if (startsWith(f, "ringtone"))
+                        mRingTone = f;
+                }
             }
         }
+        catch(std::exception& e)
+        {
+            MSG_ERROR("Error: " << e.what());
+            return false;
+        }
     }
-    catch(std::exception& e)
-    {
-        MSG_ERROR("Error: " << e.what());
-        return false;
-    }
+    else
+        filterSounds();
 
     if (mSinglePeeps.size() > 0)
         std::sort(mSinglePeeps.begin(), mSinglePeeps.end());
@@ -186,6 +194,34 @@ bool TSystemSound::readAllSystemSounds()
         std::sort(mDoubleBeeps.begin(), mDoubleBeeps.end());
 
     return true;
+}
+
+void TSystemSound::filterSounds()
+{
+    DECL_TRACER("TSystemSound::filterSounds()");
+
+    if (mAllSounds.empty())
+        return;
+
+    vector<string>::iterator iter;
+
+    for (iter = mAllSounds.begin(); iter != mAllSounds.end(); ++iter)
+    {
+        string f = *iter;
+
+        if (startsWith(f, "singleBeep"))
+            mSinglePeeps.push_back(f);
+        else if (startsWith(f, "doubleBeep"))
+            mDoubleBeeps.push_back(f);
+        else if (startsWith(f, "audio"))
+            mTestSound = f;
+        else if (startsWith(f, "docked"))
+            mDocked = f;
+        else if (startsWith(f, "ringback"))
+            mRingBack = f;
+        else if (startsWith(f, "ringtone"))
+            mRingTone = f;
+    }
 }
 
 string TSystemSound::getFirstSingleBeep()

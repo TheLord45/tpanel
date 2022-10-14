@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2021, 2022 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,6 +21,23 @@
 #include "tconfig.h"
 #include "texpat++.h"
 
+#if __cplusplus < 201402L
+#   error "This module requires at least C++14 standard!"
+#else
+#   if __cplusplus < 201703L
+#       include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#       warning "Support for C++14 and experimental filesystem will be removed in a future version!"
+#   else
+#       include <filesystem>
+#       ifdef __ANDROID__
+namespace fs = std::__fs::filesystem;
+#       else
+namespace fs = std::filesystem;
+#       endif
+#   endif
+#endif
+
 using std::string;
 using std::vector;
 using namespace Expat;
@@ -29,7 +46,12 @@ TExternal::TExternal()
 {
     DECL_TRACER("TExternal::TExternal()");
 
-    makeFileName(TConfig::getProjectPath(), "external.xma");
+    string projectPath = TConfig::getProjectPath();
+
+    if (!fs::exists(projectPath + "/prj.xma"))
+        projectPath += "/__system";
+
+    makeFileName(projectPath, "external.xma");
 
     if (!isValidFile())
     {
@@ -45,7 +67,12 @@ void TExternal::setFileName(const string &fn)
 {
     DECL_TRACER("TExternal::setFileName(const string &fn)");
 
-    makeFileName(TConfig::getProjectPath(), fn);
+    string projectPath = TConfig::getProjectPath();
+
+    if (!fs::exists(projectPath + "/prj.xma"))
+        projectPath += "/__system";
+
+    makeFileName(projectPath, fn);
 
     if (!isValidFile())
     {

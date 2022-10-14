@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@
 
 #include "tbutton.h"
 #include "tvalidatefile.h"
+#include "tmap.h"
 
 class TPage;
 class TSubPage;
@@ -41,53 +42,6 @@ typedef struct SPCHAIN_T
     SPCHAIN_T *next{nullptr};
 }SPCHAIN_T;
 
-// Pages with buttons
-typedef struct MAP_T
-{
-    int p{0};           // port number
-    int c{0};           // channel number
-    int ax{0};          // ??
-    int pg{0};          // page number
-    int bt{0};          // button number
-    std::string pn;     // page name
-    std::string bn;     // button name
-}MAP_T;
-
-// Images
-typedef struct MAP_BM_T
-{
-    std::string i;      // image file name
-    int id{0};
-    int rt{0};
-    int pg{0};          // page number
-    int bt{0};          // button number
-    int st{0};          // button instance
-    int sl{0};
-    std::string pn;     // page name
-    std::string bn;     // button name
-}MAP_BM_T;
-
-typedef struct MAP_PM_T
-{
-    int a{0};
-    std::string t;      // Group name
-    int pg{0};          // page number
-    int bt{0};          // button number
-    std::string pn;     // page name
-    std::string bn;     // button name
-}MAP_PM_T;
-
-typedef struct MAPS_T
-{
-    std::vector<MAP_T> map_cm;
-    std::vector<MAP_T> map_am;
-    std::vector<MAP_T> map_lm;
-    std::vector<MAP_BM_T> map_bm;       // Images
-    std::vector<std::string> map_sm;    // sound file names
-    std::vector<MAP_T> map_strm;        // System resources
-    std::vector<MAP_PM_T> map_pm;       // Button -> text
-}MAPS_T;
-
 class TAmxCommands : public TValidateFile
 {
     public:
@@ -99,24 +53,17 @@ class TAmxCommands : public TValidateFile
             std::function<void (int port, std::vector<int>& channels, std::vector<std::string>& pars)> command{nullptr};
         }CMD_TABLE;
 
-        typedef enum MAP_TYPE
-        {
-            TYPE_CM = 1,    // ON / OFF
-            TYPE_AM,        // TXT, ...
-            TYPE_LM        // Bargraphs
-        }MAP_TYPE;
-
         TAmxCommands();
         ~TAmxCommands();
 
         void setPChain(PCHAIN_T *ch) { mPChain = ch; }
         void setSPChain(SPCHAIN_T *ch) { mSPChain = ch; }
         bool parseCommand(int device, int port, const std::string& cmd);
-        std::vector<MAP_T> findButtons(int port, std::vector<int>& channels, MAP_TYPE mt = TYPE_AM);
+        std::vector<TMap::MAP_T> findButtons(int port, std::vector<int>& channels, TMap::MAP_TYPE mt = TMap::TYPE_AM);
         std::string findImage(int bt, int page, int instance=0);
         std::string findImage(const std::string& name);
-        std::vector<MAP_T> findButtonByName(const std::string& name);
-        std::vector<MAP_T> findBargraphs(int port, std::vector<int>& channels);
+        std::vector<TMap::MAP_T> findButtonByName(const std::string& name);
+        std::vector<TMap::MAP_T> findBargraphs(int port, std::vector<int>& channels);
         std::vector<std::string> findSounds();
         bool soundExist(const std::string& sname);
         void registerCommand(std::function<void (int port, std::vector<int>& channels, std::vector<std::string>& pars)> command, const std::string& name);
@@ -131,7 +78,8 @@ class TAmxCommands : public TValidateFile
         std::vector<CMD_TABLE> mCmdTable;
         PCHAIN_T *mPChain{nullptr};
         SPCHAIN_T *mSPChain{nullptr};
-        MAPS_T mMap;
+        TMap *mMap{nullptr};                // Map data of panel file
+        TMap *mSystemMap{nullptr};          // Map data of system settings
 };
 
 #endif

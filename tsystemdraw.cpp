@@ -146,7 +146,7 @@ bool TSystemDraw::loadConfig()
     }
 
     XML_ParserFree(parser);
-
+/*
     if (TStreamError::checkFilter(HLOG_DEBUG))
     {
         for (size_t i = 0; i < mDraw.borders.size(); i++)
@@ -216,7 +216,7 @@ bool TSystemDraw::loadConfig()
             }
         }
     }
-
+*/
     return true;
 }
 

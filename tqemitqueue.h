@@ -32,6 +32,7 @@ typedef enum _EMIT_TYPE_t
     ET_DROPSUBPAGE,
     ET_VIDEO,
     ET_INTEXT,
+    ET_LISTBOX,
     ET_SURFRESET
 }_EMIT_TYPE_t;
 
@@ -50,6 +51,7 @@ class TQEmitQueue
         int top{0};
         int width{0};
         int height{0};
+        int frame{0};
         unsigned char *image{nullptr};
         size_t size{0};
         size_t rowBytes{0};
@@ -78,14 +80,15 @@ class TQManageQueue
         void addSubPage(ulong handle, int left, int top, int width, int height, ANIMATION_t anim);
         void addBackground(ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color);
         void addVideo(ulong handle, ulong parent, ulong left, ulong top, ulong width, ulong height, std::string url, std::string user, std::string pw);
-        void addInText(ulong handle, Button::TButton *button, Button::BITMAP_t bm);
+        void addInText(ulong handle, Button::TButton *button, Button::BITMAP_t bm, int frame);
+        void addListBox(Button::TButton *button, Button::BITMAP_t bm, int frame);
 
         bool getButton(ulong *handle, ulong *parent, unsigned char **buffer, int *pixline, int *left, int *top, int *width, int *height);
         bool getPage(ulong *handle, int *width, int *height);
         bool getSubPage(ulong *handle, int *left, int *top, int *width, int *height, ANIMATION_t *anim);
         bool getBackground(ulong *handle, unsigned char **image, size_t *size, size_t *rowBytes, int *width, int *height, ulong *color);
         bool getVideo(ulong *handle, ulong *parent, int *left, int *top, int *width, int *height, std::string *url, std::string *user, std::string *pw);
-        bool getInText(ulong *handle, Button::TButton **button, Button::BITMAP_t *bm);
+        bool getInText(ulong *handle, Button::TButton **button, Button::BITMAP_t *bm, int *frame);
 
         _EMIT_TYPE_t getNextType();
         bool isDeleted();

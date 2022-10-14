@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,53 +25,7 @@
 #include "tvalidatefile.h"
 #include "tpalette.h"
 #include "tfont.h"
-
-enum SHOWEFFECT
-{
-    SE_NONE,
-    SE_FADE,
-    SE_SLIDE_LEFT,
-    SE_SLIDE_RIGHT,
-    SE_SLIDE_TOP,
-    SE_SLIDE_BOTTOM,
-    SE_SLIDE_LEFT_FADE,
-    SE_SLIDE_RIGHT_FADE,
-    SE_SLIDE_TOP_FADE,
-    SE_SLIDE_BOTTOM_FADE
-};
-
-typedef SHOWEFFECT SHOWEFFECT_t;
-
-typedef struct ANIMATION_t
-{
-    SHOWEFFECT_t showEffect{SE_NONE};
-    int showTime{0};
-    SHOWEFFECT_t hideEffect{SE_NONE};
-    int hideTime{0};
-}ANIMATION_t;
-
-typedef struct SUBPAGE_T
-{
-    std::string popupType;                  // The type of the popup
-    int pageID{0};                          // Unique ID of popup/page
-    std::string name;                       // The name of the popup/page
-    int left{0};                            // Left position of popup
-    int top{0};                             // Top position of popup
-    int width{0};                           // Width of popup
-    int height{0};                          // Height of popup
-    int modal{0};                           // 0 = Popup/Page = non modal
-    std::string group;                      // Name of the group the popup belongs
-    int timeout{0};                         // Time after the popup hides in 1/10 seconds
-    SHOWEFFECT showEffect{SE_NONE};         // The effect when the popup is shown
-    int showTime{0};                        // The time reserved for the show effect
-    int showX{0};                           // End of show effect position (by default "left+width");
-    int showY{0};                           // End of show effect position (by default "top+height");
-    SHOWEFFECT hideEffect{SE_NONE};         // The effect when the popup hides
-    int hideTime{0};                        // The time reserved for the hide effect
-    int hideX{0};                           // End of hide effect position (by default "left");
-    int hideY{0};                           // End of hide effect position (by default "top");
-    std::vector<Button::SR_T> sr;           // Page/Popup description
-}SUBPAGE_T;
+#include "tpageinterface.h"
 
 typedef struct RECT_T
 {
@@ -81,18 +35,17 @@ typedef struct RECT_T
     int height{0};
 }RECT_T;
 
-class TSubPage : public TValidateFile
+class TSubPage : public TValidateFile, public TPageInterface
 {
     public:
         TSubPage(const std::string& name);
         ~TSubPage();
 
         void setPalette(TPalette *pal) { mPalette = pal; }
-        void setFonts(TFont *ft) { mFonts = ft; }
 
         int getNumber() { return mSubpage.pageID; }
         std::string& getName() { return mSubpage.name; }
-        SUBPAGE_T& getSubPage() { return mSubpage; }
+        PAGE_T& getSubPage() { return mSubpage; }
         std::string& getGroupName() { return mSubpage.group; }
         int getLeft() { return mSubpage.left; }
         void setLeft(int l) { mSubpage.left = l; }
@@ -121,11 +74,7 @@ class TSubPage : public TValidateFile
         int getTimeout() { return mSubpage.timeout; }
         void setTimeout(int t) { mSubpage.timeout = t; }
         bool isVisible() { return mVisible; }
-        bool hasButton(int id);
         ulong getHandle() { return ((mSubpage.pageID << 16) & 0xffff0000); }
-        Button::TButton *getButton(int id);
-        std::vector<Button::TButton *> getButtons(int ap, int ad);
-        std::vector<Button::TButton *> getAllButtons();
         void show();
         void drop();
         void doClick(int x, int y, bool pressed);
@@ -138,9 +87,7 @@ class TSubPage : public TValidateFile
 
     protected:
         void initialize();
-        Button::BUTTONS_T *addButton(Button::TButton* button);
         void runTimer();
-        bool sortButtons();
 #ifdef  _SCALE_SKIA_
         void calcPosition(int im_width, int im_height, int *left, int *top, bool scale = false);
 #else
@@ -152,21 +99,15 @@ class TSubPage : public TValidateFile
         std::function<void (ulong handle)> _callDropSubPage{nullptr};
         std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw)> _playVideo{nullptr};
 
-        bool drawText(SkBitmap *img);
-        int numberLines(const std::string& str);
-        int calcLineHeight(std::string text, SkFont& font);
-        Button::POSITION_t calcImagePosition(int width, int height, Button::CENTER_CODE cc, int line);
-
         bool mVisible{false};                   // TRUE = subpage is visible
         std::string mFName;                     // The file name of the page
         std::string mFile;                      // The path and file name of the page
         TPalette *mPalette{nullptr};            // The color palette
-        SUBPAGE_T mSubpage;                     // Parameters of the subpage
-        Button::BUTTONS_T *mButtons{nullptr};   // The elements of the subpage
-        TFont *mFonts{nullptr};                 // The font management
+        PAGE_T mSubpage;                        // Parameters of the subpage
         int mZOrder{-1};                        // The Z-Order of the subpage if it is visible
         std::atomic<bool>mTimerRunning{false};  // TRUE= timer is running
         std::thread mThreadTimer;               // The thread started if a timeout is defined.
+        std::vector<LIST_t> mLists;             // Lists of subpage
 };
 
 #endif

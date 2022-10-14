@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
 #include "terror.h"
 #include "tpalette.h"
 #include "tfont.h"
+#include "tpageinterface.h"
 
 #define ZORDER_INVALID      -1
 #define MAX_PAGE_ID         500
@@ -40,7 +41,7 @@ typedef struct PAGECHAIN_T
     PAGECHAIN_T *next{nullptr}; // Pointer to next element
 }PAGECHAIN_T;
 
-class TPage : public TValidateFile
+class TPage : public TValidateFile, public TPageInterface
 {
     public:
         TPage() {}
@@ -49,22 +50,13 @@ class TPage : public TValidateFile
 
         void initialize(const std::string& name);
         void setPalette(TPalette *pal) { mPalette = pal; }
-        void setFonts(TFont *ft) { mFonts = ft; }
 
-        int getWidth() { return width; }
-        int getHeight() { return height; }
-        void setName(const std::string& n) { name = n; }
-        std::string& getName() { return name; }
-        int getNumber() { return pageID; }
+        int getWidth() { return mPage.width; }
+        int getHeight() { return mPage.height; }
+        void setName(const std::string& n) { mPage.name = n; }
+        std::string& getName() { return mPage.name; }
+        int getNumber() { return mPage.pageID; }
         bool isVisilble() { return mVisible; }
-        bool hasButton(int id);
-        Button::TButton *getButton(int id);
-        std::vector<Button::TButton *> getButtons(int ap, int ad);
-        std::vector<Button::TButton *> getAllButtons();
-        Button::TButton *getFirstButton();
-        Button::TButton *getNextButton();
-        Button::TButton *getLastButton();
-        Button::TButton *getPreviousButton();
 
         PAGECHAIN_T *addSubPage(TSubPage *pg);
         TSubPage *getSubPage(int pageID);
@@ -80,8 +72,6 @@ class TPage : public TValidateFile
         int decZOrder();
         void resetZOrder() { mZOrder = ZORDER_INVALID; }
 
-        Button::BUTTONS_T *addButton(Button::TButton *button);
-
         void registerCallback(std::function<void (ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color)> setBackground) { _setBackground = setBackground; }
         void registerCallbackDB(std::function<void(ulong handle, ulong parent, unsigned char *buffer, int width, int height, int pixline, int left, int top)> displayButton) { _displayButton = displayButton; }
         void regCallDropPage(std::function<void (ulong handle)> callDropPage) { _callDropPage = callDropPage; }
@@ -93,7 +83,7 @@ class TPage : public TValidateFile
         void sortSubpages();
 
     protected:
-        bool sortButtons();
+//        bool sortButtons();
 #ifdef _SCALE_SKIA_
         void calcPosition(int im_width, int im_height, int *left, int *top, bool scale=false);
 #else
@@ -101,10 +91,6 @@ class TPage : public TValidateFile
 #endif
     private:
         void addProgress();
-        bool drawText(SkBitmap *img);
-        Button::POSITION_t calcImagePosition(int width, int height, Button::CENTER_CODE cc, int line);
-        int calcLineHeight(const std::string& text, SkFont& font);
-        int numberLines(const std::string& str);
 
         std::function<void (ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color)> _setBackground{nullptr};
         std::function<void (ulong handle, ulong parent, unsigned char *buffer, int width, int height, int pixline, int left, int top)> _displayButton{nullptr};
@@ -113,12 +99,7 @@ class TPage : public TValidateFile
         std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw)> _playVideo{nullptr};
 
         std::string mPath;              // Path and name of the XML file
-        std::string name;               // Name of the page
-        int pageID{0};                  // Number of the page
-        int width;                      // Width of the page
-        int height;                     // height of the page
-        Button::BUTTONS_T *mButtons{nullptr};    // Chain of buttons
-        int mLastButton{0};             // Internal counter for iterating through button chain.
+        PAGE_T mPage;                   // Definitions of page
         std::vector<Button::SR_T> sr;   // Background details
         std::string mFile;              // The name of the file where the page is defined.
         bool mVisible{false};           // true = Page is visible
@@ -126,8 +107,8 @@ class TPage : public TValidateFile
 
         PAGECHAIN_T *mSubPages{nullptr};// Subpages related to this page
         int mLastSubPage{0};            // Stores the number of the last subpage
-        TFont *mFonts{nullptr};         // Holds the class with the font list
         int mZOrder{ZORDER_INVALID};    // The Z-Order of the subpages
+        std::vector<LIST_t> mLists;     // Lists of page
 };
 
 

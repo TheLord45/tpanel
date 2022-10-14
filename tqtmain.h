@@ -38,6 +38,7 @@ class QWidget;
 class QByteArray;
 class QMouseEvent;
 class QMoveEvent;
+class QGestureEvent;
 class QEvent;
 class QSound;
 class QMediaPlayer;
@@ -50,6 +51,7 @@ class TQKeypad;
 class TQBusy;
 class TqDownload;
 class TQtPhone;
+class QListWidgetItem;
 QT_END_NAMESPACE
 
 Q_DECLARE_METATYPE(size_t)
@@ -77,6 +79,7 @@ class MainWindow : public QMainWindow, TQManageQueue
         void setConfigFile(const std::string& file) { mFileConfig = file; }
         void setSetChange(bool state) { settingsChanged = state; }
         void setScaleFactor(double scale) { mScaleFactor = scale; }
+        void setSetupScaleFactor(double scale) { mSetupScaleFactor = scale; }
         double getScaleFactor() { return mScaleFactor; }
 
     signals:
@@ -89,7 +92,8 @@ class MainWindow : public QMainWindow, TQManageQueue
         void sigDropSubPage(ulong handle);
         void sigDropButton(ulong handle);
         void sigPlayVideo(ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw);
-        void sigInputText(Button::TButton * button, QByteArray buffer, int width, int height, size_t pixline);
+        void sigInputText(Button::TButton *button, QByteArray buffer, int width, int height, int frame, size_t pixline);
+        void sigListBox(Button::TButton *button, QByteArray buffer, int width, int height, int frame, size_t pixline);
         void sigKeyboard(const std::string& init, const std::string& prompt, bool priv);
         void sigKeypad(const std::string& init, const std::string& prompt, bool priv);
         void sigResetKeyboard();
@@ -104,7 +108,13 @@ class MainWindow : public QMainWindow, TQManageQueue
         void sigSetPhoneState(int state, int id);
         void sigRepaintWindows();
         void sigToFront(ulong handle);
+        void sigDownloadSurface(const std::string& file, size_t size);
         void sigOnProgressChanged(int percent);
+        void sigDisplayMessage(const std::string& msg, const std::string& title);
+        void sigFileDialog(ulong handle, const std::string& path, const std::string& extension, const std::string& suffix);
+#ifndef __ANDROID__
+        void sigSetSizeMainWindow(int width, int height);
+#endif
 
     protected:
         bool event(QEvent *event) override;
@@ -128,7 +138,8 @@ class MainWindow : public QMainWindow, TQManageQueue
         void dropSubPage(ulong handle);
         void dropButton(ulong handle);
         void playVideo(ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw);
-        void inputText(Button::TButton *button, QByteArray buffer, int width, int height, size_t pixline);
+        void inputText(Button::TButton *button, QByteArray buffer, int width, int height, int frame, size_t pixline);
+        void listBox(Button::TButton *button, QByteArray buffer, int width, int height, int frame, size_t pixline);
         void showKeyboard(const std::string& init, const std::string& prompt, bool priv);
         void showKeypad(const std::string& init, const std::string& prompt, bool priv);
         void sendVirtualKeys(const std::string& str);
@@ -139,6 +150,10 @@ class MainWindow : public QMainWindow, TQManageQueue
         void muteSound(bool state);
         void appStateChanged(Qt::ApplicationState state);
         void onScreenOrientationChanged(Qt::ScreenOrientation ori);
+        void on_tlistCallback_currentItemChanged(QListWidgetItem *current, QListWidgetItem *previous);
+#ifndef __ANDROID__
+        void setSizeMainWindow(int width, int height);
+#endif
         // Slots for the phone dialog
         void showPhoneDialog(bool state);
         void setPhoneNumber(const std::string& number);
@@ -161,6 +176,9 @@ class MainWindow : public QMainWindow, TQManageQueue
         void textSingleLineReturn();
         void repaintWindows();
         void toFront(ulong handle);
+        void downloadSurface(const std::string& file, size_t size);
+        void displayMessage(const std::string& msg, const std::string& title);
+        void fileDialog(ulong handle, const std::string& path, const std::string& extension, const std::string& suffix);
         // Progress bar (busy indicator)
         void onProgressChanged(int percent);
 
@@ -170,7 +188,9 @@ class MainWindow : public QMainWindow, TQManageQueue
         void writeSettings();
         void playShowList();
         int scale(int value);
-        bool isScaled() { return (mScaleFactor != 1.0); }
+        int scaleSetup(int value);
+        bool isScaled() { return (mScaleFactor > 0.0 && mScaleFactor != 1.0); }
+        bool isSetupScaled();
         void startAnimation(TObject::OBJECT_t *obj, ANIMATION_t& ani, bool in = true);
         void busyIndicator(const std::string& msg, QWidget *parent);
         void downloadBar(const std::string& msg, QWidget *parent);
@@ -185,7 +205,8 @@ class MainWindow : public QMainWindow, TQManageQueue
         void _dropSubPage(ulong handle);
         void _dropButton(ulong handle);
         void _playVideo(ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw);
-        void _inputText(Button::TButton *button, Button::BITMAP_t& bm);
+        void _inputText(Button::TButton *button, Button::BITMAP_t& bm, int frame);
+        void _listBox(Button::TButton *button, Button::BITMAP_t& bm, int frame);
         void _showKeyboard(const std::string& init, const std::string& prompt, bool priv=false);
         void _showKeypad(const std::string& init, const std::string& prompt, bool priv=false);
         void _resetKeyboard();
@@ -202,15 +223,22 @@ class MainWindow : public QMainWindow, TQManageQueue
         void _setPhoneStatus(const std::string& msg);
         void _setPhoneState(int state, int id);
         void _onProgressChanged(int percent);
+        void _displayMessage(const std::string& msg, const std::string& title);
+        void _fileDialog(ulong handle, const std::string& path, const std::string& extension, const std::string& suffix);
+#ifndef __ANDROID__
+        void _setSizeMainWindow(int width, int height);
+#endif
 #ifdef __ANDROID__
         void _signalState(Qt::ApplicationState state);
         void _orientationChanged(int orientation);
 #endif
         void _repaintWindows();
         void _toFront(ulong handle);
+        void _downloadSurface(const std::string& file, size_t size);
         void doReleaseButton();
         void repaintObjects();
         int calcVolume(int value);
+        void calcScaleSetup();
 
         bool mWasInactive{false};           // If the application was inactive this is set to true until everything was repainted.
         bool mDoRepaint{false};             // This is set to TRUE whenever a reconnection to the controller happened.
@@ -222,6 +250,7 @@ class MainWindow : public QMainWindow, TQManageQueue
         std::string mFileConfig;            // Path and file name of the config file
         bool mHasFocus{true};               // If this is FALSE, no output to sceen is allowed.
         std::atomic<double> mScaleFactor{1.0}; // The actual scale factor
+        std::atomic<double> mSetupScaleFactor{1.0};     // The scale factor for the setup pages
         std::atomic<TObject::OBJECT_t *> mLastObject{nullptr};     // This is for the hide effect of widgets.
         std::atomic<bool> mBusy{false};     // If TRUE the busy indicator is active
         TQBusy *mBusyDialog{nullptr};       // Pointer to busy indicator dialog window

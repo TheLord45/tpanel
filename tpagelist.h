@@ -64,20 +64,26 @@ class TPageList : public TValidateFile
         TPageList();
         ~TPageList();
 
-        void initialize();
-
-        PAGELIST_T findPage(const std::string& name);
+        PAGELIST_T findPage(const std::string& name, bool system=false);
         PAGELIST_T findPage(int pageID);
-        SUBPAGELIST_T findSubPage(const std::string& name);
+        SUBPAGELIST_T findSubPage(const std::string& name, bool system=false);
         SUBPAGELIST_T findSubPage(int pageID);
 
         std::vector<PAGELIST_T>& getPagelist() { return mPageList; }
         std::vector<SUBPAGELIST_T>& getSupPageList() { return mSubPageList; }
+        std::vector<PAGELIST_T>& getSystemPagelist() { return mSystemPageList; }
+        std::vector<SUBPAGELIST_T>& getSystemSupPageList() { return mSystemSubPageList; }
 
     private:
+        void initialize(bool system=false);
+        void cleanup();
+
         std::string mProject;
+        std::string mSystemProject;
         std::vector<PAGELIST_T> mPageList;
         std::vector<SUBPAGELIST_T> mSubPageList;
+        std::vector<PAGELIST_T> mSystemPageList;
+        std::vector<SUBPAGELIST_T> mSystemSubPageList;
 };
 
 #endif

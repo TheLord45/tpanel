@@ -21,18 +21,33 @@
         <file>images/hangup.png</file>
         <file>images/note.png</file>
         <file>qrc/BusyIndicator.qml</file>
-        <file>ressources/_main.xml</file>
-        <file>ressources/_setup.xml</file>
-        <file>ressources/external.xma</file>
-        <file>ressources/fnt.xma</file>
-        <file>ressources/fonts/arial.ttf</file>
-        <file>ressources/icon.xma</file>
-        <file>ressources/images/theosys_logo.png</file>
-        <file>ressources/manifest.xma</file>
-        <file>ressources/map.xma</file>
-        <file>ressources/pal_001.xma</file>
-        <file>ressources/prj.xma</file>
-        <file>ressources/table.xma</file>
+        <file>ressources/__system/Controller.xml</file>
+        <file>ressources/__system/DoubleBeep.xml</file>
+        <file>ressources/__system/external.xma</file>
+        <file>ressources/__system/fnt.xma</file>
+        <file>ressources/__system/fonts/arial.ttf</file>
+        <file>ressources/__system/fonts/amxbold_.ttf</file>
+        <file>ressources/__system/fonts/ariblk.ttf</file>
+        <file>ressources/__system/fonts/webdings.ttf</file>
+        <file>ressources/__system/icon.xma</file>
+        <file>ressources/__system/Logging.xml</file>
+        <file>ressources/__system/images/setup_download_green.png</file>
+        <file>ressources/__system/images/setup_download_red.png</file>
+        <file>ressources/__system/images/setup_fileopen.png</file>
+        <file>ressources/__system/images/setup_note.png</file>
+        <file>ressources/__system/images/setup_reset.png</file>
+        <file>ressources/__system/images/theosys_logo.png</file>
+        <file>ressources/__system/manifest.xma</file>
+        <file>ressources/__system/map.xma</file>
+        <file>ressources/__system/pal_001.xma</file>
+        <file>ressources/__system/prj.xma</file>
+        <file>ressources/__system/SingleBeep.xml</file>
+        <file>ressources/__system/SIP.xml</file>
+        <file>ressources/__system/Sound.xml</file>
+        <file>ressources/__system/SystemSound.xml</file>
+        <file>ressources/__system/table.xma</file>
+        <file>ressources/__system/TP4FileName.xml</file>
+        <file>ressources/__system/View.xml</file>
         <file>ressources/__system/graphics/fonts/amxbold_.ttf</file>
         <file>ressources/__system/graphics/fonts/arial.ttf</file>
         <file>ressources/__system/graphics/fonts/arialbd.ttf</file>

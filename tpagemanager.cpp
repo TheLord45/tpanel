@@ -19,6 +19,7 @@
 #include <vector>
 #include <thread>
 #include <mutex>
+
 #ifdef __ANDROID__
 #   ifdef QT5_LINUX
 #       include <QtAndroidExtras/QAndroidJniObject>
@@ -29,6 +30,23 @@
 #include <unistd.h>
 #ifndef __ANDROID__
 #   include <fstab.h>
+#endif
+
+#if __cplusplus < 201402L
+#   error "This module requires at least C++14 standard!"
+#else
+#   if __cplusplus < 201703L
+#       include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#       warning "Support for C++14 and experimental filesystem will be removed in a future version!"
+#   else
+#       include <filesystem>
+#       ifdef __ANDROID__
+namespace fs = std::__fs::filesystem;
+#       else
+namespace fs = std::filesystem;
+#       endif
+#   endif
 #endif
 
 #include "tpagemanager.h"
@@ -169,7 +187,10 @@ TPageManager::TPageManager()
 
     gPageManager = this;
     TTPInit *tinit = new TTPInit;
-    tinit->setPath(TConfig::getProjectPath());
+    string projectPath = TConfig::getProjectPath();
+    string pp = projectPath + "/prj.xma";
+
+    tinit->setPath(projectPath);
     bool haveSurface = false;
 
     if (tinit->isVirgin())
@@ -177,11 +198,18 @@ TPageManager::TPageManager()
     else
         haveSurface = true;
 
+    if (!fs::exists(pp))
+    {
+        projectPath = TConfig::getSystemProjectPath();
+        pp = projectPath + "/prj.xma";
+        mSetupActive = true;
+    }
+
     if (!haveSurface)
     {
-        if (isValidFile(TConfig::getProjectPath() + "/prj.xma"))
+        if (isValidFile(pp))
             haveSurface = true;
-        else if (!isValidFile(TConfig::getProjectPath() + "/prj.xma"))
+        else
             haveSurface = tinit->reinitialize();
     }
     else
@@ -189,15 +217,8 @@ TPageManager::TPageManager()
 
     delete tinit;
 
-    if (!haveSurface)
-    {
-        MSG_ERROR("Damaged surface! Impossible to initialize disk space!");
-        TError::setError();
-        surface_mutex.unlock();
-        return;
-    }
     // Read the AMX panel settings.
-    mTSettings = new TSettings(TConfig::getProjectPath());
+    mTSettings = new TSettings(projectPath);
 
     if (TError::isError())
     {
@@ -206,8 +227,25 @@ TPageManager::TPageManager()
         return;
     }
 
+    if (!mSetupActive)
+    {
+        mSystemSettings = new TSettings(TConfig::getSystemProjectPath());
+
+        if (TError::isError())
+        {
+            MSG_ERROR("System settings were not read successfull!");
+            delete mTSettings;
+            mTSettings = nullptr;
+            surface_mutex.unlock();
+            return;
+        }
+    }
+    else
+        mSystemSettings = mTSettings;
+
     // Set the panel type from the project information
-    TConfig::savePanelType(mTSettings->getPanelType());
+    if (!mSetupActive)
+        TConfig::savePanelType(mTSettings->getPanelType());
 
     readMap();  // Start the initialisation of the AMX part.
 
@@ -244,24 +282,49 @@ TPageManager::TPageManager()
     mExternal = new TExternal();
     PAGELIST_T page;
 
-    if (!mTSettings->getSettings().powerUpPage.empty())
+    if (!mSetupActive)
     {
-        if (readPage(mTSettings->getSettings().powerUpPage))
+        if (!mTSettings->getSettings().powerUpPage.empty())
         {
-            MSG_TRACE("Found power up page " << mTSettings->getSettings().powerUpPage);
-            page = findPage(mTSettings->getSettings().powerUpPage);
-            mActualPage = page.pageID;
+            if (readPage(mTSettings->getSettings().powerUpPage))
+            {
+                MSG_TRACE("Found power up page " << mTSettings->getSettings().powerUpPage);
+                page = findPage(mTSettings->getSettings().powerUpPage);
+                mActualPage = page.pageID;
+            }
+        }
+        else
+        {
+            MSG_WARNING("No power up page defined! Setting default page to 1.");
+            mActualPage = 1;
         }
     }
     else
     {
-        MSG_WARNING("No power up page defined! Setting default page to 1.");
-        mActualPage = 1;
+        if (!mSystemSettings->getSettings().powerUpPage.empty())
+        {
+            if (readPage(mSystemSettings->getSettings().powerUpPage))
+            {
+                MSG_TRACE("Found power up page " << mSystemSettings->getSettings().powerUpPage);
+                page = findPage(mSystemSettings->getSettings().powerUpPage);
+                mActualPage = page.pageID;
+            }
+        }
+        else
+        {
+            MSG_WARNING("No power up page defined! Setting default page to 5001.");
+            mActualPage = 5001;
+        }
     }
 
     TPage *pg = getPage(mActualPage);
 
-    vector<string> popups = mTSettings->getSettings().powerUpPopup;
+    vector<string> popups;
+
+    if (!mSetupActive)
+        popups = mTSettings->getSettings().powerUpPopup;
+    else
+        popups = mSystemSettings->getSettings().powerUpPopup;
 
     if (popups.size() > 0)
     {
@@ -566,13 +629,18 @@ void TPageManager::initialize()
     dropAllSubPages();
     dropAllPages();
 
+    string projectPath = TConfig::getProjectPath();
+
+    if (!fs::exists(projectPath + "/prj.xma"))
+        projectPath += "/__system";
+
     if (mAmxNet && mAmxNet->isConnected())
         mAmxNet->close();
 
     if (mTSettings)
         mTSettings->loadSettings();
     else
-        mTSettings = new TSettings(TConfig::getProjectPath());
+        mTSettings = new TSettings(projectPath);
 
     if (TError::isError())
     {
@@ -770,6 +838,233 @@ void TPageManager::runCommands()
         _netRunning = false;
     }
 }
+
+void TPageManager::showSetup()
+{
+    DECL_TRACER("TPageManager::showSetup()");
+
+    if (mSetupActive)
+        return;
+
+    mSetupActive = true;
+    mSavedPage = mActualPage;
+
+    TPage *pg = getPage(mActualPage);
+
+    if (pg)
+    {
+        TSubPage *spage = pg->getFirstSubPage();
+        mSavedSubpages.clear();
+
+        while (spage)
+        {
+            if (spage->isVisible())
+                mSavedSubpages.push_back(spage->getNumber());
+
+            spage = pg->getNextSubPage();
+        }
+    }
+
+    setPage(SYSTEM_PAGE_CONTROLLER, true);    // Call the page "Controller" (NetLinx settings)
+}
+
+void TPageManager::hideSetup()
+{
+    DECL_TRACER("TPageManager::hideSetup()");
+
+    if (!mSetupActive || mSavedPage >= SYSTEM_PAGE_START)
+        return;
+
+    mSetupActive = false;
+
+    if (!mSavedPage)
+    {
+        string sPage = mTSettings->getPowerUpPage();
+
+        if (!setPage(sPage, true))
+            setPage(1, true);
+
+        return;
+    }
+
+    setPage(mSavedPage, true);
+
+    if (mSavedSubpages.size() > 0)
+    {
+        vector<int>::iterator iter;
+
+        for (iter = mSavedSubpages.begin(); iter != mSavedSubpages.end(); ++iter)
+        {
+            showSubPage(*iter);
+        }
+    }
+}
+
+int TPageManager::getSelectedRow(ulong handle)
+{
+    DECL_TRACER("TPageManager::getSelectedRow(ulong handle)");
+
+    ulong nPage = (handle >> 16) & 0x0000ffff;
+
+    if ((nPage && TPage::isRegularPage(nPage)) || TPage::isSystemPage(nPage)) // Do we have a page?
+    {                                                   // Yes, then look on page
+        TPage *pg = getPage(nPage);
+
+        if (!pg)
+            return -1;
+
+        return pg->getSelectedRow(handle);
+    }
+    else if (TPage::isRegularSubPage(nPage) || TPage::isSystemSubPage(nPage))
+    {
+        TSubPage *subPg = getSubPage(nPage);
+
+        if (!subPg)
+            return -1;
+
+        return subPg->getSelectedRow(handle);
+    }
+
+    MSG_WARNING("Invalid handle " << TObject::handleToString(handle) << " detected!");
+    return -1;
+}
+
+string TPageManager::getSelectedItem(ulong handle)
+{
+    DECL_TRACER("TPageManager::getSelectedItem(ulong handle)");
+
+    ulong nPage = (handle >> 16) & 0x0000ffff;
+
+    if ((nPage && TPage::isRegularPage(nPage)) || TPage::isSystemPage(nPage)) // Do we have a page?
+    {                                                   // Yes, then look on page
+        TPage *pg = getPage(nPage);
+
+        if (!pg)
+            return string();
+
+        return pg->getSelectedItem(handle);
+    }
+    else if (TPage::isRegularSubPage(nPage) || TPage::isSystemSubPage(nPage))
+    {
+        TSubPage *subPg = getSubPage(nPage);
+
+        if (!subPg)
+            return string();
+
+        return subPg->getSelectedItem(handle);
+    }
+
+    MSG_WARNING("Invalid handle " << TObject::handleToString(handle) << " detected!");
+    return string();
+}
+
+void TPageManager::setSelectedRow(ulong handle, int row, const std::string& text)
+{
+    DECL_TRACER("TPageManager::setSelectedRow(ulong handle, int row)");
+
+    ulong nPage = (handle >> 16) & 0x0000ffff;
+
+    if (TPage::isRegularPage(nPage) || TPage::isSystemPage(nPage)) // Do we have a page?
+    {                                                   // Yes, then look on page
+        TPage *pg = getPage(nPage);
+
+        if (!pg)
+            return;
+
+        pg->setSelectedRow(handle, row);
+    }
+    else if (TPage::isRegularSubPage(nPage) || TPage::isSystemSubPage(nPage))   // Do we have a subpage?
+    {                                                   // Yes, then look on subpage
+        TSubPage *subPg = getSubPage(nPage);
+
+        if (!subPg)
+            return;
+
+        subPg->setSelectedRow(handle, row);
+        // Check if this is a system list. If so we must set the selected
+        // text to the input line or "label".
+        TPage *mainPage = nullptr;
+
+        if (nPage >= SYSTEM_SUBPAGE_START)  // System subpage?
+        {
+            switch(nPage)
+            {
+                case SYSTEM_SUBPAGE_SYSTEMSOUND:
+                case SYSTEM_SUBPAGE_SINGLEBEEP:
+                case SYSTEM_SUBPAGE_DOUBLEBEEP:
+                    mainPage = getPage(SYSTEM_PAGE_SOUND);
+                break;
+
+                case SYSTEM_SUBPAGE_SURFACE:
+                    mainPage = getPage(SYSTEM_PAGE_CONTROLLER);
+                break;
+            }
+        }
+
+        if (mainPage)
+        {
+            if (nPage == SYSTEM_SUBPAGE_SYSTEMSOUND)  // System sound beep
+            {
+                Button::TButton *bt = mainPage->getButton(SYSTEM_PAGE_SOUND_TXSYSSOUND);
+
+                if (bt)
+                {
+                    bt->setText(text, -1);
+                    TConfig::setTemporary(true);
+                    TConfig::saveSystemSoundFile(text);
+                }
+            }
+            else if (nPage == SYSTEM_SUBPAGE_SINGLEBEEP) // System sound single beep
+            {
+                Button::TButton *bt = mainPage->getButton(SYSTEM_PAGE_SOUND_TXSINGLEBEEP);
+
+                if (bt)
+                {
+                    bt->setText(text, -1);
+                    TConfig::setTemporary(true);
+                    TConfig::saveSingleBeepFile(text);
+                }
+            }
+            else if (nPage == SYSTEM_SUBPAGE_DOUBLEBEEP) // System sound double beep
+            {
+                Button::TButton *bt = mainPage->getButton(SYSTEM_PAGE_SOUND_TXDOUBLEBEEP);
+
+                if (bt)
+                {
+                    bt->setText(text, -1);
+                    TConfig::setTemporary(true);
+                    TConfig::saveDoubleBeepFile(text);
+                }
+            }
+            else if (nPage == SYSTEM_SUBPAGE_SURFACE)   // System TP4 files (surface files)
+            {
+                Button::TButton *bt = mainPage->getButton(SYSTEM_PAGE_CTRL_SURFACE);
+
+                if (bt)
+                {
+                    MSG_DEBUG("Setting text: " << text);
+                    bt->setText(text, -1);
+                    TConfig::setTemporary(true);
+                    TConfig::saveFtpSurface(text);
+                }
+            }
+
+            // Close the list subpage
+            subPg->drop();
+        }
+    }
+}
+
+#ifdef _SCALE_SKIA_
+void TPageManager::setSetupScaleFactor(double scale, double sw, double sh)
+{
+    DECL_TRACER("TPageManager::setSetupScaleFactor(double scale, double sw, double sh)");
+
+    mScaleSystem = scale;
+    mScaleSystemWidth = sw;
+    mScaleSystemHeight = sh;
+}
+#endif
 
 /*
  * The following method is called by the class TAmxNet whenever an event from
@@ -1102,6 +1397,9 @@ TPage *TPageManager::getPage(int pageID)
 {
     DECL_TRACER("TPageManager::getPage(int pageID)");
 
+    if (pageID <= 0)
+        return nullptr;
+
     PCHAIN_T *p = mPchain;
 
     while (p)
@@ -1134,9 +1432,12 @@ TPage *TPageManager::getPage(const string& name)
     return nullptr;
 }
 
-TPage *TPageManager::loadPage(PAGELIST_T& pl)
+TPage *TPageManager::loadPage(PAGELIST_T& pl, bool *refresh)
 {
-    DECL_TRACER("TPageManager::loadPage(PAGELIST_T& pl)");
+    DECL_TRACER("TPageManager::loadPage(PAGELIST_T& pl, bool *refresh)");
+
+    if (refresh)
+        *refresh = false;
 
     if (!pl.isValid)
         return nullptr;
@@ -1155,32 +1456,122 @@ TPage *TPageManager::loadPage(PAGELIST_T& pl)
             MSG_ERROR("Error loading page " << pl.pageID << ", " << pl.name << " from file " << pl.file << "!");
             return nullptr;
         }
+
+        if (refresh)
+            *refresh = true;
     }
 
     return pg;
 }
 
-bool TPageManager::setPage(int PageID)
+void TPageManager::reloadSystemPage(TPage *page)
 {
-    DECL_TRACER("TPageManager::setPage(int PageID)");
+    DECL_TRACER("TPageManager::reloadSystemPage(TPage *page)");
+
+    if (!page)
+        return;
+
+    vector<Button::TButton *> buttons = page->getAllButtons();
+    vector<Button::TButton *>::iterator iter;
+    TConfig::setTemporary(false);
+
+    for (iter = buttons.begin(); iter != buttons.end(); ++iter)
+    {
+        Button::TButton *bt = *iter;
+
+        if (bt->getAddressPort() == 0 && bt->getAddressChannel() > 0)
+        {
+            switch(bt->getAddressChannel())
+            {
+                case SYSTEM_ITEM_LOGLOGFILE:        bt->setTextOnly(TConfig::getLogFile(), -1); break;
+
+                case SYSTEM_ITEM_NETLINX_IP:        bt->setTextOnly(TConfig::getController(), -1); break;
+                case SYSTEM_ITEM_NETLINX_PORT:      bt->setTextOnly(std::to_string(TConfig::getPort()), -1); break;
+                case SYSTEM_ITEM_NETLINX_CHANNEL:   bt->setTextOnly(std::to_string(TConfig::getChannel()), -1); break;
+                case SYSTEM_ITEM_NETLINX_PTYPE:     bt->setTextOnly(TConfig::getPanelType(), -1); break;
+                case SYSTEM_ITEM_FTPUSER:           bt->setTextOnly(TConfig::getFtpUser(), -1); break;
+                case SYSTEM_ITEM_FTPPASSWORD:       bt->setTextOnly(TConfig::getFtpPassword(), -1); break;
+                case SYSTEM_ITEM_FTPSURFACE:        bt->setTextOnly(TConfig::getFtpSurface(), -1); break;
+
+                case SYSTEM_ITEM_SIPPROXY:          bt->setTextOnly(TConfig::getSIPproxy(), -1); break;
+                case SYSTEM_ITEM_SIPPORT:           bt->setTextOnly(std::to_string(TConfig::getSIPport()), -1); break;
+                case SYSTEM_ITEM_SIPSTUN:           bt->setTextOnly(TConfig::getSIPstun(), -1); break;
+                case SYSTEM_ITEM_SIPDOMAIN:         bt->setTextOnly(TConfig::getSIPdomain(), -1); break;
+                case SYSTEM_ITEM_SIPUSER:           bt->setTextOnly(TConfig::getSIPuser(), -1); break;
+                case SYSTEM_ITEM_SIPPASSWORD:       bt->setTextOnly(TConfig::getSIPpassword(), -1); break;
+
+                case SYSTEM_ITEM_SYSTEMSOUND:       bt->setTextOnly(TConfig::getSystemSound(), -1); break;
+                case SYSTEM_ITEM_SINGLEBEEP:        bt->setTextOnly(TConfig::getSingleBeepSound(), -1); break;
+                case SYSTEM_ITEM_DOUBLEBEEP:        bt->setTextOnly(TConfig::getDoubleBeepSound(), -1); break;
+            }
+        }
+        else if (bt->getChannelPort() == 0 && bt->getChannelNumber() > 0)
+        {
+            switch(bt->getChannelNumber())
+            {
+                case SYSTEM_ITEM_DEBUGINFO:         bt->setActiveInstance(IS_LOG_INFO() ? 1 : 0); break;
+                case SYSTEM_ITEM_DEBUGWARNING:      bt->setActiveInstance(IS_LOG_WARNING() ? 1 : 0); break;
+                case SYSTEM_ITEM_DEBUGERROR:        bt->setActiveInstance(IS_LOG_ERROR() ? 1 : 0); break;
+                case SYSTEM_ITEM_DEBUGTRACE:        bt->setActiveInstance(IS_LOG_TRACE() ? 1 : 0); break;
+                case SYSTEM_ITEM_DEBUGDEBUG:        bt->setActiveInstance(IS_LOG_DEBUG() ? 1 : 0); break;
+                case SYSTEM_ITEM_DEBUGPROTOCOL:     bt->setActiveInstance(IS_LOG_PROTOCOL() ? 1 : 0); break;
+                case SYSTEM_ITEM_DEBUGALL:          bt->setActiveInstance(IS_LOG_ALL() ? 1 : 0); break;
+                case SYSTEM_ITEM_DEBUGLONG:         bt->setActiveInstance(TConfig::isLongFormat() ? 1 : 0); break;
+                case SYSTEM_ITEM_DEBUGPROFILE:      bt->setActiveInstance(TConfig::getProfiling() ? 1 : 0); break;
+
+                case SYSTEM_ITEM_FTPPASSIVE:        bt->setActiveInstance(TConfig::getFtpPassive() ? 1 : 0); break;
+
+                case SYSTEM_ITEM_SIPIPV4:           bt->setActiveInstance(TConfig::getSIPnetworkIPv4() ? 1 : 0); break;
+                case SYSTEM_ITEM_SIPIPV6:           bt->setActiveInstance(TConfig::getSIPnetworkIPv6() ? 1 : 0); break;
+                case SYSTEM_ITEM_SIPENABLE:         bt->setActiveInstance(TConfig::getSIPstatus() ? 1 : 0); break;
+                case SYSTEM_ITEM_SIPIPHONE:         bt->setActiveInstance(TConfig::getSIPiphone() ? 1 : 0); break;
+
+                case SYSTEM_ITEM_SOUNDSWITCH:       bt->setActiveInstance(TConfig::getSystemSoundState() ? 1 : 0); break;
+
+                case SYSTEM_ITEM_VIEWSCALEFIT:      bt->setActiveInstance(TConfig::getScale() ? 1 : 0); break;
+                case SYSTEM_ITEM_VIEWBANNER:        bt->setActiveInstance(TConfig::showBanner() ? 1 : 0); break;
+                case SYSTEM_ITEM_VIEWNOTOOLBAR:     bt->setActiveInstance(TConfig::getToolbarSuppress() ? 1 : 0); break;
+                case SYSTEM_ITEM_VIEWTOOLBAR:       bt->setActiveInstance(TConfig::getToolbarForce() ? 1 : 0); break;
+                case SYSTEM_ITEM_VIEWROTATE:        bt->setActiveInstance(TConfig::getRotationFixed() ? 1 : 0); break;
+            }
+        }
+        else if (bt->getLevelPort() == 0 && bt->getLevelValue() > 0)
+        {
+            switch(bt->getLevelValue())
+            {
+                case SYSTEM_ITEM_SYSVOLUME:         bt->drawBargraph(0, TConfig::getSystemVolume(), false); break;
+                case SYSTEM_ITEM_SYSGAIN:           bt->drawBargraph(0, TConfig::getSystemGain(), false); break;
+            }
+        }
+    }
+}
+
+bool TPageManager::setPage(int PageID, bool forget)
+{
+    DECL_TRACER("TPageManager::setPage(int PageID, bool forget)");
 
     if (mActualPage == PageID)
         return true;
 
     TPage *pg = getPage(mActualPage);
     // FIXME: Make this a vector array to hold a larger history!
-    mPreviousPage = mActualPage;
+    if (!forget)
+        mPreviousPage = mActualPage;
 
     if (pg)
         pg->drop();
 
     mActualPage = 0;
     PAGELIST_T listPg = findPage(PageID);
+    bool refresh = false;
 
-    if ((pg = loadPage(listPg)) == nullptr)
+    if ((pg = loadPage(listPg, &refresh)) == nullptr)
         return false;
 
     mActualPage = PageID;
+
+    if (PageID >= SYSTEM_PAGE_START && !refresh)
+        reloadSystemPage(pg);
 
     if (_setPage)
         _setPage((mActualPage << 16) & 0xffff0000, pg->getWidth(), pg->getHeight());
@@ -1191,7 +1582,7 @@ bool TPageManager::setPage(int PageID)
 
 bool TPageManager::setPage(const string& name, bool forget)
 {
-    DECL_TRACER("TPageManager::setPage(const string& name)");
+    DECL_TRACER("TPageManager::setPage(const string& name, bool forget)");
 
     TPage *pg = getPage(mActualPage);
 
@@ -1207,11 +1598,15 @@ bool TPageManager::setPage(const string& name, bool forget)
 
     mActualPage = 0;
     PAGELIST_T listPg = findPage(name);
+    bool refresh = false;
 
-    if ((pg = loadPage(listPg)) == nullptr)
+    if ((pg = loadPage(listPg, &refresh)) == nullptr)
         return false;
 
     mActualPage = pg->getNumber();
+
+    if (mActualPage >= SYSTEM_PAGE_START && !refresh)
+        reloadSystemPage(pg);
 
     if (_setPage)
         _setPage((mActualPage << 16) & 0xffff0000, pg->getWidth(), pg->getHeight());
@@ -1257,7 +1652,7 @@ TSubPage *TPageManager::getSubPage(const std::string& name)
 
 TSubPage *TPageManager::deliverSubPage(const string& name, TPage **pg)
 {
-    DECL_TRACER("TPageManager::deliverSubPage(const string& name)");
+    DECL_TRACER("TPageManager::deliverSubPage(const string& name, TPage **pg)");
 
     TPage *page = getActualPage();
 
@@ -1285,6 +1680,43 @@ TSubPage *TPageManager::deliverSubPage(const string& name, TPage **pg)
         if (!subPage)
         {
             MSG_ERROR("Fatal: A page with name " << name << " does not exist!");
+            return nullptr;
+        }
+    }
+
+    return subPage;
+}
+
+TSubPage *TPageManager::deliverSubPage(int number, TPage **pg)
+{
+    DECL_TRACER("TPageManager::deliverSubPage(int number, TPage **pg)");
+
+    TPage *page = getActualPage();
+
+    if (!page)
+    {
+        MSG_ERROR("No actual page loaded!");
+        return nullptr;
+    }
+
+    if (pg)
+        *pg = page;
+
+    TSubPage *subPage = getSubPage(number);
+
+    if (!subPage)
+    {
+        if (!readSubPage(number))
+        {
+            MSG_ERROR("Error reading subpage " << number);
+            return nullptr;
+        }
+
+        subPage = getSubPage(number);
+
+        if (!subPage)
+        {
+            MSG_ERROR("Fatal: A page with name " << number << " does not exist!");
             return nullptr;
         }
     }
@@ -1369,7 +1801,7 @@ bool TPageManager::readPage(const std::string& name)
 
     PAGELIST_T page = findPage(name);
 
-    if (page.pageID <= 0 || page.pageID >= MAX_PAGE_ID)
+    if ((page.pageID <= 0 || page.pageID >= MAX_PAGE_ID) && page.pageID < SYSTEM_PAGE_START && page.pageID >= SYSTEM_SUBPAGE_START)
     {
         MSG_ERROR("Page " << name << " not found!");
         return false;
@@ -1445,7 +1877,7 @@ bool TPageManager::readSubPage(const std::string& name)
     TError::clear();
     SUBPAGELIST_T page = findSubPage(name);
 
-    if (page.pageID < MAX_PAGE_ID)
+    if (page.pageID < MAX_PAGE_ID || (page.pageID >= SYSTEM_PAGE_START && page.pageID < SYSTEM_SUBPAGE_START))
     {
         MSG_ERROR("Subpage " << name << " not found!");
         return false;
@@ -1514,13 +1946,79 @@ bool TPageManager::readSubPage(int ID)
     return true;
 }
 
+void TPageManager::updateActualPage()
+{
+    DECL_TRACER("TPageManager::updateActualPage()");
+
+    if (!mActualPage)
+        return;
+
+    TPage *pg = getPage(mActualPage);
+    Button::TButton *bt = pg->getFirstButton();
+
+    while (bt)
+    {
+        bt->refresh();
+        bt = pg->getNextButton();
+    }
+}
+
+void TPageManager::updateSubpage(int ID)
+{
+    DECL_TRACER("TPageManager::updateSubpage(int ID)");
+
+    TSubPage *pg = getSubPage(ID);
+
+    if (!pg)
+        return;
+
+    vector<Button::TButton *> blist = pg->getAllButtons();
+    vector<Button::TButton *>::iterator iter;
+
+    if (blist.empty())
+        return;
+
+    for (iter = blist.begin(); iter != blist.end(); ++iter)
+    {
+        Button::TButton *bt = *iter;
+        bt->refresh();
+    }
+}
+
+void TPageManager::updateSubpage(const std::string &name)
+{
+    DECL_TRACER("TPageManager::updateSubpage(const std::string &name)");
+
+    TSubPage *pg = getSubPage(name);
+
+    if (!pg)
+        return;
+
+    vector<Button::TButton *> blist = pg->getAllButtons();
+    vector<Button::TButton *>::iterator iter;
+
+    if (blist.empty())
+        return;
+
+    for (iter = blist.begin(); iter != blist.end(); ++iter)
+    {
+        Button::TButton *bt = *iter;
+        bt->refresh();
+    }
+}
+
 /******************** Internal private methods *********************/
 
 PAGELIST_T TPageManager::findPage(const std::string& name)
 {
     DECL_TRACER("TPageManager::findPage(const std::string& name)");
 
-    vector<PAGELIST_T> pageList = mPageList->getPagelist();
+    vector<PAGELIST_T> pageList;
+
+    if (!mSetupActive)
+        pageList = mPageList->getPagelist();
+    else
+        pageList = mPageList->getSystemPagelist();
 
     if (pageList.size() > 0)
     {
@@ -1533,6 +2031,7 @@ PAGELIST_T TPageManager::findPage(const std::string& name)
         }
     }
 
+    MSG_WARNING("Page " << name << " not found!");
     return PAGELIST_T();
 }
 
@@ -1540,7 +2039,7 @@ PAGELIST_T TPageManager::findPage(int ID)
 {
     DECL_TRACER("TPageManager::findPage(int ID)");
 
-    vector<PAGELIST_T> pageList = mPageList->getPagelist();
+    vector<PAGELIST_T> pageList = (ID < SYSTEM_PAGE_START ? mPageList->getPagelist() : mPageList->getSystemPagelist());
 
     if (pageList.size() > 0)
     {
@@ -1560,7 +2059,7 @@ SUBPAGELIST_T TPageManager::findSubPage(const std::string& name)
 {
     DECL_TRACER("TPageManager::findSubPage(const std::string& name)");
 
-    vector<SUBPAGELIST_T> pageList = mPageList->getSupPageList();
+    vector<SUBPAGELIST_T> pageList = (mSetupActive ? mPageList->getSystemSupPageList() : mPageList->getSupPageList());
 
     if (pageList.size() > 0)
     {
@@ -1580,7 +2079,7 @@ SUBPAGELIST_T TPageManager::findSubPage(int ID)
 {
     DECL_TRACER("TPageManager::findSubPage(int ID)");
 
-    vector<SUBPAGELIST_T> pageList = mPageList->getSupPageList();
+    vector<SUBPAGELIST_T> pageList = (ID < SYSTEM_PAGE_START ? mPageList->getSupPageList() : mPageList->getSystemSupPageList());
 
     if (pageList.size() > 0)
     {
@@ -1745,6 +2244,12 @@ bool TPageManager::destroyAll()
         mTSettings = nullptr;
     }
 
+    if (mSystemSettings)
+    {
+        delete mSystemSettings;
+        mSystemSettings = nullptr;
+    }
+
     if (mPalette)
     {
         delete mPalette;
@@ -1816,6 +2321,9 @@ bool TPageManager::overlap(int x1, int y1, int w1, int h1, int x2, int y2, int w
 Button::TButton *TPageManager::findButton(ulong handle)
 {
     DECL_TRACER("TPageManager::findButton(ulong handle)");
+
+    if (!handle)
+        return nullptr;
 
     TPage *pg = getPage(mActualPage);
 
@@ -2363,12 +2871,15 @@ void TPageManager::showSubPage(const string& name)
 
     if (!pg->isVisible())
     {
-        TPage *page = getPage(mActualPage);
-
         if (!page)
         {
-            MSG_ERROR("No active page found! Internal error.");
-            return;
+            page = getPage(mActualPage);
+
+            if (!page)
+            {
+                MSG_ERROR("No active page found! Internal error.");
+                return;
+            }
         }
 
         if (!haveSubPage(pg->getNumber()) && !page->addSubPage(pg))
@@ -2392,6 +2903,115 @@ void TPageManager::showSubPage(const string& name)
                 MSG_DEBUG("Scaled subpage: left=" << left << ", top=" << top << ", width=" << width << ", height=" << height);
             }
 #endif
+            ANIMATION_t ani;
+            ani.showEffect = pg->getShowEffect();
+            ani.showTime = pg->getShowTime();
+            ani.hideEffect = pg->getHideEffect();
+            ani.hideTime = pg->getHideTime();
+            // Test for a timer on the page
+            if (pg->getTimeout() > 0)
+                pg->startTimer();
+
+            _setSubPage(pg->getHandle(), left, top, width, height, ani);
+        }
+    }
+
+    pg->show();
+}
+
+void TPageManager::showSubPage(int number, bool force)
+{
+    DECL_TRACER("TPageManager::showSubPage(int number, bool force)");
+
+    if (number <= 0)
+        return;
+
+    TPage *page = nullptr;
+    TSubPage *pg = deliverSubPage(number, &page);
+
+    if (!pg)
+        return;
+
+    if (page)
+        page->addSubPage(pg);
+
+    string group = pg->getGroupName();
+
+    if (!group.empty())
+    {
+        TSubPage *sub = getFirstSubPageGroup(group);
+
+        while(sub)
+        {
+            if (sub->isVisible() && sub->getNumber() != pg->getNumber())
+                sub->drop();
+
+            sub = getNextSubPageGroup(group, sub);
+        }
+    }
+
+    if (pg->isVisible() && !force)
+    {
+        MSG_DEBUG("Page " << pg->getName() << " is already visible but maybe not on top.");
+
+        TSubPage *sub = getFirstSubPage();
+        bool redraw = false;
+
+        while (sub)
+        {
+            if (sub->isVisible() && pg->getZOrder() < sub->getZOrder() &&
+                overlap(sub->getLeft(), sub->getTop(), sub->getWidth(), sub->getHeight(),
+                        pg->getLeft(), pg->getTop(), pg->getWidth(), pg->getHeight()))
+            {
+                MSG_DEBUG("Page " << sub->getName() << " is overlapping page " << pg->getName());
+                redraw = true;
+                break;
+            }
+
+            sub = getNextSubPage();
+        }
+
+        if (redraw && _toFront)
+        {
+            _toFront(pg->getHandle());
+            pg->setZOrder(page->getNextZOrder());
+            page->sortSubpages();
+            MSG_DEBUG("Setting new Z-order " << page->getActZOrder() << " on subpage " << pg->getName());
+        }
+        else if (redraw && !_toFront)
+            pg->drop();
+    }
+
+    if (!pg->isVisible() || force)
+    {
+        if (!page)
+        {
+            MSG_ERROR("No active page found! Internal error.");
+            return;
+        }
+
+        if (!haveSubPage(pg->getNumber()) && !page->addSubPage(pg))
+            return;
+
+        if (!pg->isVisible())
+            pg->setZOrder(page->getNextZOrder());
+
+        if (_setSubPage)
+        {
+            int left = pg->getLeft();
+            int top = pg->getTop();
+            int width = pg->getWidth();
+            int height = pg->getHeight();
+            #ifdef _SCALE_SKIA_
+            if (mScaleFactor != 1.0)
+            {
+                left = (int)((double)left * mScaleFactor);
+                top = (int)((double)top * mScaleFactor);
+                width = (int)((double)width * mScaleFactor);
+                height = (int)((double)height * mScaleFactor);
+                MSG_DEBUG("Scaled subpage: left=" << left << ", top=" << top << ", width=" << width << ", height=" << height);
+            }
+            #endif
             ANIMATION_t ani;
             ani.showEffect = pg->getShowEffect();
             ani.showTime = pg->getShowTime();
@@ -2494,9 +3114,24 @@ void TPageManager::mouseEvent(int x, int y, bool pressed)
     subPage->doClick(realX - subPage->getLeft(), realY - subPage->getTop(), pressed);
 }
 
-void TPageManager::setTextToButton(ulong handle, const string& txt)
+void TPageManager::inputButtonFinished(ulong handle, const std::string &content)
 {
-    DECL_TRACER("TPageManager::setTextToButton(ulong handle, const string& txt)");
+    DECL_TRACER("TPageManager::inputButtonFinished(ulong handle, const std::string &content)");
+
+    Button::TButton *bt = findButton(handle);
+
+    if (!bt)
+    {
+        MSG_WARNING("Invalid button handle " << TObject::handleToString(handle));
+        return;
+    }
+
+    bt->setTextOnly(content, -1);
+}
+
+void TPageManager::setTextToButton(ulong handle, const string& txt, bool redraw)
+{
+    DECL_TRACER("TPageManager::setTextToButton(ulong handle, const string& txt, bool redraw)");
 
     // First we search for the button the handle points to
     Button::TButton *button = findButton(handle);
@@ -2510,7 +3145,7 @@ void TPageManager::setTextToButton(ulong handle, const string& txt)
     // Now we search for all buttons with the same channel and port number
     vector<int> channels;
     channels.push_back(button->getAddressChannel());
-    vector<MAP_T> map = findButtons(button->getAddressPort(), channels);
+    vector<TMap::MAP_T> map = findButtons(button->getAddressPort(), channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -2526,28 +3161,28 @@ void TPageManager::setTextToButton(ulong handle, const string& txt)
         {
             Button::TButton *bt = *mapIter;
 
-            int bst = bt->getNumberInstances();
-
-            for (int i = 0; i < bst; i++)
-                bt->setTextOnly(txt, i);
+            if (redraw)
+                bt->setText(txt, -1);
+            else
+                bt->setTextOnly(txt, -1);
         }
     }
 }
 
-vector<Button::TButton *> TPageManager::collectButtons(vector<MAP_T>& map)
+vector<Button::TButton *> TPageManager::collectButtons(vector<TMap::MAP_T>& map)
 {
-    DECL_TRACER("TPageManager::collectButtons(vector<MAP_T>& map)");
+    DECL_TRACER("TPageManager::collectButtons(vector<TMap::MAP_T>& map)");
 
     vector<Button::TButton *> buttons;
 
     if (map.size() == 0)
         return buttons;
 
-    vector<MAP_T>::iterator iter;
+    vector<TMap::MAP_T>::iterator iter;
 
     for (iter = map.begin(); iter != map.end(); ++iter)
     {
-        if (iter->pg < 500)     // Main page?
+        if (iter->pg < REGULAR_SUBPAGE_START || (iter->pg >= SYSTEM_PAGE_START && iter->pg < SYSTEM_SUBPAGE_START))     // Main page?
         {
             TPage *page;
 
@@ -3258,7 +3893,7 @@ void TPageManager::doON(int port, vector<int>&, vector<string>& pars)
     }
 
     vector<int> chans = { c };
-    vector<MAP_T> map = findButtons(port, chans, TYPE_CM);
+    vector<TMap::MAP_T> map = findButtons(port, chans, TMap::TYPE_CM);
 
     if (TError::isError() || map.empty())
         return;
@@ -3273,7 +3908,7 @@ void TPageManager::doON(int port, vector<int>&, vector<string>& pars)
         {
             Button::TButton *bt = *mapIter;
 
-            if (bt->getButtonType() == Button::GENERAL)
+            if (bt->getButtonType() == GENERAL)
                 bt->setActive(1);
         }
     }
@@ -3299,7 +3934,7 @@ void TPageManager::doOFF(int port, vector<int>&, vector<string>& pars)
     }
 
     vector<int> chans = { c };
-    vector<MAP_T> map = findButtons(port, chans, TYPE_CM);
+    vector<TMap::MAP_T> map = findButtons(port, chans, TMap::TYPE_CM);
 
     if (TError::isError() || map.empty())
         return;
@@ -3314,7 +3949,7 @@ void TPageManager::doOFF(int port, vector<int>&, vector<string>& pars)
         {
             Button::TButton *bt = *mapIter;
 
-            if (bt->getButtonType() == Button::GENERAL)
+            if (bt->getButtonType() == GENERAL)
                 bt->setActive(0);
         }
     }
@@ -3341,7 +3976,7 @@ void TPageManager::doLEVEL(int port, vector<int>&, vector<string>& pars)
     }
 
     vector<int> chans = { c };
-    vector<MAP_T> map = findBargraphs(port, chans);
+    vector<TMap::MAP_T> map = findBargraphs(port, chans);
 
     if (TError::isError() || map.empty())
     {
@@ -3359,9 +3994,9 @@ void TPageManager::doLEVEL(int port, vector<int>&, vector<string>& pars)
         {
             Button::TButton *bt = *mapIter;
 
-            if (bt->getButtonType() == Button::BARGRAPH)
+            if (bt->getButtonType() == BARGRAPH)
                 bt->drawBargraph(bt->getActiveInstance(), level);
-            else if (bt->getButtonType() == Button::MULTISTATE_BARGRAPH)
+            else if (bt->getButtonType() == MULTISTATE_BARGRAPH)
             {
                 int state = (int)((double)bt->getStateCount() / (double)(bt->getRangeHigh() - bt->getRangeLow()) * (double)level);
                 bt->setActive(state);
@@ -3382,7 +4017,7 @@ void TPageManager::doBLINK(int, vector<int>&, vector<string>& pars)
 
     TError::clear();
     vector<int> sysButtons = { 141, 142, 143, 151, 152, 153, 154, 155, 156, 157, 158 };
-    vector<MAP_T> map = findButtons(0, sysButtons);
+    vector<TMap::MAP_T> map = findButtons(0, sysButtons);
 
     if (TError::isError() || map.empty())
     {
@@ -4062,7 +4697,7 @@ void TPageManager::doANI(int port, std::vector<int> &channels, std::vector<std::
     int endState = atoi(pars[1].c_str());
     int runTime = atoi(pars[2].c_str());
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -4098,7 +4733,7 @@ void TPageManager::doAPF(int port, vector<int>& channels, vector<string>& pars)
     string action = pars[0];
     string pname = pars[1];
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -4138,7 +4773,7 @@ void TPageManager::doBAT(int port, vector<int> &channels, vector<string> &pars)
     if (pars.size() > 1)
         text = pars[1];
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -4243,7 +4878,7 @@ void TPageManager::doBAU(int port, vector<int>& channels, vector<string>& pars)
         }
     }
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -4296,7 +4931,7 @@ void TPageManager::doBCB(int port, vector<int> &channels, vector<string> &pars)
     if (pars.size() > 1)
         color = pars[1];
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -4339,7 +4974,7 @@ void TPageManager::getBCB(int port, vector<int> &channels, vector<string> &pars)
     int btState = atoi(pars[0].c_str());
     string color;
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -4398,7 +5033,7 @@ void TPageManager::doBCF(int port, vector<int>& channels, vector<std::string>& p
     if (pars.size() > 1)
         color = pars[1];
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -4441,7 +5076,7 @@ void TPageManager::getBCF(int port, vector<int> &channels, vector<string> &pars)
     int btState = atoi(pars[0].c_str());
     string color;
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -4496,7 +5131,7 @@ void TPageManager::doBCT(int port, vector<int>& channels, vector<string>& pars)
     if (pars.size() > 1)
         color = pars[1];
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -4539,7 +5174,7 @@ void TPageManager::getBCT(int port, vector<int> &channels, vector<string> &pars)
     int btState = atoi(pars[0].c_str());
     string color;
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -4616,7 +5251,7 @@ void TPageManager::doBDO(int port, vector<int>& channels, vector<std::string>& p
         }
     }
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -4677,7 +5312,7 @@ void TPageManager::doBFB(int port, vector<int>& channels, vector<std::string>& p
         i++;
     }
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -4716,7 +5351,7 @@ void TPageManager::doBMC(int port, vector<int>& channels, vector<std::string>& p
     vector<int> src_channel;
     src_channel.push_back(src_addr);
 
-    vector<MAP_T> src_map = findButtons(src_port, src_channel);
+    vector<TMap::MAP_T> src_map = findButtons(src_port, src_channel);
 
     if (src_map.size() == 0)
     {
@@ -4749,7 +5384,7 @@ void TPageManager::doBMC(int port, vector<int>& channels, vector<std::string>& p
     if (btState > 0)
         btState--;
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
     vector<Button::TButton *> buttons = collectButtons(map);
     //                        0     1     2     3     4     5     6     7
     vector<string>codes = { "BM", "BR", "CB", "CF", "CT", "EC", "EF", "FT",
@@ -4827,7 +5462,7 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
         commands += pars[i];
     }
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -5268,7 +5903,7 @@ void TPageManager::doBML(int port, vector<int>& channels, vector<string>& pars)
         return;
     }
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -5325,7 +5960,7 @@ void TPageManager::doBMP(int port, vector<int>& channels, vector<string>& pars)
         }
     }
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -5411,7 +6046,7 @@ void TPageManager::getBMP(int port, vector<int> &channels, vector<string> &pars)
     int btState = atoi(pars[0].c_str());
     string bmp;
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -5471,7 +6106,7 @@ void TPageManager::doBOP(int port, vector<int>& channels, vector<string>& pars)
     else
         btOpacity = atoi(pars[1].c_str());
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -5514,7 +6149,7 @@ void TPageManager::getBOP(int port, vector<int>& channels, vector<string>& pars)
     TError::clear();
     int btState = atoi(pars[0].c_str());
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -5616,7 +6251,7 @@ void TPageManager::doBOR(int port, vector<int>& channels, vector<string>& pars)
             border = styles[ibor];
     }
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -5650,7 +6285,7 @@ void TPageManager::doBOS(int port, vector<int>& channels, vector<string>& pars)
     int btState = atoi(pars[0].c_str());
     int videoState = atoi(pars[1].c_str());
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -5695,7 +6330,7 @@ void TPageManager::doBRD(int port, vector<int>& channels, vector<string>& pars)
     if (pars.size() > 1)
         border = pars[1];
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -5737,7 +6372,7 @@ void TPageManager::getBRD(int port, vector<int>& channels, vector<string>& pars)
     TError::clear();
     int btState = atoi(pars[0].c_str());
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -5800,7 +6435,7 @@ void TPageManager::doBSP(int port, vector<int>& channels, vector<string>& pars)
         }
     }
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -5904,7 +6539,7 @@ void TPageManager::doBSM(int port, vector<int>& channels, vector<string>&)
     DECL_TRACER("TPageManager::doBSM(int port, vector<int>& channels, vector<string>& pars)");
 
     TError::clear();
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -5919,7 +6554,7 @@ void TPageManager::doBSM(int port, vector<int>& channels, vector<string>&)
         {
             Button::TButton *bt = *mapIter;
 
-            if (bt->getButtonType() != Button::TEXT_INPUT && bt->getButtonType() != Button::GENERAL)
+            if (bt->getButtonType() != TEXT_INPUT && bt->getButtonType() != GENERAL)
                 return;
 
             amx::ANET_SEND scmd;
@@ -5963,7 +6598,7 @@ void TPageManager::doBSO(int port, vector<int>& channels, vector<string>& pars)
     if (!soundExist(sound))
         return;
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -6008,7 +6643,7 @@ void TPageManager::doBWW(int port, vector<int>& channels, vector<string>& pars)
     TError::clear();
     int btState = atoi(pars[0].c_str());
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -6051,7 +6686,7 @@ void TPageManager::getBWW(int port, vector<int>& channels, vector<string>& pars)
     TError::clear();
     int btState = atoi(pars[0].c_str());
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -6082,7 +6717,7 @@ void TPageManager::doCPF(int port, vector<int>& channels, vector<string>&)
     DECL_TRACER("TPageManager::doCPF(int port, vector<int>& channels, vector<string>& pars)");
 
     TError::clear();
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -6157,7 +6792,7 @@ void TPageManager::doDPF(int port, vector<int>& channels, vector<string>& pars)
     }
 
     // Here we don't have a page name
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -6193,7 +6828,7 @@ void TPageManager::doENA(int port, vector<int>& channels, vector<string>& pars)
     TError::clear();
     int cvalue = atoi(pars[0].c_str());
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -6232,7 +6867,7 @@ void TPageManager::doFON(int port, vector<int>& channels, vector<string>& pars)
     int btState = atoi(pars[0].c_str());
     int fvalue = atoi(pars[1].c_str());
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -6275,7 +6910,7 @@ void TPageManager::getFON(int port, vector<int>& channels, vector<string>& pars)
     TError::clear();
     int btState = atoi(pars[0].c_str());
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -6320,7 +6955,7 @@ void TPageManager::doGLH(int port, vector<int>& channels, vector<std::string>& p
         return;
     }
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -6362,7 +6997,7 @@ void TPageManager::doGLL(int port, vector<int>& channels, vector<std::string>& p
         return;
     }
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -6394,7 +7029,7 @@ void TPageManager::doGSC(int port, vector<int>& channels, vector<string>& pars)
 
     TError::clear();
     string color = pars[0];
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -6431,7 +7066,7 @@ void TPageManager::doICO(int port, vector<int>& channels, vector<string>& pars)
     int btState = atoi(pars[0].c_str());
     int iconIdx = atoi(pars[1].c_str());
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -6481,7 +7116,7 @@ void TPageManager::getICO(int port, vector<int>& channels, vector<string>& pars)
     TError::clear();
     int btState = atoi(pars[0].c_str());
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -6533,7 +7168,7 @@ void TPageManager::doJSB(int port, vector<int>& channels, vector<string>& pars)
             y = atoi(pars[3].c_str());
     }
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -6570,7 +7205,7 @@ void TPageManager::getJSB(int port, vector<int>& channels, vector<string>& pars)
     int btState = atoi(pars[0].c_str());
     int j, x, y;
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -6628,7 +7263,7 @@ void TPageManager::doJSI(int port, vector<int>& channels, vector<string>& pars)
             y = atoi(pars[3].c_str());
     }
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -6665,7 +7300,7 @@ void TPageManager::getJSI(int port, vector<int>& channels, vector<string>& pars)
     int btState = atoi(pars[0].c_str());
     int j, x, y;
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -6717,7 +7352,7 @@ void TPageManager::doJST(int port, vector<int>& channels, vector<string>& pars)
             y = atoi(pars[3].c_str());
     }
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -6754,7 +7389,7 @@ void TPageManager::getJST(int port, vector<int>& channels, vector<string>& pars)
     int btState = atoi(pars[0].c_str());
     int j, x, y;
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -6799,7 +7434,7 @@ void TPageManager::doSHO(int port, vector<int>& channels, vector<string>& pars)
     TError::clear();
     int cvalue = atoi(pars[0].c_str());
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -6867,7 +7502,7 @@ void TPageManager::doTEC(int port, vector<int>& channels, vector<string>& pars)
     int btState = atoi(pars[0].c_str());
     string color = pars[1];
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -6903,7 +7538,7 @@ void TPageManager::getTEC(int port, vector<int>& channels, vector<string>& pars)
     TError::clear();
     int btState = atoi(pars[0].c_str());
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -6946,7 +7581,7 @@ void TPageManager::doTEF(int port, vector<int>& channels, vector<string>& pars)
     int btState = atoi(pars[0].c_str());
     string tef = pars[1];
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -6982,7 +7617,7 @@ void TPageManager::getTEF(int port, vector<int>& channels, vector<string>& pars)
     TError::clear();
     int btState = atoi(pars[0].c_str());
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -7040,7 +7675,7 @@ void TPageManager::doTXT(int port, vector<int>& channels, vector<string>& pars)
         }
     }
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -7083,7 +7718,7 @@ void TPageManager::getTXT(int port, vector<int>& channels, vector<string>& pars)
     TError::clear();
     int btState = atoi(pars[0].c_str());
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -7149,7 +7784,7 @@ void TPageManager::doUNI(int port, vector<int>& channels, vector<string>& pars)
         }
     }
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -7204,7 +7839,7 @@ void TPageManager::doUTF(int port, vector<int>& channels, vector<string>& pars)
         }
     }
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -7328,7 +7963,7 @@ void TPageManager::doBBR(int port, vector<int>& channels, vector<string>& pars)
     int btState = atoi(pars[0].c_str());
     string resName = pars[1];
 
-    vector<MAP_T> map = findButtons(port, channels);
+    vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
         return;
@@ -7449,7 +8084,7 @@ void TPageManager::doRFR(int, vector<int>&, vector<string>& pars)
     }
 
     string name = pars[0];
-    vector<MAP_T> map = findButtonByName(name);
+    vector<TMap::MAP_T> map = findButtonByName(name);
 
     if (TError::isError() || map.empty())
         return;

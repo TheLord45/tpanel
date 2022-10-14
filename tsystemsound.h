@@ -52,6 +52,9 @@ class TSystemSound
          */
         bool getSystemSoundState();
 
+        std::vector<std::string>& getAllSingleBeep() { return mSinglePeeps; }
+        std::vector<std::string>& getAllDoubleBeep() { return mDoubleBeeps; }
+
         std::string getFirstSingleBeep();
         std::string getNextSingleBeep();
         std::string getFirstDoubleBeep();
@@ -68,6 +71,8 @@ class TSystemSound
         bool readAllSystemSounds();
 
     private:
+        void filterSounds();
+
         std::string mPath;      // The path to the system sounds
         std::string mFile;      // File name of touch sound file
         bool mValid{false};     // TRUE = valid path was set

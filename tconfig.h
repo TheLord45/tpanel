@@ -74,11 +74,15 @@ class TConfig
             SIP_UPNP
         }SIP_FIREWALL_t;
 
+        static void setTemporary(bool tmp);
+        static bool getTemporary() { return mTemporary; }
+        static void reset();
         static void setProgName(const std::string& pname);
         static std::string& getProgName();
         static std::string& getConfigPath();
         static std::string& getConfigFileName();
         static std::string& getProjectPath();
+        static std::string getSystemProjectPath();
         static std::string getSystemPath(SYSTEMRESOURCE_t sres);
         static std::string& getLogFile();
         static std::string& getLogLevel();
@@ -200,6 +204,7 @@ class TConfig
         static bool mInitialized;
         static int mChannel;        // If the channel was changed by a command, this variable holds the new value.
         static bool mMute;          // Holds the mute status. This is temporary!
+        static bool mTemporary;     // If TRUE the temporary parameter table is used
 #ifdef __ANDROID__
         std::string mRoot;
 #endif
