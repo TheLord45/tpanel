@@ -54,6 +54,7 @@ HEADERS = \
    $$PWD/timgcache.h \
    $$PWD/tsystemsound.h \
    $$PWD/tsystemdraw.h \
+   $$PWD/tqeditline.h \
    $$PWD/tsystem.h \
    $$PWD/texpat++.h \
    $$PWD/tvector.h \
@@ -108,6 +109,7 @@ SOURCES = \
    $$PWD/timgcache.cpp \
    $$PWD/tsystemsound.cpp \
    $$PWD/tsystemdraw.cpp \
+   $$PWD/tqeditline.cpp \
    $$PWD/tsystem.cpp \
    $$PWD/texpat++.cpp \
    $$PWD/ftplib/ftplib.cpp

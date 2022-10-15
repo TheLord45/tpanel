@@ -19,6 +19,8 @@
 #ifndef __TPAGEINTERFACE_H__
 #define __TPAGEINTERFACE_H__
 
+#include <functional>
+
 #include "tfont.h"
 #include "tbutton.h"
 
@@ -223,9 +225,9 @@ class TPageInterface
             if (!button || !pg)
                 return;
 
-            button->regCallListContent(bind(&TPageInterface::getListContent, pg, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
-            button->regCallListRow(bind(&TPageInterface::getListRow, pg, std::placeholders::_1, std::placeholders::_2));
-            button->regCallGlobalSettings(bind(&TPageInterface::setGlobalSettings, pg, std::placeholders::_1));
+            button->regCallListContent(std::bind(&TPageInterface::getListContent, pg, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+            button->regCallListRow(std::bind(&TPageInterface::getListRow, pg, std::placeholders::_1, std::placeholders::_2));
+            button->regCallGlobalSettings(std::bind(&TPageInterface::setGlobalSettings, pg, std::placeholders::_1));
         }
 
         static bool isSystemPage(int ID) { return ID >= SYSTEM_PAGE_START && ID < SYSTEM_SUBPAGE_START; }

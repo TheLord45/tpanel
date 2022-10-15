@@ -60,6 +60,7 @@
 #endif
 #if defined(Q_OS_ANDROID) && defined(QT5_LINUX)
 #include <QtAndroidExtras/QAndroidJniObject>
+#include <QtAndroidExtras/QtAndroid>
 #endif
 #include <functional>
 #include <mutex>
@@ -79,6 +80,7 @@
 #include "tqdownload.h"
 #include "tqtphone.h"
 #include "tqeditline.h"
+#include "terror.h"
 
 #if __cplusplus < 201402L
 #   error "This module requires at least C++14 standard!"
@@ -218,6 +220,7 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
     }
 #endif
     double scale = 1.0;
+    double setupScaleFactor = 1.0;
     // Calculate the scale factor
     if (TConfig::getScale())
     {
@@ -231,10 +234,14 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
         QRect screenGeometry = screens.at(0)->availableGeometry();
         double width = 0.0;
         double height = 0.0;
+        double sysWidth = 0.0;
+        double sysHeight = 0.0;
         gScreenWidth = screenGeometry.width();
         gScreenHeight = screenGeometry.height();
         int minWidth = pmanager->getSettings()->getWith();
         int minHeight = pmanager->getSettings()->getHeight();
+        int minSysWidth = pmanager->getSystemSettings()->getWith();
+        int minSysHeight = pmanager->getSystemSettings()->getHeight();
 
         if (pmanager->getSettings()->isPortrait())  // portrait?
         {
@@ -246,17 +253,28 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
             width = std::max(screenGeometry.width(), screenGeometry.height());
             height = std::min(screenGeometry.height(), screenGeometry.width());
         }
+        // The setup pages are always landscape
+        sysWidth = std::max(screenGeometry.width(), screenGeometry.height());
+        sysHeight = std::min(screenGeometry.height(), screenGeometry.width());
 
         if (!TConfig::getToolbarSuppress() && TConfig::getToolbarForce())
+        {
             minWidth += 48;
+            minSysWidth += 48;
+        }
 
         MSG_INFO("Dimension of AMX screen:" << minWidth << " x " << minHeight);
         MSG_INFO("Screen size: " << width << " x " << height);
         // The scale factor is always calculated in difference to the prefered
         // size of the original AMX panel.
-        mScaleFactorW = width / minWidth;
-        mScaleFactorH = height / minHeight;
+        mScaleFactorW = width / (double)minWidth;
+        mScaleFactorH = height / (double)minHeight;
+        double scaleFactorW = sysWidth / (double)minWidth;
+        double scaleFactorH = sysHeight / (double)minHeight;
         scale = std::min(mScaleFactorW, mScaleFactorH);
+        setupScaleFactor = std::min(scaleFactorW, scaleFactorH);
+        __android_log_print(ANDROID_LOG_DEBUG, "tpanel", "scale: %f (Screen: %1.0fx%1.0f, Page: %dx%d)", scale, width, height, minWidth, minHeight);
+        __android_log_print(ANDROID_LOG_DEBUG, "tpanel", "setupScaleFactor: %f (Screen: %1.0fx%1.0f, Page: %dx%d)", setupScaleFactor, sysWidth, sysHeight, minSysWidth, minSysHeight);
 
         gScale = scale;     // The calculated scale factor
         gFullWidth = width;
@@ -282,25 +300,43 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
     }
 #endif  // defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
 
-    double setupScaleFactor = 1.0;
-
-    if (pmanager->getSettings() != pmanager->getSystemSettings())
+#ifdef __ANDROID__
+    bool _haveAndroid=true;
+#else
+    bool _haveAndroid=false;
+#endif
+    if (pmanager->getSettings() != pmanager->getSystemSettings() ||
+        (_haveAndroid && setupScaleFactor == 1.0))
     {
-        int _w = pmanager->getSettings()->getWith();
-        int _h = pmanager->getSettings()->getHeight();
-        int _sw = pmanager->getSystemSettings()->getWith();
-        int _sh = pmanager->getSystemSettings()->getHeight();
+        double width = 0.0;
+        double height = 0.0;
+        int minWidth = pmanager->getSystemSettings()->getWith();
+        int minHeight = pmanager->getSystemSettings()->getHeight();
 
-        if (_w != _sw || _h != _sh)
-        {
-            double scaleW = (double)_w / (double)_sw;
-            double scaleH = (double)_h / (double)_sh;
+        if (!TConfig::getToolbarSuppress() && TConfig::getToolbarForce())
+            minWidth += 48;
 
-            if (_w > _h && (scaleW * (double)_sh) <= _h)
-                setupScaleFactor = scaleW;
-            else
-                setupScaleFactor = scaleH;
-        }
+#ifdef __ANDROID__
+        QList<QScreen *> screens = QGuiApplication::screens();
+        QRect screenGeometry = screens.at(0)->availableGeometry();
+
+        width = std::max(screenGeometry.width(), screenGeometry.height());
+        height = std::min(screenGeometry.height(), screenGeometry.width());
+
+#else
+        width = std::max(pmanager->getSettings()->getWidth(), pmanaget->getSettings()->getHeight());
+        height = std::min(pmanaget->getSettings()->getHeight(), pmanager->getSettings()->getWidth());
+#endif
+        MSG_INFO("Dimension of AMX screen:" << minWidth << " x " << minHeight);
+        MSG_INFO("Screen size: " << width << " x " << height);
+        // The scale factor is always calculated in difference to the prefered
+        // size of the original AMX panel.
+        double scaleFactorW = width / (double)minWidth;
+        double scaleFactorH = height / (double)minHeight;
+        setupScaleFactor = std::min(scaleFactorW, scaleFactorH);
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_DEBUG, "tpanel", "setupScaleFactor: %f (Screen: %dx%d, Page: %dx%d)", setupScaleFactor, screenGeometry.width(), screenGeometry.height(), minWidth, minHeight);
+#endif
     }
 
     // Initialize the application
@@ -447,7 +483,9 @@ MainWindow::MainWindow()
 #endif
     gPageManager->regRepaintWindows(bind(&MainWindow::_repaintWindows, this));
     gPageManager->regToFront(bind(&MainWindow::_toFront, this, std::placeholders::_1));
+#ifndef __ANDROID__
     gPageManager->regSetMainWindowSize(bind(&MainWindow::_setSizeMainWindow, this, std::placeholders::_1, std::placeholders::_2));
+#endif
     gPageManager->regDownloadSurface(bind(&MainWindow::_downloadSurface, this, std::placeholders::_1, std::placeholders::_2));
     gPageManager->regDisplayMessage(bind(&MainWindow::_displayMessage, this, std::placeholders::_1, std::placeholders::_2));
     gPageManager->regFileDialogFunction(bind(&MainWindow::_fileDialog, this,
@@ -502,7 +540,9 @@ MainWindow::MainWindow()
         connect(this, &MainWindow::sigRepaintWindows, this, &MainWindow::repaintWindows);
         connect(this, &MainWindow::sigToFront, this, &MainWindow::toFront);
         connect(this, &MainWindow::sigOnProgressChanged, this, &MainWindow::onProgressChanged);
+#ifndef __ANDROID__
         connect(this, &MainWindow::sigSetSizeMainWindow, this, &MainWindow::setSizeMainWindow);
+#endif
         connect(this, &MainWindow::sigDownloadSurface, this, &MainWindow::downloadSurface);
         connect(this, &MainWindow::sigDisplayMessage, this, &MainWindow::displayMessage);
         connect(this, &MainWindow::sigFileDialog, this, &MainWindow::fileDialog);
@@ -1145,12 +1185,15 @@ void MainWindow::mouseReleaseEvent(QMouseEvent* event)
 void MainWindow::settings()
 {
     DECL_TRACER("MainWindow::settings()");
-
+#ifndef QTSETTINGS
     if (gPageManager)
     {
         gPageManager->showSetup();
         return;
     }
+    else    // This "else" should never be executed!
+        displayMessage("<b>Fatal error</b>: An internal mandatory class was not initialized!<br>Unable to show setup dialog!", "Fatal error");
+#else
     // Save some old values to decide whether to start over or not.
     string oldHost = TConfig::getController();
     int oldPort = TConfig::getPort();
@@ -1283,6 +1326,7 @@ void MainWindow::settings()
     }
 
     delete dlg_settings;
+#endif  // QTSETTINGS
 }
 
 /**
@@ -2275,14 +2319,14 @@ void MainWindow::_fileDialog(ulong handle, const string &path, const std::string
 
     emit sigFileDialog(handle, path, extension, suffix);
 }
-
+#ifndef __ANDROID__
 void MainWindow::_setSizeMainWindow(int width, int height)
 {
     DECL_TRACER("MainWindow::_setSizeMainWindow(int width, int height)");
 
     emit sigSetSizeMainWindow(width, height);
 }
-
+#endif
 void MainWindow::doReleaseButton()
 {
     DECL_TRACER("MainWindow::doReleaseButton()");
@@ -2360,7 +2404,7 @@ int MainWindow::calcVolume(int value)
     return value;
 #endif
 }
-
+/*
 void MainWindow::calcScaleSetup()
 {
     DECL_TRACER("MainWindow::calcScaleSetup()");
@@ -2420,7 +2464,7 @@ void MainWindow::calcScaleSetup()
     gPageManager->setSetupScaleFactor(scale, scaleFactorW, scaleFactorH);
 #endif
 }
-
+*/
 /******************* Draw elements *************************/
 
 void MainWindow::displayButton(ulong handle, ulong parent, QByteArray buffer, int width, int height, int pixline, int left, int top)
@@ -2993,7 +3037,7 @@ void MainWindow::dropButton(ulong handle)
     gObject->removeObject(handle);
     draw_mutex.unlock();
 }
-
+#ifndef __ANDROID__
 void MainWindow::setSizeMainWindow(int width, int height)
 {
     DECL_TRACER("MainWindow::setSizeMainWindow(int width, int height)");
@@ -3001,7 +3045,7 @@ void MainWindow::setSizeMainWindow(int width, int height)
     QRect geo = geometry();
     setGeometry(geo.x(), geo.y(), width, height + menuBar()->height());
 }
-
+#endif
 void MainWindow::playVideo(ulong handle, ulong parent, int left, int top, int width, int height, const string& url, const string& user, const string& pw)
 {
     draw_mutex.lock();
@@ -3530,7 +3574,7 @@ void MainWindow::resetKeyboard()
         mQKeyboard->reject();
 
     if (mQKeypad)
-        mQKeyboard->reject();
+        mQKeypad->reject();
 }
 
 void MainWindow::sendVirtualKeys(const string& str)
@@ -3546,12 +3590,12 @@ void MainWindow::sendVirtualKeys(const string& str)
 void MainWindow::showSetup()
 {
     DECL_TRACER("MainWindow::showSetup()");
-//#ifndef __ANDROID__
-//    settings();
-//#else
+#ifdef QTSETTINGS
+    settings();
+#else
     if (gPageManager)
         gPageManager->showSetup();
-//#endif
+#endif
 }
 
 void MainWindow::playSound(const string& file)
@@ -3737,12 +3781,12 @@ int MainWindow::scaleSetup(int value)
 {
     DECL_TRACER("MainWindow::scaleSetup(int value)");
 
-    if (value <= 0 || mSetupScaleFactor == 1.0)
+    if (value <= 0 || mSetupScaleFactor == 1.0 || mSetupScaleFactor <= 0.0)
         return value;
 
     double val = (double)value * mSetupScaleFactor;
 
-    if (mScaleFactor > 0.0 && mScaleFactor != 1.0)
+    if (mScaleFactor > 0.0 && mScaleFactor != 1.0 && mScaleFactor != mSetupScaleFactor)
         return (int)(val * mScaleFactor);
 MSG_DEBUG("Scaled value " << value << " to " << (int)val << " with factor " << mSetupScaleFactor);
     return (int)val;

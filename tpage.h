@@ -22,12 +22,8 @@
 #include <string>
 #include <vector>
 #include "tvalidatefile.h"
-#include "tpagelist.h"
 #include "tsubpage.h"
-#include "tconfig.h"
-#include "terror.h"
 #include "tpalette.h"
-#include "tfont.h"
 #include "tpageinterface.h"
 
 #define ZORDER_INVALID      -1

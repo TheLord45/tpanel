@@ -26,13 +26,14 @@
 #include <QHBoxLayout>
 #include <QEvent>
 #include <QKeyEvent>
+#include <QApplication>
+#ifdef QT6_LINUX
 #include <QAnyStringView>
-
+#endif
 using std::string;
 
 TQEditLine::TQEditLine(QWidget *widget, bool multiline)
-    : mParent(widget),
-      mMultiline(multiline)
+    : mMultiline(multiline)
 {
     DECL_TRACER("TQEditLine::TQEditLine(QWidget *widget, bool multiline)");
 
@@ -41,8 +42,7 @@ TQEditLine::TQEditLine(QWidget *widget, bool multiline)
 }
 
 TQEditLine::TQEditLine(string &text, QWidget *widget, bool multiline)
-    : mParent(widget),
-      mText(text),
+    : mText(text),
       mMultiline(multiline)
 
 {

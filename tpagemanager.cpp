@@ -60,6 +60,7 @@ namespace fs = std::filesystem;
 #include "tsystemsound.h"
 #include "tvalidatefile.h"
 #include "ttpinit.h"
+#include "tconfig.h"
 
 using std::vector;
 using std::string;

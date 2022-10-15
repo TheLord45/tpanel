@@ -87,7 +87,7 @@ ftplib::~ftplib()
 
 void ftplib::sprint_rest(char *buf, off64_t offset)
 {
-#if (off64_t >> 32) == 0
+#if defined(__LP64__)
     sprintf(buf, "REST %ld", offset);
 #else
     sprintf(buf, "REST %lld", offset);

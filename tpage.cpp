@@ -30,6 +30,7 @@
 #include "tdrawimage.h"
 #include "texpat++.h"
 #include "tobject.h"
+#include "tconfig.h"
 
 #if __cplusplus < 201402L
 #   error "This module requires at least C++14 standard!"

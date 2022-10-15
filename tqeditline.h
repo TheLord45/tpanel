@@ -69,7 +69,6 @@ class TQEditLine : public QWidget
         QHBoxLayout *mLayout{nullptr};
         QLineEdit *mEdit{nullptr};
         QTextEdit *mTextArea{nullptr};
-        QWidget *mParent{nullptr};
 
         std::string mText;
         ulong mHandle{0};

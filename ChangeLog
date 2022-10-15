@@ -3,6 +3,8 @@ ChangeLog
 
 Release: 1.3.3
 ===============================================================================
+2022-10-15 Fixed the compilation for Android.
+
 2022-10-14 Added functionality to the buttons on the logging page.
 
 2022-10-13 Fixed the setup of the edit line of surface files. Fixed the dialog

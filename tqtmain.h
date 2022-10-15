@@ -24,7 +24,6 @@
 #include "tpagemanager.h"
 #include "tobject.h"
 #include "tqemitqueue.h"
-#include "terror.h"
 
 extern bool prg_stopped;
 extern std::atomic<bool> killed;
@@ -238,7 +237,7 @@ class MainWindow : public QMainWindow, TQManageQueue
         void doReleaseButton();
         void repaintObjects();
         int calcVolume(int value);
-        void calcScaleSetup();
+//        void calcScaleSetup();
 
         bool mWasInactive{false};           // If the application was inactive this is set to true until everything was repainted.
         bool mDoRepaint{false};             // This is set to TRUE whenever a reconnection to the controller happened.
