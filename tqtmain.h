@@ -147,9 +147,9 @@ class MainWindow : public QMainWindow, TQManageQueue
         void playSound(const std::string& file);
         void stopSound();
         void muteSound(bool state);
-        void appStateChanged(Qt::ApplicationState state);
+        void onAppStateChanged(Qt::ApplicationState state);
         void onScreenOrientationChanged(Qt::ScreenOrientation ori);
-        void on_tlistCallback_currentItemChanged(QListWidgetItem *current, QListWidgetItem *previous);
+        void onTListCallbackCurrentItemChanged(QListWidgetItem *current, QListWidgetItem *previous);
 #ifndef __ANDROID__
         void setSizeMainWindow(int width, int height);
 #endif
@@ -171,8 +171,6 @@ class MainWindow : public QMainWindow, TQManageQueue
 //        void volumeMute();
         // Slots for widget actions and button element actions
         void animationFinished();
-        void textChangedMultiLine();
-        void textSingleLineReturn();
         void repaintWindows();
         void toFront(ulong handle);
         void downloadSurface(const std::string& file, size_t size);
@@ -191,7 +189,6 @@ class MainWindow : public QMainWindow, TQManageQueue
         bool isScaled() { return (mScaleFactor > 0.0 && mScaleFactor != 1.0); }
         bool isSetupScaled();
         void startAnimation(TObject::OBJECT_t *obj, ANIMATION_t& ani, bool in = true);
-        void busyIndicator(const std::string& msg, QWidget *parent);
         void downloadBar(const std::string& msg, QWidget *parent);
         void runEvents();
 
@@ -237,7 +234,6 @@ class MainWindow : public QMainWindow, TQManageQueue
         void doReleaseButton();
         void repaintObjects();
         int calcVolume(int value);
-//        void calcScaleSetup();
 
         bool mWasInactive{false};           // If the application was inactive this is set to true until everything was repainted.
         bool mDoRepaint{false};             // This is set to TRUE whenever a reconnection to the controller happened.
@@ -251,8 +247,8 @@ class MainWindow : public QMainWindow, TQManageQueue
         std::atomic<double> mScaleFactor{1.0}; // The actual scale factor
         std::atomic<double> mSetupScaleFactor{1.0};     // The scale factor for the setup pages
         std::atomic<TObject::OBJECT_t *> mLastObject{nullptr};     // This is for the hide effect of widgets.
+        ulong mActualPageHandle{0};         // Holds the handle of the active page.
         std::atomic<bool> mBusy{false};     // If TRUE the busy indicator is active
-        TQBusy *mBusyDialog{nullptr};       // Pointer to busy indicator dialog window
         TqDownload *mDownloadBar{nullptr};  // Pointer to a dialog showing a progress bar
         TQKeyboard *mQKeyboard{nullptr};    // Pointer to an active virtual keyboard
         TQKeypad *mQKeypad{nullptr};        // Pointer to an active virtual keypad
@@ -268,7 +264,7 @@ class MainWindow : public QMainWindow, TQManageQueue
 #ifdef QT6_LINUX
         QAudioOutput *mAudioOutput{nullptr};
 #endif
-        std::chrono::steady_clock::time_point mTouchStart;           // Time in micro seconds of the start of a touch event
+        std::chrono::steady_clock::time_point mTouchStart;  // Time in micro seconds of the start of a touch event
         int mTouchX{0};                        // The X coordinate of the mouse pointer
         int mTouchY{0};                        // The Y coordinate of the mouse pointer
 };

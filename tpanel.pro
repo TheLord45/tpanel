@@ -2,7 +2,7 @@
 # You may attempt to use it for building too, by modifying this file here.
 
 TARGET = tpanel
-QT = core core-private gui widgets multimedia multimediawidgets sensors qml quickwidgets androidextras
+QT = core core-private gui widgets multimedia multimediawidgets sensors androidextras
 
 # The main application
 HEADERS = \
@@ -47,7 +47,6 @@ HEADERS = \
    $$PWD/tqkeyboard.h \
    $$PWD/tqkeypad.h \
    $$PWD/tqtphone.h \
-   $$PWD/tqtbusy.h \
    $$PWD/tqdownload.h \
    $$PWD/texcept.h \
    $$PWD/tsipclient.h \
@@ -102,7 +101,6 @@ SOURCES = \
    $$PWD/tqkeyboard.cpp \
    $$PWD/tqkeypad.cpp \
    $$PWD/tqtphone.cpp \
-   $$PWD/tqtbusy.cpp \
    $$PWD/tqdownload.cpp \
    $$PWD/tsipclient.cpp \
    $$PWD/texcept.cpp \
@@ -236,7 +234,6 @@ FORMS += \
     keypad.ui \
     tqtsettings.ui \
     tqtphone.ui \
-    busy.ui \
     download.ui
 
 LIBS += -lcrypto_1_1 -lssl_1_1 -lEGL -landroid -lmediandk
@@ -249,8 +246,7 @@ DISTFILES += \
     android/gradle/wrapper/gradle-wrapper.properties \
     android/gradlew \
     android/gradlew.bat \
-    android/res/values/libs.xml \
-    qrc/BusyIndicator.qml
+    android/res/values/libs.xml
 
 ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
 

@@ -54,6 +54,15 @@ class TQEditLine : public QWidget
         void show();
         void close();
         void clear();
+        void setInputMask(const std::string& mask);
+        void setNumericInput();
+#ifndef __ANDROID__
+        void setCursor(const QCursor &qc);
+        void setClearButtonEnabled(bool state);
+#else
+        inline void setCursor(const QCursor&) {}
+        inline void setClearButtonEnabled(bool) {}
+#endif
         void setHandle(ulong handle) { mHandle = handle; }
 
     signals:

@@ -889,6 +889,7 @@ void TPageManager::hideSetup()
     }
 
     setPage(mSavedPage, true);
+    MSG_PROTOCOL("Activated page: " << mSavedPage);
 
     if (mSavedSubpages.size() > 0)
     {
@@ -897,6 +898,7 @@ void TPageManager::hideSetup()
         for (iter = mSavedSubpages.begin(); iter != mSavedSubpages.end(); ++iter)
         {
             showSubPage(*iter);
+            MSG_PROTOCOL("Activated subpage: " << *iter);
         }
     }
 }
@@ -1459,7 +1461,7 @@ TPage *TPageManager::loadPage(PAGELIST_T& pl, bool *refresh)
         }
 
         if (refresh)
-            *refresh = true;
+            *refresh = true;        // Indicate that the page was freshly loaded
     }
 
     return pg;

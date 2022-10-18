@@ -74,13 +74,18 @@ void TQEditLine::init()
         mLayout->setContentsMargins(0, 0, 0, 0);
 
         if (mMultiline)
+        {
             mTextArea = new QTextEdit;
+        }
         else
+        {
             mEdit = new QLineEdit;
+        }
 
         QPalette pal;
 
         pal.setColor(QPalette::Window, QColorConstants::Transparent);
+        pal.setColor(QPalette::WindowText, QColorConstants::Black);
 
         if (!mText.empty())
         {
@@ -92,16 +97,14 @@ void TQEditLine::init()
 
         if (mMultiline)
         {
-            mTextArea->setAutoFillBackground(true);
-            mTextArea->setPalette(pal);
+            QWidget::setPalette(pal);
 
             QWidget::connect(mTextArea, &QTextEdit::textChanged, this, &TQEditLine::onTextAreaChanged);
             mLayout->addWidget(mTextArea);
         }
         else
         {
-            mEdit->setAutoFillBackground(true);
-            mEdit->setPalette(pal);
+            QWidget::setPalette(pal);
 
             QWidget::connect(mEdit, &QLineEdit::textChanged, this, &TQEditLine::onTextChanged);
             mLayout->addWidget(mEdit);
@@ -283,6 +286,42 @@ void TQEditLine::clear()
     mText.clear();
 }
 
+void TQEditLine::setInputMask(const std::string& mask)
+{
+    DECL_TRACER("TQEditLine::setInputMask(const std::string& mask)");
+
+    if (!mMultiline && mEdit)
+        mEdit->setInputMask(mask.c_str());
+}
+
+void TQEditLine::setNumericInput()
+{
+    DECL_TRACER("TQEditLine::setNumericInput()");
+
+    if (!mMultiline && mEdit)
+        mEdit->setInputMethodHints(mEdit->inputMethodHints() | Qt::ImhDigitsOnly);
+}
+
+#ifndef __ANDROID__
+void TQEditLine::setClearButtonEnabled(bool state)
+{
+    DECL_TRACER("TQEditLine::setClearButtonEnabled(bool state)");
+
+    if (!mMultiline && mEdit)
+        mEdit->setClearButtonEnabled(state);
+}
+
+void TQEditLine::setCursor(const QCursor& qc)
+{
+    DECL_TRACER("TQEditLine::setCursor(const QCursor& qc)");
+
+    if (mMultiline && mTextArea)
+        mTextArea->setCursor(qc);
+    else if (!mMultiline && mEdit)
+        mEdit->setCursor(qc);
+}
+#endif
+
 /*
  * Here the signal and callback functions follow.
  */
@@ -300,10 +339,22 @@ bool TQEditLine::event(QEvent* event)
             else if (!mMultiline && mEdit)
                 mText = mEdit->text().toStdString();
             else
+            {
+                if (mMultiline && mTextArea)
+                    mTextArea->repaint(mTextArea->visibleRegion());
+                else if (!mMultiline && mEdit)
+                    mEdit->repaint(visibleRegion());
+
                 return true;
+            }
 
             if (mChanged && gPageManager)
                 gPageManager->inputButtonFinished(mHandle, mText);
+
+            if (mMultiline && mTextArea)
+                mTextArea->repaint(mTextArea->visibleRegion());
+            else if (!mMultiline && mEdit)
+                mEdit->repaint(visibleRegion());
 
             return true;
         }
@@ -334,6 +385,7 @@ void TQEditLine::onTextChanged(const QString &text)
 
     mText = text.toStdString();
     mChanged = true;
+
 }
 
 void TQEditLine::onTextAreaChanged()

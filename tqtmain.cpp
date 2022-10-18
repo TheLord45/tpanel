@@ -70,13 +70,14 @@
 #include "tpagemanager.h"
 #include "tqtmain.h"
 #include "tconfig.h"
+#ifdef QTSETTINGS
 #include "tqtsettings.h"
+#endif
 #include "tqkeyboard.h"
 #include "tqkeypad.h"
 #include "tcolor.h"
 #include "texcept.h"
 #include "ttpinit.h"
-#include "tqtbusy.h"
 #include "tqdownload.h"
 #include "tqtphone.h"
 #include "tqeditline.h"
@@ -218,7 +219,7 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
         else
             screen->setOrientationUpdateMask(Qt::LandscapeOrientation);
     }
-#endif
+#endif  // QT5_LINUX
     double scale = 1.0;
     double setupScaleFactor = 1.0;
     // Calculate the scale factor
@@ -258,10 +259,7 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
         sysHeight = std::min(screenGeometry.height(), screenGeometry.width());
 
         if (!TConfig::getToolbarSuppress() && TConfig::getToolbarForce())
-        {
             minWidth += 48;
-            minSysWidth += 48;
-        }
 
         MSG_INFO("Dimension of AMX screen:" << minWidth << " x " << minHeight);
         MSG_INFO("Screen size: " << width << " x " << height);
@@ -304,6 +302,7 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
     bool _haveAndroid=true;
 #else
     bool _haveAndroid=false;
+    double setupScaleFactor = 1.0;
 #endif
     if (pmanager->getSettings() != pmanager->getSystemSettings() ||
         (_haveAndroid && setupScaleFactor == 1.0))
@@ -324,8 +323,8 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
         height = std::min(screenGeometry.height(), screenGeometry.width());
 
 #else
-        width = std::max(pmanager->getSettings()->getWidth(), pmanaget->getSettings()->getHeight());
-        height = std::min(pmanaget->getSettings()->getHeight(), pmanager->getSettings()->getWidth());
+        width = std::max(pmanager->getSettings()->getWith(), pmanager->getSettings()->getHeight());
+        height = std::min(pmanager->getSettings()->getHeight(), pmanager->getSettings()->getWith());
 #endif
         MSG_INFO("Dimension of AMX screen:" << minWidth << " x " << minHeight);
         MSG_INFO("Screen size: " << width << " x " << height);
@@ -334,9 +333,6 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
         double scaleFactorW = width / (double)minWidth;
         double scaleFactorH = height / (double)minHeight;
         setupScaleFactor = std::min(scaleFactorW, scaleFactorH);
-#ifdef __ANDROID__
-        __android_log_print(ANDROID_LOG_DEBUG, "tpanel", "setupScaleFactor: %f (Screen: %dx%d, Page: %dx%d)", setupScaleFactor, screenGeometry.width(), screenGeometry.height(), minWidth, minHeight);
-#endif
     }
 
     // Initialize the application
@@ -546,7 +542,7 @@ MainWindow::MainWindow()
         connect(this, &MainWindow::sigDownloadSurface, this, &MainWindow::downloadSurface);
         connect(this, &MainWindow::sigDisplayMessage, this, &MainWindow::displayMessage);
         connect(this, &MainWindow::sigFileDialog, this, &MainWindow::fileDialog);
-        connect(qApp, &QGuiApplication::applicationStateChanged, this, &MainWindow::appStateChanged);
+        connect(qApp, &QGuiApplication::applicationStateChanged, this, &MainWindow::onAppStateChanged);
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         QScreen *screen = QGuiApplication::primaryScreen();
         connect(screen, &QScreen::orientationChanged, this, &MainWindow::onScreenOrientationChanged);
@@ -641,7 +637,7 @@ void MainWindow::_signalState(Qt::ApplicationState state)
     DECL_TRACER("MainWindow::_signalState(Qt::ApplicationState state)");
 
     std::this_thread::sleep_for(std::chrono::seconds(1));   // Wait a second
-    appStateChanged(state);
+    onAppStateChanged(state);
 }
 
 void MainWindow::_orientationChanged(int orientation)
@@ -1286,13 +1282,11 @@ void MainWindow::settings()
                 string msg = "Loading file <b>" + TConfig::getFtpSurface() + "</b>.";
                 MSG_DEBUG("Download of surface " << TConfig::getFtpSurface() << " was forced!");
 
-//                busyIndicator(msg, this);
                 downloadBar(msg, this);
 
                 if (tpinit.loadSurfaceFromController(true))
                     rebootAnyway = true;
 
-//                mBusyDialog->close();
                 mDownloadBar->close();
                 mBusy = false;
             }
@@ -1506,73 +1500,6 @@ void MainWindow::animationFinished()
     }
 }
 
-void MainWindow::textChangedMultiLine()
-{
-    DECL_TRACER("MainWindow::textChangedMultiLine(const QString& text)");
-    // Find out from which input line the signal was send
-    QTextEdit* edit = qobject_cast<QTextEdit*>(sender());
-
-    if (!edit)
-    {
-        MSG_ERROR("No QTextEdit widget found! External sender?");
-        return;
-    }
-
-    if (!gObject)
-    {
-        MSG_ERROR(_NO_OBJECT);
-        return;
-    }
-
-    QString text = edit->toPlainText();
-    WId id = edit->winId();
-    TObject::OBJECT_t *obj = gObject->findObject(id);
-
-    if (!obj)
-    {
-        MSG_ERROR("No object witb WId " << id << " found!");
-        return;
-    }
-
-    if (gPageManager)
-        gPageManager->setTextToButton(obj->handle, text.toStdString());
-}
-
-void MainWindow::textSingleLineReturn()
-{
-    DECL_TRACER("MainWindow::textChangedSingleLine(const QString& text)");
-
-    // Find out from which input line the signal was send
-    QLineEdit* edit = qobject_cast<QLineEdit*>(sender());
-
-    if (!edit)
-    {
-        MSG_ERROR("No QLineEdit widget found! External sender?");
-        return;
-    }
-
-    if (!gObject)
-    {
-        MSG_ERROR(_NO_OBJECT);
-        return;
-    }
-
-    QString text = edit->text();
-    WId id = edit->winId();
-    TObject::OBJECT_t *obj = gObject->findObject(id);
-
-    if (!obj)
-    {
-        MSG_ERROR("No object with WId " << id << " found!");
-        return;
-    }
-
-    MSG_DEBUG("Writing text: " << text.toStdString());
-
-    if (gPageManager)
-        gPageManager->setTextToButton(obj->handle, text.toStdString());
-}
-
 void MainWindow::repaintWindows()
 {
     DECL_TRACER("MainWindow::repaintWindows()");
@@ -1772,7 +1699,7 @@ void MainWindow::fileDialog(ulong handle, const string &path, const std::string&
         gPageManager->setTextToButton(handle, fname.toStdString(), true);
 }
 
-void MainWindow::on_tlistCallback_currentItemChanged(QListWidgetItem *current, QListWidgetItem *previous)
+void MainWindow::onTListCallbackCurrentItemChanged(QListWidgetItem *current, QListWidgetItem *previous)
 {
     DECL_TRACER("MainWindow::on_tlistCallback_currentItemChanged(QListWidgetItem *current, QListWidgetItem *previous)");
 
@@ -1828,7 +1755,7 @@ void MainWindow::onProgressChanged(int percent)
  * application becomes active, all queued messages are applied.
  * @param state     The new state of the application.
  */
-void MainWindow::appStateChanged(Qt::ApplicationState state)
+void MainWindow::onAppStateChanged(Qt::ApplicationState state)
 {
     DECL_TRACER("MainWindow::appStateChanged(Qt::ApplicationState state)");
 
@@ -2725,7 +2652,10 @@ void MainWindow::setPage(ulong handle, int width, int height)
 #endif
         newBackground = true;
     }
-
+#ifdef __ANDROID__
+    else
+        mBackground->hide();
+#endif
     // By default set a transparent background
     QPixmap pix(obj->width, obj->height);
     pix.fill(QColor::fromRgba(qRgba(0,0,0,0xff)));
@@ -2733,9 +2663,10 @@ void MainWindow::setPage(ulong handle, int width, int height)
     palette.setBrush(QPalette::Window, pix);
     mBackground->setPalette(palette);
 
-    if (newBackground)
+    if (newBackground || this->centralWidget() == nullptr)
         this->setCentralWidget(mBackground);
 
+    mActualPageHandle = handle;
     mBackground->show();
     draw_mutex.unlock();
 }
@@ -3198,14 +3129,36 @@ void MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, i
             obj->object.plaintext = new TQEditLine(text, par->object.widget, button->isMultiLine());
 
         obj->object.plaintext->setHandle(handle);
-        obj->object.plaintext->setAutoFillBackground(true);
         obj->object.plaintext->setFixedSize(obj->width, obj->height);
         obj->object.plaintext->move(obj->left, obj->top);
         obj->object.plaintext->setPadding(frame, frame, frame, frame);
-        obj->object.plaintext->installEventFilter(this);
         obj->object.plaintext->setWordWrapMode(button->getTextWordWrap());
         obj->object.plaintext->setPasswordChar(button->getPasswordChar());
         obj->wid = obj->object.plaintext->winId();
+
+        if (gPageManager->isSetupActive())
+        {
+            int ch = 0;
+
+            if (button->getAddressPort() == 0 && button->getAddressChannel() > 0)
+                ch = button->getAddressChannel();
+            else if (button->getChannelPort() == 0 && button->getChannelNumber() > 0)
+                ch = button->getChannelNumber();
+
+            switch(ch)
+            {
+                case SYSTEM_ITEM_SIPPORT:
+                case SYSTEM_ITEM_NETLINX_PORT:
+                    obj->object.plaintext->setInputMask("000000");
+                    obj->object.plaintext->setNumericInput();
+                break;
+
+                case SYSTEM_ITEM_NETLINX_CHANNEL:
+                    obj->object.plaintext->setInputMask("99999");
+                    obj->object.plaintext->setNumericInput();
+                break;
+            }
+        }
 
         if (!buf.size() || pixline == 0)
         {
@@ -3227,7 +3180,6 @@ void MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, i
 
         // Load the font
         FONT_T font = button->getFont();
-        int fontID = 0;
         vector<string> fontList = TFont::getFontPathList();
         vector<string>::iterator iter;
         string ffile;
@@ -3249,7 +3201,7 @@ void MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, i
             return;
         }
 
-        if ((fontID = QFontDatabase::addApplicationFont(ffile.c_str())) == -1)
+        if (QFontDatabase::addApplicationFont(ffile.c_str()) == -1)
         {
             MSG_ERROR("Font " << ffile << " could not be loaded!");
             TError::setError();
@@ -3258,13 +3210,14 @@ void MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, i
 
         QFont ft;
         ft.setFamily(font.name.c_str());
+        int eighty = (int)((double)button->getHeight() / 100.0 * 85.0);
 
         if (gPageManager && gPageManager->isSetupActive())
-            ft.setPointSize(scaleSetup(font.size));
+            ft.setPixelSize(scaleSetup(eighty - frame * 2));
         else
-            ft.setPointSize(font.size);
+            ft.setPixelSize(scale(eighty - frame * 2));
 
-        MSG_DEBUG("Using font \"" << font.name << "\" with size " << font.size << "pt.");
+        MSG_DEBUG("Using font \"" << font.name << "\" with size " << font.size << "px.");
 
         switch (button->getFontStyle())
         {
@@ -3372,13 +3325,13 @@ void MainWindow::listBox(Button::TButton* button, QByteArray buffer, int width, 
         else
             obj->object.list = new QListWidget(par->object.widget);
 
-        QString objName = "tlistCallback";
-        obj->object.list->setObjectName(objName);
-        obj->object.list->setAutoFillBackground(true);
+//        QString objName = "tlistCallback";
+//        obj->object.list->setObjectName(objName);
+//        obj->object.list->setAutoFillBackground(true);
         obj->object.list->setFixedSize(obj->width, obj->height);
         obj->object.list->move(obj->left, obj->top);
-        obj->object.list->installEventFilter(this);
-        connect(obj->object.list, &QListWidget::currentItemChanged, this, &MainWindow::on_tlistCallback_currentItemChanged);
+//        obj->object.list->installEventFilter(this);
+        connect(obj->object.list, &QListWidget::currentItemChanged, this, &MainWindow::onTListCallbackCurrentItemChanged);
 
         if (!buffer.size() || pixline == 0)
         {
@@ -3400,7 +3353,6 @@ void MainWindow::listBox(Button::TButton* button, QByteArray buffer, int width, 
 
         // Load the font
         FONT_T font = button->getFont();
-        int fontID = 0;
         vector<string> fontList = TFont::getFontPathList();
         vector<string>::iterator iter;
         string ffile;
@@ -3422,7 +3374,7 @@ void MainWindow::listBox(Button::TButton* button, QByteArray buffer, int width, 
             return;
         }
 
-        if ((fontID = QFontDatabase::addApplicationFont(ffile.c_str())) == -1)
+        if (QFontDatabase::addApplicationFont(ffile.c_str()) == -1)
         {
             MSG_ERROR("Font " << ffile << " could not be loaded!");
             TError::setError();
@@ -3432,9 +3384,9 @@ void MainWindow::listBox(Button::TButton* button, QByteArray buffer, int width, 
         QFont ft;
         ft.setFamily(font.name.c_str());
 
-//        if (gPageManager && gPageManager->isSetupActive())
-//            ft.setPointSize(scaleSetup(font.size));
-//        else
+        if (gPageManager && gPageManager->isSetupActive())
+            ft.setPointSize(scaleSetup(font.size));
+        else
             ft.setPointSize(font.size);
 
         MSG_DEBUG("Using font \"" << font.name << "\" with size " << font.size << "pt.");
@@ -3786,8 +3738,8 @@ int MainWindow::scaleSetup(int value)
 
     double val = (double)value * mSetupScaleFactor;
 
-    if (mScaleFactor > 0.0 && mScaleFactor != 1.0 && mScaleFactor != mSetupScaleFactor)
-        return (int)(val * mScaleFactor);
+//    if (mScaleFactor > 0.0 && mScaleFactor != 1.0 && mScaleFactor != mSetupScaleFactor)
+//        return (int)(val * mScaleFactor);
 MSG_DEBUG("Scaled value " << value << " to " << (int)val << " with factor " << mSetupScaleFactor);
     return (int)val;
 }
@@ -3955,22 +3907,6 @@ void MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
         default:
             MSG_WARNING("Subpage effect " << ani.showEffect << " is not supported.");
     }
-}
-
-void MainWindow::busyIndicator(const string& msg, QWidget* parent)
-{
-    DECL_TRACER("MainWindow::busyIndicator(const string& msg, QWidget* parent)");
-
-    if (mBusy)
-        return;
-
-    mBusy = true;
-    mBusyDialog = new TQBusy(msg, parent);
-#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
-    mBusyDialog->setScaleFactor(gScale);
-    mBusyDialog->doResize();
-#endif
-    mBusyDialog->show();
 }
 
 void MainWindow::downloadBar(const string &msg, QWidget *parent)

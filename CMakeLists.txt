@@ -8,8 +8,6 @@ find_package(Qt6Gui)
 find_package(Qt6Widgets)
 find_package(Qt6Multimedia)
 find_package(Qt6MultimediaWidgets)
-find_package(Qt6Qml)
-find_package(Qt6QuickWidgets)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -59,7 +57,6 @@ endif()
 find_package(Qt6 COMPONENTS Widgets REQUIRED)
 find_package(Qt6 COMPONENTS Multimedia REQUIRED)
 find_package(Qt6 COMPONENTS MultimediaWidgets REQUIRED)
-find_package(Qt6 COMPONENTS Qml QuickWidgets REQUIRED)
 
 if (APPLE)
 	set(OSX_INCLUDE -I/opt/local/include -I/usr/local/include)
@@ -117,7 +114,6 @@ set(SOURCES tmain.cpp
 			tsystem.cpp
 			base64.cpp
 			texpat++.cpp
-			tqtbusy.cpp
 			tqdownload.cpp
 			tqeditline.cpp
 			tpanel.qrc)
@@ -127,7 +123,7 @@ add_executable(tpanel ${SOURCES})
 add_definitions(-D_REENTRANT)
 add_definitions(-D_GNU_SOURCE)
 add_definitions(-DQT6_LINUX)
-add_definitions(${Qt6Widgets_DEFINITIONS} ${QtQml_DEFINITIONS} ${${Qt6Quick_DEFINITIONS}})
+add_definitions(${Qt6Widgets_DEFINITIONS})
 add_compile_definitions(QT_DISABLE_DEPRECATED_BEFORE=0x050F00)
 include_directories(/usr/local/include/skia)
 
@@ -143,6 +139,6 @@ if(CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
 	target_link_libraries(tpanel stdc++fs)
 endif()
 
-target_link_libraries(tpanel m pthread ssl crypto ftp ${LIBS} ${LIBSKIA_LIBRARY} Qt6::Widgets Qt6::Multimedia Qt6::MultimediaWidgets Qt6::Qml Qt6::QuickWidgets)
+target_link_libraries(tpanel m pthread ssl crypto ftp ${LIBS} ${LIBSKIA_LIBRARY} Qt6::Widgets Qt6::Multimedia Qt6::MultimediaWidgets)
 
 install(TARGETS tpanel RUNTIME DESTINATION bin)
