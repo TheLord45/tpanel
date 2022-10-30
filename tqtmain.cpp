@@ -2331,67 +2331,7 @@ int MainWindow::calcVolume(int value)
     return value;
 #endif
 }
-/*
-void MainWindow::calcScaleSetup()
-{
-    DECL_TRACER("MainWindow::calcScaleSetup()");
 
-    if (!gPageManager)
-        return;
-
-    double width = 0.0;
-    double height = 0.0;
-#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
-    QList<QScreen *> screens = QGuiApplication::screens();
-    QRect screenGeometry = screens.at(0)->availableGeometry();
-    int screenWidth = screenGeometry.width();
-    int screenHeight = screenGeometry.height();
-    int minWidth = gPageManager->getSystemSettings()->getWith();
-    int minHeight = gPageManager->getSystemSettings()->getHeight();
-
-    if (gPageManager->getSystemSettings()->isPortrait())  // portrait?
-    {
-        width = std::min(screenWidth, screenHeight);
-        height = std::max(screenHeight, screenWidth);
-    }
-    else
-    {
-        width = std::max(screenWidth, screenHeight);
-        height = std::min(screenHeight, screenWidth);
-    }
-#else
-    int screenWidth = gPageManager->getSettings()->getWith();
-    int screenHeight = gPageManager->getSettings()->getHeight();
-    int minWidth = gPageManager->getSystemSettings()->getWith();
-    int minHeight = gPageManager->getSystemSettings()->getHeight();
-
-    if (gPageManager->getSystemSettings()->isPortrait())  // portrait?
-    {
-        width = std::min(screenWidth, screenHeight);
-        height = std::max(screenHeight, screenWidth);
-    }
-    else
-    {
-        width = std::max(screenWidth, screenHeight);
-        height = std::min(screenHeight, screenWidth);
-    }
-#endif
-    if (!TConfig::getToolbarSuppress() && TConfig::getToolbarForce())
-        minWidth += 48;
-
-    MSG_INFO("Dimension of AMX screen:" << minWidth << " x " << minHeight);
-    MSG_INFO("Screen size: " << width << " x " << height);
-    // The scale factor is always calculated in difference to the prefered
-    // size of the original AMX panel.
-    double scaleFactorW = width / minWidth;
-    double scaleFactorH = height / minHeight;
-    double scale = std::min(scaleFactorW, scaleFactorH);
-    MSG_INFO("Calculated scale factor: " << scale);
-#ifdef _SCALE_SKIA_
-    gPageManager->setSetupScaleFactor(scale, scaleFactorW, scaleFactorH);
-#endif
-}
-*/
 /******************* Draw elements *************************/
 
 void MainWindow::displayButton(ulong handle, ulong parent, QByteArray buffer, int width, int height, int pixline, int left, int top)
@@ -2472,9 +2412,9 @@ void MainWindow::displayButton(ulong handle, ulong parent, QByteArray buffer, in
             obj->top = scale(top);
         }
 
-        if (par->type == TObject::OBJ_PAGE)
-            obj->object.label = new QLabel("", mBackground);
-        else
+//        if (par->type == TObject::OBJ_PAGE)
+//            obj->object.label = new QLabel("", mBackground);
+//        else
             obj->object.label = new QLabel("", par->object.widget);
 
         obj->object.label->installEventFilter(this);
@@ -2573,6 +2513,20 @@ void MainWindow::SetVisible(ulong handle, bool state)
     }
 }
 
+/**
+ * @brief Creates a widget of the size of a page and displays it.
+ * The method first checks whether there exists a background widget or not. If
+ * not it creates a background widget with a black background. On Android this
+ * image is the size of the whole screen while on a desktop it is only the size
+ * of a page plus the task bar, if any.
+ * It creates another widget with the size of a page and makes it the child of
+ * the main background widget. It puts the image, if one, as the background
+ * image to the child widget.
+ *
+ * @param handle    The handle of the new widget
+ * @param width     The original width of the page
+ * @param heoght    The original height of the page
+ */
 void MainWindow::setPage(ulong handle, int width, int height)
 {
     DECL_TRACER("MainWindow::setPage(ulong handle, int width, int height)");
@@ -2583,15 +2537,25 @@ void MainWindow::setPage(ulong handle, int width, int height)
         return;
     }
 
+    if (handle == mActualPageHandle)
+        return;
+
     draw_mutex.lock();
 
-    QSize qs = menuBar()->sizeHint();
+    // The following should be true only for the first time this method is called.
+    if (!mBackground)
+    {
+        QSize qs = menuBar()->sizeHint();
 
-    if (gPageManager && gPageManager->isSetupActive())
-        setMinimumSize(scaleSetup(width), scaleSetup(height) + qs.height());
-    else
-        setMinimumSize(scale(width), scale(height) + qs.height());
+        if (gPageManager && gPageManager->isSetupActive())
+            setMinimumSize(scaleSetup(width), scaleSetup(height) + qs.height());
+        else
+            setMinimumSize(scale(width), scale(height) + qs.height());
+    }
 
+    // First the old page must be deleted, if it should still exist.
+    gObject->removeObject(mActualPageHandle);
+    mActualPageHandle = 0;
     TObject::OBJECT_t *obj = gObject->findObject(handle);
 
     if (!obj)
@@ -2609,33 +2573,31 @@ void MainWindow::setPage(ulong handle, int width, int height)
         obj->handle = handle;
         obj->type = TObject::OBJ_PAGE;
 
-        if (gPageManager && gPageManager->isSetupActive())
-        {
-            obj->height = scaleSetup(height);
-            obj->width = scaleSetup(width);
-        }
-        else
-        {
+//        if (gPageManager && gPageManager->isSetupActive())
+//        {
+//            obj->height = scaleSetup(height);
+//            obj->width = scaleSetup(width);
+//        }
+//        else
+//        {
             obj->height = scale(height);
             obj->width = scale(width);
-        }
+//        }
     }
-
-    bool newBackground = false;
+    else
+        gObject->dropContent(obj);
 
     if (!mBackground)
     {
         mBackground = new QWidget();
-        mBackground->grabGesture(Qt::PinchGesture);
-        mBackground->grabGesture(Qt::SwipeGesture);
-        mBackground->setAutoFillBackground(true);
+//        mBackground->grabGesture(Qt::PinchGesture);
+//        mBackground->grabGesture(Qt::SwipeGesture);
+//        mBackground->setAutoFillBackground(true);
         mBackground->setBackgroundRole(QPalette::Window);
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         mBackground->setFixedSize(obj->width, obj->height);
 #else
-//        QRect rectBack = mBackground->geometry();
         QRect rectMain = this->geometry();
-
         QSize icSize =  this->iconSize();
         int width = rectMain.width() + icSize.width() + 16;
         rectMain.setWidth(width);
@@ -2647,27 +2609,27 @@ void MainWindow::setPage(ulong handle, int width, int height)
         // positions of widgets and mouse presses.
         int avHeight = rectMain.height() - height;
         MSG_DEBUG("Difference in height:   " << avHeight);
-//        MSG_DEBUG("avHeight=" << avHeight);
         gPageManager->setFirstTopPixel(avHeight);
 #endif
-        newBackground = true;
+        // By default set a transparent background
+        QPixmap pix(obj->width, obj->height);
+        pix.fill(QColor::fromRgba(qRgba(0,0,0,0xff)));
+        QPalette palette;
+        palette.setBrush(QPalette::Window, pix);
+        mBackground->setPalette(palette);
+        setCentralWidget(mBackground);
+        centralWidget()->show();
     }
-#ifdef __ANDROID__
-    else
-        mBackground->hide();
-#endif
-    // By default set a transparent background
-    QPixmap pix(obj->width, obj->height);
-    pix.fill(QColor::fromRgba(qRgba(0,0,0,0xff)));
-    QPalette palette;
-    palette.setBrush(QPalette::Window, pix);
-    mBackground->setPalette(palette);
 
-    if (newBackground || this->centralWidget() == nullptr)
-        this->setCentralWidget(mBackground);
+    obj->object.widget = new QWidget(mBackground);
+    obj->object.widget->setFixedSize(obj->width, obj->height);
+    obj->object.widget->setAutoFillBackground(true);
+    obj->object.widget->grabGesture(Qt::PinchGesture);
+    obj->object.widget->grabGesture(Qt::SwipeGesture);
+//    obj->object.widget->show();
 
     mActualPageHandle = handle;
-    mBackground->show();
+    MSG_DEBUG("Current page: " << TObject::handleToString(handle));
     draw_mutex.unlock();
 }
 
@@ -2776,6 +2738,7 @@ void MainWindow::setBackground(ulong handle, QByteArray image, size_t rowBytes, 
     }
 
     MSG_TRACE("Object " << TObject::handleToString(handle) << " of type " << gObject->objectToString(obj->type) << " found!");
+    MSG_DEBUG("Object " << TObject::handleToString(handle) << " has " << (mHasFocus ? "the" : "no") << " focus.");
 
     if (obj->type == TObject::OBJ_BUTTON || obj->type == TObject::OBJ_SUBPAGE)
     {
@@ -2816,32 +2779,34 @@ void MainWindow::setBackground(ulong handle, QByteArray image, size_t rowBytes, 
             obj->object.label->setPixmap(pix);
 
             if (mHasFocus)
+            {
                 obj->object.label->show();
+                obj->object.label->activateWindow();
+            }
         }
         else
         {
-            MSG_DEBUG("Setting image as background for page " << ((handle >> 16) & 0x0000ffff));
+            MSG_DEBUG("Setting image as background for subpage " << ((handle >> 16) & 0x0000ffff));
             QPalette palette;
             palette.setBrush(QPalette::Window, QBrush(pix));
             obj->object.widget->setPalette(palette);
-            obj->object.widget->show();
+
+            if (mHasFocus)
+            {
+                obj->object.widget->show();
+                obj->object.widget->activateWindow();
+            }
         }
     }
     else if (obj->type == TObject::OBJ_PAGE)
     {
-        bool newBackground = false;
-
         if (!mBackground)
         {
-            mBackground = new QWidget();
-            mBackground->setAutoFillBackground(true);
-            mBackground->setBackgroundRole(QPalette::Window);
-            mBackground->setFixedSize(obj->width, obj->height);
-            newBackground = true;
-            MSG_DEBUG("New background image added to page with size " << obj->width << " x " << obj->height);
+            displayMessage("Can't set a background without an active page!", "Internal error");
+            return;
         }
-        else if (mBackground->width() != obj->width || mBackground->height() != obj->height)
-            mBackground->setFixedSize(obj->width, obj->height);
+//        else if (mBackground->width() != obj->width || mBackground->height() != obj->height)
+//            mBackground->setFixedSize(obj->width, obj->height);
 
         QPixmap pix(obj->width, obj->height);
         pix.fill(QColor::fromRgba(qRgba(TColor::getRed(color),TColor::getGreen(color),TColor::getBlue(color),TColor::getAlpha(color))));
@@ -2860,13 +2825,13 @@ void MainWindow::setBackground(ulong handle, QByteArray image, size_t rowBytes, 
 
         QPalette palette;
         palette.setBrush(QPalette::Window, QBrush(pix));
-        mBackground->setPalette(palette);
-
-        if (newBackground)
-            this->setCentralWidget(mBackground);
+        obj->object.widget->setPalette(palette);
 
         if (mHasFocus)
-            mBackground->show();
+        {
+            obj->object.widget->show();
+            obj->object.widget->activateWindow();
+        }
 
         MSG_DEBUG("Background set");
     }
@@ -2886,15 +2851,15 @@ void MainWindow::dropPage(ulong handle)
         return;
     }
 
-    gObject->removeAllChilds(handle);
+    gObject->removeAllChilds(handle, false);
     gObject->removeObject(handle);
-
+/*
     if (mBackground)
     {
         delete mBackground;
         mBackground = nullptr;
     }
-
+*/
     draw_mutex.unlock();
 }
 
@@ -3123,9 +3088,9 @@ void MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, i
 
         string text = button->getText();
 
-        if (par->type == TObject::OBJ_PAGE)
-            obj->object.plaintext = new TQEditLine(text, mBackground, button->isMultiLine());
-        else
+//        if (par->type == TObject::OBJ_PAGE)
+//            obj->object.plaintext = new TQEditLine(text, mBackground, button->isMultiLine());
+//        else
             obj->object.plaintext = new TQEditLine(text, par->object.widget, button->isMultiLine());
 
         obj->object.plaintext->setHandle(handle);
@@ -3320,9 +3285,9 @@ void MainWindow::listBox(Button::TButton* button, QByteArray buffer, int width, 
 
         vector<string> listContent = button->getListContent();
 
-        if (par->type == TObject::OBJ_PAGE)
-            obj->object.list = new QListWidget(mBackground);
-        else
+//        if (par->type == TObject::OBJ_PAGE)
+//            obj->object.list = new QListWidget(mBackground);
+//        else
             obj->object.list = new QListWidget(par->object.widget);
 
 //        QString objName = "tlistCallback";

@@ -802,8 +802,6 @@ bool TButton::makeElement(int instance)
     }
     else if (type == LISTBOX)
     {
-        MSG_DEBUG("List " << na << " found.");
-
         if (_getListContent && !mSystemReg)
         {
             mListContent = _getListContent(mHandle, ap, ta, ti, tr, tc);

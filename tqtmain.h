@@ -239,7 +239,7 @@ class MainWindow : public QMainWindow, TQManageQueue
         bool mDoRepaint{false};             // This is set to TRUE whenever a reconnection to the controller happened.
         TQtSettings *mSettings{nullptr};    // The pointer to the settings dialog
         bool settingsChanged{false};        // true = settings have changed
-        QWidget *mBackground{nullptr};      // The background of the visible page
+        QWidget *mBackground{nullptr};      // The background of the application window (central widget)
         QToolBar *mToolbar{nullptr};        // The toolbar, if there is any
         std::string mVideoURL;              // If the button is a video, this is the URL where it plays from.
         std::string mFileConfig;            // Path and file name of the config file

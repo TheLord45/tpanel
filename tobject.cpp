@@ -316,6 +316,9 @@ void TObject::removeObject(ulong handle, bool drop)
 {
     DECL_TRACER("TObject::removeObject(ulong handle, bool drop)");
 
+    if (!handle)
+        return;
+
     mutex_obj.lock();
     OBJECT_t *obj = mObject;
     OBJECT_t *prev = nullptr;
@@ -357,6 +360,9 @@ void TObject::removeObject(ulong handle, bool drop)
 void TObject::removeAllChilds(ulong handle, bool drop)
 {
     DECL_TRACER("TObject::removeAllChilds(ulong handle, bool drop)");
+
+    if (!handle)
+        return;
 
     mutex_obj.lock();
     OBJECT_t *obj = mObject;

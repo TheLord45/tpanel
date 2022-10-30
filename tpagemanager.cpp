@@ -1576,8 +1576,11 @@ bool TPageManager::setPage(int PageID, bool forget)
     if (PageID >= SYSTEM_PAGE_START && !refresh)
         reloadSystemPage(pg);
 
+    int width = mTSettings->getWith();
+    int height = mTSettings->getHeight();
+
     if (_setPage)
-        _setPage((mActualPage << 16) & 0xffff0000, pg->getWidth(), pg->getHeight());
+        _setPage((mActualPage << 16) & 0xffff0000, width, height);
 
     pg->show();
     return true;

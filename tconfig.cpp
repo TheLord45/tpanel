@@ -1068,7 +1068,6 @@ bool TConfig::saveSettings()
             MSG_INFO("Temporary settings were copied over.");
         }
 
-        mTemporary = false;
         MSG_DEBUG("Saving to file " << fname);
         ofstream file(fname);
         string lines = "LogFile=" + localSettings.logFile + "\n";
@@ -1122,17 +1121,19 @@ bool TConfig::saveSettings()
         file.write(lines.c_str(), lines.size());
         file.close();
         MSG_INFO("Actual log level: " << localSettings.logLevel);
+
+        if (mTemporary)
+        {
+            TError::Current()->setLogLevel(localSettings.logLevel);
+            TError::Current()->setLogFile(localSettings.logFile);
+        }
+
+        mTemporary = false;
     }
     catch (std::exception& e)
     {
         MSG_ERROR("Couldn't write configs: " << e.what());
         return false;
-    }
-
-    if (mTemporary)
-    {
-        TError::Current()->setLogLevel(localSettings.logLevel);
-        TError::Current()->setLogFile(localSettings.logFile);
     }
 
     return true;

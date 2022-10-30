@@ -232,11 +232,7 @@ bool DecodeDataToBitmap(sk_sp<SkData> data, SkBitmap* dst)
 {
     std::unique_ptr<SkImageGenerator> gen(SkImageGenerator::MakeFromEncoded(std::move(data)));
     return gen && dst->tryAllocPixels(gen->getInfo()) &&
-//#ifdef __ANDROID__
     gen->getPixels(gen->getInfo().makeColorType(kBGRA_8888_SkColorType).makeAlphaType(kPremul_SkAlphaType), dst->getPixels(), dst->rowBytes());
-//#else
-//    gen->getPixels(gen->getInfo().makeColorSpace(nullptr), dst->getPixels(), dst->rowBytes());
-//#endif
 }
 
 std::unique_ptr<SkStreamAsset> GetResourceAsStream(const char* resource, _RESOURCE_TYPE rs)
