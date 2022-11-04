@@ -99,7 +99,7 @@ void TObject::dropContent(OBJECT_t* obj, bool lock)
             case OBJ_SUBPAGE:
                 if (obj->object.widget)
                 {
-                    obj->object.widget->close();        // This deletes all childs and the window itself
+                    obj->object.widget->close();        // This deletes all childs and the widget itself
                     obj->object.widget = nullptr;
                 }
             break;
@@ -416,7 +416,7 @@ void TObject::cleanMarked()
         {
             if (obj->type == OBJ_SUBPAGE && obj->object.widget)
             {
-                delete obj->object.widget;
+                obj->object.widget->close();
                 obj->object.widget = nullptr;
             }
 
@@ -436,6 +436,47 @@ void TObject::cleanMarked()
         }
 
         prev = obj;
+        obj = obj->next;
+    }
+
+    mutex_obj.unlock();
+}
+
+void TObject::invalidateAllObjects()
+{
+    DECL_TRACER("TObject::invalidateAllObjects()");
+
+    mutex_obj.lock();
+    OBJECT_t *obj = mObject;
+
+    while (obj)
+    {
+        obj->object.vwidget = nullptr;      // Because it's a union all types will be NULL
+        obj->remove = true;
+        obj->animation = nullptr;
+
+        obj = obj->next;
+    }
+
+    mutex_obj.unlock();
+}
+
+void TObject::invalidateAllSubObjects(ulong handle)
+{
+    DECL_TRACER("::invalidateAllSubObjects(ulong handle)");
+
+    mutex_obj.lock();
+    OBJECT_t *obj = mObject;
+
+    while (obj)
+    {
+        if (obj->handle != handle && (obj->handle & 0xffff0000) == handle)
+        {
+            obj->object.vwidget = nullptr;  // Because it's a union all types will be NULL
+            obj->remove = true;
+            obj->animation = nullptr;
+        }
+
         obj = obj->next;
     }
 

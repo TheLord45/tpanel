@@ -466,7 +466,7 @@ void TQtSettings::doResize()
         this->move(scale(rect.left()), scale(rect.top()));
 
     // Font size calculation
-    double refWidth = gPageManager->getSettings()->getWith();
+    double refWidth = gPageManager->getSettings()->getWidth();
     double refHeight = gPageManager->getSettings()->getHeight();
     double dpi = QGuiApplication::primaryScreen()->logicalDotsPerInch();
     double amxDpi = dpi / ((width > height) ? width : height) * ((refWidth > refHeight) ? refWidth : refHeight);

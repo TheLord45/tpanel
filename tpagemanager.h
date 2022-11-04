@@ -127,7 +127,7 @@ class TPageManager : public TAmxCommands
         void registerDropButton(std::function<void(ulong hanlde)> dropButton) { _dropButton = dropButton; }
         void registerCBsetVisible(std::function<void(ulong handle, bool state)> setVisible) { _setVisible = setVisible; }
         void registerCallbackSP(std::function<void (ulong handle, int width, int height)> setPage) { _setPage = setPage; }
-        void registerCallbackSSP(std::function<void (ulong handle, int left, int top, int width, int height, ANIMATION_t animate)> setSubPage) { _setSubPage = setSubPage; }
+        void registerCallbackSSP(std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate)> setSubPage) { _setSubPage = setSubPage; }
         void registerCallbackSB(std::function<void (ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color)> setBackground) {_setBackground = setBackground; }
         void deployCallbacks();
 #ifdef __ANDROID__
@@ -396,7 +396,7 @@ class TPageManager : public TAmxCommands
         std::function<void (ulong handle, int width, int height)> getCallbackSetPage() { return _setPage; }
         std::function<void (Button::TButton *button, Button::BITMAP_t& bm, int frame)> getCallbackInputText() { return _callInputText; }
         std::function<void (Button::TButton *button, Button::BITMAP_t& bm, int frame)> getCallbackListBox() { return _callListBox; }
-        std::function<void (ulong handle, int left, int top, int width, int height, ANIMATION_t animate)> getCallbackSetSubPage() { return _setSubPage; }
+        std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate)> getCallbackSetSubPage() { return _setSubPage; }
         std::function<void (ulong handle)> getCallDropPage() { return _callDropPage; }
         std::function<void (ulong handle)> getCallDropSubPage() { return _callDropSubPage; }
         std::function<void (const std::string& file)> getCallPlaySound() { return _playSound; }
@@ -474,7 +474,7 @@ class TPageManager : public TAmxCommands
         std::function<void (ulong handle)> _dropButton{nullptr};
         std::function<void (ulong handle, bool state)> _setVisible{nullptr};
         std::function<void (ulong handle, int width, int height)> _setPage{nullptr};
-        std::function<void (ulong handle, int left, int top, int width, int height, ANIMATION_t animate)> _setSubPage{nullptr};
+        std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate)> _setSubPage{nullptr};
         std::function<void (ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color)> _setBackground{nullptr};
         std::function<void (ulong handle, const std::string& text, const std::string& font, const std::string& family, int size, int x, int y, ulong color, ulong effectColor, FONT_STYLE style, Button::TEXT_ORIENTATION ori, Button::TEXT_EFFECT effect, bool ww)> _setText{nullptr};
         std::function<void (ulong handle)> _callDropPage{nullptr};

@@ -24,6 +24,9 @@
 #   ifdef QT5_LINUX
 #       include <QtAndroidExtras/QAndroidJniObject>
 #       include <QtAndroidExtras/QtAndroid>
+#   else
+#       include <QJniObject>
+#       include <QCoreApplication>
 #   endif
 #   include <android/log.h>
 #endif
@@ -900,6 +903,8 @@ void TPageManager::hideSetup()
             showSubPage(*iter);
             MSG_PROTOCOL("Activated subpage: " << *iter);
         }
+
+        mSavedSubpages.clear();
     }
 }
 
@@ -1340,7 +1345,7 @@ bool TPageManager::run()
     pg->regCallPlayVideo(_callPlayVideo);
 
     int width, height;
-    width = mTSettings->getWith();
+    width = mTSettings->getWidth();
     height = mTSettings->getHeight();
 #ifdef _SCALE_SKIA_
     if (mScaleFactor != 1.0)
@@ -1385,7 +1390,7 @@ bool TPageManager::run()
             ani.hideTime = subPg->getHideTime();
 
             subPg->setZOrder(pg->getNextZOrder());
-            _setSubPage(subPg->getHandle(), left, top, width, height, ani);
+            _setSubPage(subPg->getHandle(), pg->getHandle(), left, top, width, height, ani);
             subPg->show();
         }
 
@@ -1576,8 +1581,8 @@ bool TPageManager::setPage(int PageID, bool forget)
     if (PageID >= SYSTEM_PAGE_START && !refresh)
         reloadSystemPage(pg);
 
-    int width = mTSettings->getWith();
-    int height = mTSettings->getHeight();
+    int width = (PageID >= SYSTEM_PAGE_START ? mSystemSettings->getWidth() : mTSettings->getWidth());
+    int height = (PageID >= SYSTEM_PAGE_START ? mSystemSettings->getHeight() : mTSettings->getHeight());
 
     if (_setPage)
         _setPage((mActualPage << 16) & 0xffff0000, width, height);
@@ -2918,7 +2923,7 @@ void TPageManager::showSubPage(const string& name)
             if (pg->getTimeout() > 0)
                 pg->startTimer();
 
-            _setSubPage(pg->getHandle(), left, top, width, height, ani);
+            _setSubPage(pg->getHandle(), page->getHandle(), left, top, width, height, ani);
         }
     }
 
@@ -3027,7 +3032,7 @@ void TPageManager::showSubPage(int number, bool force)
             if (pg->getTimeout() > 0)
                 pg->startTimer();
 
-            _setSubPage(pg->getHandle(), left, top, width, height, ani);
+            _setSubPage(pg->getHandle(), page->getHandle(), left, top, width, height, ani);
         }
     }
 
@@ -3778,7 +3783,7 @@ void TPageManager::doFTR(int port, vector<int>& channels, vector<string>& pars)
             return;
 
         int width, height;
-        width = mTSettings->getWith();
+        width = mTSettings->getWidth();
         height = mTSettings->getHeight();
 #ifdef _SCALE_SKIA_
         if (mScaleFactor != 1.0)
@@ -7895,7 +7900,7 @@ void TPageManager::doVTP (int, vector<int>&, vector<string>& pars)
         return;
     }
 
-    if (x < 0 || x > mTSettings->getWith() || y < 0 || y > mTSettings->getHeight())
+    if (x < 0 || x > mTSettings->getWidth() || y < 0 || y > mTSettings->getHeight())
     {
         MSG_ERROR("Illegal coordinates " << x << " x " << y << ". Ignoring command!");
         return;

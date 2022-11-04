@@ -117,7 +117,7 @@ class TSettings : public TValidateFile
         const std::string& getPath() { return mPath; }
         PANEL_SETUP_T& getSettings() { return mSetup; }
         PROJECT_INFO& getProjectInfo() { return mProject; }
-        int getWith() { return mSetup.screenWidth; }
+        int getWidth() { return mSetup.screenWidth; }
         int getHeight() { return mSetup.screenHeight; }
         int getRotate() { return mSetup.screenRotate; }
         bool isPortrait();

@@ -9,7 +9,7 @@
     <!-- %%INSERT_FEATURES -->
 
     <supports-screens android:largeScreens="true" android:normalScreens="true" android:anyDensity="true" android:smallScreens="true"/>
-    <uses-sdk android:minSdkVersion="29" android:targetSdkVersion="29"/>
+    <!-- <uses-sdk android:minSdkVersion="29" android:targetSdkVersion="29"/> -->
     <application android:hardwareAccelerated="true" android:name="org.qtproject.qt5.android.bindings.QtApplication" android:label="-- %%INSERT_APP_NAME%% --" android:extractNativeLibs="true" android:icon="@drawable/icon" android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
         <activity android:configChanges="orientation|uiMode|screenLayout|screenSize|smallestScreenSize|layoutDirection|locale|fontScale|keyboard|keyboardHidden|navigation|mcc|mnc|density" android:name="org.qtproject.qt5.android.bindings.QtActivity" android:label="-- %%INSERT_APP_NAME%% --" android:launchMode="singleTop" android:screenOrientation="nosensor">
             <intent-filter>

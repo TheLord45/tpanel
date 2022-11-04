@@ -1,8 +1,26 @@
 # Created by and for Qt Creator This file was created for editing the project sources only.
 # You may attempt to use it for building too, by modifying this file here.
 
+# Define the following to either 5 or 6. It defines for which Qt major
+# version the code should be compiled and linked.
+# As of writing this lines, it was not possible to build a running
+# Android version with Qt6. Up to version Qt 6.4 it's possible to compile
+# an Android version for a particular processor type, but the resulting
+# binary doesn't run. But it is up to you to try with any newer version.
+#
+
+# ------------------------------------------------------------------------
+#       DO NOT EDIT ANYTHING BELOW THIS LINE UNTIL YOU KNOW WHAT
+#                            YOU ARE DOING!!
+# ------------------------------------------------------------------------
+
 TARGET = tpanel
-QT = core core-private gui widgets multimedia multimediawidgets sensors androidextras
+
+versionAtMost(QT_VERSION, 5.15.2) {
+QT = core core-private gui gui-private widgets multimedia multimediawidgets sensors qml quickwidgets androidextras
+} else {
+QT = core core-private gui widgets multimedia multimediawidgets sensors qml quickwidgets
+}
 
 # The main application
 HEADERS = \
@@ -224,7 +242,30 @@ equals(ANDROID_TARGET_ARCH,x86_64) {
     $$EXT_LIB_PATH/pjsip/lib/libilbccodec-x86_64-pc-linux-android.a
 }
 
+# Define with the QT5_LINUX and QT6_LINUX definitions for which of the two
+# Qt major versions you want to compile.
+#
+#  * QT5_LINUX     If defined the code for QT5.15 will be used
+#  * QT6_LINUX     If defined the code for QT6.x will be used
+#
+# Never define both identifiers!
+#
+# Additional definitions possible:
+#  * _SCALE_SKIA_   If this is defined the scaling is done by the Skia
+#                   library. While the result is the same, it is known to be
+#                   slower. Beside this, this feature is not well tested.
+#
+#  * QTSETTINGS     If this is set a Qt dialog is used for the settings. This
+#                   dialog is scaled depending on the size of the screen. It
+#                   is possible that the text is not readable or the fonts are
+#                   not well sized. Beside this on Android the ComboBoxes may
+#                   have wrong colors like black text on black background!
+#
+versionAtMost(QT_VERSION, 5.15.2) {
 DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x050F00 QT5_LINUX=1
+} else {
+DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x050F00 QT6_LINUX=1
+}
 
 RESOURCES += \
     tpanel.qrc

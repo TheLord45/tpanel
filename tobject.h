@@ -95,6 +95,8 @@ class TObject
         void cleanMarked();
         void removeAllChilds(ulong handle, bool drop=true);
         void removeObject(ulong handle, bool drop=true);
+        void invalidateAllObjects();
+        void invalidateAllSubObjects(ulong handle);
 
         static std::string handleToString(ulong handle)
         {

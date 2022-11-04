@@ -77,7 +77,7 @@ class TQManageQueue
 
         void addButton(ulong handle, ulong parent, unsigned char *buffer, int pixline, int left, int top, int width, int height);
         void addPage(ulong handle, int width, int height);
-        void addSubPage(ulong handle, int left, int top, int width, int height, ANIMATION_t anim);
+        void addSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t anim);
         void addBackground(ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color);
         void addVideo(ulong handle, ulong parent, ulong left, ulong top, ulong width, ulong height, std::string url, std::string user, std::string pw);
         void addInText(ulong handle, Button::TButton *button, Button::BITMAP_t bm, int frame);
@@ -85,7 +85,7 @@ class TQManageQueue
 
         bool getButton(ulong *handle, ulong *parent, unsigned char **buffer, int *pixline, int *left, int *top, int *width, int *height);
         bool getPage(ulong *handle, int *width, int *height);
-        bool getSubPage(ulong *handle, int *left, int *top, int *width, int *height, ANIMATION_t *anim);
+        bool getSubPage(ulong *handle, ulong *parent, int *left, int *top, int *width, int *height, ANIMATION_t *anim);
         bool getBackground(ulong *handle, unsigned char **image, size_t *size, size_t *rowBytes, int *width, int *height, ulong *color);
         bool getVideo(ulong *handle, ulong *parent, int *left, int *top, int *width, int *height, std::string *url, std::string *user, std::string *pw);
         bool getInText(ulong *handle, Button::TButton **button, Button::BITMAP_t *bm, int *frame);

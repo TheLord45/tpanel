@@ -1832,7 +1832,7 @@ void TButton::setRectangle(int left, int top, int right, int bottom)
     if (!gPageManager)
         return;
 
-    int screenWidth = gPageManager->getSettings()->getWith();
+    int screenWidth = gPageManager->getSettings()->getWidth();
     int screenHeight = gPageManager->getSettings()->getHeight();
     int width = right - left;
     int height = bottom - top;
@@ -7298,8 +7298,12 @@ bool TButton::doClick(int x, int y, bool pressed)
                 TConfig::saveSettings();
                 drawButton(mActInstance, true);
 
-                if (gPageManager)
+                if (gPageManager && gPageManager->getSettings() != gPageManager->getSystemSettings())
                     gPageManager->hideSetup();
+                else if (gPageManager && gPageManager->getDisplayMessage())
+                    gPageManager->getDisplayMessage()("Settings were saved!", "Info");
+                else
+                    MSG_INFO("Settings were saved.");
             }
             else
             {
@@ -7315,7 +7319,7 @@ bool TButton::doClick(int x, int y, bool pressed)
                 TConfig::reset();
                 drawButton(mActInstance, true);
 
-                if (gPageManager)
+                if (gPageManager && gPageManager->getSettings() != gPageManager->getSystemSettings())
                     gPageManager->hideSetup();
             }
             else

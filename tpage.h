@@ -53,6 +53,7 @@ class TPage : public TValidateFile, public TPageInterface
         std::string& getName() { return mPage.name; }
         int getNumber() { return mPage.pageID; }
         bool isVisilble() { return mVisible; }
+        ulong getHandle() { return (mPage.pageID << 16) & 0xffff0000; }
 
         PAGECHAIN_T *addSubPage(TSubPage *pg);
         TSubPage *getSubPage(int pageID);

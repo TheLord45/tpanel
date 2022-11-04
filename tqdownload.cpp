@@ -60,7 +60,7 @@ void TqDownload::doResize()
 {
     DECL_TRACER("TqDownload::doResize()");
 
-    if (mScaleFactor == 0.0 || mScaleFactor == 1.0)
+    if (mScaleFactor <= 0.0 || mScaleFactor == 1.0)
         return;
 
     QRect rect = this->geometry();
@@ -93,6 +93,7 @@ void TqDownload::doResize()
             pb->resize(size);
             rect = pb->geometry();
             pb->move(scale(rect.left()), scale(rect.top()));
+            pb->setStyleSheet("{background-color: #97be0d;color: #000000;text-align: center;}");
         }
         else if (name.startsWith("label"))   // It's a label
         {
@@ -102,6 +103,10 @@ void TqDownload::doResize()
             lb->resize(size);
             rect = lb->geometry();
             lb->move(scale(rect.left()), scale(rect.top()));
+            QFont font = lb->font();
+            int pixelSize = lb->size().height() - 2;
+            font.setPixelSize(pixelSize);
+            lb->setFont(font);
         }
     }
 }

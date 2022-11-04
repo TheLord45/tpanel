@@ -85,7 +85,7 @@ class MainWindow : public QMainWindow, TQManageQueue
         void sigDisplayButton(ulong handle, ulong parent, QByteArray buffer, int width, int height, int pixline, int left, int top);
         void sigSetVisible(ulong handle, bool state);
         void sigSetPage(ulong handle, int width, int height);
-        void sigSetSubPage(ulong handle, int left, int top, int width, int height, ANIMATION_t animate);
+        void sigSetSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate);
         void sigSetBackground(ulong handle, QByteArray image, size_t rowBytes, int width, int height, ulong color);
         void sigDropPage(ulong handle);
         void sigDropSubPage(ulong handle);
@@ -120,7 +120,7 @@ class MainWindow : public QMainWindow, TQManageQueue
         void closeEvent(QCloseEvent *event) override;
         void mousePressEvent(QMouseEvent* event) override;
         void mouseReleaseEvent(QMouseEvent* event) override;
-        bool eventFilter(QObject *obj, QEvent *ev) override;
+        bool eventFilter(QObject *, QEvent *ev) override;
 
     private slots:
         void settings();
@@ -131,7 +131,7 @@ class MainWindow : public QMainWindow, TQManageQueue
         void displayButton(ulong handle, ulong parent, QByteArray buffer, int width, int height, int pixline, int left, int top);
         void SetVisible(ulong handle, bool state);
         void setPage(ulong handle, int width, int height);
-        void setSubPage(ulong hanlde, int left, int top, int width, int height, ANIMATION_t animate);
+        void setSubPage(ulong hanlde, ulong parent, int left, int top, int width, int height, ANIMATION_t animate);
         void setBackground(ulong handle, QByteArray image, size_t rowBytes, int width, int height, ulong color);
         void dropPage(ulong handle);
         void dropSubPage(ulong handle);
@@ -195,7 +195,7 @@ class MainWindow : public QMainWindow, TQManageQueue
         void _displayButton(ulong handle, ulong parent, unsigned char* buffer, int width, int height, int pixline, int left, int top);
         void _setVisible(ulong handle, bool state);
         void _setPage(ulong handle, int width, int height);
-        void _setSubPage(ulong handle, int left, int top, int width, int height, ANIMATION_t animate);
+        void _setSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate);
         void _setBackground(ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color);
         void _dropPage(ulong handle);
         void _dropSubPage(ulong handle);
@@ -227,7 +227,10 @@ class MainWindow : public QMainWindow, TQManageQueue
 #ifdef __ANDROID__
         void _signalState(Qt::ApplicationState state);
         void _orientationChanged(int orientation);
-#endif
+#ifdef QT5_LINUX
+        void _freezeWorkaround();
+#endif  // QT5_LINUX
+#endif  // __ANDROID__
         void _repaintWindows();
         void _toFront(ulong handle);
         void _downloadSurface(const std::string& file, size_t size);
@@ -239,8 +242,10 @@ class MainWindow : public QMainWindow, TQManageQueue
         bool mDoRepaint{false};             // This is set to TRUE whenever a reconnection to the controller happened.
         TQtSettings *mSettings{nullptr};    // The pointer to the settings dialog
         bool settingsChanged{false};        // true = settings have changed
-        QWidget *mBackground{nullptr};      // The background of the application window (central widget)
+
         QToolBar *mToolbar{nullptr};        // The toolbar, if there is any
+        QPixmap mBackground;                // The background pixmap
+        QColor mBackgroundColor;            // The base background color
         std::string mVideoURL;              // If the button is a video, this is the URL where it plays from.
         std::string mFileConfig;            // Path and file name of the config file
         bool mHasFocus{true};               // If this is FALSE, no output to sceen is allowed.

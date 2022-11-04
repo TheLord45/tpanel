@@ -214,9 +214,9 @@ bool TQManageQueue::getPage(ulong* handle, int* width, int* height)
     return false;
 }
 
-void TQManageQueue::addSubPage(ulong handle, int left, int top, int width, int height, ANIMATION_t anim)
+void TQManageQueue::addSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t anim)
 {
-    DECL_TRACER("TQManageQueue::addSubPage(ulong handle, int left, int top, int width, int height, ANIMATION_t anim)");
+    DECL_TRACER("TQManageQueue::addSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t anim)");
 
     TQEmitQueue *eq = addEntity(ET_SUBPAGE);
 
@@ -224,6 +224,7 @@ void TQManageQueue::addSubPage(ulong handle, int left, int top, int width, int h
         return;
 
     eq->handle = handle;
+    eq->parent = parent;
     eq->left = left;
     eq->top = top;
     eq->width = width;
@@ -232,9 +233,9 @@ void TQManageQueue::addSubPage(ulong handle, int left, int top, int width, int h
     removeDuplicates();
 }
 
-bool TQManageQueue::getSubPage(ulong* handle, int* left, int* top, int* width, int* height, ANIMATION_t* anim)
+bool TQManageQueue::getSubPage(ulong* handle, ulong *parent, int* left, int* top, int* width, int* height, ANIMATION_t* anim)
 {
-    DECL_TRACER("TQManageQueue::getSubPage(ulong* handle, int* left, int* top, int* width, int* height, ANIMATION_t* anim)");
+    DECL_TRACER("TQManageQueue::getSubPage(ulong* handle, ulong *parent, int* left, int* top, int* width, int* height, ANIMATION_t* anim)");
 
     TQEmitQueue *eq = mEmitQueue;
 
@@ -243,6 +244,7 @@ bool TQManageQueue::getSubPage(ulong* handle, int* left, int* top, int* width, i
         if (eq->etype == ET_SUBPAGE)
         {
             *handle = eq->handle;
+            *parent = eq->parent;
             *left = eq->left;
             *top = eq->top;
             *width = eq->width;

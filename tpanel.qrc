@@ -20,7 +20,6 @@
         <file>images/pickup.png</file>
         <file>images/hangup.png</file>
         <file>images/note.png</file>
-        <file>qrc/BusyIndicator.qml</file>
         <file>ressources/__system/Controller.xml</file>
         <file>ressources/__system/DoubleBeep.xml</file>
         <file>ressources/__system/external.xma</file>

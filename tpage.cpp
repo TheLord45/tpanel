@@ -308,7 +308,7 @@ void TPage::addProgress()
     Button::SR_T bsr;
     mPage.pageID = 300;
     mPage.name = "_progress";
-    mPage.width = gPageManager->getSettings()->getWith();
+    mPage.width = gPageManager->getSettings()->getWidth();
     mPage.height = gPageManager->getSettings()->getHeight();
     double unit = (double)mPage.height / 10.0;
     MSG_DEBUG("One unit is " << unit);
@@ -468,7 +468,7 @@ void TPage::show()
         }
     }
 
-    bool haveImage;
+    bool haveImage = false;
     ulong handle = (mPage.pageID << 16) & 0xffff0000;
     MSG_DEBUG("Processing page " << mPage.pageID);
     SkBitmap target;
@@ -599,8 +599,6 @@ void TPage::show()
         SkImageInfo info = target.info();
         size_t rowBytes = info.minRowBytes();
         size_t size = info.computeByteSize(rowBytes);
-        rowBytes = target.info().minRowBytes();
-        size = target.info().computeByteSize(rowBytes);
         _setBackground(handle, (unsigned char *)target.getPixels(), size, rowBytes, target.info().width(), target.info().height(), TColor::getColor(sr[0].cf));
         haveImage = true;
     }
