@@ -281,6 +281,7 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
         double scaleFactorH = sysHeight / (double)minSysHeight;
         scale = std::min(mScaleFactorW, mScaleFactorH);
         setupScaleFactor = std::min(scaleFactorW, scaleFactorH);
+
         __android_log_print(ANDROID_LOG_DEBUG, "tpanel", "scale: %f (Screen: %1.0fx%1.0f, Page: %dx%d)", scale, width, height, minWidth, minHeight);
         __android_log_print(ANDROID_LOG_DEBUG, "tpanel", "setupScaleFactor: %f (Screen: %1.0fx%1.0f, Page: %dx%d)", setupScaleFactor, sysWidth, sysHeight, minSysWidth, minSysHeight);
 
@@ -308,14 +309,10 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
     }
 #endif  // defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
 
-#ifdef __ANDROID__
-    bool _haveAndroid=true;
-#else
-    bool _haveAndroid=false;
+#ifndef __ANDROID__
     double setupScaleFactor = 1.0;
-#endif
-    if (pmanager->getSettings() != pmanager->getSystemSettings() ||
-        (_haveAndroid && setupScaleFactor == 1.0))
+
+    if (pmanager->getSettings() != pmanager->getSystemSettings())
     {
         double width = 0.0;
         double height = 0.0;
@@ -325,17 +322,9 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
         if (!TConfig::getToolbarSuppress() && TConfig::getToolbarForce())
             minWidth += 48;
 
-#ifdef __ANDROID__
-        QList<QScreen *> screens = QGuiApplication::screens();
-        QRect screenGeometry = screens.at(0)->availableGeometry();
-
-        width = std::max(screenGeometry.width(), screenGeometry.height());
-        height = std::min(screenGeometry.height(), screenGeometry.width());
-
-#else
         width = std::max(pmanager->getSettings()->getWidth(), pmanager->getSettings()->getHeight());
         height = std::min(pmanager->getSettings()->getHeight(), pmanager->getSettings()->getWidth());
-#endif
+
         MSG_INFO("Dimension of AMX screen:" << minWidth << " x " << minHeight);
         MSG_INFO("Screen size: " << width << " x " << height);
         // The scale factor is always calculated in difference to the prefered
@@ -344,7 +333,7 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
         double scaleFactorH = height / (double)minHeight;
         setupScaleFactor = std::min(scaleFactorW, scaleFactorH);
     }
-
+#endif
     // Initialize the application
     pmanager->setDPI(QGuiApplication::primaryScreen()->logicalDotsPerInch());
     QCoreApplication::setOrganizationName(TConfig::getProgName().c_str());
@@ -609,7 +598,7 @@ MainWindow::~MainWindow()
 
     if (mMediaPlayer)
     {
-#ifdef QT6_ONLY
+#ifdef QT6_LINUX
         delete mAudioOutput;
 #endif
         delete mMediaPlayer;
@@ -2368,6 +2357,34 @@ int MainWindow::calcVolume(int value)
 #endif
 }
 
+string MainWindow::convertMask(const string& mask)
+{
+    DECL_TRACER("MainWindow::convertMask(const string& mask)");
+
+    string qMask;
+
+    for (size_t i = 0; i < mask.length(); ++i)
+    {
+        switch (mask[i])
+        {
+            case '0': qMask += "9"; break;
+            case '9': qMask += "0"; break;
+            case 'A': qMask += "N"; break;
+            case 'a': qMask += "n"; break;
+            case 'L': qMask += "X"; break;
+            case '?': qMask += "x"; break;
+            case '&': qMask += "A"; break;
+            case 'C': qMask += "a"; break;
+            case '^': qMask += ";"; break;
+
+            default:
+                qMask += mask[i];
+        }
+    }
+
+    return qMask;
+}
+
 /******************* Draw elements *************************/
 
 /**
@@ -2661,14 +2678,7 @@ void MainWindow::setPage(ulong handle, int width, int height)
         gPageManager->setFirstTopPixel(avHeight);
 #endif
     }
-#ifndef __ANDROID__
-    // By default set a black background
-    QPixmap pix(obj->width, obj->height);
-    pix.fill(QColorConstants::Black);
-    QPalette palette;
-    palette.setBrush(QPalette::Window, pix);
-    wBackground->setPalette(palette);
-#endif
+
     if (!centralWidget())
     {
         setCentralWidget(wBackground);
@@ -2842,7 +2852,9 @@ void MainWindow::setBackground(ulong handle, QByteArray image, size_t rowBytes, 
     }
     else if (obj->type == TObject::OBJ_PAGE)
     {
-        if (!centralWidget())
+        QWidget *central = nullptr;
+
+        if (!(central = centralWidget()))
         {
             displayMessage("Can't set a background without an active page!", "Internal error");
             return;
@@ -2857,33 +2869,49 @@ void MainWindow::setBackground(ulong handle, QByteArray image, size_t rowBytes, 
         QPixmap pix(obj->width, obj->height);
         QColor backgroundColor = QColor::fromRgba(qRgba(TColor::getRed(color),TColor::getGreen(color),TColor::getBlue(color),TColor::getAlpha(color)));
         pix.fill(backgroundColor);
+        QImage bgImage;
+        MSG_PROTOCOL("Filled background of size " << pix.width() << "x" << pix.height() << " with color #" << std::setfill('0') << std::setw(8) << std::hex << color);
 
         if (width > 0 && image.size() >= (width * height * (int)(rowBytes / (unsigned)width)))
         {
             QImage img((unsigned char *)image.data(), width, height, rowBytes, QImage::Format_ARGB32);
             bool valid = false;
 
-            if (isScaled())
-                valid = pix.convertFromImage(img.scaled(obj->width, obj->height, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
-            else
-                valid = pix.convertFromImage(img);
+            if (!img.isNull())
+            {
+                if (isScaled())
+                {
+                    bgImage = img.scaled(obj->width, obj->height, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+                    valid = pix.convertFromImage(bgImage);
+                    MSG_PROTOCOL("Scaled image from " << width << "x" << height << " to " << obj->width << "x" << obj->height);
+                }
+                else
+                {
+                    valid = pix.convertFromImage(img);
+                    MSG_PROTOCOL("Converted image to pixmap.");
+                }
+            }
 
             if (!valid || pix.isNull())
             {
+                if (pix.isNull())
+                    pix = QPixmap(obj->width, obj->height);
+
                 pix.fill(backgroundColor);
                 MSG_WARNING("Error converting an image! Size raw data: " << image.size() << ", Width: " << width << ", Height: " << height << ", Bytes per row: " << rowBytes);
             }
         }
 
-        QPalette palette;
-        palette.setBrush(QPalette::Window, QBrush(pix.toImage()));
-        centralWidget()->setPalette(palette);
+        QPalette palette(central->palette());
+        palette.setBrush(QPalette::Window, QBrush(pix));
+        central->setPalette(palette);
 
         if (mHasFocus)
         {
-            centralWidget()->update();
-            centralWidget()->show();
-            centralWidget()->activateWindow();
+            central->show();
+#if defined(Q_OS_ANDROID) && defined(QT5_LINUX)
+            _freezeWorkaround();
+#endif
         }
 
         MSG_DEBUG("Background set");
@@ -3151,6 +3179,7 @@ void MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, i
         }
 
         string text = button->getText();
+        string mask = button->getInputMask();
 
         if (par->type == TObject::OBJ_PAGE)
             obj->object.plaintext = new TQEditLine(text, centralWidget(), button->isMultiLine());
@@ -3188,6 +3217,8 @@ void MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, i
                 break;
             }
         }
+        else if (!mask.empty())
+            obj->object.plaintext->setInputMask(convertMask(mask));
 
         if (!buf.size() || pixline == 0)
         {
@@ -3281,7 +3312,12 @@ void MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, i
         MSG_DEBUG("Object " << TObject::handleToString(handle) << " of type " << gObject->objectToString(obj->type) << " found!");
 
         string text = button->getText();
+        string mask = button->getInputMask();
         obj->object.plaintext->setText(text);
+
+        if (!mask.empty())
+            obj->object.plaintext->setInputMask(convertMask(mask));
+
         gObject->cleanMarked();     // We want to be sure to have no dead entries.
         obj->object.plaintext->show();
     }

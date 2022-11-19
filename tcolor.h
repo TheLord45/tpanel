@@ -23,7 +23,7 @@
 #include <include/core/SkColor.h>
 #include "tpalette.h"
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__MACH__)
 typedef unsigned long int ulong;
 #endif
 

@@ -22,6 +22,24 @@
 #include <codecvt>
 #include <fstream>
 
+#ifdef __MACH__
+#include <skia/core/SkPixmap.h>
+#include <skia/core/SkSize.h>
+#include <skia/core/SkColor.h>
+#include <skia/core/SkFont.h>
+#include <skia/core/SkTypeface.h>
+#include <skia/core/SkFontMetrics.h>
+#include <skia/core/SkTextBlob.h>
+#include <skia/core/SkRegion.h>
+#include <skia/core/SkImageFilter.h>
+#include <skia/effects/SkImageFilters.h>
+#include <skia/core/SkPath.h>
+#include <skia/core/SkSurfaceProps.h>
+#include <skia/core/SkFilterQuality.h>
+#include <skia/core/SkMaskFilter.h>
+#include <skia/core/SkImageEncoder.h>
+#include <skia/core/SkRRect.h>
+#else
 #include <include/core/SkPixmap.h>
 #include <include/core/SkSize.h>
 #include <include/core/SkColor.h>
@@ -38,7 +56,7 @@
 #include <include/core/SkMaskFilter.h>
 #include <include/core/SkImageEncoder.h>
 #include <include/core/SkRRect.h>
-
+#endif
 //#ifdef __ANDROID__
 //#include <QtAndroidExtras/QAndroidJniObject>
 //#include <QtAndroid>
@@ -55,6 +73,7 @@
 #include "tpagemanager.h"
 #include "tsystemsound.h"
 #include "timgcache.h"
+#include "turl.h"
 
 using std::exception;
 using std::string;
@@ -1591,6 +1610,38 @@ bool TButton::setCameleon(const string& file, int instance)
         return false;
 
     return makeElement(instance);
+}
+
+bool TButton::setInputMask(const std::string& mask)
+{
+    DECL_TRACER("TButton::setInputMask(const std::string& mask)");
+
+    vector<char> mTable = { '0', '9', '#', 'L', '?', 'A', 'a', '&', 'C',
+                            '[', ']', '|', '{', '}', '<', '>', '^' };
+    vector<char>::iterator iter;
+
+    for (size_t i = 0; i < mask.length(); ++i)
+    {
+        bool found = false;
+
+        for (iter = mTable.begin(); iter != mTable.end(); ++iter)
+        {
+            if (mask[i] == *iter)
+            {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+        {
+            MSG_WARNING("The mask letter " << mask[i] << " is invalid!");
+            return false;
+        }
+    }
+
+    im = mask;
+    return true;
 }
 
 void TButton::setActiveInstance(int inst)
@@ -7535,9 +7586,9 @@ bool TButton::doClick(int x, int y, bool pressed)
             if (pressed)
             {
                 TConfig::setTemporary(true);
-                string sound = TConfig::getSystemSound();
+                string sound = TConfig::getProjectPath() + "/__system/graphics/sounds/" + TConfig::getSystemSound();
 
-                if (sound.empty() && gPageManager && gPageManager->getCallPlaySound())
+                if (!sound.empty() && gPageManager && gPageManager->getCallPlaySound())
                     gPageManager->getCallPlaySound()(sound);
             }
         }
@@ -7546,7 +7597,7 @@ bool TButton::doClick(int x, int y, bool pressed)
             if (pressed)
             {
                 TConfig::setTemporary(true);
-                string sound = TConfig::getSingleBeepSound();
+                string sound = TConfig::getProjectPath() + "/__system/graphics/sounds/" + TConfig::getSingleBeepSound();
 
                 if (!sound.empty() && gPageManager && gPageManager->getCallPlaySound())
                     gPageManager->getCallPlaySound()(sound);
@@ -7557,9 +7608,20 @@ bool TButton::doClick(int x, int y, bool pressed)
             if (pressed)
             {
                 TConfig::setTemporary(true);
-                string sound = TConfig::getDoubleBeepSound();
+                string sound = TConfig::getProjectPath() + "/__system/graphics/sounds/" + TConfig::getDoubleBeepSound();
 
                 if (!sound.empty() && gPageManager && gPageManager->getCallPlaySound())
+                    gPageManager->getCallPlaySound()(sound);
+            }
+        }
+        else if (isSystem && ch == SYSTEM_ITEM_SOUNDPLAYTESTSOUND)    // Play test sound
+        {
+            if (pressed)
+            {
+                TConfig::setTemporary(true);
+                string sound = TConfig::getProjectPath() + "/__system/graphics/sounds/audioTest.wav";
+
+                if (gPageManager && gPageManager->getCallPlaySound())
                     gPageManager->getCallPlaySound()(sound);
             }
         }
@@ -8579,4 +8641,231 @@ uint32_t TButton::pixelMix(uint32_t s, uint32_t d, uint32_t a, PMIX mix)
     }
 
     return r & 0x00ff;
+}
+
+bool TButton::setListSource(const string &source, const vector<string>& configs)
+{
+    DECL_TRACER("TButton::setListSource(const string &source, const vector<string>& configs)");
+
+    TUrl url;
+
+    listSourceUser.clear();
+    listSourcePass.clear();
+    listSourceCsv = false;
+    listSourceHasHeader = false;
+
+    if (configs.size() > 0)
+    {
+        vector<string>::const_iterator iter;
+
+        for (iter = configs.begin(); iter != configs.end(); ++iter)
+        {
+            size_t pos;
+
+            if ((pos = iter->find("user=")) != string::npos)
+                listSourceUser = iter->substr(pos + 5);
+            else if ((pos = iter->find("pass=")) != string::npos)
+                listSourcePass = iter->substr(pos + 5);
+            else if (iter->find("csv=") != string::npos)
+            {
+                string str = *iter;
+                string low = toLower(str);
+
+                if (low.find("true") != string::npos || low.find("1") != string::npos)
+                    listSourceCsv = true;
+            }
+            else if (iter->find("has_header=") != string::npos)
+            {
+                string str = *iter;
+                string low = toLower(str);
+
+                if (low.find("true") != string::npos || low.find("1") != string::npos)
+                    listSourceHasHeader = true;
+            }
+        }
+    }
+
+    if (!url.setUrl(source))    // Dynamic source?
+    {
+        size_t idx = 0;
+
+        if (!gPrjResources)
+            return false;
+
+        if ((idx = gPrjResources->getResourceIndex("image")) == TPrjResources::npos)
+        {
+            MSG_ERROR("There exists no image resource!");
+            return false;
+        }
+
+        RESOURCE_T resource = gPrjResources->findResource(idx, source);
+
+        if (resource.protocol.empty())
+        {
+            MSG_WARNING("Resource " << source << " not found!");
+            return false;
+        }
+
+        listSource = resource.protocol + "://";
+
+        if (!resource.user.empty() || !listSourceUser.empty())
+        {
+            listSource += ((listSourceUser.empty() == false) ? listSourceUser : resource.user);
+
+            if ((!resource.password.empty() && !resource.encrypted) || !listSourcePass.empty())
+                listSource += ":" + ((listSourcePass.empty() == false) ? listSourcePass : resource.password);
+
+            listSource += "@";
+        }
+
+        listSource += resource.host;
+
+        if (!resource.path.empty())
+            listSource += "/" + resource.path;
+
+        if (!resource.file.empty())
+            listSource += "/" + resource.file;
+
+        return true;
+    }
+
+    listSource = source;
+    return true;
+}
+
+bool TButton::setListSourceFilter(const string& filter)
+{
+    DECL_TRACER("TButton::setListSourceFilter(const string& filter)");
+
+    if (filter.empty())
+        return false;
+
+    listFilter = filter;
+    MSG_DEBUG("listSourceFilter: " << listFilter);
+    return true;
+}
+
+void TButton::setListViewColumns(int cols)
+{
+    DECL_TRACER("TButton::setListViewColumns(int cols)");
+
+    if (cols <= 0)
+        return;
+
+    tc = cols;
+}
+
+void TButton::setListViewLayout(int layout)
+{
+    DECL_TRACER("TButton::setListViewLayout(int layout)");
+
+    if (layout < 1 || layout > 6)
+        return;
+
+    listLayout = layout;
+}
+
+void TButton::setListViewComponent(int comp)
+{
+    DECL_TRACER("TButton::setListViewComponent(int comp)");
+
+    if (comp < 0 || comp > 7)
+        return;
+
+    listComponent = comp;
+}
+
+void TButton::setListViewCellheight(int height, bool percent)
+{
+    DECL_TRACER("TButton::setListViewCellheight(int height, bool percent)");
+
+    int minHeight = ht / tr;    // Total height / number of rows
+    int maxHeight = (int)((double)ht / 100.0 * 95.0);
+
+    if (!percent && (height < minHeight || height > maxHeight))
+        return;
+
+    if (percent)
+    {
+        int h = (int)((double)ht / 100.0 * (double)height);
+
+        if (h >= minHeight && h <= maxHeight)
+            tj = h;
+
+        return;
+    }
+
+    tj = height;
+}
+
+void TButton::setListViewFilterHeight(int height, bool percent)
+{
+    DECL_TRACER("TButton::setListViewFilterHeight(int height, bool percent)");
+
+    if (percent && (height < 5 || height > 25))
+        return;
+
+    if (!percent && height < 24)
+        return;
+
+    if (percent)
+    {
+        listViewColFilterHeight = (int)((double)ht / 100.0 * (double)height);
+        return;
+    }
+    else
+    {
+        int maxHeight = (int)((double)ht / 100.0 * 25.0);
+
+        if (height < maxHeight)
+            listViewColFilterHeight = height;
+    }
+}
+
+void TButton::setListViewP1(int p1)
+{
+    DECL_TRACER("TButton::setListViewP1(int p1)");
+
+    if (p1 < 10 || p1 > 90)
+        return;
+
+    listViewP1 = p1;
+}
+
+void TButton::setListViewP2(int p2)
+{
+    DECL_TRACER("TButton::setListViewP2(int p2)");
+
+    if (p2 < 10 || p2 > 90)
+        return;
+
+    listViewP2 = p2;
+}
+
+void TButton::listViewNavigate(const string &command, bool select)
+{
+    DECL_TRACER("TButton::listViewNavigate(const string &command, bool select)");
+
+    string cmd = command;
+    string upCmd = toUpper(cmd);
+
+    if (upCmd != "T" && upCmd != "B" && upCmd != "D" && upCmd != "U" && !isNumeric(upCmd, true))
+        return;
+
+    // TODO: Add code to navigate a list
+    MSG_WARNING("ListView navigation is not supported!" << " [" << upCmd << ", " << (select ? "TRUE" : "FALSE") << "]");
+}
+
+void TButton::listViewRefresh(int interval, bool force)
+{
+    DECL_TRACER("TButton::listViewRefresh(int interval, bool force)");
+
+    // TODO: Add code to load list data and display / refresh them
+}
+
+void TButton::listViewSortData(const vector<string> &columns, LIST_SORT order, const string &override)
+{
+    DECL_TRACER("TButton::listViewSortData(const vector<string> &columns, LIST_SORT order, const string &override)");
+
+    // TODO: Insert code to sort the data in the list
 }

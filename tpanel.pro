@@ -16,11 +16,18 @@
 
 TARGET = tpanel
 
+equals(OS,osx) {
+versionAtMost(QT_VERSION, 5.15.2) {
+QT = core core-private gui gui-private widgets multimedia multimediawidgets sensors qml quickwidgets
+} else {
+QT = core core-private gui widgets qml quickwidget
+}}
+isEmpty(OS) {
 versionAtMost(QT_VERSION, 5.15.2) {
 QT = core core-private gui gui-private widgets multimedia multimediawidgets sensors qml quickwidgets androidextras
 } else {
 QT = core core-private gui widgets multimedia multimediawidgets sensors qml quickwidgets
-}
+}}
 
 # The main application
 HEADERS = \
@@ -75,6 +82,7 @@ HEADERS = \
    $$PWD/tsystem.h \
    $$PWD/texpat++.h \
    $$PWD/tvector.h \
+   $$PWD/turl.h \
    $$PWD/ftplib/ftplib.h
 
 SOURCES = \
@@ -128,8 +136,10 @@ SOURCES = \
    $$PWD/tqeditline.cpp \
    $$PWD/tsystem.cpp \
    $$PWD/texpat++.cpp \
+   $$PWD/turl.cpp \
    $$PWD/ftplib/ftplib.cpp
 
+isEmpty(OS) {
 OTHER_FILES += \
         $$PWD/android/src/org/qtproject/theosys/BatteryState.java \
         $$PWD/android/src/org/qtproject/theosys/NetworkStatus.java \
@@ -144,6 +154,18 @@ INCLUDEPATH = \
     $$EXT_LIB_PATH/skia \
     $$EXT_LIB_PATH/pjsip/include \
     $$EXTRA_PATH/expat/include
+}
+equals(OS,osx) {
+    INCLUDEPATH += $$PWD/. \
+                   $$PWD/ftplib \
+                   /opt/homebrew/include \
+                   /opt/homebrew/opt/openssl@1.1/include \
+                   /usr/local/include \
+                   /usr/local/include/skia
+
+    CONFIG += c++17
+#    CONFIG += hide_symbols
+}
 
 QMAKE_CXXFLAGS += -std=c++17 -DPJ_AUTOCONF
 QMAKE_LFLAGS += -std=c++17
@@ -242,6 +264,27 @@ equals(ANDROID_TARGET_ARCH,x86_64) {
     $$EXT_LIB_PATH/pjsip/lib/libilbccodec-x86_64-pc-linux-android.a
 }
 
+contains(QMAKE_HOST.arch,arm64) {
+    INCLUDEPATH += /opt/homebrew/include /usr/local/include
+
+    LIBS += -lskia -llibpj-arm-apple-darwin22.1.0.a \
+            -llibpjlib-util-arm-apple-darwin22.1.0.a \
+            -llibpjmedia-arm-apple-darwin22.1.0.a \
+            -llibpjmedia-audiodev-arm-apple-darwin22.1.0.a \
+            -llibpjmedia-codec-arm-apple-darwin22.1.0.a \
+            -llibpjnath-arm-apple-darwin22.1.0.a \
+            -llibpjsip-arm-apple-darwin22.1.0.a \
+            -llibpjsip-simple-arm-apple-darwin22.1.0.a \
+            -llibpjsip-ua-arm-apple-darwin22.1.0.a \
+            -llibpjsua-arm-apple-darwin22.1.0.a \
+            -llibresample-arm-apple-darwin22.1.0.a \
+            -llibspeex-arm-apple-darwin22.1.0.a \
+            -llibsrtp-arm-apple-darwin22.1.0.a \
+            -llibgsmcodec-arm-apple-darwin22.1.0.a \
+            -llibwebrtc-arm-apple-darwin22.1.0.a \
+            -llibilbccodec-arm-apple-darwin22.1.0.a
+}
+
 # Define with the QT5_LINUX and QT6_LINUX definitions for which of the two
 # Qt major versions you want to compile.
 #
@@ -277,21 +320,27 @@ FORMS += \
     tqtphone.ui \
     download.ui
 
-LIBS += -lcrypto_1_1 -lssl_1_1 -lEGL -landroid -lmediandk
+isEmpty(OS) {
+    LIBS += -lcrypto_1_1 -lssl_1_1 -lEGL -landroid -lmediandk
 
-DISTFILES += \
-    android/AndroidManifest.xml \
-    android/build.gradle \
-    android/gradle.properties \
-    android/gradle/wrapper/gradle-wrapper.jar \
-    android/gradle/wrapper/gradle-wrapper.properties \
-    android/gradlew \
-    android/gradlew.bat \
-    android/res/values/libs.xml
+    DISTFILES += \
+        android/AndroidManifest.xml \
+        android/build.gradle \
+        android/gradle.properties \
+        android/gradle/wrapper/gradle-wrapper.jar \
+        android/gradle/wrapper/gradle-wrapper.properties \
+        android/gradlew \
+        android/gradlew.bat \
+        android/res/values/libs.xml
 
-ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
+    ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
+} else {
+    LIBS += -lcrypto_1_1 -lssl_1_1 -lEGL
+}
 
 # Add the ftp library
 DEPENDPATH += $$PWD/ftplib
+isEmpty(OS) {
 # Add openSSL library
 android: include($$SDK_PATH/android_openssl/openssl.pri)
+}

@@ -237,6 +237,7 @@ class MainWindow : public QMainWindow, TQManageQueue
         void doReleaseButton();
         void repaintObjects();
         int calcVolume(int value);
+        std::string convertMask(const std::string& mask);
 
         bool mWasInactive{false};           // If the application was inactive this is set to true until everything was repainted.
         bool mDoRepaint{false};             // This is set to TRUE whenever a reconnection to the controller happened.

@@ -24,6 +24,10 @@
 
 #define MAX_TMP_LEN     10
 
+#ifdef __MACH__
+typedef off_t off64_t;
+#endif
+
 class TTPInit
 {
     public:

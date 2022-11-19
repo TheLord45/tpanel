@@ -659,14 +659,33 @@ bool TSystemDraw::getBorder(const string &family, LINE_TYPE_t lt, BORDER_t *bord
 
         for (strIter = iter->member.begin(); strIter != iter->member.end(); ++strIter)
         {
-            if (strIter->compare(family) == 0)
+            /*
+             * In the table we've the "family" name in the first place while in
+             * the configuration file for a page/subpage we have the whole name.
+             * Because of this we must look if the whole name starts with the
+             * family name. If so, we've found what we're looking for.
+             * Example:
+             * Whole name in the XML configuration: AMX Elite Raised -M
+             * Family name: AMX Elite
+             * Organization:
+             * The entity "borderFamily" defines the family name (AMX Elite). A
+             * family has members: "AMX Elite -S", "AMX Elite -M" and "AMX Elite -L"
+             * in our example.
+             * The entity "borderStyle" is named like the member. With this
+             * information we'll find the correct border style and with it the
+             * file names containing the brorder graphics.
+             */
+            vector<string>parts = StrSplit(*strIter, " ", true);
+
+            if (evaluateName(parts, family))   // Here we find the wanted member
             {
                 // Find the detailed name
                 vector<BORDER_STYLE_t>::iterator styIter;
-
+                // Here we search in the style table for an element with the
+                // found member name
                 for (styIter = mDraw.borderStyles.begin(); styIter != mDraw.borderStyles.end(); ++styIter)
                 {
-                    if (styIter->name.compare(family) == 0)
+                    if (styIter->name.compare(*strIter) == 0)
                     {
                         found = true;
                         border->bdStyle = *styIter;
@@ -753,14 +772,16 @@ bool TSystemDraw::existBorder(const string &family)
 
         for (strIter = iter->member.begin(); strIter != iter->member.end(); ++strIter)
         {
-            if (strIter->compare(family) == 0)
+            vector<string>parts = StrSplit(*strIter, " ", true);
+
+            if (evaluateName(parts, family))
             {
                 // Find the detailed name
                 vector<BORDER_STYLE_t>::iterator styIter;
 
                 for (styIter = mDraw.borderStyles.begin(); styIter != mDraw.borderStyles.end(); ++styIter)
                 {
-                    if (styIter->name.compare(family) == 0)
+                    if (styIter->name.compare(*strIter) == 0)
                         return true;
                 }
             }
@@ -910,4 +931,39 @@ vector<SLIDER_t> TSystemDraw::getSliderFiles(const string& slider)
     list.push_back(slid);
 
     return list;
+}
+
+/**
+ * @brief TSystemDraw::evaluateName - Tests for all parts of \b parts in \b name
+ * The method tests if all strings in \b parts are contained in \b name.
+ *
+ * @param parts     A vector array containing one or more strings.
+ * @param name      A string which may contain all strings from \b parts.
+ *
+ * @return In case all strings from \b parts were found in \b name it returns
+ * TRUE. Otherwise FALSE.
+ */
+bool TSystemDraw::evaluateName(const std::vector<std::string>& parts, const std::string& name)
+{
+    DECL_TRACER("TSystemDraw::evaluateName(const std::vector<std::string>& parts, const std::string& name)");
+
+    if (parts.empty())
+        return false;
+
+    size_t found = 0;
+    string dbg;
+    vector<string>::const_iterator iter;
+
+    for (iter = parts.begin(); iter != parts.end(); ++iter)
+    {
+        dbg += "|" + *iter;
+
+        if (StrContains(name, *iter))
+            found++;
+    }
+
+    if (found == parts.size())
+        return true;
+
+    return false;
 }

@@ -1,13 +1,21 @@
 cmake_minimum_required(VERSION 3.1.0)
-project(tpanel VERSION 1.3.1)
+project(tpanel VERSION 1.3.3)
 
 find_package(PkgConfig)
+
+if (APPLE)
+    set(QT_DIR $ENV{HOME}/Qt/6.4.0/macos)
+    set(CMAKE_PREFIX_PATH $ENV{HOME}/Qt/6.4.0/macos/lib/cmake)
+endif(APPLE)
 
 find_package(Qt6Core)
 find_package(Qt6Gui)
 find_package(Qt6Widgets)
-find_package(Qt6Multimedia)
-find_package(Qt6MultimediaWidgets)
+
+if (NOT APPLE)
+    find_package(Qt6Multimedia)
+    find_package(Qt6MultimediaWidgets)
+endif(NOT APPLE)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -46,7 +54,12 @@ set(LIBS ${LIBS} -L/usr/local/lib
 find_library(UUID_LIBRARY NAMES uuid)
 set(LIBS ${LIBS} ${UUID_LIBRARY})
 
-set(CMAKE_INSTALL_PREFIX /usr)
+if (APPLE)
+	set(CMAKE_INSTALL_PREFIX /usr/local)
+else()
+	set(CMAKE_INSTALL_PREFIX /usr)
+endif(APPLE)
+
 set(QT_USE_QTMULTIMEDIA TRUE)
 set(QT_USE_QTMULTIMEDIAWIDGETS TRUE)
 
@@ -55,13 +68,18 @@ if(CMAKE_VERSION VERSION_LESS "3.7.0")
 endif()
 
 find_package(Qt6 COMPONENTS Widgets REQUIRED)
-find_package(Qt6 COMPONENTS Multimedia REQUIRED)
-find_package(Qt6 COMPONENTS MultimediaWidgets REQUIRED)
+
+if (NOT APPLE)
+    find_package(Qt6 COMPONENTS Multimedia REQUIRED)
+    find_package(Qt6 COMPONENTS MultimediaWidgets REQUIRED)
+endif(NOT APPLE)
 
 if (APPLE)
-	set(OSX_INCLUDE -I/opt/local/include -I/usr/local/include)
-	set(OSX_LIB -L/opt/local/lib -L/usr/local/lib)
+	set(OSX_INCLUDE -I/opt/homebrew/include -I/usr/local/include)
+	add_definitions(${OSX_INCLUDE})
+	set(OSX_LIB -L/opt/homebrew/lib -L/usr/local/lib)
 	set(LIBS ${LIBS} ${OSX_LIB})
+#	set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 endif(APPLE)
 
 add_subdirectory(ftplib)
@@ -112,6 +130,7 @@ set(SOURCES tmain.cpp
 			tsipclient.cpp
 			texcept.cpp
 			tsystem.cpp
+			turl.cpp
 			base64.cpp
 			texpat++.cpp
 			tqdownload.cpp
@@ -123,6 +142,7 @@ add_executable(tpanel ${SOURCES})
 add_definitions(-D_REENTRANT)
 add_definitions(-D_GNU_SOURCE)
 add_definitions(-DQT6_LINUX)
+add_definitions(-DPJ_AUTOCONF)
 add_definitions(${Qt6Widgets_DEFINITIONS})
 add_compile_definitions(QT_DISABLE_DEPRECATED_BEFORE=0x050F00)
 include_directories(/usr/local/include/skia)
@@ -139,6 +159,10 @@ if(CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
 	target_link_libraries(tpanel stdc++fs)
 endif()
 
-target_link_libraries(tpanel m pthread ssl crypto ftp ${LIBS} ${LIBSKIA_LIBRARY} Qt6::Widgets Qt6::Multimedia Qt6::MultimediaWidgets)
+if (NOT APPLE)
+    target_link_libraries(tpanel m pthread ssl crypto ftp ${LIBS} ${LIBSKIA_LIBRARY} Qt6::Widgets Qt6::Multimedia Qt6::MultimediaWidgets)
+else(NOT APPLE)
+    target_link_libraries(tpanel m pthread ssl crypto ftp ${LIBS} ${LIBSKIA_LIBRARY} Qt6::Widgets)
+endif(NOT APPLE)
 
 install(TARGETS tpanel RUNTIME DESTINATION bin)

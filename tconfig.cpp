@@ -1350,24 +1350,6 @@ time_t TConfig::getFtpDownloadTime()
 }
 
 /**
- * Checks a string if it contains a word which may be interpreted as a
- * boolean TRUE.
- *
- * @param boolean   A string containg a word.
- *
- * @return If the string \p boolean contains a word that can be interpreted as
- * a boolean TRUE, it returns TRUE. In any other case it returns FALSE.
- */
-bool TConfig::isTrue(const string& boolean)
-{
-    if (caseCompare(boolean, "1") == 0 || caseCompare(boolean, "yes") == 0 ||
-        caseCompare(boolean, "true") == 0 || caseCompare(boolean, "on") == 0)
-        return true;
-
-    return false;
-}
-
-/**
  * @brief TConfig::certCheck check the certificate if the connection is encrypted.
  *
  * Currently not implemented!

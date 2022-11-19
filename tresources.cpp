@@ -938,6 +938,18 @@ std::string baseName (const std::string &path)
     return ret;
 }
 
+/**
+ * @brief strnstr - Find the needle in a haystack
+ * The function searches for a string in a larger string. In case the wanted
+ * string is found it returns a pointer to the start of the string in \b haystack.
+ *
+ * @param haystack  The string who may contain \b needle.
+ * @param needle    The string to search for in \b haystack.
+ * @param len       The length of the \b haystack.
+ *
+ * @return If the \b needle was found in \b haystack a pointer to the start of
+ * the string in \b haystack is returned. Otherwise a NULL pointer is returned.
+ */
 char *strnstr(const char* haystack, const char* needle, size_t len)
 {
     if (!haystack || !needle)
@@ -974,6 +986,11 @@ char *strnstr(const char* haystack, const char* needle, size_t len)
     return nullptr;
 }
 
+bool StrContains(const std::string& str, const std::string& part)
+{
+    return str.find(part) != string::npos;
+}
+
 string getCommand(const string& fullCmd)
 {
     DECL_TRACER("getCommand(const string& fullCmd)");
@@ -995,3 +1012,48 @@ string getCommand(const string& fullCmd)
     return cmd;
 }
 
+bool isTrue(const std::string &value)
+{
+    std::string v = value;
+    std::string low = toLower(v);
+
+    if (low.find("true") != std::string::npos ||
+        low.find("on") != std::string::npos ||
+        low.find("yes") != std::string::npos ||
+        low.find("1") != std::string::npos)
+        return true;
+
+    return false;
+}
+
+bool isFalse(const std::string &value)
+{
+    std::string v = value;
+    std::string low = toLower(v);
+
+    if (low.find("false") != std::string::npos ||
+        low.find("off") != std::string::npos ||
+        low.find("no") != std::string::npos ||
+        low.find("0") != std::string::npos)
+        return true;
+
+    return false;
+}
+
+bool isNumeric(const std::string &str, bool blank)
+{
+    std::string::const_iterator iter;
+
+    for (iter = str.begin(); iter != str.end(); ++iter)
+    {
+        if (*iter < '0' || *iter > '9')
+        {
+            if (blank && *iter == ' ')
+                continue;
+
+            return false;
+        }
+    }
+
+    return true;
+}

@@ -597,6 +597,7 @@ class TPageManager : public TAmxCommands
         void getBCT(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doBDO(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doBFB(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doBIM(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doBMC(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doBMF(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doBML(int port, std::vector<int>& channels, std::vector<std::string>& pars);
@@ -671,6 +672,15 @@ class TPageManager : public TAmxCommands
         void doPHN(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void getPHN(int port, std::vector<int>& channels, std::vector<std::string>& pars);
 #endif
+        // Commands for ListView (G5)
+        void doLVD(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doLVE(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doLVF(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doLVL(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doLVM(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doLVN(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doLVR(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doLVS(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         // Commands inherited from TPControl (Touch Panel Control)
         void doTPCCMD(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doTPCACC(int port, std::vector<int>& channels, std::vector<std::string>& pars);

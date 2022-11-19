@@ -30,9 +30,15 @@
 #include <cstdint>
 #include <clocale>
 
+#ifdef __MACH__
+#include <skia/core/SkImage.h>
+#include <skia/core/SkString.h>
+#include <skia/core/SkData.h>
+#else
 #include <include/core/SkImage.h>
 #include <include/core/SkString.h>
 #include <include/core/SkData.h>
+#endif
 
 #include "terror.h"
 
@@ -102,6 +108,10 @@ std::string dirName (const std::string &path);
 std::string baseName (const std::string &path);
 char *strnstr(const char *haystack, const char *needle, size_t len);
 std::string getCommand(const std::string& fullCmd);
+bool StrContains(const std::string& str, const std::string& part);
+bool isTrue(const std::string& value);
+bool isFalse(const std::string& value);
+bool isNumeric(const std::string& str, bool blank=false);
 
 static inline std::string &ltrim(std::string &s)
 {

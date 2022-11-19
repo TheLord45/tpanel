@@ -255,6 +255,7 @@ class TSystemDraw : public TValidateFile
         }XELEMENTS_t;
 
         std::string getDirEntry(dir::TDirectory *dir, const std::string& part, bool alpha = true);
+        bool evaluateName(const std::vector<std::string>& parts, const std::string& name);
 
         std::string mPath;          // The path to the system directory tree
         bool mValid{false};         // TRUE = the path mPath is a valid directory

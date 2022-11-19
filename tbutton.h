@@ -299,6 +299,18 @@ namespace Button
         SkBitmap bitmap;
     }BITMAP_CACHE;
 
+#   define LIST_IMAGE_CELL     1
+#   define LIST_TEXT_PRIMARY   2
+#   define LIST_TEXT_SECONDARY 4
+
+    typedef enum LIST_SORT
+    {
+        LIST_SORT_NONE,
+        LIST_SORT_ASC,
+        LIST_SORT_DESC,
+        LIST_SORT_OVERRIDE
+    }LIST_SORT;
+
     class TButton : public TSystem
     {
         public:
@@ -695,6 +707,19 @@ namespace Button
              */
             bool setBargraphSliderColor(const std::string& color);
             /**
+             * Sets the input mask for the text area. This method has no
+             * effect on any non input button.
+             * @param mask  The mask.
+             * @return If all mask letters are valid it returns TRUE.
+             */
+            bool setInputMask(const std::string& mask);
+            /**
+             * Returns the input mask of the button.
+             * @rturn The input mask of the text area, if there is any. If
+             * there is no input mask present, an empty string is returned.
+             */
+            std::string& getInputMask() { return im; }
+            /**
              * Read the images, if any, from files and create an image. If there
              * are no files, draw the image as defined.
              *
@@ -918,6 +943,80 @@ namespace Button
              * @return A vector list containing the rows of the list.
              */
             std::vector<std::string>& getListContent() { return mListContent; }
+            /**
+             * @brief Listview Data Source
+             * This command sets the data source to drive the Listview entries.
+             * Note that this command only configures the data source it does
+             * not actually cause the data to be fetched. The ^LVR refresh
+             * command must be issued to load the data.
+             *
+             * @param source    A string containing the source for list data.
+             * This can be either a URL or the name of a dynamic resource data.
+             * @param configs   One or more configurations defining the layout
+             * of the source.
+             *
+             * @return If the source is valid it returns TRUE.
+             */
+            bool setListSource(const std::string &source, const std::vector<std::string>& configs);
+            /**
+             * Returns the set source for list data.
+             *
+             * @return A string containg the source or and empty string if no
+             * valid source was set.
+             */
+            std::string& getListSource() { return listSource; }
+            /**
+             * Sets a filter for the data of a listView.
+             *
+             * @param filter    A string used as a filter for the data.
+             *
+             * @return Returns true if the string was evaluated ok.
+             */
+            bool setListSourceFilter(const std::string& filter);
+            /**
+             * Returns the filter string for a listView data source.
+             *
+             * @return The filter string.
+             */
+            std::string& getListSourceFilter() { return listFilter; }
+            /**
+             * Sets the listView event number. A value of 0 turns off event
+             * reporting. Any other number activates the events. Currently are
+             * only refresh events are reported.
+             *
+             * @param num   The event number.
+             */
+            void setListViewEventNumber(int num) { listEvNum = num; }
+            /**
+             * Returns the event number of the listView. By default this number
+             * is 1401. But with the command ^LVE this number can be changed.
+             *
+             * @return The event number of the listView.
+             */
+            int getListViewEventNumber() { return listEvNum; };
+            void setListViewColumns(int cols);
+            int getListViewColumns() { return tc; }
+            void setListViewLayout(int layout);
+            int getListViewLayout() { return listLayout; }
+            void setListViewComponent(int comp);
+            int getListViewComponent() { return listComponent; }
+            void setListViewCellheight(int height, bool percent=false);
+            int getListViewCellheight() { return tj; }
+            void setListViewP1(int p1);
+            int getListViewP1() { return listViewP1; }
+            void setListViewP2(int p2);
+            int getListViewP2() { return listViewP2; }
+            void setListViewColumnFilter(bool filter) { listViewColFiler = filter; }
+            bool getListViewColumnFilter() { return listViewColFiler; }
+            void setListViewFilterHeight(int height, bool percent=false);
+            int getListViewFilterHeight() { return listViewColFilterHeight; }
+            void setListViewAlphaScroll(bool alpha) { listAlphaScroll = alpha; }
+            bool getListViewAlphaScroll() { return listAlphaScroll; }
+            void setListViewFieldMap(const std::map<std::string,std::string>& map) { listFieldMap = map; }
+            std::map<std::string,std::string>& getListViewFieldMap() { return listFieldMap; }
+            void listViewNavigate(const std::string& command, bool select=false);
+            void listViewRefresh(int interval, bool force=false);
+            void listViewSortData(const std::vector<std::string>& columns, LIST_SORT order, const std::string& override);
 
         protected:
             BUTTONTYPE getButtonType(const std::string& bt);
@@ -1046,6 +1145,24 @@ namespace Button
             bool visible{true};     // TRUE=Button is visible
             std::vector<PUSH_FUNC_T> pushFunc;  // Push functions: This are executed on button press
             std::vector<SR_T> sr;   // The elements the button consists of
+            // ListView settings (G5)
+            std::string listSource; // Defines the data source for a list.
+            int listEvNum{1401};       // ListView event number.
+            std::string listFilter; // ListView filter string.
+            int listComponent{0};   // ListView component
+            int listLayout{0};      // ListView layout.
+            std::map<std::string,std::string> listFieldMap; // Maps the fields from the source to the columns of the list
+            LIST_SORT listSort{LIST_SORT_NONE}; // ListView sort algorithm
+            std::string listSortOverride;   // A SQL ORDER BY command like sort option. Only valid if listStort == LIST_SORT_OVERRIDE
+            std::string listSourceUser;   // The user name (optional)
+            std::string listSourcePass;   // The password (optional)
+            bool listSourceCsv{false};  // TRUE = Source of listView is in CSV data
+            bool listSourceHasHeader{false};    // TRUE = The listView data has a had line which must be ignored.
+            int listViewP1{0};      // ListView layout percentage 1
+            int listViewP2{0};      // ListView layout percentage 2
+            bool listViewColFiler{false};   // ListView column filter state (TRUE = on)
+            int listViewColFilterHeight{0}; // ListView column filter height
+            bool listAlphaScroll{false};    // ListView alpha scroll state (TRUE = scrollbar visible)
 
             TPalette *mPalette{nullptr}; // The color palette
             // Image management

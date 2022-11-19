@@ -71,8 +71,9 @@ string cmdList[] =
     "^MODEL?", "^ICS-", "^ICE-", "^ICM-", "^PHN-", "?PHN-", "LEVON", "RXON",
     "BLINK", "TPCCMD", "TPCACC",
     // G5 commands
-    "^ABP", "^ADB", "^SOU", "^STP", "^TKP", "^PGE", "^PPA", "^PPF", "^PPG",
-    "^PPK", "^PPM", "^PPN", "^PPT", "^PPX", "^UTF",
+    "^ABP-", "^ADB", "^SOU-", "^STP", "^TKP-", "^PGE-", "^PPA-", "^PPF-",
+    "^PPG-", "^PPK-", "^PPM-", "^PPN-", "^PPT-", "^PPX", "^UTF-", "^LVC-",
+    "^LVD-", "^LVE-", "^LVF-", "^LVL-", "^LVM-", "^LVN-", "^LVR-", "^LVS-",
     "\0"
 };
 

@@ -318,7 +318,7 @@ string TMap::findImage(const string& name)
             if (pos != string::npos)
             {
                 string left = iter->i.substr(0, pos);
-                MSG_DEBUG("Found candidate: " << iter->i << " (" << left << ")");
+
                 if (left == name)
                     return iter->i;
             }
@@ -328,7 +328,6 @@ string TMap::findImage(const string& name)
     }
 
     MSG_WARNING("No image with name " << name << " in table found!");
-    MSG_DEBUG("Searched " << cnt << " entries for image " << name);
     return string();
 }
 

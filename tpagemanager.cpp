@@ -400,6 +400,7 @@ TPageManager::TPageManager()
     REG_CMD(getBCT, "?BCT");    // Get the current text color.
     REG_CMD(doBDO, "^BDO");     // Set the button draw order
     REG_CMD(doBFB, "^BFB");     // Set the feedback type of the button.
+    REG_CMD(doBIM, "^BIM");     // Set the input mask for the specified address
     REG_CMD(doBMC, "^BMC");     // Button copy command.
     REG_CMD(doBMF, "^BMF");     // Button Modify Command - Set any/all button parameters by sending embedded codes and data.
 //    REG_CMD(doBMI, "^BMI");    // Set the button mask image.
@@ -494,6 +495,16 @@ TPageManager::TPageManager()
     REG_CMD(doPHN, "^PHN");     // SIP commands
     REG_CMD(getPHN, "?PHN");    // SIP state commands
 #endif
+    // ListView commands (G5)
+    REG_CMD(doLVD, "^LVD");     // G5: Set Listview Data Source
+    REG_CMD(doLVE, "^LVE");     // G5: Set ListView custom event number
+    REG_CMD(doLVF, "^LVF");     // G5: Listview Filter
+    REG_CMD(doLVL, "^LVL");     // G5: ListView layout
+    REG_CMD(doLVM, "^LVM");     // G5: ListView map fields
+    REG_CMD(doLVN, "^LVN");     // G5: ListView navigate
+    REG_CMD(doLVR, "^LVR");     // G5: ListView refresh data
+    REG_CMD(doLVS, "^LVS");     // G5: ListView sort data
+
     // State commands
     REG_CMD(doON, "ON");
     REG_CMD(doOFF, "OFF");
@@ -3391,6 +3402,8 @@ void TPageManager::initOrientation()
 
 void TPageManager::setButtonCallbacks(Button::TButton *bt)
 {
+    DECL_TRACER("TPageManager::setButtonCallbacks(Button::TButton *bt)");
+
     if (!bt)
         return;
 
@@ -5339,6 +5352,40 @@ void TPageManager::doBFB(int port, vector<int>& channels, vector<std::string>& p
             Button::TButton *bt = *mapIter;
             setButtonCallbacks(bt);
             bt->setFeedback(type);
+        }
+    }
+}
+
+/*
+ * Set the input mask for the specified address.
+ */
+void TPageManager::doBIM(int port, vector<int>& channels, vector<std::string>& pars)
+{
+    DECL_TRACER("TPageManager::doBIM(int port, vector<int>& channels, vector<std::string>& pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Expecting 1 parameters but got none! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    string mask = pars[0];
+    vector<TMap::MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+            bt->setInputMask(mask);
         }
     }
 }
@@ -8796,6 +8843,453 @@ void TPageManager::getPHN(int, vector<int>&, vector<string>& pars)
     }
 }
 #endif  // _NOSIP_
+
+void TPageManager::doLVD(int port, vector<int> &channels, vector<string> &pars)
+{
+    DECL_TRACER("TPageManager::doLVD(int port, vector<int> &channels, vector<string> &pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Expecting one parameter but got none! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    string source = pars[0];
+    vector<string> configs;
+
+    if (pars.size() > 1)
+    {
+        for (size_t i = 1; i < pars.size(); ++i)
+        {
+            string low = toLower(pars[i]);
+
+            if (low.find_first_of("user=") != string::npos ||
+                low.find_first_of("pass=") != string::npos ||
+                low.find_first_of("csv=")  != string::npos ||
+                low.find_first_of("has_headers=") != string::npos)
+            {
+                configs.push_back(pars[i]);
+            }
+        }
+    }
+
+    vector<TMap::MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+            bt->setListSource(source, configs);
+        }
+    }
+
+}
+
+void TPageManager::doLVE(int port, vector<int> &channels, vector<string> &pars)
+{
+    DECL_TRACER("TPageManager::doLVE(int port, vector<int> &channels, vector<string> &pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Expecting one parameter but got none! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    int num = atoi(pars[0].c_str());
+
+    vector<TMap::MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+            bt->setListViewEventNumber(num);
+        }
+    }
+
+}
+
+void TPageManager::doLVF(int port, vector<int> &channels, vector<string> &pars)
+{
+    DECL_TRACER("TPageManager::doLVF(int port, vector<int> &channels, vector<string> &pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Expecting one parameter but got none! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    string filter;
+
+    vector<string>::iterator iter;
+
+    for (iter = pars.begin(); iter != pars.end(); ++iter)
+    {
+        if (filter.length() > 0)
+            filter += ",";
+
+        filter += *iter;
+    }
+
+    vector<TMap::MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+            bt->setListSourceFilter(filter);
+        }
+    }
+}
+
+void TPageManager::doLVL(int port, vector<int> &channels, vector<string> &pars)
+{
+    DECL_TRACER("TPageManager::doLVL(int port, vector<int> &channels, vector<string> &pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Expecting one parameter but got none! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    bool hasColumns = false;
+    int columns = 0;
+    bool hasLayout = false;
+    int layout = 0;
+    bool hasComponent = false;
+    int component = 0;
+    bool hasCellHeight = false;
+    bool cellHeightPercent = false;
+    int cellheight = 0;
+    bool hasP1 = false;
+    int p1 = 0;
+    bool hasP2 = false;
+    int p2 = 0;
+    bool hasFilter = false;
+    bool filter = false;
+    bool hasFilterHeight = false;
+    bool filterHeightPercent = false;
+    int filterheight = 0;
+    bool hasAlphaScroll = false;
+    bool alphascroll = false;
+
+    vector<string>::iterator iter;
+
+    for (iter = pars.begin(); iter != pars.end(); ++iter)
+    {
+        string low = toLower(*iter);
+
+        if (low.find("columns=") != string::npos ||
+            low.find("nc=") != string::npos ||
+            low.find("numcol=") != string::npos)
+        {
+            size_t pos = low.find("=");
+            string sCols = low.substr(pos + 1);
+            columns = atoi(sCols.c_str());
+            hasColumns = true;
+        }
+        else if (low.find("c=") != string::npos || low.find("comp=") != string::npos)
+        {
+            size_t pos = low.find("=");
+            string sComp = low.substr(pos + 1);
+            component |= atoi(sComp.c_str());
+            hasComponent = true;
+        }
+        else if (low.find("l=") != string::npos || low.find("layout=") != string::npos)
+        {
+            size_t pos = low.find("=");
+            string sLay = low.substr(pos + 1);
+            layout = atoi(sLay.c_str());
+            hasLayout = true;
+        }
+        else if (low.find("ch=") != string::npos || low.find("cellheight=") != string::npos)
+        {
+            size_t pos = low.find("=");
+            string sCh = low.substr(pos + 1);
+            cellheight = atoi(sCh.c_str());
+
+            if (low.find("%") != string::npos)
+                cellHeightPercent = true;
+
+            hasCellHeight = true;
+        }
+        else if (low.find("p1=") != string::npos)
+        {
+            size_t pos = low.find("=");
+            string sP1 = low.substr(pos + 1);
+            p1 = atoi(sP1.c_str());
+            hasP1 = true;
+        }
+        else if (low.find("p2=") != string::npos)
+        {
+            size_t pos = low.find("=");
+            string sP2 = low.substr(pos + 1);
+            p2 = atoi(sP2.c_str());
+            hasP2 = true;
+        }
+        else if (low.find("f=") != string::npos || low.find("filter=") != string::npos)
+        {
+            size_t pos = low.find("=");
+            string sFilter = low.substr(pos + 1);
+            filter = isTrue(sFilter);
+            hasFilter = true;
+        }
+        else if (low.find("fh=") != string::npos || low.find("filterheight=") != string::npos)
+        {
+            size_t pos = low.find("=");
+            string sFilter = low.substr(pos + 1);
+            filterheight = atoi(sFilter.c_str());
+
+            if (low.find("%") != string::npos)
+                filterHeightPercent = true;
+
+            hasFilterHeight = true;
+        }
+        else if (low.find("as=") != string::npos || low.find("alphascroll=") != string::npos)
+        {
+            size_t pos = low.find("=");
+            string sAlpha = low.substr(pos + 1);
+            alphascroll = isTrue(sAlpha);
+            hasAlphaScroll = true;
+        }
+    }
+
+    vector<TMap::MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+
+            if (hasColumns)         bt->setListViewColumns(columns);
+            if (hasComponent)       bt->setListViewComponent(component);
+            if (hasLayout)          bt->setListViewLayout(layout);
+            if (hasCellHeight)      bt->setListViewCellheight(cellheight, cellHeightPercent);
+            if (hasP1)              bt->setListViewP1(p1);
+            if (hasP2)              bt->setListViewP2(p2);
+            if (hasFilter)          bt->setListViewColumnFilter(filter);
+            if (hasFilterHeight)    bt->setListViewFilterHeight(filterheight, filterHeightPercent);
+            if (hasAlphaScroll)     bt->setListViewAlphaScroll(alphascroll);
+        }
+    }
+}
+
+void TPageManager::doLVM(int port, vector<int> &channels, vector<string> &pars)
+{
+    DECL_TRACER("TPageManager::doLVM(int port, vector<int> &channels, vector<string> &pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Expecting one parameter but got none! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    map<string,string> mapField;
+
+    vector<string>::iterator iter;
+
+    for (iter = pars.begin(); iter != pars.end(); ++iter)
+    {
+        string left, right;
+        size_t pos = 0;
+
+        if ((pos = iter->find("=")) != string::npos)
+        {
+            string left = iter->substr(0, pos);
+            left = toLower(left);
+            string right = iter->substr(pos + 1);
+
+            if (left == "t1" || left == "t2" || left == "i1")
+                mapField.insert(pair<string,string>(left, right));
+        }
+    }
+
+    vector<TMap::MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+            bt->setListViewFieldMap(mapField);
+        }
+    }
+}
+
+void TPageManager::doLVN(int port, vector<int> &channels, vector<string> &pars)
+{
+    DECL_TRACER("TPageManager::doLVN(int port, vector<int> &channels, vector<string> &pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Expecting one parameter but got none! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    string command = pars[0];
+    bool select = false;
+
+    if (pars.size() > 1)
+    {
+        if (isTrue(pars[1]))
+            select = true;
+    }
+
+    vector<TMap::MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+            bt->listViewNavigate(command, select);
+        }
+    }
+}
+
+void TPageManager::doLVR(int port, vector<int> &channels, vector<string> &pars)
+{
+    DECL_TRACER("TPageManager::doLVR(int port, vector<int> &channels, vector<string> &pars)");
+
+    TError::clear();
+    int interval = -1;
+    bool force = false;
+
+    if (pars.size() > 0)
+        interval = atoi(pars[0].c_str());
+
+    if (pars.size() > 1)
+        force = isTrue(pars[1]);
+
+    vector<TMap::MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+            bt->listViewRefresh(interval, force);
+        }
+    }
+}
+
+void TPageManager::doLVS(int port, vector<int> &channels, vector<string> &pars)
+{
+    DECL_TRACER("TPageManager::doLVS(int port, vector<int> &channels, vector<string> &pars)");
+
+    TError::clear();
+    vector<string> sortColumns;
+    Button::LIST_SORT sort = Button::LIST_SORT_NONE;
+    string override;
+
+    if (pars.size() > 0)
+    {
+        vector<string>::iterator iter;
+
+        for (iter = pars.begin(); iter != pars.end(); ++iter)
+        {
+            if (iter->find(";") == string::npos)
+                sortColumns.push_back(*iter);
+            else
+            {
+                vector<string> parts = StrSplit(*iter, ";");
+                sortColumns.push_back(parts[0]);
+
+                if (parts[1].find("a") != string::npos || parts[1].find("A") != string::npos)
+                    sort = Button::LIST_SORT_ASC;
+                else if (parts[1].find("d") != string::npos || parts[1].find("D") != string::npos)
+                    sort = Button::LIST_SORT_DESC;
+                else if (parts[1].find("*") != string::npos)
+                {
+                    if (parts.size() > 2 && !parts[2].empty())
+                    {
+                        override = parts[2];
+                        sort = Button::LIST_SORT_OVERRIDE;
+                    }
+                }
+                else if (parts[1].find("n") != string::npos || parts[1].find("N") != string::npos)
+                    sort = Button::LIST_SORT_NONE;
+            }
+        }
+    }
+
+    vector<TMap::MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+            bt->listViewSortData(sortColumns, sort, override);
+        }
+    }
+}
 
 void TPageManager::doTPCCMD(int, vector<int>&, vector<string>& pars)
 {

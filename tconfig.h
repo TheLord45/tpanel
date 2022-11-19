@@ -184,9 +184,6 @@ class TConfig
         static void setSIPiphone(bool state);
         static bool getSIPiphone();
 
-    protected:
-        static bool isTrue(const std::string& boolean);
-
     private:
         static uint logLevelStrToBits(const std::string& level);
         static std::string logLevelBitsToString(uint level);

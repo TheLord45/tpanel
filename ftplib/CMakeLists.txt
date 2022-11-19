@@ -4,6 +4,11 @@ set_target_properties(ftp PROPERTIES VERSION 1.0.0)
 set_target_properties(ftp PROPERTIES SOVERSION 1)
 set_target_properties(ftp PROPERTIES PUBLIC_HEADER ftplib.h)
 
+if (APPLE)
+    set(OSX_LIB -L/opt/homebrew/lib -L/usr/local/lib -lssh -lcrypto)
+    set(LIBS ${LIBS} ${OSX_LIB})
+endif(APPLE)
+
 include(GNUInstallDirs)
 install(TARGETS ftp
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
