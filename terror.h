@@ -81,6 +81,8 @@ class TStreamError
         static std::ostream *getStream() { return mStream; }
         static std::string getTime();
         static std::ostream *resetFlags(std::ostream *os);
+        static bool isStreamValid();
+        static bool isStreamValid(std::ostream& os);
 
     private:
         static unsigned int _getLevel(const std::string& slv);
@@ -98,7 +100,7 @@ class TStreamError
 class TTracer
 {
     public:
-        TTracer(const std::string& msg, int line, char *file);
+        TTracer(const std::string msg, int line, char *file);
         ~TTracer();
 
     private:
@@ -126,9 +128,7 @@ class TError : public std::ostream
         const TError& operator=(const TError& ref);
         static void lock();
         static void unlock();
-#if defined(__linux__) || defined(Q_OS_ANDROID)
         static void displayMessage(const std::string& msg);
-#endif
 
     protected:
         static std::string strToHex(const char *str, size_t size, int width, bool format, int indent);

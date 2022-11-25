@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Title</key>
+	<string>TPanel Sound Settings</string>
+	<key>StringsTable</key>
+	<string>Sound</string>
+	<key>PreferenceSpecifiers</key>
+	<array>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>Title</key>
+			<string>Sounds</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>System sound</string>
+			<key>Key</key>
+			<string>sound_system</string>
+			<key>DefaultValue</key>
+			<string>Single Beep 1</string>
+			<key>Titles</key>
+			<array>
+				<string>Single Beep 0</string>
+				<string>Single Beep 1</string>
+				<string>Single Beep 2</string>
+				<string>Single Beep 3</string>
+				<string>Single Beep 4</string>
+				<string>Single Beep 5</string>
+				<string>Single Beep 6</string>
+				<string>Single Beep 7</string>
+				<string>Single Beep 8</string>
+				<string>Single Beep 9</string>
+				<string>Single Beep 10</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<string>singleBeep.wav</string>
+				<string>singleBeep01.wav</string>
+				<string>singleBeep02.wav</string>
+				<string>singleBeep03.wav</string>
+				<string>singleBeep04.wav</string>
+				<string>singleBeep05.wav</string>
+				<string>singleBeep06.wav</string>
+				<string>singleBeep07.wav</string>
+				<string>singleBeep08.wav</string>
+				<string>singleBeep09.wav</string>
+				<string>singleBeep10.wav</string>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Single beep</string>
+			<key>Key</key>
+			<string>sound_single</string>
+			<key>DefaultValue</key>
+			<string>Single Beep 1</string>
+			<key>Titles</key>
+			<array>
+				<string>Single Beep 0</string>
+				<string>Single Beep 1</string>
+				<string>Single Beep 2</string>
+				<string>Single Beep 3</string>
+				<string>Single Beep 4</string>
+				<string>Single Beep 5</string>
+				<string>Single Beep 6</string>
+				<string>Single Beep 7</string>
+				<string>Single Beep 8</string>
+				<string>Single Beep 9</string>
+				<string>Single Beep 10</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<string>singleBeep.wav</string>
+				<string>singleBeep01.wav</string>
+				<string>singleBeep02.wav</string>
+				<string>singleBeep03.wav</string>
+				<string>singleBeep04.wav</string>
+				<string>singleBeep05.wav</string>
+				<string>singleBeep06.wav</string>
+				<string>singleBeep07.wav</string>
+				<string>singleBeep08.wav</string>
+				<string>singleBeep09.wav</string>
+				<string>singleBeep10.wav</string>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Double beep</string>
+			<key>Key</key>
+			<string>sound_double</string>
+			<key>DefaultValue</key>
+			<string>Double Beep 1</string>
+			<key>Titles</key>
+			<array>
+				<string>Double Beep 0</string>
+				<string>Double Beep 1</string>
+				<string>Double Beep 2</string>
+				<string>Double Beep 3</string>
+				<string>Double Beep 4</string>
+				<string>Double Beep 5</string>
+				<string>Double Beep 6</string>
+				<string>Double Beep 7</string>
+				<string>Double Beep 8</string>
+				<string>Double Beep 9</string>
+				<string>Double Beep 10</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<string>doubleBeep.wav</string>
+				<string>doubleBeep01.wav</string>
+				<string>doubleBeep02.wav</string>
+				<string>doubleBeep03.wav</string>
+				<string>doubleBeep04.wav</string>
+				<string>doubleBeep05.wav</string>
+				<string>doubleBeep06.wav</string>
+				<string>doubleBeep07.wav</string>
+				<string>doubleBeep08.wav</string>
+				<string>doubleBeep09.wav</string>
+				<string>doubleBeep10.wav</string>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>Enable system sound</string>
+			<key>Key</key>
+			<string>sound_enable</string>
+			<key>DefaultValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSSliderSpecifier</string>
+			<key>Title</key>
+			<string>Volume</string>
+			<key>Key</key>
+			<string>sound_volume</string>
+			<key>DefaultValue</key>
+			<integer>100</integer>
+			<key>MinimumValue</key>
+			<integer>0</integer>
+			<key>MaximumValue</key>
+			<integer>100</integer>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSSliderSpecifier</string>
+			<key>Title</key>
+			<string>Gain</string>
+			<key>Key</key>
+			<string>sound_gain</string>
+			<key>DefaultValue</key>
+			<integer>100</integer>
+			<key>MinimumValue</key>
+			<integer>0</integer>
+			<key>MaximumValue</key>
+			<integer>100</integer>
+		</dict>
+	</array>
+</dict>
+</plist>

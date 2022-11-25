@@ -52,6 +52,17 @@ namespace fs = std::filesystem;
 #   endif
 #endif
 
+#ifdef __APPLE__
+#   include <unistd.h>
+#   ifndef HOST_NAME_MAX
+#       ifdef MAXHOSTNAMELEN
+#           define HOST_NAME_MAX    MAXHOSTNAMELEN
+#       else
+#           define HOST_NAME_MAX    64
+#       endif   // MAXHOSTNAMELEN
+#   endif       // HOST_NAME_MAX
+#endif          // __APPLE__
+
 #include "tpagemanager.h"
 #include "tcolor.h"
 #include "terror.h"

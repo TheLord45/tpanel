@@ -20,7 +20,8 @@
 #include <fstream>
 #include <cstring>
 #include <iomanip>
-#ifndef __ANDROID__
+#include <algorithm>
+#ifdef __LINUX__
 #include <bits/stdc++.h>
 #endif
 

@@ -47,7 +47,9 @@ using namespace std;
 ftplib::ftplib()
 {
 #ifndef NOSSL
+#if OPENSSL_API_COMPAT < 0x010100000
     SSL_library_init();
+#endif
 #endif
 
     mp_ftphandle = static_cast<ftphandle *>(calloc(1, sizeof(ftphandle)));

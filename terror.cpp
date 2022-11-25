@@ -25,10 +25,9 @@
 #include "terror.h"
 #include "tconfig.h"
 
-#if defined(__linux__) || defined(Q_OS_ANDROID)
 #include <QMessageBox>
 #include <QTimer>
-#endif
+
 #if LOGPATH == LPATH_SYSLOG || defined(__ANDROID__)
 #   ifdef __ANDROID__
 #       include <android/log.h>
@@ -146,12 +145,23 @@ TStreamError::~TStreamError()
 
 void TStreamError::setLogFile(const std::string &lf)
 {
+#ifdef Q_OS_IOS
+    if (!lf.empty())
+    {
+        if (!mLogfile.empty() && mLogfile != lf)
+            mLogfile = lf;
+    }
+
+    if (!mInitialized)
+        _init();
+#else
     if (mInitialized && mLogfile.compare(lf) == 0)
         return;
 
     mLogfile = lf;
     mInitialized = false;
     _init();
+#endif
 }
 
 void TStreamError::setLogLevel(const std::string& slv)
@@ -248,12 +258,12 @@ void TStreamError::_init()
                 delete mStream;
 #if __cplusplus < 201402L
             mStream = new std::ofstream(mLogfile.c_str(), std::ios::out | std::ios::ate);
-#else
+#else   // __cplusplus < 201402L
             mStream = new std::ofstream(mLogfile, std::ios::out | std::ios::ate);
-#endif
+#endif  //__cplusplus < 201402L
             if (!mStream || mStream->fail())
                 mStream = &std::cout;
-#else
+#else   //__ANDROID__
             char *HOME = getenv("HOME");
             bool bigLog = false;
             uint logLevel = _getLevel(TConfig::getLogLevel());
@@ -285,18 +295,24 @@ void TStreamError::_init()
         {
 #ifdef __ANDROID__
             __android_log_print(ANDROID_LOG_ERROR, "tpanel", "ERROR: %s", e.what());
-#else
+#else   // __ANDROID__
             std::cerr << "ERROR: " << e.what() << std::endl;
 #endif  // __ANDROID__
             mStream = &std::cout;
         }
     }
-    else if (!mStream)
+    else if (!mStream || !isStreamValid())
     {
+        if (mStream)
+        {
+            delete mStream;
+            mStream = nullptr;
+        }
 #ifdef __ANDROID__
         std::cout.rdbuf(new androidbuf);
-#endif
+#endif  // __ANDROID__
         mStream = &std::cout;
+        std::cout << "DEBUG: Stream wurde auf std::cout gesetzt." << std::endl;
     }
 #else  // LOGPATH == LPATH_FILE
     if (!mStream)
@@ -329,7 +345,7 @@ void TStreamError::logMsg(std::ostream& str)
 
     _init();
 
-    if (!mStream || str.fail())
+    if (!isStreamValid())
         return;
 
     // Print out the message
@@ -341,6 +357,9 @@ void TStreamError::logMsg(std::ostream& str)
 
 std::ostream *TStreamError::resetFlags(std::ostream *os)
 {
+    if (!isStreamValid(*os))
+        return os;
+
     *os << std::resetiosflags(std::ios::boolalpha) <<
            std::resetiosflags(std::ios::showbase) <<
            std::resetiosflags(std::ios::showpoint) <<
@@ -372,8 +391,14 @@ string TStreamError::getTime()
     struct tm * timeinfo;
     char buffer[80];
 
-    time(&rawtime);
+    rawtime = time(nullptr);
     timeinfo = localtime(&rawtime);
+
+    if (!timeinfo)
+    {
+        std::cerr << "ERROR: Couldn't get the local time!" << std::endl;
+        return string();
+    }
 
     strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", timeinfo);
     string str(buffer);
@@ -382,7 +407,7 @@ string TStreamError::getTime()
 
 std::ostream& indent(std::ostream& os)
 {
-    if (os.fail())
+    if (!TStreamError::isStreamValid(os))
         return os;
 
     if (TStreamError::getIndent() > 0)
@@ -391,11 +416,36 @@ std::ostream& indent(std::ostream& os)
     return os;
 }
 
+bool TStreamError::isStreamValid()
+{
+    if (!mStream)
+        return false;
+
+    if (mStream->rdstate() & std::ofstream::failbit)
+        return false;
+
+    if (mStream->rdstate() & std::ofstream::badbit)
+        return false;
+
+    return true;
+}
+
+bool TStreamError::isStreamValid(std::ostream& os)
+{
+    if (os.rdstate() & std::ofstream::failbit)
+        return false;
+
+    if (os.rdstate() & std::ofstream::badbit)
+        return false;
+
+    return true;
+}
+
 /********************************************************************/
 
 std::mutex tracer_mutex;
 
-TTracer::TTracer(const std::string& msg, int line, char *file)
+TTracer::TTracer(const std::string msg, int line, char *file)
 {
     if (!TConfig::isInitialized() || !TStreamError::checkFilter(HLOG_TRACE))
         return;
@@ -659,7 +709,6 @@ std::ostream & TError::append(int lv, std::ostream& os)
         return os << TStreamError::getTime() << " " << prefix << std::setw(20) << " " << ", ";
 }
 
-#if defined(__linux__) || defined(Q_OS_ANDROID)
 void TError::displayMessage(const std::string& msg)
 {
     QMessageBox m;
@@ -677,7 +726,6 @@ void TError::displayMessage(const std::string& msg)
             }
         });
 
-        cntDown.start(1000);
-        m.exec();
+    cntDown.start(1000);
+    m.exec();
 }
-#endif

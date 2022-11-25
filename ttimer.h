@@ -24,7 +24,7 @@
 #include <functional>
 #include <atomic>
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__MACH__)
 typedef unsigned long int ulong;
 #endif
 

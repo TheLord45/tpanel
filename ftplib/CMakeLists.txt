@@ -5,8 +5,9 @@ set_target_properties(ftp PROPERTIES SOVERSION 1)
 set_target_properties(ftp PROPERTIES PUBLIC_HEADER ftplib.h)
 
 if (APPLE)
-    set(OSX_LIB -L/opt/homebrew/lib -L/usr/local/lib -lssh -lcrypto)
+    set(OSX_LIB -L/opt/homebrew/lib -L/usr/local/lib)
     set(LIBS ${LIBS} ${OSX_LIB})
+    target_link_libraries(ftp ssl crypto)
 endif(APPLE)
 
 include(GNUInstallDirs)

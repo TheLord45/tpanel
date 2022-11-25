@@ -24,6 +24,8 @@
 #ifdef __ANDROID__
 #include <jni.h>
 #endif
+#include <qglobal.h>
+
 #include "tpagelist.h"
 #include "tpage.h"
 #include "tsubpage.h"
@@ -166,7 +168,7 @@ class TPageManager : public TAmxCommands
         void regSetPhoneState(std::function<void (int state, int id)> setPhoneState) { _setPhoneState = setPhoneState; }
         void regDisplayMessage(std::function<void (const std::string& msg, const std::string& title)> msg) { _displayMessage = msg; }
         void regFileDialogFunction(std::function<void (ulong handle, const std::string& path, const std::string& extension, const std::string& suffix)> fdlg) { _fileDialog = fdlg; }
-#ifdef __ANDROID__
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         void regOnOrientationChange(std::function<void (int orientation)> orientationChange) { _onOrientationChange = orientationChange; }
 #endif
         void regRepaintWindows(std::function<void ()> repaintWindows) { _repaintWindows = repaintWindows; }
@@ -412,7 +414,7 @@ class TPageManager : public TAmxCommands
         std::function<void (const std::string& file, size_t size)> getDownloadSurface() { return _downloadSurface; }
         std::function<void (const std::string& msg, const std::string& title)> getDisplayMessage() { return _displayMessage; }
         std::function<void (ulong handle, const std::string& path, const std::string& extension, const std::string& suffix)> getFileDialogFunction() { return _fileDialog; }
-#ifdef __ANDROID__
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         std::function<void (int orientation)> onOrientationChange() { return _onOrientationChange; }
 #endif
         std::function<void ()> getRepaintWindows() { return _repaintWindows; }
@@ -502,7 +504,7 @@ class TPageManager : public TAmxCommands
         std::function<void (const std::string& file, size_t size)> _downloadSurface{nullptr};
         std::function<void (const std::string& msg, const std::string& title)> _displayMessage{nullptr};
         std::function<void (ulong handle, const std::string& path, const std::string& extension, const std::string& suffix)> _fileDialog{nullptr};
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(Q_OS_IOS)
         std::function<void (int orientation)> _onOrientationChange{nullptr};
 #endif
         typedef struct _FTP_SURFACE_t

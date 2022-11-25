@@ -20,7 +20,9 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+
 #include "tconfig.h"
+#include "terror.h"
 #include "tsettings.h"
 #include "tpagelist.h"
 #include "tpage.h"
@@ -28,7 +30,7 @@
 #include "tpagemanager.h"
 #include "tqtmain.h"
 
-#ifdef Q_OS_ANDROID
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
 #include <QStandardPaths>
 #endif
 #ifdef __ANDROID__
@@ -39,10 +41,11 @@ using std::string;
 using std::find;
 using std::vector;
 using std::cout;
+using std::cerr;
 using std::endl;
 
 bool _restart_ = false;
-#ifdef __ANDROID__
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
 extern std::atomic<bool> killed;
 extern std::atomic<bool> _netRunning;
 #endif
@@ -158,7 +161,7 @@ class InputParser
  */
 void usage()
 {
-#ifndef __ANDROID__
+#if not defined(Q_OS_ANDROID) && not defined(Q_OS_IOS)
     cout << TConfig::getProgName() << " version " <<  VERSION_STRING() << endl << endl;
     cout << "Usage: tpanel [-c <config file>]" << endl;
     cout << "-c | --config-file <file> The path and name of the configuration file." << endl;
@@ -169,7 +172,7 @@ void usage()
 #endif
 }
 
-#ifndef __ANDROID__
+#if not defined(Q_OS_ANDROID) && not defined(Q_OS_IOS)
 /**
  * @brief banner displays a shor banner with informations about this application.
  *
@@ -207,7 +210,7 @@ void banner(const string& pname)
  *
  * @return of success TRUE is returned. Otherwise FALSE.
  */
-#ifndef __ANDROID__
+#if not defined(Q_OS_ANDROID) && not defined(Q_OS_IOS)
 bool _startUp(int oldArgc, int argc, char *argv[])
 #else
 bool _startUp(int, int argc, char *argv[])
@@ -219,20 +222,20 @@ bool _startUp(int, int argc, char *argv[])
 
     if (TError::isError())
     {
+        cerr << "FATAL: There was an unrecoverable error in creating the page manager!" << endl;
         delete pageManager;
         pageManager = nullptr;
         return false;
     }
 
     // Prepare command line stack
-#ifndef __ANDROID__
+#if not defined(Q_OS_ANDROID) && not defined(Q_OS_IOS)
     int pt = oldArgc - argc;
 #else
     int pt = 0;
 #endif
     // Start the graphical environment
     int ret = 0;
-
     // The _restart_ variable is reset in class initialization MainWindow.
     ret = qtmain(argc, &argv[pt], pageManager);
     delete pageManager;
@@ -260,7 +263,7 @@ int main(int argc, char *argv[])
 {
     string configFile;
     int oldArgc = argc;
-#ifndef __ANDROID__
+#if not defined(Q_OS_ANDROID) && not defined(Q_OS_IOS)
     string pname = *argv;
     size_t pos = pname.find_last_of("/");
 
@@ -272,7 +275,7 @@ int main(int argc, char *argv[])
     _netRunning = false;
 #endif
     TConfig::setProgName(pname);    // Remember the name of this application.
-#ifndef Q_OS_ANDROID
+#if not defined(Q_OS_ANDROID) && not defined(Q_OS_IOS)
     InputParser input(&argc, argv); // Parse the command line parameters.
 
     // Evaluate the command line parameters.
@@ -310,7 +313,7 @@ int main(int argc, char *argv[])
         TError::displayMessage(TError::getErrorMsg());
         return 1;
     }
-#ifndef __ANDROID__
+#if not defined(Q_OS_ANDROID) && not defined(Q_OS_IOS)
     banner(pname);
 #endif
     TError::clear();

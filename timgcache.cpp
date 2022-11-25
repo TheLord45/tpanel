@@ -118,7 +118,7 @@ bool TImgCache::addImage(_IMGCACHE ic)
 
 bool TImgCache::getBitmap(const string& name, SkBitmap *bm, _IMGCACHE_BMTYPE bmType, int *width, int *height)
 {
-    DECL_TRACER("TImgCache::getBitmap(const string& name, _IMGCACHE_BMTYPE bmType, int *width, int *height)");
+    DECL_TRACER("TImgCache::getBitmap(const string& name, SkBitmap *bm, _IMGCACHE_BMTYPE bmType, int *width, int *height)");
 
     if (mImgCache.size() == 0 || !bm)
         return false;

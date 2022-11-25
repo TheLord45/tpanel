@@ -281,10 +281,10 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
         double scaleFactorH = sysHeight / (double)minSysHeight;
         scale = std::min(mScaleFactorW, mScaleFactorH);
         setupScaleFactor = std::min(scaleFactorW, scaleFactorH);
-
+#ifdef __ANDROID__
         __android_log_print(ANDROID_LOG_DEBUG, "tpanel", "scale: %f (Screen: %1.0fx%1.0f, Page: %dx%d)", scale, width, height, minWidth, minHeight);
         __android_log_print(ANDROID_LOG_DEBUG, "tpanel", "setupScaleFactor: %f (Screen: %1.0fx%1.0f, Page: %dx%d)", setupScaleFactor, sysWidth, sysHeight, minSysWidth, minSysHeight);
-
+#endif
         gScale = scale;     // The calculated scale factor
         gFullWidth = width;
         MSG_INFO("Calculated scale factor: " << scale);
@@ -309,7 +309,7 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
     }
 #endif  // defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
 
-#ifndef __ANDROID__
+#if not defined(Q_OS_ANDROID) && not defined(Q_OS_IOS)
     double setupScaleFactor = 1.0;
 
     if (pmanager->getSettings() != pmanager->getSystemSettings())
@@ -622,7 +622,7 @@ MainWindow::~MainWindow()
     isRunning = false;
 }
 
-#ifdef Q_OS_ANDROID
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
 /**
  * @brief Small thread to invoke the initialization on an Android device.
  *
@@ -681,7 +681,7 @@ void MainWindow::_freezeWorkaround()
     QMetaObject::invokeMethod(dynamic_cast<QObject*>(l_pScr), "setAvailableGeometry", Qt::QueuedConnection, Q_ARG( const QRect &, l_geomHackRect ));
 }
 #endif  // QT5_LINUX
-#endif  // Q_OS_ANDROID
+#endif  // Q_OS_ANDROID || Q_OS_IOS
 
 void MainWindow::_repaintWindows()
 {
@@ -1204,6 +1204,7 @@ void MainWindow::settings()
 {
     DECL_TRACER("MainWindow::settings()");
 #ifndef QTSETTINGS
+#ifndef Q_OS_IOS
     if (gPageManager)
     {
         gPageManager->showSetup();
@@ -1211,6 +1212,9 @@ void MainWindow::settings()
     }
     else    // This "else" should never be executed!
         displayMessage("<b>Fatal error</b>: An internal mandatory class was not initialized!<br>Unable to show setup dialog!", "Fatal error");
+#else
+    displayMessage("Please use the settings in the <i>System settings</i>. Search there for <b>tpanel</b>.", "Information");
+#endif
 #else
     // Save some old values to decide whether to start over or not.
     string oldHost = TConfig::getController();
@@ -1799,20 +1803,24 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
             MSG_INFO("Switched to mode INACTIVE");
             mHasFocus = false;
             mWasInactive = true;
+#ifdef Q_OS_ANDROID
 #ifdef QT5_LINUX
             QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
 #else
             QJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
+#endif
 #endif
         break;
 
         case Qt::ApplicationHidden:
             MSG_INFO("Switched to mode HIDDEN");
             mHasFocus = false;
+#ifdef Q_OS_ANDROID
 #ifdef QT5_LINUX
             QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
 #else
             QJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
+#endif
 #endif
         break;
 #endif
@@ -1854,7 +1862,7 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
             mHasFocus = true;
 #endif
     }
-#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+#if defined(Q_OS_ANDROID)
     if (mHasFocus && gPageManager)
     {
         gPageManager->initNetworkState();
@@ -2207,6 +2215,8 @@ void MainWindow::_setOrientation(J_ORIENTATION ori)
                 mOrientation = Qt::PrimaryOrientation;
         }
     }
+#else
+    Q_UNUSED(ori);
 #endif
 }
 
@@ -3807,9 +3817,6 @@ int MainWindow::scaleSetup(int value)
 
     double val = (double)value * mSetupScaleFactor;
 
-//    if (mScaleFactor > 0.0 && mScaleFactor != 1.0 && mScaleFactor != mSetupScaleFactor)
-//        return (int)(val * mScaleFactor);
-MSG_DEBUG("Scaled value " << value << " to " << (int)val << " with factor " << mSetupScaleFactor);
     return (int)val;
 }
 

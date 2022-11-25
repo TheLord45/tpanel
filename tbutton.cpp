@@ -35,7 +35,6 @@
 #include <skia/effects/SkImageFilters.h>
 #include <skia/core/SkPath.h>
 #include <skia/core/SkSurfaceProps.h>
-#include <skia/core/SkFilterQuality.h>
 #include <skia/core/SkMaskFilter.h>
 #include <skia/core/SkImageEncoder.h>
 #include <skia/core/SkRRect.h>
@@ -2987,7 +2986,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
 {
     DECL_TRACER("TButton::buttonBitmap(SkBitmap* bm, int instane)");
 
-    if (prg_stopped)
+    if (prg_stopped || !bm)
         return false;
 
     int instance = inst;
@@ -3037,7 +3036,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
             }
         }
 
-        MSG_DEBUG("Chameleon image size: " << sr[instance].mi_width << " x " << sr[instance].mi_height);
+        MSG_DEBUG("Chameleon image size: " << bmMi.info().width() << " x " << bmMi.info().height());
         SkBitmap imgRed(bmMi);
         SkBitmap imgMask;
         bool haveBothImages = true;
@@ -3071,7 +3070,15 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
             }
 
             if (!bmBm.empty())
-                imgMask.installPixels(bmBm.pixmap());
+            {
+                if (!imgMask.installPixels(bmBm.pixmap()))
+                {
+                    MSG_ERROR("Error installing pixmap " << sr[instance].bm << " for chameleon image!");
+                    imgMask.allocN32Pixels(imgRed.info().width(), imgRed.info().height());
+                    imgMask.eraseColor(SK_ColorTRANSPARENT);
+                    haveBothImages = false;
+                }
+            }
             else
             {
                 MSG_WARNING("No or invalid bitmap! Ignoring bitmap for cameleon image.");
@@ -3083,7 +3090,8 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
         else
             haveBothImages = false;
 
-        MSG_DEBUG("Bitmap image size: " << sr[instance].bm_width << " x " << sr[instance].bm_height);
+        MSG_DEBUG("Bitmap image size: " << bmBm.info().width() << " x " << bmBm.info().height());
+        MSG_DEBUG("Bitmap mask size: " << imgMask.info().width() << " x " << imgMask.info().height());
         SkBitmap img = drawImageButton(imgRed, imgMask, sr[instance].mi_width, sr[instance].mi_height, TColor::getSkiaColor(sr[instance].cf), TColor::getSkiaColor(sr[instance].cb));
 
         if (img.empty())
@@ -3093,6 +3101,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
             return false;
         }
 
+        MSG_DEBUG("Have both images: " << (haveBothImages ? "YES" : "NO"));
         SkCanvas ctx(img, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
         SkImageInfo info = img.info();
         SkPaint paint;
@@ -6448,7 +6457,7 @@ SkBitmap TButton::drawImageButton(SkBitmap& imgRed, SkBitmap& imgMask, int width
             SkColor pixelMask;
 
             if (ix < pixmapRed.info().width() && iy < pixmapRed.info().height())
-                 pixelRed = pixmapRed.getColor(ix, iy);
+                pixelRed = pixmapRed.getColor(ix, iy);
             else
                 pixelRed = 0;
 
@@ -8181,10 +8190,10 @@ SkColor TButton::baseColor(SkColor basePix, SkColor maskPix, SkColor col1, SkCol
 {
     uint alpha = SkColorGetA(basePix);
     uint green = SkColorGetG(basePix);
-#ifndef __ANDROID__
-    uint red = SkColorGetR(basePix);
-#else
+#if defined(__ANDROID__) || defined(__APPLE__)
     uint red = SkColorGetB(basePix);
+#else
+    uint red = SkColorGetR(basePix);
 #endif
 
     if (alpha == 0)
@@ -8192,12 +8201,10 @@ SkColor TButton::baseColor(SkColor basePix, SkColor maskPix, SkColor col1, SkCol
 
     if (red && green)
     {
+        if (red < green)
+            return col2;
+
         return col1;
-/*        uint32_t newR = (SkColorGetR(col1) + SkColorGetR(col2)) / 2;
-        uint32_t newG = (SkColorGetG(col1) + SkColorGetG(col2)) / 2;
-        uint32_t newB = (SkColorGetB(col1) + SkColorGetB(col2)) / 2;
-        uint32_t newA = (SkColorGetA(col1) + SkColorGetA(col2)) / 2;
-        return SkColorSetARGB(newA, newR, newG, newB); */
     }
 
     if (red)
@@ -8860,12 +8867,19 @@ void TButton::listViewRefresh(int interval, bool force)
 {
     DECL_TRACER("TButton::listViewRefresh(int interval, bool force)");
 
+    Q_UNUSED(interval);
+    Q_UNUSED(force);
+
     // TODO: Add code to load list data and display / refresh them
 }
 
 void TButton::listViewSortData(const vector<string> &columns, LIST_SORT order, const string &override)
 {
     DECL_TRACER("TButton::listViewSortData(const vector<string> &columns, LIST_SORT order, const string &override)");
+
+    Q_UNUSED(columns);
+    Q_UNUSED(order);
+    Q_UNUSED(override);
 
     // TODO: Insert code to sort the data in the list
 }

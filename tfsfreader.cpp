@@ -28,7 +28,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#ifndef __MACH__
 #include <sys/sendfile.h>
+#endif
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/socket.h>

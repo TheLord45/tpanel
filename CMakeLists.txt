@@ -4,18 +4,18 @@ project(tpanel VERSION 1.3.3)
 find_package(PkgConfig)
 
 if (APPLE)
-    set(QT_DIR $ENV{HOME}/Qt/6.4.0/macos)
-    set(CMAKE_PREFIX_PATH $ENV{HOME}/Qt/6.4.0/macos/lib/cmake)
+    set(QT_DIR $ENV{HOME}/Qt/6.4.1/macos)
+    set(CMAKE_PREFIX_PATH $ENV{HOME}/Qt/6.4.1/macos/lib/cmake)
 endif(APPLE)
 
 find_package(Qt6Core)
 find_package(Qt6Gui)
 find_package(Qt6Widgets)
 
-if (NOT APPLE)
+#if (NOT APPLE)
     find_package(Qt6Multimedia)
     find_package(Qt6MultimediaWidgets)
-endif(NOT APPLE)
+#endif(NOT APPLE)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -43,13 +43,22 @@ link_directories(${PJSIP_LIBRARY_DIRS})
 # Commented out to make sure no video is included (would require a lot more libs)
 #set(LIBS ${LIBS} ${PJSIP_LIBRARIES})
 # This are the phone libraries used/needed for PJSIP.
+if(APPLE)
+set(LIBS ${LIBS} -L/usr/local/lib
+                 pjsua2 pjsua pjsip-ua pjsip-simple
+                 pjsip pjmedia-codec pjmedia pjmedia-audiodev
+                 pjnath pjlib-util pj gsmcodec
+                 ilbccodec speex g7221codec
+                 srtp resample webrtc)
+else(APPLE)
 set(LIBS ${LIBS} -L/usr/local/lib
                  pjsua2 pjsua pjsip-ua pjsip-simple pjsip
                  pjmedia-codec pjmedia pjmedia-audiodev
-                 pjmedia pjnath pjlib-util pj
+                 pjnath pjlib-util pj
                  gsmcodec ilbccodec speex g7221codec
                  srtp resample yuv webrtc
                  opus asound)
+endif(APPLE)
 
 find_library(UUID_LIBRARY NAMES uuid)
 set(LIBS ${LIBS} ${UUID_LIBRARY})
@@ -69,15 +78,15 @@ endif()
 
 find_package(Qt6 COMPONENTS Widgets REQUIRED)
 
-if (NOT APPLE)
+#if (NOT APPLE)
     find_package(Qt6 COMPONENTS Multimedia REQUIRED)
     find_package(Qt6 COMPONENTS MultimediaWidgets REQUIRED)
-endif(NOT APPLE)
+#endif(NOT APPLE)
 
 if (APPLE)
 	set(OSX_INCLUDE -I/opt/homebrew/include -I/usr/local/include)
 	add_definitions(${OSX_INCLUDE})
-	set(OSX_LIB -L/opt/homebrew/lib -L/usr/local/lib)
+	set(OSX_LIB -L/opt/homebrew/lib -L/usr/local/lib -liconv)
 	set(LIBS ${LIBS} ${OSX_LIB})
 #	set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 endif(APPLE)
@@ -159,10 +168,10 @@ if(CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
 	target_link_libraries(tpanel stdc++fs)
 endif()
 
-if (NOT APPLE)
-    target_link_libraries(tpanel m pthread ssl crypto ftp ${LIBS} ${LIBSKIA_LIBRARY} Qt6::Widgets Qt6::Multimedia Qt6::MultimediaWidgets)
-else(NOT APPLE)
-    target_link_libraries(tpanel m pthread ssl crypto ftp ${LIBS} ${LIBSKIA_LIBRARY} Qt6::Widgets)
-endif(NOT APPLE)
+target_link_libraries(tpanel m pthread ssl crypto ftp ${LIBS} ${LIBSKIA_LIBRARY} Qt6::Widgets Qt6::Multimedia Qt6::MultimediaWidgets)
+
+if (APPLE)
+    add_definitions(-Wno-gnu-zero-variadic-macro-arguments)
+endif(APPLE)
 
 install(TARGETS tpanel RUNTIME DESTINATION bin)

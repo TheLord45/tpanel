@@ -576,12 +576,16 @@ void TSocket::initSSL()
     if (mSSLInitialized)
         return;
 
+#if OPENSSL_API_COMPAT < 0x010100000
     SSL_library_init();
+#endif
 #if OPENSSL_SHLIB_VERSION < 3
     ERR_load_BIO_strings();
 #endif
+#if OPENSSL_API_COMPAT < 0x010100000
     ERR_load_crypto_strings();
     SSL_load_error_strings();
+#endif
     mSSLInitialized = true;
 }
 

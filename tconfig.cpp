@@ -34,7 +34,13 @@
 #include "tconfig.h"
 #include "terror.h"
 #include "tresources.h"
-
+#ifdef __APPLE__
+#include <TargetConditionals.h>
+#if TARGET_OS_SIMULATOR || TARGET_OS_IOS
+#include <QString>
+#include "QASettings.h"
+#endif
+#endif
 using std::string;
 using std::ifstream;
 using std::ofstream;
@@ -126,19 +132,23 @@ static settings_t localSettings_temp;   //!< Global defines settings temporary s
 TConfig::TConfig(const std::string& path)
     : mPath(path)
 {
+#if TARGET_OS_IOS == 0 && TARGET_OS_SIMULATOR == 0
     // Initialize the possible configuration paths
     mCfgPaths.push_back("/etc");
     mCfgPaths.push_back("/etc/tpanel");
     mCfgPaths.push_back("/usr/etc");
     mCfgPaths.push_back("/usr/etc/tpanel");
 #ifdef __APPLE__
-    mCfgPath.push_back("/opt/local/etc");
-    mCfgPath.push_back("/opt/local/etc/tpanel");
-    mCfgPath.push_back("/opt/local/usr/etc");
-    mCfgPath.push_back("/opt/local/usr/etc/tpanel");
+    mCfgPaths.push_back("/opt/local/etc");
+    mCfgPaths.push_back("/opt/local/etc/tpanel");
+    mCfgPaths.push_back("/opt/local/usr/etc");
+    mCfgPaths.push_back("/opt/local/usr/etc/tpanel");
 #endif
     if (findConfig())
         readConfig();
+#else
+    readConfig();
+#endif
 }
 
 /**
@@ -1724,6 +1734,142 @@ bool TConfig::findConfig()
  */
 bool TConfig::readConfig()
 {
+#if defined(__APPLE__) && (TARGET_OS_IOS || TARGET_OS_SIMULATOR)
+    QASettings settings;
+    localSettings.path = QASettings::getLibraryPath().toStdString();
+    localSettings.project = localSettings.path + "/tpanel";
+//    localSettings.logFile = localSettings.path + "/tpanel.log";
+    mkdir(localSettings.project.c_str(), S_IRWXU | S_IRWXG | S_IRWXO);
+    localSettings.name = "tpanel.cfg";
+    localSettings.scale = true;
+    localSettings.tbforce = false;
+    localSettings.tbsuppress = false;
+
+    // Settings for NetLinx
+    settings.registerDefaultPrefs();
+    localSettings.server = settings.getNetlinxIP().toStdString();
+    localSettings.port = settings.getNetlinxPort();
+    localSettings.ID = settings.getNetlinxChannel();
+    localSettings.ptype = settings.getNetlinxPanelType().toStdString();
+    localSettings.ftpUser = settings.getFTPUser().toStdString();
+    localSettings.ftpPassword = settings.getFTPPassword().toStdString();
+    localSettings.ftpSurface = settings.getNetlinxSurface().toStdString();
+
+    // Settings for SIP
+    localSettings.sip_proxy = settings.getSipProxy().toStdString();
+    localSettings.sip_port = settings.getSipNetworkPort();
+    localSettings.sip_portTLS = settings.getSipNetworkTlsPort();
+    localSettings.sip_stun = settings.getSipStun().toStdString();
+    localSettings.sip_domain = settings.getSipDomain().toStdString();
+    localSettings.sip_ipv4 = settings.getSipNetworkIpv4();
+    localSettings.sip_ipv6 = settings.getSipNetworkIpv6();
+    localSettings.sip_user = settings.getSipUser().toStdString();
+    localSettings.sip_password = settings.getSipPassword().toStdString();
+    localSettings.sip_enabled = settings.getSipEnabled();
+    localSettings.sip_iphone = settings.getSipIntegratedPhone();
+
+    // Settings for View
+    localSettings.scale = settings.getViewScale();
+    localSettings.tbforce = settings.getViewToolbarForce();
+    localSettings.tbsuppress = !settings.getViewToolbarVisible();
+
+    if (localSettings.tbforce)
+        localSettings.tbsuppress = false;
+
+    localSettings.systemRotationFix = settings.getViewRotation();
+
+    // Settings for sound
+    localSettings.systemSound = settings.getSoundSystem().toStdString();
+    localSettings.systemSingleBeep = settings.getSoundSingleBeep().toStdString();
+    localSettings.systemDoubleBeep = settings.getSoundDoubleBeep().toStdString();
+    localSettings.systemSoundState = settings.getSoundEnabled();
+    localSettings.systemVolume = settings.getSoundVolume();
+    localSettings.systemGain = settings.getSoundGain();
+
+    // Settings for logging
+    unsigned int logLevel = 0;
+
+    if (settings.getLoggingInfo())
+        logLevel |= HLOG_INFO;
+
+    if (settings.getLoggingWarning())
+        logLevel |= HLOG_WARNING;
+
+    if (settings.getLoggingError())
+        logLevel |= HLOG_ERROR;
+
+    if (settings.getLoggingDebug())
+        logLevel |= HLOG_DEBUG;
+
+    if (settings.getLoggingTrace())
+        logLevel |= HLOG_TRACE;
+
+    if (settings.getLoggingProfile())
+        localSettings.profiling = true;
+    else
+        localSettings.profiling = false;
+
+    if (settings.getLoggingLogFormat())
+        localSettings.longformat = true;
+    else
+        localSettings.longformat = false;
+
+    localSettings.logLevelBits = logLevel;
+    localSettings.logLevel = logLevelBitsToString(logLevel);
+
+    if (localSettings.uuid.empty())
+    {
+        uuid_t uuid;
+        char sUUID[256];
+
+        uuid_generate_random(uuid);
+        uuid_unparse_lower(uuid, sUUID);
+        localSettings.uuid.assign(sUUID);
+        localSettings_temp = localSettings;
+    }
+
+    mInitialized = true;
+
+    cout << "Selected Parameters:" << endl;
+    cout << "    Path to cfg.: " << localSettings.path << endl;
+    cout << "    Name of cfg.: " << localSettings.name << endl;
+    cout << "    Logfile:      " << localSettings.logFile  << endl;
+    cout << "    LogLevel:     " << localSettings.logLevel  << endl;
+    cout << "    Long format:  " << (localSettings.longformat ? "YES" : "NO")  << endl;
+    cout << "    Project path: " << localSettings.project  << endl;
+    cout << "    Controller:   " << localSettings.server  << endl;
+    cout << "    Port:         " << localSettings.port  << endl;
+    cout << "    Channel:      " << localSettings.ID  << endl;
+    cout << "    Panel type:   " << localSettings.ptype  << endl;
+    cout << "    Firmware ver. " << localSettings.version  << endl;
+    cout << "    Scaling:      " << (localSettings.scale ? "YES" : "NO")  << endl;
+    cout << "    Profiling:    " << (localSettings.profiling ? "YES" : "NO")  << endl;
+    cout << "    Button cache: " << localSettings.max_cache  << endl;
+    cout << "    System Sound: " << localSettings.systemSound  << endl;
+    cout << "    Sound state:  " << (localSettings.systemSoundState ? "ACTIVATED" : "DEACTIVATED")  << endl;
+    cout << "    Single beep:  " << localSettings.systemSingleBeep  << endl;
+    cout << "    Double beep:  " << localSettings.systemDoubleBeep  << endl;
+    cout << "    Volume:       " << localSettings.systemVolume  << endl;
+    cout << "    Gain:         " << localSettings.systemGain  << endl;
+    cout << "    Rotation:     " << (localSettings.systemRotationFix ? "LOCKED" : "UNLOCKED")  << endl;
+    cout << "    UUID:         " << localSettings.uuid  << endl;
+    cout << "    FTP user:     " << localSettings.ftpUser  << endl;
+    cout << "    FTP password: " << localSettings.ftpPassword  << endl;
+    cout << "    FTP surface:  " << localSettings.ftpSurface  << endl;
+    cout << "    FTP passive:  " << (localSettings.ftpPassive ? "YES" : "NO")  << endl;
+    cout << "    FTP dl. time: " << localSettings.ftpLastDownload  << endl;
+    cout << "    SIP proxy:    " << localSettings.sip_proxy  << endl;
+    cout << "    SIP port:     " << localSettings.sip_port  << endl;
+    cout << "    SIP TLS port: " << localSettings.sip_portTLS  << endl;
+    cout << "    SIP STUN:     " << localSettings.sip_stun  << endl;
+    cout << "    SIP doamain:  " << localSettings.sip_domain  << endl;
+    cout << "    SIP user:     " << localSettings.sip_user  << endl;
+    cout << "    SIP IPv4:     " << (localSettings.sip_ipv4 ? "YES" : "NO")  << endl;
+    cout << "    SIP IPv6:     " << (localSettings.sip_ipv6 ? "YES" : "NO")  << endl;
+    cout << "    SIP Int.Phone:" << (localSettings.sip_iphone ? "YES" : "NO")  << endl;
+    cout << "    SIP firewall: " << sipFirewallToString(localSettings.sip_firewall)  << endl;
+    cout << "    SIP enabled:  " << (localSettings.sip_enabled ? "YES" : "NO")  << endl;
+#else
     ifstream fs;
 
     mTemporary = false;
@@ -2007,6 +2153,7 @@ bool TConfig::readConfig()
     }
 
     localSettings_temp = localSettings;
+#endif
     return true;
 }
 

@@ -22,6 +22,12 @@ QT = core core-private gui gui-private widgets multimedia multimediawidgets sens
 } else {
 QT = core core-private gui widgets qml quickwidget
 }}
+equals(OS,ios) {
+versionAtMost(QT_VERSION, 5.15.2) {
+QT = core core-private gui gui-private widgets multimedia multimediawidgets sensors qml quickwidgets
+} else {
+QT = core core-private gui widgets multimedia multimediawidgets sensors qml quickwidgets
+}}
 isEmpty(OS) {
 versionAtMost(QT_VERSION, 5.15.2) {
 QT = core core-private gui gui-private widgets multimedia multimediawidgets sensors qml quickwidgets androidextras
@@ -166,6 +172,16 @@ equals(OS,osx) {
     CONFIG += c++17
 #    CONFIG += hide_symbols
 }
+equals(OS,ios) {
+    INCLUDEPATH += $$PWD/. \
+                   $$PWD/ftplib \
+                   /usr/local/include/skia \
+                   $$EXT_LIB_PATH/pjsip/include \
+                   $$EXT_LIB_PATH/openssl/include
+
+    CONFIG += c++17
+    QMAKE_IOS_DEPLOYMENT_TARGET=13.0
+}
 
 QMAKE_CXXFLAGS += -std=c++17 -DPJ_AUTOCONF
 QMAKE_LFLAGS += -std=c++17
@@ -264,7 +280,31 @@ equals(ANDROID_TARGET_ARCH,x86_64) {
     $$EXT_LIB_PATH/pjsip/lib/libilbccodec-x86_64-pc-linux-android.a
 }
 
-contains(QMAKE_HOST.arch,arm64) {
+ios {
+
+    LIBS += -L$$EXT_LIB_PATH/pjsip/lib \
+            -L$$EXT_LIB_PATH/skia/iossim \
+            -L$$EXT_LIB_PATH/openssl/iossim
+
+    LIBS += -lskia -lpj -lpjlib-util \
+            -lpjmedia -lpjmedia-audiodev \
+            -lpjmedia-codec -lpjnath \
+            -lpjsip -lpjsip-simple \
+            -lpjsip-ua -lpjsua -lpjsua2 \
+            -lresample -lspeex \
+            -lsrtp -lgsmcodec \
+            -lwebrtc -lilbccodec \
+            -framework CFNetwork
+
+    OBJECTIVE_SOURCES = $$PWD/QASettings.mm
+    QTPLUGIN += qtsensors_ios
+    QMAKE_INFO_PLIST = $$PWD/ios/Info.plist
+
+    app_launch_files.files = $$files($$PWD/ios/Settings.bundle)
+    QMAKE_BUNDLE_DATA += app_launch_files
+}
+
+equals(OS,osx) {
     INCLUDEPATH += /opt/homebrew/include /usr/local/include
 
     LIBS += -lskia -llibpj-arm-apple-darwin22.1.0.a \
@@ -335,12 +375,12 @@ isEmpty(OS) {
 
     ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
 } else {
-    LIBS += -lcrypto_1_1 -lssl_1_1 -lEGL
+    LIBS += -lcrypto -lssl -liconv
 }
 
 # Add the ftp library
 DEPENDPATH += $$PWD/ftplib
 isEmpty(OS) {
-# Add openSSL library
+# Add openSSL library for Android
 android: include($$SDK_PATH/android_openssl/openssl.pri)
 }

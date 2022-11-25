@@ -224,7 +224,7 @@ class MainWindow : public QMainWindow, TQManageQueue
 #ifndef __ANDROID__
         void _setSizeMainWindow(int width, int height);
 #endif
-#ifdef __ANDROID__
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         void _signalState(Qt::ApplicationState state);
         void _orientationChanged(int orientation);
 #ifdef QT5_LINUX

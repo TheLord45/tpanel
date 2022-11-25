@@ -951,12 +951,15 @@ bool TSystemDraw::evaluateName(const std::vector<std::string>& parts, const std:
         return false;
 
     size_t found = 0;
-    string dbg;
+//    string dbg;
+    if (parts.empty())
+        return false;
+
     vector<string>::const_iterator iter;
 
     for (iter = parts.begin(); iter != parts.end(); ++iter)
     {
-        dbg += "|" + *iter;
+//        dbg += "|" + *iter;
 
         if (StrContains(name, *iter))
             found++;
