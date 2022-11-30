@@ -83,13 +83,14 @@ void TQKeypad::doResize()
 {
     DECL_TRACER("TQKeypad::doResize()");
 
+#ifndef Q_OS_IOS
     QRect rect = this->geometry();
-#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+#if defined(Q_OS_ANDROID)
     QSize size = this->size();
     size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
     this->resize(size);
     this->move(scale(rect.left()), scale(rect.top()));
-#endif
+#endif  // Q_OS_ANDROID
     QWidget *parent = this->parentWidget();
 
     if (parent)
@@ -98,7 +99,7 @@ void TQKeypad::doResize()
         this->move(rect.center() - this->rect().center());
     }
 
-#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+#if defined(Q_OS_ANDROID)
     // Iterate through childs and resize them
     QObjectList childs = children();
     QList<QObject *>::Iterator iter;
@@ -127,7 +128,8 @@ void TQKeypad::doResize()
             lb->move(scale(rect.left()), scale(rect.top()));
         }
     }
-#endif
+#endif  // Q_OS_ANDROID
+#endif  // ! Q_OS_IOS
 }
 
 void TQKeypad::setKey(Ui::KEYSP_t key)

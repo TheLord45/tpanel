@@ -22,7 +22,7 @@ QT = core core-private gui gui-private widgets multimedia multimediawidgets sens
 } else {
 QT = core core-private gui widgets qml quickwidget
 }}
-equals(OS,ios) {
+ios: {
 versionAtMost(QT_VERSION, 5.15.2) {
 QT = core core-private gui gui-private widgets multimedia multimediawidgets sensors qml quickwidgets
 } else {
@@ -145,7 +145,7 @@ SOURCES = \
    $$PWD/turl.cpp \
    $$PWD/ftplib/ftplib.cpp
 
-isEmpty(OS) {
+android: {
 OTHER_FILES += \
         $$PWD/android/src/org/qtproject/theosys/BatteryState.java \
         $$PWD/android/src/org/qtproject/theosys/NetworkStatus.java \
@@ -170,9 +170,8 @@ equals(OS,osx) {
                    /usr/local/include/skia
 
     CONFIG += c++17
-#    CONFIG += hide_symbols
 }
-equals(OS,ios) {
+ios: {
     INCLUDEPATH += $$PWD/. \
                    $$PWD/ftplib \
                    /usr/local/include/skia \
@@ -280,7 +279,7 @@ equals(ANDROID_TARGET_ARCH,x86_64) {
     $$EXT_LIB_PATH/pjsip/lib/libilbccodec-x86_64-pc-linux-android.a
 }
 
-ios {
+ios: {
 
     LIBS += -L$$EXT_LIB_PATH/pjsip/lib \
             -L$$EXT_LIB_PATH/skia/iossim \
@@ -296,12 +295,14 @@ ios {
             -lwebrtc -lilbccodec \
             -framework CFNetwork
 
-    OBJECTIVE_SOURCES = $$PWD/QASettings.mm
-    QTPLUGIN += qtsensors_ios
+    OBJECTIVE_SOURCES = $$PWD/QASettings.mm \
+                        $$PWD/tiosrotate.mm
+
     QMAKE_INFO_PLIST = $$PWD/ios/Info.plist
 
     app_launch_files.files = $$files($$PWD/ios/Settings.bundle)
-    QMAKE_BUNDLE_DATA += app_launch_files
+    ios_icon.files = $$files($$PWD/images/icon*.png)
+    QMAKE_BUNDLE_DATA += app_launch_files ios_icon
 }
 
 equals(OS,osx) {
@@ -360,7 +361,7 @@ FORMS += \
     tqtphone.ui \
     download.ui
 
-isEmpty(OS) {
+android: {
     LIBS += -lcrypto_1_1 -lssl_1_1 -lEGL -landroid -lmediandk
 
     DISTFILES += \
@@ -380,7 +381,7 @@ isEmpty(OS) {
 
 # Add the ftp library
 DEPENDPATH += $$PWD/ftplib
-isEmpty(OS) {
+android: {
 # Add openSSL library for Android
 android: include($$SDK_PATH/android_openssl/openssl.pri)
 }

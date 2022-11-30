@@ -304,10 +304,29 @@ bool QASettings::getLoggingLogFormat()
     return log_format;
 }
 
+bool QASettings::getLoggingLogfileEnabled()
+{
+    NSInteger boolean = [[ NSUserDefaults standardUserDefaults] boolForKey:@"logging_logfile_enabled"];
+    return boolean;
+}
+
+QString QASettings::getLoggingLogfile()
+{
+    NSString *str = [[ NSUserDefaults standardUserDefaults] stringForKey:@"logging_logfile"];
+    return QString::fromNSString(str);
+}
+
 // Static methods
 QString QASettings::getLibraryPath()
 {
     NSArray *paths = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES);
     NSString *libraryDirectory = [paths objectAtIndex:0];
     return QString::fromNSString(libraryDirectory);
+}
+
+QString QASettings::getDocumentPath()
+{
+    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+    NSString *documentDirectory = [paths objectAtIndex:0];
+    return QString::fromNSString(documentDirectory);
 }

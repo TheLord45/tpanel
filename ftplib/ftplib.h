@@ -205,7 +205,7 @@ class ftplib
         int readline(char *buf,int max,ftphandle *ctl);
         int writeline(char *buf, int len, ftphandle *nData);
         int readresp(char c, ftphandle *nControl);
-        void sprint_rest(char *buf, off64_t offset);
+        void sprint_rest(char *buf, off64_t offset, size_t len);
         void ClearHandle();
         int CorrectPasvResponse(unsigned char *v);
         void errorHandler(const char *stub, int err, int line);

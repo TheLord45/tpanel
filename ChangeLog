@@ -3,6 +3,9 @@ ChangeLog
 
 Release: 1.3.3
 ===============================================================================
+2022-11-29 Adds rotation setting for IOS.
+           Added languages german and greek for setup dialog.
+
 2022-11-24 Added settings for IOS.
            Fixed chameleon images on big endian CPUs.
 

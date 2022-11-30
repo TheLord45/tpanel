@@ -28,7 +28,7 @@
 			<key>AutocapitalizationType</key>
 			<string>None</string>
 			<key>AutocorrectionType</key>
-			<string>Default</string>
+			<string>No</string>
 		</dict>
 		<dict>
 			<key>Type</key>

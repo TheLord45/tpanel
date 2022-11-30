@@ -1,0 +1,10 @@
+/* Logging */
+"Information" = "Informationen";
+"Warnings" = "Warnungen";
+"Errors" = "Fehler";
+"Debug" = "Debug";
+"Trace" = "Verfolgen";
+"Profiling" = "Profil";
+"Long format" = "Langes Format";
+"Enable logfile" = "Logdatei aktivieren";
+"Logfile" = "Logdatei";

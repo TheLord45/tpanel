@@ -1,0 +1,9 @@
+/* Sound */
+"Sound" = "Audio";
+"Sounds" = "Klänge";
+"System sound" = "Systemklang";
+"Single beep" = "Einfacher Klang";
+"Double beep" = "Doppelter Klang";
+"Enable system sound" = "Systemklänge einschalten";
+"Volume" = "Lautstärke";
+"Gain" = "Mikrofonempfindlichkeit";

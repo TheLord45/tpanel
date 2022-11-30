@@ -72,9 +72,12 @@ class QASettings
         bool getLoggingDebug(void);
         bool getLoggingProfile(void);
         bool getLoggingLogFormat(void);
+        bool getLoggingLogfileEnabled(void);
+        QString getLoggingLogfile(void);
 
         // Some static methods
         static QString getLibraryPath(void);
+        static QString getDocumentPath(void);
 
     private:        /// methods
 

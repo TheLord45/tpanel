@@ -4,7 +4,9 @@ project(tpanel VERSION 1.3.3)
 find_package(PkgConfig)
 
 if (APPLE)
-    set(QT_DIR $ENV{HOME}/Qt/6.4.1/macos)
+	# ATTENTION!!
+	# Correct this paths to your needs!
+    set(QTDIR $ENV{HOME}/Qt/6.4.1/macos)
     set(CMAKE_PREFIX_PATH $ENV{HOME}/Qt/6.4.1/macos/lib/cmake)
 endif(APPLE)
 
@@ -77,18 +79,16 @@ if(CMAKE_VERSION VERSION_LESS "3.7.0")
 endif()
 
 find_package(Qt6 COMPONENTS Widgets REQUIRED)
-
-#if (NOT APPLE)
-    find_package(Qt6 COMPONENTS Multimedia REQUIRED)
-    find_package(Qt6 COMPONENTS MultimediaWidgets REQUIRED)
-#endif(NOT APPLE)
+find_package(Qt6 COMPONENTS Multimedia REQUIRED)
+find_package(Qt6 COMPONENTS MultimediaWidgets REQUIRED)
 
 if (APPLE)
+	# In case you've installed homebrew at another location adapt
+	# the following paths!
 	set(OSX_INCLUDE -I/opt/homebrew/include -I/usr/local/include)
 	add_definitions(${OSX_INCLUDE})
 	set(OSX_LIB -L/opt/homebrew/lib -L/usr/local/lib -liconv)
 	set(LIBS ${LIBS} ${OSX_LIB})
-#	set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 endif(APPLE)
 
 add_subdirectory(ftplib)
@@ -160,7 +160,7 @@ if (DEBUG)
    add_definitions(-g)
 endif(DEBUG)
 
-add_definitions(-pedantic -fexceptions -Wextra -Wno-attributes)
+add_definitions(-pedantic -fexceptions -Wextra -Wno-attributes -Wno-nested-anon-types -Wno-gnu-anonymous-struct)
 
 find_library(LIBSKIA_LIBRARY NAMES skia HINTS /usr/local/lib/skia)
 
@@ -172,6 +172,16 @@ target_link_libraries(tpanel m pthread ssl crypto ftp ${LIBS} ${LIBSKIA_LIBRARY}
 
 if (APPLE)
     add_definitions(-Wno-gnu-zero-variadic-macro-arguments)
+	set(DIRS ${CMAKE_BINARY_DIR})
+	set(APPS "\${CMAKE_INSTALL_PREFIX}/${APP_NAME}.app")
+	set(CPACK_BUNDLE_NAME "tpanel-\${VERSION}")
+	set(CPACK_BUNDLE_ICON "images/icon.png")
+#	set(CPACK_BUNDLE_PLIST "")
+	set(CPACK_GENERATOR "DragNDrop")
+#	add_executable(${APP_NAME} MACOSX_BUNDLE ${SOURCES})
+#	install(CODE "include(BundleUtilities)
+#    	fixup_bundle(\"${APPS}\" \"\" \"${DIRS}\")")
 endif(APPLE)
 
 install(TARGETS tpanel RUNTIME DESTINATION bin)
+include(CPack)

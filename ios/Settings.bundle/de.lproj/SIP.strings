@@ -1,0 +1,10 @@
+/* SIP */
+"Network port" = "Netzwerk Port";
+"Network TLS port" = "Netzwerk TLS Port";
+"Domain" = "Domäne";
+"User" = "Benutzername";
+"Password" = "Passwort";
+"Network IPv4" = "Netzwerk IPv4";
+"Network IPv6" = "Netzwerk IPv6";
+"SIP enabled" = "SIP aktiviert";
+"Use integrated phone" = "Intergriertes Telefon verwenden";

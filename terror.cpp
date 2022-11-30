@@ -36,19 +36,23 @@
 #   endif
 #endif
 
+#define LOGBUFFER_SIZE      4096
+
 using std::string;
 std::mutex message_mutex;
 
-bool TError::mHaveError = false;
-terrtype_t TError::mErrType = TERRNONE;
-TStreamError *TError::mCurrent = nullptr;
+bool TError::mHaveError{false};
+terrtype_t TError::mErrType{TERRNONE};
+TStreamError *TError::mCurrent{nullptr};
 std::string TError::msError;
 
-int TStreamError::mIndent = 1;
-std::ostream *TStreamError::mStream = nullptr;
+int TStreamError::mIndent{1};
+std::ostream *TStreamError::mStream{nullptr};
+std::filebuf TStreamError::mOfStream;
+char *TStreamError::mBuffer{nullptr};
 std::string TStreamError::mLogfile;
-bool TStreamError::mInitialized = false;
-unsigned int TStreamError::mLogLevel = HLOG_PROTOCOL;
+bool TStreamError::mInitialized{false};
+unsigned int TStreamError::mLogLevel{HLOG_PROTOCOL};
 
 #if LOGPATH == LPATH_SYSLOG || defined(__ANDROID__)
 class androidbuf : public std::streambuf
@@ -120,6 +124,8 @@ TStreamError::TStreamError(const string& logFile, const std::string& logLevel)
     if (!TConfig::isInitialized())
         return;
 
+    message_mutex.lock();
+
     if (!logFile.empty())
         mLogfile = logFile;
     else if (!TConfig::getLogFile().empty())
@@ -131,16 +137,24 @@ TStreamError::TStreamError(const string& logFile, const std::string& logLevel)
         setLogLevel(TConfig::getLogFile());
 
     _init();
+    message_mutex.unlock();
 }
 
 TStreamError::~TStreamError()
 {
-    if (mStream && mStream != &std::cout)
+    if (mOfStream.is_open())
+        mOfStream.close();
+
+    if (mStream)
     {
         delete mStream;
         mStream = nullptr;
-        mInitialized = false;
     }
+
+    if (mBuffer)
+        delete mBuffer;
+
+    mInitialized = false;
 }
 
 void TStreamError::setLogFile(const std::string &lf)
@@ -148,7 +162,7 @@ void TStreamError::setLogFile(const std::string &lf)
 #ifdef Q_OS_IOS
     if (!lf.empty())
     {
-        if (!mLogfile.empty() && mLogfile != lf)
+        if ((!mLogfile.empty() && mLogfile != lf) || mLogfile.empty())
             mLogfile = lf;
     }
 
@@ -241,7 +255,7 @@ unsigned int TStreamError::_getLevel(const std::string& slv)
     return HLOG_NONE;
 }
 
-void TStreamError::_init()
+void TStreamError::_init(bool reinit)
 {
     if (!TConfig::isInitialized() || mInitialized)
         return;
@@ -254,15 +268,31 @@ void TStreamError::_init()
         try
         {
 #ifndef __ANDROID__
+            if (mOfStream.is_open())
+                mOfStream.close();
+
             if (mStream && mStream != &std::cout)
                 delete mStream;
+
+            if (!mBuffer)
+            {
+                mBuffer = new char[LOGBUFFER_SIZE];
+                mOfStream.pubsetbuf(mBuffer, LOGBUFFER_SIZE);
+            }
 #if __cplusplus < 201402L
-            mStream = new std::ofstream(mLogfile.c_str(), std::ios::out | std::ios::ate);
+            mOfStream.open(mLogfile.c_str(), std::ios::out | std::ios::ate);
 #else   // __cplusplus < 201402L
-            mStream = new std::ofstream(mLogfile, std::ios::out | std::ios::ate);
+            mOfStream.open(mLogfile, std::ios::out | std::ios::ate);
 #endif  //__cplusplus < 201402L
-            if (!mStream || mStream->fail())
+            mStream = new std::ostream(&mOfStream);
+
+            if (!isStreamValid())
+            {
+                if (mOfStream.is_open())
+                    mOfStream.close();
+
                 mStream = &std::cout;
+            }
 #else   //__ANDROID__
             char *HOME = getenv("HOME");
             bool bigLog = false;
@@ -276,13 +306,15 @@ void TStreamError::_init()
                 if (mStream && mStream != &std::cout)
                     delete mStream;
 
-                mStream = new std::ofstream(mLogfile.c_str(), std::ios::out | std::ios::ate);
+                mOfStream = new std::ofstream(mLogfile.c_str(), std::ios::out | std::ios::ate);
 
-                if (!mStream || mStream->fail())
+                if (!mOfStream || mOfStream->fail())
                 {
                     std::cout.rdbuf(new androidbuf);
                     mStream = &std::cout;
                 }
+                else
+                    mStream->rdbuf(&mOfStream);
             }
             else
             {
@@ -301,13 +333,8 @@ void TStreamError::_init()
             mStream = &std::cout;
         }
     }
-    else if (!mStream || !isStreamValid())
+    else if (!isStreamValid())
     {
-        if (mStream)
-        {
-            delete mStream;
-            mStream = nullptr;
-        }
 #ifdef __ANDROID__
         std::cout.rdbuf(new androidbuf);
 #endif  // __ANDROID__
@@ -323,6 +350,9 @@ void TStreamError::_init()
         mStream = &std::cout;
     }
 #endif  // LOGPATH == LPATH_FILE
+
+    if (reinit)
+        return;
 
     if (!TConfig::isLongFormat())
         *mStream << "Logfile started at " << getTime() << std::endl;
@@ -343,16 +373,29 @@ void TStreamError::logMsg(std::ostream& str)
     if (!TConfig::isInitialized())
         return;
 
-    _init();
+    message_mutex.lock();
+    try
+    {
+        _init();
 
-    if (!isStreamValid())
-        return;
+        if (!isStreamValid(str))
+        {
+            message_mutex.unlock();
+            return;
+        }
 
-    // Print out the message
-    std::stringstream s;
-    s << str.rdbuf() << std::ends;
-    *mStream << s.str() << std::flush;
-    resetFlags(mStream);
+        // Print out the message
+        std::stringstream s;
+        s << str.rdbuf() << std::ends;
+        *mStream << s.str() << std::flush;
+        resetFlags(mStream);
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << "ERROR: Writing a log message: " << e.what() << std::endl;
+    }
+
+    message_mutex.unlock();
 }
 
 std::ostream *TStreamError::resetFlags(std::ostream *os)
@@ -405,6 +448,34 @@ string TStreamError::getTime()
     return str;
 }
 
+std::ostream *TStreamError::getStream()
+{
+    try
+    {
+        if (!isStreamValid())
+        {
+            std::cerr << "ERROR: Internal stream is invalid!" << std::endl;
+            mInitialized = false;
+            _init();
+            std::cerr << "INFO: Reinitialized stream." << std::endl;
+
+            if (!isStreamValid())
+            {
+                std::cerr << "ERROR: Reinitializing of stream failed! Using \"std::cout\" to write log messages." << std::endl;
+                return &std::cout;
+            }
+        }
+
+        return mStream;
+    }
+    catch (std::exception& e)
+    {
+        std::cerr << "ERROR: Error retrieving the current stream! Using \"std::cout\" instead." << std::endl;
+    }
+
+    return &std::cout;
+}
+
 std::ostream& indent(std::ostream& os)
 {
     if (!TStreamError::isStreamValid(os))
@@ -421,10 +492,10 @@ bool TStreamError::isStreamValid()
     if (!mStream)
         return false;
 
-    if (mStream->rdstate() & std::ofstream::failbit)
+    if (mStream->rdstate() & std::ostream::failbit)
         return false;
 
-    if (mStream->rdstate() & std::ofstream::badbit)
+    if (mStream->rdstate() & std::ostream::badbit)
         return false;
 
     return true;
@@ -432,10 +503,10 @@ bool TStreamError::isStreamValid()
 
 bool TStreamError::isStreamValid(std::ostream& os)
 {
-    if (os.rdstate() & std::ofstream::failbit)
+    if (os.rdstate() & std::ostream::failbit)
         return false;
 
-    if (os.rdstate() & std::ofstream::badbit)
+    if (os.rdstate() & std::ostream::badbit)
         return false;
 
     return true;
@@ -459,11 +530,14 @@ TTracer::TTracer(const std::string msg, int line, char *file)
         mFile = mFile.substr(pos + 1);
 
     TError::setErrorType(TERRTRACE);
+
 #if LOGPATH == LPATH_FILE
     if (!TConfig::isLongFormat())
-        TError::Current()->logMsg(*TStreamError::getStream() << "TRC " << std::setw(5) << std::right << line << ", " << indent << "{entry " << msg << std::endl);
+        *TError::Current()->getStream() << "TRC " << std::setw(5) << std::right << line << ", " << indent << "{entry " << msg << std::endl;
+//        TError::Current()->logMsg(*TStreamError::getStream() << "TRC " << std::setw(5) << std::right << line << ", " << indent << "{entry " << msg << std::endl);
     else
-        TError::Current()->logMsg(*TStreamError::getStream() << TStreamError::getTime() <<  " TRC " << std::setw(5) << std::right << line << ", " << std::setw(20) << std::left << mFile << ", " << indent << "{entry " << msg << std::endl);
+        *TError::Current()->getStream() << TStreamError::getTime() <<  " TRC " << std::setw(5) << std::right << line << ", " << std::setw(20) << std::left << mFile << ", " << indent << "{entry " << msg << std::endl;
+//        TError::Current()->logMsg(*TStreamError::getStream() << TStreamError::getTime() <<  " TRC " << std::setw(5) << std::right << line << ", " << std::setw(20) << std::left << mFile << ", " << indent << "{entry " << msg << std::endl);
 #else
     std::stringstream s;
 
@@ -549,7 +623,7 @@ TError::~TError()
         mCurrent = nullptr;
     }
 }
-
+/*
 void TError::lock()
 {
     message_mutex.lock();
@@ -559,7 +633,7 @@ void TError::unlock()
 {
     message_mutex.unlock();
 }
-
+*/
 TStreamError* TError::Current()
 {
     if (!mCurrent)
@@ -678,8 +752,20 @@ void TError::setErrorMsg(terrtype_t t, const std::string& msg)
 
 std::ostream & TError::append(int lv, std::ostream& os)
 {
-    std::string prefix;
     Current();
+
+    if (!TConfig::isInitialized() && (lv == HLOG_ERROR || lv == HLOG_WARNING))
+    {
+        std::cerr << append(lv);
+        return std::cerr;
+    }
+
+    return os << append(lv);
+}
+
+std::string TError::append(int lv)
+{
+    std::string prefix, out;
 
     switch (lv)
     {
@@ -695,18 +781,16 @@ std::ostream & TError::append(int lv, std::ostream& os)
             mErrType = TERRNONE;
     }
 
-    if (!TConfig::isInitialized() && (lv == HLOG_ERROR || lv == HLOG_WARNING))
+    if (!TConfig::isLongFormat())
+        out = prefix;
+    else
     {
-        if (!TConfig::isLongFormat())
-            std::cerr << prefix;
-        else
-            std::cerr << TStreamError::getTime() << " " << prefix << std::setw(20) << " " << ", ";
+        std::stringstream s;
+        s << TStreamError::getTime() << " " << prefix << std::setw(20) << " " << ", ";
+        out = s.str();
     }
 
-    if (!TConfig::isLongFormat())
-        return os << prefix;
-    else
-        return os << TStreamError::getTime() << " " << prefix << std::setw(20) << " " << ", ";
+    return out;
 }
 
 void TError::displayMessage(const std::string& msg)

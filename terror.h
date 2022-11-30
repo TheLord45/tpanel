@@ -78,7 +78,7 @@ class TStreamError
         static void incIndent() { mIndent++; }
         static void decIndent();
         static int getIndent() { return mIndent; }
-        static std::ostream *getStream() { return mStream; }
+        static std::ostream *getStream();
         static std::string getTime();
         static std::ostream *resetFlags(std::ostream *os);
         static bool isStreamValid();
@@ -86,7 +86,7 @@ class TStreamError
 
     private:
         static unsigned int _getLevel(const std::string& slv);
-        static void _init();
+        static void _init(bool reinit=false);
 
         const TStreamError& operator=(const TStreamError& ref);
 
@@ -95,6 +95,8 @@ class TStreamError
         static unsigned int mLogLevel;
         static int mIndent;
         static std::ostream *mStream;
+        static std::filebuf mOfStream;
+        static char *mBuffer;
 };
 
 class TTracer
@@ -122,12 +124,13 @@ class TError : public std::ostream
         static terrtype_t getErrorType() { return mErrType; }
         static void setErrorType(terrtype_t et) { mErrType = et; }
         static std::ostream& append(int lv, std::ostream& os);
+        static std::string append(int lv);
         static TStreamError* Current();
         static void clear() { mHaveError = false; msError.clear(); mErrType = TERRNONE; }
         static void logHex(char *str, size_t size);
         const TError& operator=(const TError& ref);
-        static void lock();
-        static void unlock();
+//        static void lock();
+//        static void unlock();
         static void displayMessage(const std::string& msg);
 
     protected:
@@ -145,13 +148,13 @@ class TError : public std::ostream
         std::string mHeadMsg;
 };
 
-#define MSG_INFO(msg)       { TError::lock(); if (TStreamError::checkFilter(HLOG_INFO)) { TError::Current()->logMsg(TError::append(HLOG_INFO, *TStreamError::getStream()) << msg << std::endl); } TError::unlock(); }
-#define MSG_WARNING(msg)    { TError::lock(); if (TStreamError::checkFilter(HLOG_WARNING)) { TError::Current()->logMsg(TError::append(HLOG_WARNING, *TStreamError::getStream()) << msg << std::endl); } TError::unlock(); }
-#define MSG_ERROR(msg)      { TError::lock(); if (TStreamError::checkFilter(HLOG_ERROR)) { TError::Current()->logMsg(TError::append(HLOG_ERROR, *TStreamError::getStream()) << msg << std::endl); } TError::unlock(); }
-#define MSG_TRACE(msg)      { TError::lock(); if (TStreamError::checkFilter(HLOG_TRACE)) { TError::Current()->logMsg(TError::append(HLOG_TRACE, *TStreamError::getStream()) << msg << std::endl); } TError::unlock(); }
-#define MSG_DEBUG(msg)      { TError::lock(); if (TStreamError::checkFilter(HLOG_DEBUG)) { TError::Current()->logMsg(TError::append(HLOG_DEBUG, *TStreamError::getStream()) << msg << std::endl); } TError::unlock(); }
+#define MSG_INFO(msg)       { if (TStreamError::checkFilter(HLOG_INFO)) { *TError::Current()->getStream() << TError::append(HLOG_INFO) << msg << std::endl; }}
+#define MSG_WARNING(msg)    { if (TStreamError::checkFilter(HLOG_WARNING)) { *TError::Current()->getStream() << TError::append(HLOG_WARNING) << msg << std::endl; }}
+#define MSG_ERROR(msg)      { if (TStreamError::checkFilter(HLOG_ERROR)) { *TError::Current()->getStream() << TError::append(HLOG_ERROR) << msg << std::endl; }}
+#define MSG_TRACE(msg)      { if (TStreamError::checkFilter(HLOG_TRACE)) { *TError::Current()->getStream() << TError::append(HLOG_TRACE) << msg << std::endl; }}
+#define MSG_DEBUG(msg)      { if (TStreamError::checkFilter(HLOG_DEBUG)) { *TError::Current()->getStream() << TError::append(HLOG_DEBUG) << msg << std::endl; }}
 
-#define MSG_PROTOCOL(msg)   { TError::lock(); if (TStreamError::checkFilter(HLOG_PROTOCOL)) { TError::Current()->logMsg(TError::append(HLOG_PROTOCOL, *TStreamError::getStream()) << msg << std::endl); } TError::unlock(); }
+#define MSG_PROTOCOL(msg)   {if (TStreamError::checkFilter(HLOG_PROTOCOL)) { *TError::Current()->getStream() << TError::append(HLOG_PROTOCOL) << msg << std::endl; }}
 
 #define DECL_TRACER(msg)    TTracer _hidden_tracer(msg, __LINE__, (char *)__FILE__);
 

@@ -1,0 +1,14 @@
+/* A single strings file, whose title is specified in your preferences schema. The strings files provide the localized content to display to the user for each of your preferences. */
+
+"Group" = "Ομάδα";
+"Name" = "Όνομα";
+"Enabled" = "Ενεργοποιήθηκε";
+"Channel number" = "Αριθμός καναλιού";
+"Panel type" = "Τύπος πάνελ";
+"FTP user name" = "FTP όνομα χρήστη";
+"FTP password" = "FTP κωδικός πρόσβασης";
+"Surface file name" = "Όνομα του αρχείου TP4";
+"FTP passive mode" = "Παθητική λειτουργία FTP";
+"Other settings" = "Αλλες ρυθμίσεις";
+"View" = "Όψη";
+"Sound" = "Ήχος";

@@ -1738,7 +1738,11 @@ bool TConfig::readConfig()
     QASettings settings;
     localSettings.path = QASettings::getLibraryPath().toStdString();
     localSettings.project = localSettings.path + "/tpanel";
-//    localSettings.logFile = localSettings.path + "/tpanel.log";
+    localSettings.version = "1.0";
+    localSettings.ptype = "iPhone";
+    localSettings.max_cache = 100;
+    localSettings.logLevel = SLOG_NONE;
+    localSettings.logLevelBits = HLOG_NONE;
     mkdir(localSettings.project.c_str(), S_IRWXU | S_IRWXG | S_IRWXO);
     localSettings.name = "tpanel.cfg";
     localSettings.scale = true;
@@ -1816,6 +1820,20 @@ bool TConfig::readConfig()
 
     localSettings.logLevelBits = logLevel;
     localSettings.logLevel = logLevelBitsToString(logLevel);
+    TStreamError::setLogLevel(localSettings.logLevel);
+
+    if (settings.getLoggingLogfileEnabled())
+    {
+        string fname = settings.getLoggingLogfile().toStdString();
+
+        if (!fname.empty())
+        {
+            localSettings.logFile = QASettings::getDocumentPath().toStdString() + "/" + fname;
+            TStreamError::setLogFile(localSettings.logFile);
+        }
+    }
+    else
+        localSettings.logFile.clear();
 
     if (localSettings.uuid.empty())
     {
@@ -1830,45 +1848,49 @@ bool TConfig::readConfig()
 
     mInitialized = true;
 
-    cout << "Selected Parameters:" << endl;
-    cout << "    Path to cfg.: " << localSettings.path << endl;
-    cout << "    Name of cfg.: " << localSettings.name << endl;
-    cout << "    Logfile:      " << localSettings.logFile  << endl;
-    cout << "    LogLevel:     " << localSettings.logLevel  << endl;
-    cout << "    Long format:  " << (localSettings.longformat ? "YES" : "NO")  << endl;
-    cout << "    Project path: " << localSettings.project  << endl;
-    cout << "    Controller:   " << localSettings.server  << endl;
-    cout << "    Port:         " << localSettings.port  << endl;
-    cout << "    Channel:      " << localSettings.ID  << endl;
-    cout << "    Panel type:   " << localSettings.ptype  << endl;
-    cout << "    Firmware ver. " << localSettings.version  << endl;
-    cout << "    Scaling:      " << (localSettings.scale ? "YES" : "NO")  << endl;
-    cout << "    Profiling:    " << (localSettings.profiling ? "YES" : "NO")  << endl;
-    cout << "    Button cache: " << localSettings.max_cache  << endl;
-    cout << "    System Sound: " << localSettings.systemSound  << endl;
-    cout << "    Sound state:  " << (localSettings.systemSoundState ? "ACTIVATED" : "DEACTIVATED")  << endl;
-    cout << "    Single beep:  " << localSettings.systemSingleBeep  << endl;
-    cout << "    Double beep:  " << localSettings.systemDoubleBeep  << endl;
-    cout << "    Volume:       " << localSettings.systemVolume  << endl;
-    cout << "    Gain:         " << localSettings.systemGain  << endl;
-    cout << "    Rotation:     " << (localSettings.systemRotationFix ? "LOCKED" : "UNLOCKED")  << endl;
-    cout << "    UUID:         " << localSettings.uuid  << endl;
-    cout << "    FTP user:     " << localSettings.ftpUser  << endl;
-    cout << "    FTP password: " << localSettings.ftpPassword  << endl;
-    cout << "    FTP surface:  " << localSettings.ftpSurface  << endl;
-    cout << "    FTP passive:  " << (localSettings.ftpPassive ? "YES" : "NO")  << endl;
-    cout << "    FTP dl. time: " << localSettings.ftpLastDownload  << endl;
-    cout << "    SIP proxy:    " << localSettings.sip_proxy  << endl;
-    cout << "    SIP port:     " << localSettings.sip_port  << endl;
-    cout << "    SIP TLS port: " << localSettings.sip_portTLS  << endl;
-    cout << "    SIP STUN:     " << localSettings.sip_stun  << endl;
-    cout << "    SIP doamain:  " << localSettings.sip_domain  << endl;
-    cout << "    SIP user:     " << localSettings.sip_user  << endl;
-    cout << "    SIP IPv4:     " << (localSettings.sip_ipv4 ? "YES" : "NO")  << endl;
-    cout << "    SIP IPv6:     " << (localSettings.sip_ipv6 ? "YES" : "NO")  << endl;
-    cout << "    SIP Int.Phone:" << (localSettings.sip_iphone ? "YES" : "NO")  << endl;
-    cout << "    SIP firewall: " << sipFirewallToString(localSettings.sip_firewall)  << endl;
-    cout << "    SIP enabled:  " << (localSettings.sip_enabled ? "YES" : "NO")  << endl;
+    if (IS_LOG_DEBUG())
+    {
+        cout << "Selected Parameters:" << endl;
+        cout << "    Path to cfg.: " << localSettings.path << endl;
+        cout << "    Name of cfg.: " << localSettings.name << endl;
+        cout << "    Logfile use:  " << (settings.getLoggingLogfileEnabled() ? "YES": "NO") << endl;
+        cout << "    Logfile:      " << localSettings.logFile  << endl;
+        cout << "    LogLevel:     " << localSettings.logLevel  << endl;
+        cout << "    Long format:  " << (localSettings.longformat ? "YES" : "NO")  << endl;
+        cout << "    Project path: " << localSettings.project  << endl;
+        cout << "    Controller:   " << localSettings.server  << endl;
+        cout << "    Port:         " << localSettings.port  << endl;
+        cout << "    Channel:      " << localSettings.ID  << endl;
+        cout << "    Panel type:   " << localSettings.ptype  << endl;
+        cout << "    Firmware ver. " << localSettings.version  << endl;
+        cout << "    Scaling:      " << (localSettings.scale ? "YES" : "NO")  << endl;
+        cout << "    Profiling:    " << (localSettings.profiling ? "YES" : "NO")  << endl;
+        cout << "    Button cache: " << localSettings.max_cache  << endl;
+        cout << "    System Sound: " << localSettings.systemSound  << endl;
+        cout << "    Sound state:  " << (localSettings.systemSoundState ? "ACTIVATED" : "DEACTIVATED")  << endl;
+        cout << "    Single beep:  " << localSettings.systemSingleBeep  << endl;
+        cout << "    Double beep:  " << localSettings.systemDoubleBeep  << endl;
+        cout << "    Volume:       " << localSettings.systemVolume  << endl;
+        cout << "    Gain:         " << localSettings.systemGain  << endl;
+        cout << "    Rotation:     " << (localSettings.systemRotationFix ? "LOCKED" : "UNLOCKED")  << endl;
+        cout << "    UUID:         " << localSettings.uuid  << endl;
+        cout << "    FTP user:     " << localSettings.ftpUser  << endl;
+        cout << "    FTP password: " << localSettings.ftpPassword  << endl;
+        cout << "    FTP surface:  " << localSettings.ftpSurface  << endl;
+        cout << "    FTP passive:  " << (localSettings.ftpPassive ? "YES" : "NO")  << endl;
+        cout << "    FTP dl. time: " << localSettings.ftpLastDownload  << endl;
+        cout << "    SIP proxy:    " << localSettings.sip_proxy  << endl;
+        cout << "    SIP port:     " << localSettings.sip_port  << endl;
+        cout << "    SIP TLS port: " << localSettings.sip_portTLS  << endl;
+        cout << "    SIP STUN:     " << localSettings.sip_stun  << endl;
+        cout << "    SIP doamain:  " << localSettings.sip_domain  << endl;
+        cout << "    SIP user:     " << localSettings.sip_user  << endl;
+        cout << "    SIP IPv4:     " << (localSettings.sip_ipv4 ? "YES" : "NO")  << endl;
+        cout << "    SIP IPv6:     " << (localSettings.sip_ipv6 ? "YES" : "NO")  << endl;
+        cout << "    SIP Int.Phone:" << (localSettings.sip_iphone ? "YES" : "NO")  << endl;
+        cout << "    SIP firewall: " << sipFirewallToString(localSettings.sip_firewall)  << endl;
+        cout << "    SIP enabled:  " << (localSettings.sip_enabled ? "YES" : "NO")  << endl;
+    }
 #else
     ifstream fs;
 

@@ -1,0 +1,10 @@
+/* SIP */
+"Network port" = "Θύρα δικτύου";
+"Network TLS port" = "Θύρα δικτύου TLS";
+"Domain" = "Τομέας";
+"User" = "Όνομα χρήστη";
+"Password" = "Συνθηματικός κώδικας";
+"Network IPv4" = "Δίκτυο IPv4";
+"Network IPv6" = "Δίκτυο IPv6";
+"SIP enabled" = "Ενεργοποιήθηκε SIP";
+"Use integrated phone" = "Χρησιμοποιήστε ενσωματωμένο τηλέφωνο";

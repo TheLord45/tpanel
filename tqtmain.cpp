@@ -84,6 +84,9 @@
 #include "tqtphone.h"
 #include "tqeditline.h"
 #include "terror.h"
+#ifdef Q_OS_IOS
+#include "tiosrotate.h"
+#endif
 
 #if __cplusplus < 201402L
 #   error "This module requires at least C++14 standard!"
@@ -392,11 +395,13 @@ MainWindow::MainWindow()
     if (gPageManager && gPageManager->getSettings()->isPortrait() == 1)  // portrait?
     {
         MSG_INFO("Orientation set to portrait mode.");
+        mOrientation = Qt::PortraitOrientation;
         _setOrientation(O_PORTRAIT);
     }
     else
     {
         MSG_INFO("Orientation set to landscape mode.");
+        mOrientation = Qt::LandscapeOrientation;
         _setOrientation(O_LANDSCAPE);
     }
 #else
@@ -755,7 +760,7 @@ bool MainWindow::eventFilter(QObject *, QEvent *event)
         return gestureEvent(static_cast<QGestureEvent*>(event));
     else if (event->type() == QEvent::OrientationChange)
     {
-        MSG_TRACE("The orientation has changed!");
+        MSG_PROTOCOL("The orientation has changed!");
     }
 
     return false;
@@ -943,7 +948,7 @@ void MainWindow::showPhoneDialog(bool state)
         return;
 
     mPhoneDialog = new TQtPhone(this);
-#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+#if defined(Q_OS_ANDROID)
     // On mobile devices we set the scale factor always because otherwise the
     // dialog will be unusable.
     mPhoneDialog->setScaleFactor(gScale);
@@ -1007,7 +1012,7 @@ void MainWindow::createActions()
     mToolbar->setAllowedAreas(Qt::RightToolBarArea);
     mToolbar->setFloatable(false);
     mToolbar->setMovable(false);
-
+#ifdef Q_OS_ANDROID
     if (TConfig::getScale() && gPageManager && gScale != 1.0)
     {
         int width = (int)((double)gPageManager->getSettings()->getWidth() * gScale);
@@ -1024,11 +1029,12 @@ void MainWindow::createActions()
         QSize iSize(icWidth, icWidth);
         mToolbar->setIconSize(iSize);
     }
+#endif  // Q_OS_ANDROID
 #else
     mToolbar->setFloatable(true);
     mToolbar->setMovable(true);
     mToolbar->setAllowedAreas(Qt::RightToolBarArea | Qt::BottomToolBarArea);
-#endif
+#endif  // defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
     QAction *arrowUpAct = new QAction(QIcon(":/images/arrow_up.png"), tr("Up"), this);
     connect(arrowUpAct, &QAction::triggered, this, &MainWindow::arrowUp);
     mToolbar->addAction(arrowUpAct);
@@ -1068,13 +1074,13 @@ void MainWindow::createActions()
     mToolbar->addAction(volMute);
 */
     mToolbar->addSeparator();
-
+#ifndef Q_OS_IOS
     const QIcon settingsIcon = QIcon::fromTheme("settings-configure", QIcon(":/images/settings.png"));
     QAction *settingsAct = new QAction(settingsIcon, tr("&Settings..."), this);
     settingsAct->setStatusTip(tr("Change the settings"));
     connect(settingsAct, &QAction::triggered, this, &MainWindow::settings);
     mToolbar->addAction(settingsAct);
-
+#endif
     const QIcon aboutIcon = QIcon::fromTheme("help-about", QIcon(":/images/info.png"));
     QAction *aboutAct = new QAction(aboutIcon, tr("&About..."), this);
     aboutAct->setShortcuts(QKeySequence::Open);
@@ -2215,6 +2221,9 @@ void MainWindow::_setOrientation(J_ORIENTATION ori)
                 mOrientation = Qt::PrimaryOrientation;
         }
     }
+#elif defined(Q_OS_IOS)
+    TIOSRotate rot;
+    rot.rotate(ori);
 #else
     Q_UNUSED(ori);
 #endif
