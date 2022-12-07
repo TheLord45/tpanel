@@ -81,6 +81,7 @@ class TStreamError
         static std::ostream *getStream();
         static std::string getTime();
         static std::ostream *resetFlags(std::ostream *os);
+        static void resetFlags();
         static bool isStreamValid();
         static bool isStreamValid(std::ostream& os);
 
@@ -148,13 +149,13 @@ class TError : public std::ostream
         std::string mHeadMsg;
 };
 
-#define MSG_INFO(msg)       { if (TStreamError::checkFilter(HLOG_INFO)) { *TError::Current()->getStream() << TError::append(HLOG_INFO) << msg << std::endl; }}
-#define MSG_WARNING(msg)    { if (TStreamError::checkFilter(HLOG_WARNING)) { *TError::Current()->getStream() << TError::append(HLOG_WARNING) << msg << std::endl; }}
-#define MSG_ERROR(msg)      { if (TStreamError::checkFilter(HLOG_ERROR)) { *TError::Current()->getStream() << TError::append(HLOG_ERROR) << msg << std::endl; }}
-#define MSG_TRACE(msg)      { if (TStreamError::checkFilter(HLOG_TRACE)) { *TError::Current()->getStream() << TError::append(HLOG_TRACE) << msg << std::endl; }}
-#define MSG_DEBUG(msg)      { if (TStreamError::checkFilter(HLOG_DEBUG)) { *TError::Current()->getStream() << TError::append(HLOG_DEBUG) << msg << std::endl; }}
+#define MSG_INFO(msg)       { if (TStreamError::checkFilter(HLOG_INFO)) { *TError::Current()->getStream() << TError::append(HLOG_INFO) << msg << std::endl; TStreamError::resetFlags(); }}
+#define MSG_WARNING(msg)    { if (TStreamError::checkFilter(HLOG_WARNING)) { *TError::Current()->getStream() << TError::append(HLOG_WARNING) << msg << std::endl; TStreamError::resetFlags(); }}
+#define MSG_ERROR(msg)      { if (TStreamError::checkFilter(HLOG_ERROR)) { *TError::Current()->getStream() << TError::append(HLOG_ERROR) << msg << std::endl; TStreamError::resetFlags(); }}
+#define MSG_TRACE(msg)      { if (TStreamError::checkFilter(HLOG_TRACE)) { *TError::Current()->getStream() << TError::append(HLOG_TRACE) << msg << std::endl; TStreamError::resetFlags(); }}
+#define MSG_DEBUG(msg)      { if (TStreamError::checkFilter(HLOG_DEBUG)) { *TError::Current()->getStream() << TError::append(HLOG_DEBUG) << msg << std::endl; TStreamError::resetFlags(); }}
 
-#define MSG_PROTOCOL(msg)   {if (TStreamError::checkFilter(HLOG_PROTOCOL)) { *TError::Current()->getStream() << TError::append(HLOG_PROTOCOL) << msg << std::endl; }}
+#define MSG_PROTOCOL(msg)   {if (TStreamError::checkFilter(HLOG_PROTOCOL)) { *TError::Current()->getStream() << TError::append(HLOG_PROTOCOL) << msg << std::endl; TStreamError::resetFlags(); }}
 
 #define DECL_TRACER(msg)    TTracer _hidden_tracer(msg, __LINE__, (char *)__FILE__);
 

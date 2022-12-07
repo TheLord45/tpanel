@@ -2243,7 +2243,11 @@ bool TTPInit::loadSurfaceFromController(bool force)
     if (!reader.copyOverFTP(surface, target))
     {
         if (TConfig::getFtpDownloadTime() == 0)
+        {
+            createDirectoryStructure();
+            createSystemConfigs();
             createPanelConfigs();
+        }
 
         return false;
     }

@@ -143,6 +143,9 @@ class TPageManager : public TAmxCommands
         void informPhoneState(bool call, const std::string& pnumber);
         void initOrientation();
 #endif
+#ifdef Q_OS_IOS
+        void informBatteryStatus(int level, int state);
+#endif
         void regCallDropPage(std::function<void (ulong handle)> callDropPage) { _callDropPage = callDropPage; }
         void regCallDropSubPage(std::function<void (ulong handle)> callDropSubPage) { _callDropSubPage = callDropSubPage; }
         void regCallPlayVideo(std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw)> callPlayVideo) { _callPlayVideo = callPlayVideo; };
@@ -154,8 +157,15 @@ class TPageManager : public TAmxCommands
         void regCallShowSetup(std::function<void ()> callShowSetup) { _callShowSetup = callShowSetup; }
         void regCallbackNetState(std::function<void (int level)> callNetState, ulong handle);
         void unregCallbackNetState(ulong handle);
+#ifdef Q_OS_ANDROID
         void regCallbackBatteryState(std::function<void (int level, bool charging, int chargeType)> callBatteryState, ulong handle);
+#endif
+#ifdef Q_OS_IOS
+        void regCallbackBatteryState(std::function<void (int level, int state)> callBatteryState, ulong handle);
+#endif
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         void unregCallbackBatteryState(ulong handle);
+#endif
         void regCallbackResetSurface(std::function<void ()> resetSurface) { _resetSurface = resetSurface; }
         void regCallbackShutdown(std::function<void ()> shutdown) { _shutdown = shutdown; }
         void regCallbackPlaySound(std::function<void (const std::string& file)> playSound) { _playSound = playSound; }
@@ -374,6 +384,9 @@ class TPageManager : public TAmxCommands
          * @param row       The number of the selected row.
          */
         void setSelectedRow(ulong handle, int row, const std::string& text);
+#ifdef Q_OS_IOS
+        void setBattery(int level, int state) { mLastBatteryLevel = level; mLastBatteryState = state; }
+#endif
 #ifdef _SCALE_SKIA_
         /**
          * Set the scale factor for the system setup pages. On a desktop this
@@ -740,7 +753,14 @@ class TPageManager : public TAmxCommands
         int mNetState{0};                               // On Android remembers the type of connection to the network (cell or wifi)
 #endif
         std::map<int, std::function<void (int level)> > mNetCalls;  // List of callbacks for the network state multistate bargraph
+#ifdef Q_OS_ANDROID
         std::map<int, std::function<void (int level, bool charging, int chargeType)> > mBatteryCalls;
+#endif
+#ifdef Q_OS_IOS
+        std::map<int, std::function<void (int level, int state)> > mBatteryCalls;
+        int mLastBatteryLevel{0};
+        int mLastBatteryState{0};
+#endif
 };
 
 #ifdef __ANDROID__

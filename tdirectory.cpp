@@ -379,7 +379,7 @@ bool TDirectory::drop(const string &path)
 
     try
     {
-        int n = fs::remove_all(path);
+        int n = (int)fs::remove_all(path);
         MSG_TRACE("Deleted " << n << " objects.");
         return true;
     }
@@ -407,6 +407,13 @@ bool TDirectory::dropDir(const string& path)
     if (path.empty())
         return 0;
 
+    if (!fs::exists(path))
+    {
+        MSG_WARNING("Directory \"" << path << "\" does not exist!");
+        return 0;
+    }
+    
+    MSG_DEBUG("Dropping directory: " << path);
     int count = 0;
 
     try

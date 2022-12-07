@@ -422,6 +422,11 @@ std::ostream *TStreamError::resetFlags(std::ostream *os)
     return os;
 }
 
+void TStreamError::resetFlags()
+{
+    resetFlags(TError::Current()->getStream());
+}
+
 void TStreamError::decIndent()
 {
     if (mIndent > 0)

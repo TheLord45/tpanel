@@ -22,6 +22,11 @@
 #include <thread>
 #include <atomic>
 
+#ifdef __aarch64__
+#ifndef PJ_AUTOCONF
+#define PJ_AUTOCONF 1
+#endif
+#endif
 #include <pjsua-lib/pjsua.h>
 
 #ifndef _NOSIP_

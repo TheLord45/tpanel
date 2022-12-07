@@ -52,6 +52,9 @@ class TqDownload;
 class TQtPhone;
 class QListWidgetItem;
 QT_END_NAMESPACE
+#ifdef Q_OS_IOS
+class TIOSBattery;
+#endif
 
 Q_DECLARE_METATYPE(size_t)
 
@@ -150,7 +153,7 @@ class MainWindow : public QMainWindow, TQManageQueue
         void onAppStateChanged(Qt::ApplicationState state);
         void onScreenOrientationChanged(Qt::ScreenOrientation ori);
         void onTListCallbackCurrentItemChanged(QListWidgetItem *current, QListWidgetItem *previous);
-#ifndef __ANDROID__
+#if not defined(Q_OS_ANDROID) && not defined(Q_OS_IOS)
         void setSizeMainWindow(int width, int height);
 #endif
         // Slots for the phone dialog
@@ -178,6 +181,9 @@ class MainWindow : public QMainWindow, TQManageQueue
         void fileDialog(ulong handle, const std::string& path, const std::string& extension, const std::string& suffix);
         // Progress bar (busy indicator)
         void onProgressChanged(int percent);
+#ifdef Q_OS_IOS
+        void onBatteryTimeout();
+#endif
 
     private:
         bool gestureEvent(QGestureEvent *event);
@@ -269,6 +275,10 @@ class MainWindow : public QMainWindow, TQManageQueue
         QMediaPlayer *mMediaPlayer{nullptr};// Class to play sound files.
 #ifdef QT6_LINUX
         QAudioOutput *mAudioOutput{nullptr};
+#endif
+#ifdef Q_OS_IOS
+        TIOSBattery *mIosBattery{nullptr};  // Class to retrive the battery status on an iPhone or iPad
+        QTimer *mBatTimer{nullptr};         // Timer used to periodically get battery state
 #endif
         std::chrono::steady_clock::time_point mTouchStart;  // Time in micro seconds of the start of a touch event
         int mTouchX{0};                        // The X coordinate of the mouse pointer

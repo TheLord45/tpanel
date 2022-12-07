@@ -26,7 +26,7 @@ ios: {
 versionAtMost(QT_VERSION, 5.15.2) {
 QT = core core-private gui gui-private widgets multimedia multimediawidgets sensors qml quickwidgets
 } else {
-QT = core core-private gui widgets multimedia multimediawidgets sensors qml quickwidgets
+QT = core gui widgets multimedia multimediawidgets sensors qml quickwidgets
 }}
 isEmpty(OS) {
 versionAtMost(QT_VERSION, 5.15.2) {
@@ -89,7 +89,8 @@ HEADERS = \
    $$PWD/texpat++.h \
    $$PWD/tvector.h \
    $$PWD/turl.h \
-   $$PWD/ftplib/ftplib.h
+   $$PWD/ftplib/ftplib.h \
+   tiosbattery.h
 
 SOURCES = \
    $$PWD/base64.cpp \
@@ -143,7 +144,8 @@ SOURCES = \
    $$PWD/tsystem.cpp \
    $$PWD/texpat++.cpp \
    $$PWD/turl.cpp \
-   $$PWD/ftplib/ftplib.cpp
+   $$PWD/ftplib/ftplib.cpp \
+   tiosbattery.mm
 
 android: {
 OTHER_FILES += \
@@ -179,7 +181,7 @@ ios: {
                    $$EXT_LIB_PATH/openssl/include
 
     CONFIG += c++17
-    QMAKE_IOS_DEPLOYMENT_TARGET=13.0
+    QMAKE_IOS_DEPLOYMENT_TARGET=16.1
 }
 
 QMAKE_CXXFLAGS += -std=c++17 -DPJ_AUTOCONF
@@ -280,11 +282,15 @@ equals(ANDROID_TARGET_ARCH,x86_64) {
 }
 
 ios: {
-
+equals(OS,iossim) {
     LIBS += -L$$EXT_LIB_PATH/pjsip/lib \
             -L$$EXT_LIB_PATH/skia/iossim \
             -L$$EXT_LIB_PATH/openssl/iossim
-
+ } else {
+    LIBS += -L$$EXT_LIB_PATH/pjsip/lib \
+            -L$$EXT_LIB_PATH/skia/ios64 \
+            -L$$EXT_LIB_PATH/openssl/ios
+}
     LIBS += -lskia -lpj -lpjlib-util \
             -lpjmedia -lpjmedia-audiodev \
             -lpjmedia-codec -lpjnath \

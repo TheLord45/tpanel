@@ -3,6 +3,10 @@ ChangeLog
 
 Release: 1.3.3
 ===============================================================================
+2022.12-06 Adds battery support for IOS.
+
+2022-12-04 Adds configurations suitable for XCode 14.x.
+
 2022-11-29 Adds rotation setting for IOS.
            Added languages german and greek for setup dialog.
 

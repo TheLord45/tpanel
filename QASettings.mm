@@ -18,7 +18,9 @@
 
 #include "QASettings.h"
 #import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
 #include <QtCore>
+#include "terror.h"
 
 void QASettings::registerDefaultPrefs()
 {
@@ -60,6 +62,10 @@ void QASettings::registerDefaultPrefs()
 QString QASettings::getNetlinxIP()
 {
     NSString* netlinx_ip = [[NSUserDefaults standardUserDefaults] stringForKey:@"netlinx_ip"];
+
+    if (!netlinx_ip)
+        netlinx_ip = @"0.0.0.0";
+
     return QString::fromNSString(netlinx_ip);
 }
 
@@ -118,7 +124,7 @@ QString QASettings::getNetlinxSurface()
     NSString *netlinx_surface = [[ NSUserDefaults standardUserDefaults] stringForKey:@"netlinx_surface"];
 
     if (!netlinx_surface)
-        netlinx_surface = @"tpanel.tp4";
+        netlinx_surface = @"tpanel.TP4";
 
     return QString::fromNSString(netlinx_surface);
 }
@@ -140,6 +146,10 @@ QString QASettings::getSipProxy(void)
 int QASettings::getSipNetworkPort(void)
 {
     NSInteger number = [[ NSUserDefaults standardUserDefaults] integerForKey:@"sip_port"];
+
+    if (number <= 0)
+        number = 5060;
+
     return number;
 }
 
@@ -329,4 +339,21 @@ QString QASettings::getDocumentPath()
     NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
     NSString *documentDirectory = [paths objectAtIndex:0];
     return QString::fromNSString(documentDirectory);
+}
+
+QRect QASettings::getNotchSize()
+{
+    UIWindow* window = [[UIApplication sharedApplication] keyWindow];
+    QRect rect;
+
+    float reservedTop = window.safeAreaInsets.top;
+    float reservedBottom = [[[UIApplication sharedApplication] keyWindow] safeAreaInsets].bottom;
+    float reservedLeft = window.safeAreaInsets.left;
+    float reservedRight = window.safeAreaInsets.right;
+MSG_DEBUG("Notch top: " << reservedTop << ", bottom: " << reservedBottom << ", left: " << reservedLeft << ", right: " << reservedRight);
+    rect.setLeft(reservedLeft);
+    rect.setTop(reservedTop);
+    rect.setBottom(reservedBottom);
+    rect.setRight(reservedRight);
+    return rect;
 }

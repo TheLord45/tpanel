@@ -35,5 +35,15 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>external-accessory</string>
+		<string>processing</string>
+		<string>remote-notification</string>
+	</array>
+    <key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>tpanel</string>
+	</array>
 </dict>
 </plist>

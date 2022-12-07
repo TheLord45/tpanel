@@ -86,6 +86,8 @@
 #include "terror.h"
 #ifdef Q_OS_IOS
 #include "tiosrotate.h"
+#include "tiosbattery.h"
+#include "QASettings.h"
 #endif
 
 #if __cplusplus < 201402L
@@ -404,6 +406,10 @@ MainWindow::MainWindow()
         mOrientation = Qt::LandscapeOrientation;
         _setOrientation(O_LANDSCAPE);
     }
+
+#ifdef Q_OS_IOS
+    TIOSRotate::automaticRotation(false);
+#endif
 #else
     setWindowIcon(QIcon(":images/icon.png"));
 #endif
@@ -541,7 +547,7 @@ MainWindow::MainWindow()
         connect(this, &MainWindow::sigRepaintWindows, this, &MainWindow::repaintWindows);
         connect(this, &MainWindow::sigToFront, this, &MainWindow::toFront);
         connect(this, &MainWindow::sigOnProgressChanged, this, &MainWindow::onProgressChanged);
-#ifndef __ANDROID__
+#if not defined(Q_OS_ANDROID) && not defined(Q_OS_IOS)
         connect(this, &MainWindow::sigSetSizeMainWindow, this, &MainWindow::setSizeMainWindow);
 #endif
         connect(this, &MainWindow::sigDownloadSurface, this, &MainWindow::downloadSurface);
@@ -591,6 +597,40 @@ MainWindow::MainWindow()
         }
     }
 #endif
+#ifdef Q_OS_IOS
+    // To get the battery level periodicaly we setup a timer.
+    if (!mIosBattery)
+        mIosBattery = new TIOSBattery;
+
+    mIosBattery->update();
+
+    if (gPageManager)
+    {
+        int left = mIosBattery->getBatteryLeft();
+        int state = mIosBattery->getBatteryState();
+        // At this point no buttons are registered and therefore the battery
+        // state will not be visible. To have the state at the moment a button
+        // is registered, we tell the page manager to store the values.
+        gPageManager->setBattery(left, state);
+        MSG_DEBUG("Battery state was set to " << left << "% and state " << state);
+    }
+
+    if (!mBatTimer)
+        mBatTimer = new QTimer(this);
+
+    connect(mBatTimer, &QTimer::timeout, this, &MainWindow::onBatteryTimeout);
+    mBatTimer->start(30000);    // Every 30 seconds
+    // We must get the size of the notch, if any, and add this to the touch
+    // coordinates.
+    QRect rect = QASettings::getNotchSize();
+    MSG_DEBUG("Notch top: " << rect.top() << ", bottom: " << rect.bottom() << ", left: " << rect.left() << ", right: " << rect.right() << ", height: " << rect.height() << ", width: " << rect.width());
+
+    if (gPageManager->getSettings()->isPortrait())
+        gPageManager->setFirstTopPixel(rect.bottom());
+    else
+        gPageManager->setFirstLeftPixel(rect.bottom());
+#endif  // Q_OS_IOS
+
     _restart_ = false;
 }
 
@@ -625,6 +665,22 @@ MainWindow::~MainWindow()
     }
 
     isRunning = false;
+#ifdef Q_OS_IOS
+    TIOSRotate::automaticRotation(true);
+
+    if (mBatTimer)
+    {
+        mBatTimer->stop();
+        delete mBatTimer;
+        mBatTimer = nullptr;
+    }
+
+    if (mIosBattery)
+    {
+        delete mIosBattery;
+        mIosBattery = nullptr;
+    }
+#endif
 }
 
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
@@ -652,16 +708,28 @@ void MainWindow::_orientationChanged(int orientation)
     if (gPageManager && gPageManager->getSettings()->isPortrait() == 1)  // portrait?
     {
         if (orientation == O_REVERSE_PORTRAIT && mOrientation != Qt::InvertedPortraitOrientation)
+        {
             _setOrientation((J_ORIENTATION)orientation);
+            mOrientation = Qt::InvertedPortraitOrientation;
+        }
         else if (orientation == O_PORTRAIT && mOrientation != Qt::PortraitOrientation)
+        {
             _setOrientation((J_ORIENTATION)orientation);
+            mOrientation = Qt::PortraitOrientation;
+        }
     }
     else
     {
         if (orientation == O_REVERSE_LANDSCAPE && mOrientation != Qt::InvertedLandscapeOrientation)
+        {
             _setOrientation((J_ORIENTATION)orientation);
+            mOrientation = Qt::InvertedLandscapeOrientation;
+        }
         else if (orientation == O_LANDSCAPE && mOrientation != Qt::LandscapeOrientation)
+        {
             _setOrientation((J_ORIENTATION)orientation);
+            mOrientation = Qt::LandscapeOrientation;
+        }
     }
 }
 
@@ -886,7 +954,7 @@ void MainWindow::onScreenOrientationChanged(Qt::ScreenOrientation ori)
 {
     DECL_TRACER("MainWindow::onScreenOrientationChanged(int ori)");
 
-    MSG_PROTOCOL("Orientation changed to " << ori);
+    MSG_PROTOCOL("Orientation changed to " << ori << " (mOrientation: " << mOrientation << ")");
 
     if (mOrientation == Qt::PrimaryOrientation || mOrientation == ori)
         return;
@@ -900,8 +968,9 @@ void MainWindow::onScreenOrientationChanged(Qt::ScreenOrientation ori)
         return;
 
     J_ORIENTATION jori = O_UNDEFINED;
+    mOrientation = ori;
 
-    switch(mOrientation)
+    switch(ori)
     {
         case Qt::LandscapeOrientation:          jori = O_LANDSCAPE; break;
         case Qt::InvertedLandscapeOrientation:  jori = O_REVERSE_LANDSCAPE; break;
@@ -1690,7 +1759,7 @@ void MainWindow::fileDialog(ulong handle, const string &path, const std::string&
         return;
 
 #ifdef Q_OS_ANDROID
-    // In case of Android (or IOS) we get some kind of URL instead of a clear
+    // In case of Android we get some kind of URL instead of a clear
     // path. Because of this we must call some Java API functions to find the
     // real path.
     QString fileName = fname;
@@ -1776,7 +1845,16 @@ void MainWindow::onProgressChanged(int percent)
 
     mDownloadBar->setProgress(percent);
 }
+#ifdef Q_OS_IOS
+void MainWindow::onBatteryTimeout()
+{
+    if (!mIosBattery || !gPageManager)
+        return;
 
+    mIosBattery->update();
+    gPageManager->informBatteryStatus(mIosBattery->getBatteryLeft(), mIosBattery->getBatteryState());
+}
+#endif
 /**
  * @brief MainWindow::appStateChanged - Is called whenever the state of the app changes.
  * This callback method is called whenever the state of the application
@@ -2222,8 +2300,7 @@ void MainWindow::_setOrientation(J_ORIENTATION ori)
         }
     }
 #elif defined(Q_OS_IOS)
-    TIOSRotate rot;
-    rot.rotate(ori);
+    TIOSRotate::rotate(ori);
 #else
     Q_UNUSED(ori);
 #endif
@@ -3044,7 +3121,7 @@ void MainWindow::dropButton(ulong handle)
     gObject->removeObject(handle);
     draw_mutex.unlock();
 }
-#ifndef __ANDROID__
+#if not defined (Q_OS_ANDROID) && not defined(Q_OS_IOS)
 void MainWindow::setSizeMainWindow(int width, int height)
 {
     DECL_TRACER("MainWindow::setSizeMainWindow(int width, int height)");

@@ -20,6 +20,7 @@
 #define QASETTINGS_H
 
 class QString;
+class QRect;
 
 class QASettings
 {
@@ -78,6 +79,7 @@ class QASettings
         // Some static methods
         static QString getLibraryPath(void);
         static QString getDocumentPath(void);
+        static QRect getNotchSize();
 
     private:        /// methods
 

@@ -2831,7 +2831,14 @@ void TButton::registerSystemButton()
     else if (ap == 0 && (ad == SYSTEM_ITEM_BATTERYLEVEL || ad == SYSTEM_ITEM_BATTERYCHARGING))   // Battery status
     {
         if (gPageManager)
+        {
+#ifdef Q_OS_ANDROID
             gPageManager->regCallbackBatteryState(bind(&TButton::funcBattery, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), mHandle);
+#endif
+#ifdef Q_OS_IOS
+            gPageManager->regCallbackBatteryState(bind(&TButton::funcBattery, this, std::placeholders::_1, std::placeholders::_2), mHandle);
+#endif
+        }
 
         mSystemReg = true;
     }
@@ -3681,7 +3688,7 @@ void TButton::funcResource(const RESOURCE_T* resource, const std::string& url, B
         }
     }
 }
-
+#ifdef Q_OS_ANDROID
 void TButton::funcBattery(int level, bool charging, int /* chargeType */)
 {
     DECL_TRACER("TButton::funcBattery(int level, bool charging, int chargeType)");
@@ -3714,7 +3721,41 @@ void TButton::funcBattery(int level, bool charging, int /* chargeType */)
         }
     }
 }
+#endif
+#ifdef Q_OS_IOS
+void TButton::funcBattery(int level, int state)
+{
+    DECL_TRACER("TButton::funcBattery(int level, bool charging, int chargeType)");
 
+    // Battery level is always a bargraph
+    if (ap == 0 && ad == 242)       // Not charging
+    {
+        mEnabled = (state == 1);
+        mChanged = true;
+
+        if (!mEnabled && visible)
+            hide(true);
+        else if (mEnabled)
+        {
+            visible = true;
+            drawBargraph(mActInstance, level, visible);
+        }
+    }
+    else if (ap == 0 && ad == 234)  // Charging
+    {
+        mEnabled = (state == 2);
+        mChanged = true;
+
+        if (!mEnabled && visible)
+            hide(true);
+        else if (mEnabled)
+        {
+            visible = true;
+            drawBargraph(mActInstance, level, visible);
+        }
+    }
+}
+#endif
 void TButton::funcNetworkState(int level)
 {
     DECL_TRACER("TButton::funcNetworkState(int level)");

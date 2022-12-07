@@ -1322,7 +1322,8 @@ void TPageManager::unregCallbackNetState(ulong handle)
     if (iter != mNetCalls.end())
         mNetCalls.erase(iter);
 }
-
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+#ifdef Q_IOS_ANDROID
 void TPageManager::regCallbackBatteryState(std::function<void (int, bool, int)> callBatteryState, ulong handle)
 {
     DECL_TRACER("TPageManager::regCallbackBatteryState(std::function<void (int, bool, int)> callBatteryState, ulong handle)");
@@ -1332,20 +1333,40 @@ void TPageManager::regCallbackBatteryState(std::function<void (int, bool, int)> 
 
     mBatteryCalls.insert(std::pair<int, std::function<void (int, bool, int)> >(handle, callBatteryState));
 }
+#endif
+#ifdef Q_OS_IOS
+void TPageManager::regCallbackBatteryState(std::function<void (int, int)> callBatteryState, ulong handle)
+{
+    DECL_TRACER("TPageManager::regCallbackBatteryState(std::function<void (int, int)> callBatteryState, ulong handle)");
 
+    if (handle == 0)
+        return;
+
+    mBatteryCalls.insert(std::pair<int, std::function<void (int, int)> >(handle, callBatteryState));
+
+    if (mLastBatteryLevel > 0 || mLastBatteryState > 0)
+    {
+        informBatteryStatus(mLastBatteryLevel, mLastBatteryState);
+        MSG_DEBUG("Initialized battery button with " << mLastBatteryLevel << "% and state " << mLastBatteryState);
+    }
+}
+#endif
 void TPageManager::unregCallbackBatteryState(ulong handle)
 {
     DECL_TRACER("TPageManager::unregCallbackBatteryState(ulong handle)");
 
     if (mBatteryCalls.size() == 0)
         return;
-
+#ifdef Q_OS_ANDROID
     std::map<int, std::function<void (int, bool, int)> >::iterator iter = mBatteryCalls.find(handle);
-
+#endif
+#ifdef Q_OS_IOS
+    std::map<int, std::function<void (int, int)> >::iterator iter = mBatteryCalls.find(handle);
+#endif
     if (iter != mBatteryCalls.end())
         mBatteryCalls.erase(iter);
 }
-
+#endif  // defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
 /*
  * The following function must be called to start the "panel".
  */
@@ -3410,6 +3431,22 @@ void TPageManager::initOrientation()
     activity.callStaticMethod<void>("org/qtproject/theosys/Orientation", "InstallOrientationListener", "()V");
 }
 #endif  // __ANDROID__
+#ifdef Q_OS_IOS
+void TPageManager::informBatteryStatus(int level, int state)
+{
+    DECL_TRACER("TPageManager::informBatteryStatus(int level, int state)");
+
+    MSG_INFO("Battery status: level: " << level << ", " << state);
+
+    if (mBatteryCalls.size() > 0)
+    {
+        std::map<int, std::function<void (int, int)> >::iterator iter;
+
+        for (iter = mBatteryCalls.begin(); iter != mBatteryCalls.end(); ++iter)
+            iter->second(level, state);
+    }
+}
+#endif
 
 void TPageManager::setButtonCallbacks(Button::TButton *bt)
 {

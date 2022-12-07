@@ -1027,7 +1027,12 @@ namespace Button
             void funcTimer(const amx::ANET_BLINK& blink);
             void funcNetwork(int state);
             void funcResource(const RESOURCE_T *resource, const std::string& url, BITMAP_CACHE bc, int instance);
+#ifdef __ANDROID__
             void funcBattery(int level, bool charging, int chargeType);
+#endif
+#if TARGET_OS_SIMULATOR || TARGET_OS_IOS
+            void funcBattery(int level, int state);
+#endif
             void funcNetworkState(int level);
 
         private:
