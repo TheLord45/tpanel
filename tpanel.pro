@@ -16,23 +16,17 @@
 
 TARGET = tpanel
 
-equals(OS,osx) {
-versionAtMost(QT_VERSION, 5.15.2) {
-QT = core core-private gui gui-private widgets multimedia multimediawidgets sensors qml quickwidgets
-} else {
-QT = core core-private gui widgets qml quickwidget
-}}
 ios: {
 versionAtMost(QT_VERSION, 5.15.2) {
-QT = core core-private gui gui-private widgets multimedia multimediawidgets sensors qml quickwidgets
+QT = core gui widgets multimedia multimediawidgets sensors quickwidgets
 } else {
-QT = core gui widgets multimedia multimediawidgets sensors qml quickwidgets
+QT = core gui widgets multimedia multimediawidgets sensors quickwidgets
 }}
-isEmpty(OS) {
+android: {
 versionAtMost(QT_VERSION, 5.15.2) {
-QT = core core-private gui gui-private widgets multimedia multimediawidgets sensors qml quickwidgets androidextras
+QT = core gui gui-private widgets multimedia multimediawidgets sensors quickwidgets androidextras
 } else {
-QT = core core-private gui widgets multimedia multimediawidgets sensors qml quickwidgets
+QT = core gui widgets multimedia multimediawidgets sensors quickwidgets
 }}
 
 # The main application
@@ -89,8 +83,8 @@ HEADERS = \
    $$PWD/texpat++.h \
    $$PWD/tvector.h \
    $$PWD/turl.h \
-   $$PWD/ftplib/ftplib.h \
-   tiosbattery.h
+   $$PWD/tqnetworkinfo.h \
+   $$PWD/ftplib/ftplib.h
 
 SOURCES = \
    $$PWD/base64.cpp \
@@ -144,8 +138,8 @@ SOURCES = \
    $$PWD/tsystem.cpp \
    $$PWD/texpat++.cpp \
    $$PWD/turl.cpp \
-   $$PWD/ftplib/ftplib.cpp \
-   tiosbattery.mm
+   $$PWD/tqnetworkinfo.cpp \
+   $$PWD/ftplib/ftplib.cpp
 
 android: {
 OTHER_FILES += \
@@ -163,16 +157,6 @@ INCLUDEPATH = \
     $$EXT_LIB_PATH/pjsip/include \
     $$EXTRA_PATH/expat/include
 }
-equals(OS,osx) {
-    INCLUDEPATH += $$PWD/. \
-                   $$PWD/ftplib \
-                   /opt/homebrew/include \
-                   /opt/homebrew/opt/openssl@1.1/include \
-                   /usr/local/include \
-                   /usr/local/include/skia
-
-    CONFIG += c++17
-}
 ios: {
     INCLUDEPATH += $$PWD/. \
                    $$PWD/ftplib \
@@ -180,14 +164,12 @@ ios: {
                    $$EXT_LIB_PATH/pjsip/include \
                    $$EXT_LIB_PATH/openssl/include
 
-    CONFIG += c++17
     QMAKE_IOS_DEPLOYMENT_TARGET=16.1
 }
 
+CONFIG += c++17
 QMAKE_CXXFLAGS += -std=c++17 -DPJ_AUTOCONF
 QMAKE_LFLAGS += -std=c++17
-
-android: include($$SDK_PATH/android_openssl/openssl.pri)
 
 equals(ANDROID_TARGET_ARCH,arm64-v8a) {
     INCLUDEPATH += $$EXT_LIB_PATH/openssl/arm64-v8a/include
@@ -301,35 +283,20 @@ equals(OS,iossim) {
             -lwebrtc -lilbccodec \
             -framework CFNetwork
 
-    OBJECTIVE_SOURCES = $$PWD/QASettings.mm \
-                        $$PWD/tiosrotate.mm
+    OBJECTIVE_HEADERS = $$PWD/ios/QASettings.h \
+                        $$PWD/ios/tiosrotate.h \
+                        $$PWD/ios/tiosbattery.h
+
+    OBJECTIVE_SOURCES = $$PWD/ios/QASettings.mm \
+                        $$PWD/ios/tiosrotate.mm \
+                        $$PWD/ios/tiosbattery.mm
 
     QMAKE_INFO_PLIST = $$PWD/ios/Info.plist
 
+    app_launch_images.files = $$files($$PWD/images/theosys_logo.png)
     app_launch_files.files = $$files($$PWD/ios/Settings.bundle)
     ios_icon.files = $$files($$PWD/images/icon*.png)
-    QMAKE_BUNDLE_DATA += app_launch_files ios_icon
-}
-
-equals(OS,osx) {
-    INCLUDEPATH += /opt/homebrew/include /usr/local/include
-
-    LIBS += -lskia -llibpj-arm-apple-darwin22.1.0.a \
-            -llibpjlib-util-arm-apple-darwin22.1.0.a \
-            -llibpjmedia-arm-apple-darwin22.1.0.a \
-            -llibpjmedia-audiodev-arm-apple-darwin22.1.0.a \
-            -llibpjmedia-codec-arm-apple-darwin22.1.0.a \
-            -llibpjnath-arm-apple-darwin22.1.0.a \
-            -llibpjsip-arm-apple-darwin22.1.0.a \
-            -llibpjsip-simple-arm-apple-darwin22.1.0.a \
-            -llibpjsip-ua-arm-apple-darwin22.1.0.a \
-            -llibpjsua-arm-apple-darwin22.1.0.a \
-            -llibresample-arm-apple-darwin22.1.0.a \
-            -llibspeex-arm-apple-darwin22.1.0.a \
-            -llibsrtp-arm-apple-darwin22.1.0.a \
-            -llibgsmcodec-arm-apple-darwin22.1.0.a \
-            -llibwebrtc-arm-apple-darwin22.1.0.a \
-            -llibilbccodec-arm-apple-darwin22.1.0.a
+    QMAKE_BUNDLE_DATA += app_launch_files ios_icon app_launch_images
 }
 
 # Define with the QT5_LINUX and QT6_LINUX definitions for which of the two
@@ -381,13 +348,12 @@ android: {
         android/res/values/libs.xml
 
     ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
+    CONFIG += sdk_no_version_check
+    # Add openSSL library for Android
+    include($$SDK_PATH/android_openssl/openssl.pri)
 } else {
     LIBS += -lcrypto -lssl -liconv
 }
 
 # Add the ftp library
 DEPENDPATH += $$PWD/ftplib
-android: {
-# Add openSSL library for Android
-android: include($$SDK_PATH/android_openssl/openssl.pri)
-}

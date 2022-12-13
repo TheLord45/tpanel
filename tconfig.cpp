@@ -38,7 +38,7 @@
 #include <TargetConditionals.h>
 #if TARGET_OS_SIMULATOR || TARGET_OS_IOS
 #include <QString>
-#include "QASettings.h"
+#include "ios/QASettings.h"
 #endif
 #endif
 using std::string;

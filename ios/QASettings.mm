@@ -16,14 +16,97 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
+#include <iostream>
+
 #include "QASettings.h"
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 #include <QtCore>
+
+#include "tconfig.h"
 #include "terror.h"
 
-void QASettings::registerDefaultPrefs()
+@interface SetupController : NSObject
+
+@property(getter=isInitialized) BOOL Initialized;
+
+- (void)fetchSettingBundleData:(NSNotification *)notification;
+
+@end
+
+@implementation SetupController
+
+- (id)init
 {
+    std::cout << "[SetupController init]" << std::endl;
+    [self setInitialized:NO];
+
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(fetchSettingBundleData:) name:NSUserDefaultsDidChangeNotification object:nil];
+    return self;
+}
+
+- (void)fetchSettingBundleData:(NSNotification *)notification
+{
+    if ([self isInitialized] == NO)
+    {
+        std::cout << "[SetupController fetchSettingBundleData]: Registering defaults." << std::endl;
+        [self registerDefaults];
+        return;
+    }
+
+    // Check here for all potential changed values who could be executed on the fly
+    std::cout << "[SetupController fetchSettingBundleData]: Checking for changed values." << std::endl;
+    unsigned int logLevel = 0;
+
+    bool logInfo = [[ NSUserDefaults standardUserDefaults] boolForKey:@"logging_info"];
+    bool logWarn = [[ NSUserDefaults standardUserDefaults] boolForKey:@"logging_warning"];
+    bool logError = [[ NSUserDefaults standardUserDefaults] boolForKey:@"logging_error"];
+    bool logTrace = [[ NSUserDefaults standardUserDefaults] boolForKey:@"logging_trace"];
+    bool logDebug = [[ NSUserDefaults standardUserDefaults] boolForKey:@"logging_debug"];
+
+    if (logInfo)
+        logLevel |= HLOG_INFO;
+
+    if (logWarn)
+        logLevel |= HLOG_WARNING;
+
+    if (logError)
+        logLevel |= HLOG_ERROR;
+
+    if (logTrace)
+        logLevel |= HLOG_TRACE;
+
+    if (logDebug)
+        logLevel |= HLOG_DEBUG;
+
+    if (logLevel != TConfig::getLogLevelBits())
+    {
+        TConfig::saveLogLevel(logLevel);
+        TStreamError::setLogLevel(logLevel);
+    }
+
+    TConfig::saveProfiling([[ NSUserDefaults standardUserDefaults] boolForKey:@"logging_profile"]);
+    TConfig::saveFormat([[ NSUserDefaults standardUserDefaults] boolForKey:@"logging_long_format"]);
+    NSString *str = [[ NSUserDefaults standardUserDefaults] stringForKey:@"sound_system"];
+    TConfig::saveSystemSoundFile(QString::fromNSString(str).toStdString());
+    str = [[ NSUserDefaults standardUserDefaults] stringForKey:@"sound_single"];
+    TConfig::saveSingleBeepFile(QString::fromNSString(str).toStdString());
+    str = [[ NSUserDefaults standardUserDefaults] stringForKey:@"sound_double"];
+    TConfig::saveDoubleBeepFile(QString::fromNSString(str).toStdString());
+    TConfig::saveSystemSoundState([[ NSUserDefaults standardUserDefaults] boolForKey:@"sound_enable"]);
+    TConfig::saveSystemVolume([[ NSUserDefaults standardUserDefaults] integerForKey:@"sound_volume"]);
+    TConfig::saveSystemGain([[ NSUserDefaults standardUserDefaults] integerForKey:@"sound_gain"]);
+}
+
+- (void)registerDefaults
+{
+    if ([self isInitialized] == YES)
+        return;
+
+    [self setInitialized:YES];
+
+    std::cout << "[SetupController registerDefaults]" << std::endl;
+
     NSDictionary* appDefaultsRoot = [NSDictionary dictionaryWithObject:@"Root" forKey:@"StringsTable"];
     NSDictionary* appDefaultsSip = [NSDictionary dictionaryWithObject:@"SIP" forKey:@"StringsTable"];
     NSDictionary* appDefaultsView = [NSDictionary dictionaryWithObject:@"View" forKey:@"StringsTable"];
@@ -59,6 +142,33 @@ void QASettings::registerDefaultPrefs()
     }
 }
 
+@end
+
+// -----------------------------------------------------------------------------
+// ---- C++ part starts here
+// -----------------------------------------------------------------------------
+
+SetupController *mSetup = nil;
+
+QASettings::QASettings()
+{
+    mSetup = [[SetupController alloc] init];
+}
+
+void QASettings::registerDefaultPrefs()
+{
+    if (mSetup)
+        [mSetup registerDefaults];
+}
+
+void QASettings::unregisterPrefs()
+{
+    if (mSetup)
+        [mSetup release];
+
+    mSetup = nil;
+}
+
 QString QASettings::getNetlinxIP()
 {
     NSString* netlinx_ip = [[NSUserDefaults standardUserDefaults] stringForKey:@"netlinx_ip"];
@@ -71,22 +181,12 @@ QString QASettings::getNetlinxIP()
 
 int QASettings::getNetlinxPort()
 {
-    NSInteger netlinx_port = [[ NSUserDefaults standardUserDefaults] integerForKey:@"netlinx_port"];
-
-    if (netlinx_port == 0)
-        netlinx_port = 1319;
-
-    return netlinx_port;
+    return getDefaultNumber((char *)"netlinx_port", 1319);
 }
 
 int QASettings::getNetlinxChannel()
 {
-    NSInteger netlinx_channel = [[ NSUserDefaults standardUserDefaults] integerForKey:@"netlinx_channel"];
-
-    if (netlinx_channel == 0)
-        netlinx_channel = 10001;
-
-    return netlinx_channel;
+    return getDefaultNumber((char *)"netlinx_channel", 10001);
 }
 
 QString QASettings::getNetlinxPanelType()
@@ -131,8 +231,7 @@ QString QASettings::getNetlinxSurface()
 
 bool QASettings::getFTPPassive()
 {
-    NSInteger ftp_passive = [[ NSUserDefaults standardUserDefaults] boolForKey:@"netlinx_ftp_passive"];
-    return ftp_passive;
+    return getDefaultBool((char *)"netlinx_ftp_passive", true);
 }
 
 // Settings for SIP
@@ -145,12 +244,7 @@ QString QASettings::getSipProxy(void)
 
 int QASettings::getSipNetworkPort(void)
 {
-    NSInteger number = [[ NSUserDefaults standardUserDefaults] integerForKey:@"sip_port"];
-
-    if (number <= 0)
-        number = 5060;
-
-    return number;
+    return getDefaultNumber((char *)"sip_port", 5060);
 }
 
 int QASettings::getSipNetworkTlsPort(void)
@@ -202,28 +296,24 @@ bool QASettings::getSipEnabled(void)
 }
 bool QASettings::getSipIntegratedPhone(void)
 {
-    NSInteger boolean = [[ NSUserDefaults standardUserDefaults] boolForKey:@"sip_internal_phone"];
-    return boolean;
+    return getDefaultBool((char *)"sip_internal_phone", true);
 }
 
 // Settings for View
 
 bool QASettings::getViewScale(void)
 {
-    NSInteger boolean = [[ NSUserDefaults standardUserDefaults] boolForKey:@"view_scale"];
-    return boolean;
+    return getDefaultBool((char *)"view_scale", true);
 }
 
 bool QASettings::getViewToolbarVisible(void)
 {
-    NSInteger boolean = [[ NSUserDefaults standardUserDefaults] boolForKey:@"view_toolbar"];
-    return boolean;
+    return getDefaultBool((char *)"view_toolbar", true);
 }
 
 bool QASettings::getViewToolbarForce(void)
 {
-    NSInteger boolean = [[ NSUserDefaults standardUserDefaults] boolForKey:@"view_toolbar_force"];
-    return boolean;
+    return getDefaultBool((char *)"view_toolbar_force", true);
 }
 
 bool QASettings::getViewRotation(void)
@@ -237,37 +327,46 @@ bool QASettings::getViewRotation(void)
 QString QASettings::getSoundSystem(void)
 {
     NSString *str = [[ NSUserDefaults standardUserDefaults] stringForKey:@"sound_system"];
+
+    if (!str)
+        return "singleBeep.wav";
+
     return QString::fromNSString(str);
 }
 
 QString QASettings::getSoundSingleBeep(void)
 {
     NSString *str = [[ NSUserDefaults standardUserDefaults] stringForKey:@"sound_single"];
+
+    if (!str)
+        return "singleBeep.wav";
+
     return QString::fromNSString(str);
 }
 
 QString QASettings::getSoundDoubleBeep(void)
 {
     NSString *str = [[ NSUserDefaults standardUserDefaults] stringForKey:@"sound_double"];
+
+    if (!str)
+        return "doubleBeep.wav";
+
     return QString::fromNSString(str);
 }
 
 bool QASettings::getSoundEnabled(void)
 {
-    NSInteger boolean = [[ NSUserDefaults standardUserDefaults] boolForKey:@"sound_enable"];
-    return boolean;
+    return getDefaultBool((char *)"sound_enable", true);
 }
 
 int QASettings::getSoundVolume(void)
 {
-    NSInteger number = [[ NSUserDefaults standardUserDefaults] integerForKey:@"sound_volume"];
-    return number;
+    return getDefaultNumber((char *)"sound_volume", 100);
 }
 
 int QASettings::getSoundGain(void)
 {
-    NSInteger number = [[ NSUserDefaults standardUserDefaults] integerForKey:@"sound_gain"];
-    return number;
+    return getDefaultNumber((char *)"sound_gain", 100);
 }
 
 // Settings for logging
@@ -323,6 +422,10 @@ bool QASettings::getLoggingLogfileEnabled()
 QString QASettings::getLoggingLogfile()
 {
     NSString *str = [[ NSUserDefaults standardUserDefaults] stringForKey:@"logging_logfile"];
+
+    if (!str)
+        return "tpanel.log";
+
     return QString::fromNSString(str);
 }
 
@@ -341,19 +444,71 @@ QString QASettings::getDocumentPath()
     return QString::fromNSString(documentDirectory);
 }
 
-QRect QASettings::getNotchSize()
+QMargins QASettings::getNotchSize()
 {
     UIWindow* window = [[UIApplication sharedApplication] keyWindow];
-    QRect rect;
+    QMargins rect;
 
     float reservedTop = window.safeAreaInsets.top;
-    float reservedBottom = [[[UIApplication sharedApplication] keyWindow] safeAreaInsets].bottom;
+    float reservedBottom = window.safeAreaInsets.bottom;
     float reservedLeft = window.safeAreaInsets.left;
     float reservedRight = window.safeAreaInsets.right;
-MSG_DEBUG("Notch top: " << reservedTop << ", bottom: " << reservedBottom << ", left: " << reservedLeft << ", right: " << reservedRight);
+
     rect.setLeft(reservedLeft);
     rect.setTop(reservedTop);
     rect.setBottom(reservedBottom);
     rect.setRight(reservedRight);
     return rect;
+}
+
+bool QASettings::getDefaultBool(char *key, bool def)
+{
+    NSString *nsKey = [[NSString alloc] initWithUTF8String: key];
+
+    if (!nsKey)
+        return def;
+
+    NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+    id dataExists = [userDefaults objectForKey:nsKey];
+
+    if (dataExists != nil)
+    {
+        bool ret = [[NSUserDefaults standardUserDefaults] boolForKey:nsKey];
+        [nsKey release];
+        return ret;
+    }
+
+    [nsKey release];
+    return def;
+}
+
+int QASettings::getDefaultNumber(char *key, int def)
+{
+    NSString *nsKey = [[NSString alloc] initWithUTF8String: key];
+
+    if (!nsKey)
+        return def;
+
+    NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+    id dataExists = [userDefaults objectForKey:nsKey];
+
+    if (dataExists != nil)
+    {
+        int ret = [[NSUserDefaults standardUserDefaults] integerForKey:nsKey];
+        [nsKey release];
+        return ret;
+    }
+
+    [nsKey release];
+    return def;
+}
+
+void QASettings::openSettings()
+{
+    NSURL *url = [NSURL URLWithString:UIApplicationOpenSettingsURLString];
+
+    if (!url)
+        return;
+
+    [[UIApplication sharedApplication] openURL:url];
 }

@@ -3,6 +3,15 @@ ChangeLog
 
 Release: 1.3.3
 ===============================================================================
+2022.12.13 Repairs the broken Android compilation.
+
+2022.12.11 Adds setup call from within application.
+           Fixes battery callbacks.
+
+2022.12.07 Adds detection for iPhones with a notch. The offset for the first
+           left pixel is now set to the correct value according to the
+           orientation.
+
 2022.12-06 Adds battery support for IOS.
 
 2022-12-04 Adds configurations suitable for XCode 14.x.

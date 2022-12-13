@@ -145,6 +145,7 @@ class TPageManager : public TAmxCommands
 #endif
 #ifdef Q_OS_IOS
         void informBatteryStatus(int level, int state);
+        void informTPanelNetwork(bool conn, int level, int type);
 #endif
         void regCallDropPage(std::function<void (ulong handle)> callDropPage) { _callDropPage = callDropPage; }
         void regCallDropSubPage(std::function<void (ulong handle)> callDropSubPage) { _callDropSubPage = callDropSubPage; }
@@ -749,8 +750,8 @@ class TPageManager : public TAmxCommands
         double mScaleSystemWidth{1.0};                  // The width scale factor for the system setup pages
         double mScaleSystemHeight{1.0};                 // The height scale factor for the system setup pages
 #endif
-#ifdef __ANDROID__
-        int mNetState{0};                               // On Android remembers the type of connection to the network (cell or wifi)
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+        int mNetState{0};                               // On Android and IOS remembers the type of connection to the network (cell or wifi)
 #endif
         std::map<int, std::function<void (int level)> > mNetCalls;  // List of callbacks for the network state multistate bargraph
 #ifdef Q_OS_ANDROID

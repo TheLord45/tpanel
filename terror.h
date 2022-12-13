@@ -85,6 +85,9 @@ class TStreamError
         static bool isStreamValid();
         static bool isStreamValid(std::ostream& os);
 
+        static void startTemporaryLogLevel(unsigned int l);
+        static void endTemporaryLogLevel();
+
     private:
         static unsigned int _getLevel(const std::string& slv);
         static void _init(bool reinit=false);
@@ -94,6 +97,8 @@ class TStreamError
         static bool mInitialized;
         static std::string mLogfile;
         static unsigned int mLogLevel;
+        static unsigned int mLogLevelOld;
+        static bool haveTemporaryLogLevel;
         static int mIndent;
         static std::ostream *mStream;
         static std::filebuf mOfStream;
@@ -166,5 +171,9 @@ class TError : public std::ostream
 #define IS_LOG_DEBUG()      TStreamError::checkFilter(HLOG_DEBUG)
 #define IS_LOG_PROTOCOL()   TStreamError::checkFilter(HLOG_PROTOCOL)
 #define IS_LOG_ALL()        TStreamError::checkFilter(HLOG_ALL)
+
+#define START_TEMPORARY_TRACE() TStreamError::startTemporaryLogLevel(HLOG_TRACE)
+#define START_TEMPORARY_DEBUG() TStreamError::startTemporaryLogLevel(HLOG_DEBUG)
+#define END_TEMPORARY_LOG()     TStreamError::endTemporaryLogLevel()
 
 #endif

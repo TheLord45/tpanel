@@ -3694,7 +3694,7 @@ void TButton::funcBattery(int level, bool charging, int /* chargeType */)
     DECL_TRACER("TButton::funcBattery(int level, bool charging, int chargeType)");
 
     // Battery level is always a bargraph
-    if (ap == 0 && ad == 242)       // Not charging
+    if (ap == 0 && ad == SYSTEM_ITEM_BATTERYLEVEL)       // Not charging
     {
         mEnabled = !charging;
         mChanged = true;
@@ -3707,7 +3707,7 @@ void TButton::funcBattery(int level, bool charging, int /* chargeType */)
             drawBargraph(mActInstance, level, visible);
         }
     }
-    else if (ap == 0 && ad == 234)  // Charging
+    else if (ap == 0 && ad == SYSTEM_ITEM_BATTERYCHARGING)  // Charging
     {
         mEnabled = charging;
         mChanged = true;
@@ -3728,9 +3728,9 @@ void TButton::funcBattery(int level, int state)
     DECL_TRACER("TButton::funcBattery(int level, bool charging, int chargeType)");
 
     // Battery level is always a bargraph
-    if (ap == 0 && ad == 242)       // Not charging
+    if (ap == 0 && ad == SYSTEM_ITEM_BATTERYLEVEL)       // Not charging
     {
-        mEnabled = (state == 1);
+        mEnabled = (state == 1 || state == 3);
         mChanged = true;
 
         if (!mEnabled && visible)
@@ -3741,7 +3741,7 @@ void TButton::funcBattery(int level, int state)
             drawBargraph(mActInstance, level, visible);
         }
     }
-    else if (ap == 0 && ad == 234)  // Charging
+    else if (ap == 0 && ad == SYSTEM_ITEM_BATTERYCHARGING)  // Charging
     {
         mEnabled = (state == 2);
         mChanged = true;

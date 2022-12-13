@@ -53,6 +53,8 @@ char *TStreamError::mBuffer{nullptr};
 std::string TStreamError::mLogfile;
 bool TStreamError::mInitialized{false};
 unsigned int TStreamError::mLogLevel{HLOG_PROTOCOL};
+unsigned int TStreamError::mLogLevelOld{HLOG_NONE};
+bool TStreamError::haveTemporaryLogLevel{false};
 
 #if LOGPATH == LPATH_SYSLOG || defined(__ANDROID__)
 class androidbuf : public std::streambuf
@@ -303,18 +305,26 @@ void TStreamError::_init(bool reinit)
 
             if (HOME && !bigLog && mLogfile.find(HOME) == string::npos)
             {
+                if (mOfStream.is_open())
+                    mOfStream.close();
+
                 if (mStream && mStream != &std::cout)
                     delete mStream;
 
-                mOfStream = new std::ofstream(mLogfile.c_str(), std::ios::out | std::ios::ate);
+#if __cplusplus < 201402L
+                mOfStream.open(mLogfile.c_str(), std::ios::out | std::ios::ate);
+#else   // __cplusplus < 201402L
+                mOfStream.open(mLogfile, std::ios::out | std::ios::ate);
+#endif  //__cplusplus < 201402L
+                mStream = new std::ostream(&mOfStream);
 
-                if (!mOfStream || mOfStream->fail())
+                if (!isStreamValid())
                 {
-                    std::cout.rdbuf(new androidbuf);
+                    if (mOfStream.is_open())
+                        mOfStream.close();
+
                     mStream = &std::cout;
                 }
-                else
-                    mStream->rdbuf(&mOfStream);
             }
             else
             {
@@ -515,6 +525,22 @@ bool TStreamError::isStreamValid(std::ostream& os)
         return false;
 
     return true;
+}
+
+void TStreamError::startTemporaryLogLevel(unsigned int l)
+{
+    if (haveTemporaryLogLevel)
+        return;
+
+    mLogLevelOld = mLogLevel;
+    mLogLevel |= l;
+    haveTemporaryLogLevel = true;
+}
+
+void TStreamError::endTemporaryLogLevel()
+{
+    mLogLevel = mLogLevelOld;
+    haveTemporaryLogLevel = false;
 }
 
 /********************************************************************/

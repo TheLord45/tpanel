@@ -163,12 +163,12 @@ JNIEXPORT void JNICALL Java_org_qtproject_theosys_Logger_logger(JNIEnv *env, jcl
 
     try
     {
-        TError::lock();
+//        TError::lock();
 
         if (TStreamError::checkFilter(mode))
             TError::Current()->logMsg(TError::append(mode, *TStreamError::getStream()) << ret << std::endl);
 
-        TError::unlock();
+//        TError::unlock();
     }
     catch (std::exception& e)
     {
@@ -868,7 +868,7 @@ void TPageManager::runCommands()
 void TPageManager::showSetup()
 {
     DECL_TRACER("TPageManager::showSetup()");
-
+#ifdef Q_OS_ANDROID
     if (mSetupActive)
         return;
 
@@ -892,6 +892,10 @@ void TPageManager::showSetup()
     }
 
     setPage(SYSTEM_PAGE_CONTROLLER, true);    // Call the page "Controller" (NetLinx settings)
+#else
+        if (_callShowSetup)
+            _callShowSetup();
+#endif
 }
 
 void TPageManager::hideSetup()
@@ -1323,7 +1327,7 @@ void TPageManager::unregCallbackNetState(ulong handle)
         mNetCalls.erase(iter);
 }
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
-#ifdef Q_IOS_ANDROID
+#ifdef Q_OS_ANDROID
 void TPageManager::regCallbackBatteryState(std::function<void (int, bool, int)> callBatteryState, ulong handle)
 {
     DECL_TRACER("TPageManager::regCallbackBatteryState(std::function<void (int, bool, int)> callBatteryState, ulong handle)");
@@ -1345,10 +1349,7 @@ void TPageManager::regCallbackBatteryState(std::function<void (int, int)> callBa
     mBatteryCalls.insert(std::pair<int, std::function<void (int, int)> >(handle, callBatteryState));
 
     if (mLastBatteryLevel > 0 || mLastBatteryState > 0)
-    {
         informBatteryStatus(mLastBatteryLevel, mLastBatteryState);
-        MSG_DEBUG("Initialized battery button with " << mLastBatteryLevel << "% and state " << mLastBatteryState);
-    }
 }
 #endif
 void TPageManager::unregCallbackBatteryState(ulong handle)
@@ -3352,7 +3353,7 @@ void TPageManager::stopBatteryState()
 
 void TPageManager::informTPanelNetwork(jboolean conn, jint level, jint type)
 {
-    DECL_TRACER("TPageManager::informTPanelNetwork(jboolean conn)");
+    DECL_TRACER("TPageManager::informTPanelNetwork(jboolean conn, jint level, jint type)");
 
     int l = 0;
     string sType;
@@ -3446,6 +3447,47 @@ void TPageManager::informBatteryStatus(int level, int state)
             iter->second(level, state);
     }
 }
+
+void TPageManager::informTPanelNetwork(bool conn, int level, int type)
+{
+    DECL_TRACER("TPageManager::informTPanelNetwork(bool conn, int level, int type)");
+
+    int l = 0;
+    string sType;
+
+    switch (type)
+    {
+        case 1: sType = "Ethernet"; break;
+        case 2: sType = "Mobile"; break;
+        case 3: sType = "WiFi"; break;
+        case 4: sType = "Bluetooth"; break;
+
+        default:
+            sType = "Unknown"; break;
+    }
+
+    if (conn)
+        l = level;
+
+    if (mNetState && mNetState != type)     // Has the connection type changed?
+    {
+        if (gAmxNet)
+            gAmxNet->reconnect();
+    }
+
+    mNetState = type;
+
+    MSG_INFO("Connection status: " << (conn ? "Connected" : "Disconnected") << ", level: " << level << ", type: " << sType);
+
+    if (mNetCalls.size() > 0)
+    {
+        std::map<int, std::function<void (int level)> >::iterator iter;
+
+        for (iter = mNetCalls.begin(); iter != mNetCalls.end(); ++iter)
+            iter->second(l);
+    }
+}
+
 #endif
 
 void TPageManager::setButtonCallbacks(Button::TButton *bt)
@@ -8546,8 +8588,6 @@ void TPageManager::doPKP(int, vector<int>&, vector<string>& pars)
 void TPageManager::doSetup(int, vector<int>&, vector<string>&)
 {
     DECL_TRACER("TPageManager::doSetup(int, vector<int>&, vector<string>&)");
-
-    MSG_PROTOCOL("Received command to show setup ...");
 
     if (_callShowSetup)
         _callShowSetup();

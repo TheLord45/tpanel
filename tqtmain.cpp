@@ -72,7 +72,7 @@
 #include "tpagemanager.h"
 #include "tqtmain.h"
 #include "tconfig.h"
-#ifdef QTSETTINGS
+#if !defined(Q_OS_IOS) && !defined(Q_OS_ANDROID)
 #include "tqtsettings.h"
 #endif
 #include "tqkeyboard.h"
@@ -85,9 +85,9 @@
 #include "tqeditline.h"
 #include "terror.h"
 #ifdef Q_OS_IOS
-#include "tiosrotate.h"
-#include "tiosbattery.h"
-#include "QASettings.h"
+#include "ios/QASettings.h"
+#include "ios/tiosrotate.h"
+#include "ios/tiosbattery.h"
 #endif
 
 #if __cplusplus < 201402L
@@ -614,21 +614,6 @@ MainWindow::MainWindow()
         gPageManager->setBattery(left, state);
         MSG_DEBUG("Battery state was set to " << left << "% and state " << state);
     }
-
-    if (!mBatTimer)
-        mBatTimer = new QTimer(this);
-
-    connect(mBatTimer, &QTimer::timeout, this, &MainWindow::onBatteryTimeout);
-    mBatTimer->start(30000);    // Every 30 seconds
-    // We must get the size of the notch, if any, and add this to the touch
-    // coordinates.
-    QRect rect = QASettings::getNotchSize();
-    MSG_DEBUG("Notch top: " << rect.top() << ", bottom: " << rect.bottom() << ", left: " << rect.left() << ", right: " << rect.right() << ", height: " << rect.height() << ", width: " << rect.width());
-
-    if (gPageManager->getSettings()->isPortrait())
-        gPageManager->setFirstTopPixel(rect.bottom());
-    else
-        gPageManager->setFirstLeftPixel(rect.bottom());
 #endif  // Q_OS_IOS
 
     _restart_ = false;
@@ -956,21 +941,37 @@ void MainWindow::onScreenOrientationChanged(Qt::ScreenOrientation ori)
 
     MSG_PROTOCOL("Orientation changed to " << ori << " (mOrientation: " << mOrientation << ")");
 
-    if (mOrientation == Qt::PrimaryOrientation || mOrientation == ori)
+    if (!gPageManager)
         return;
 
-    if ((mOrientation == Qt::LandscapeOrientation || mOrientation == Qt::InvertedLandscapeOrientation) &&
-            (ori == Qt::PortraitOrientation || ori == Qt::InvertedPortraitOrientation))
-        return;
+    if (gPageManager->getSettings()->isPortrait())
+    {
+        if (ori == Qt::PortraitOrientation || ori == Qt::InvertedPortraitOrientation)
+        {
+            if (mOrientation == ori)
+                return;
 
-    if ((mOrientation == Qt::PortraitOrientation || mOrientation == Qt::InvertedPortraitOrientation) &&
-            (ori == Qt::LandscapeOrientation || ori == Qt::InvertedLandscapeOrientation))
-        return;
+            mOrientation = ori;
+        }
+        else if (mOrientation != Qt::PortraitOrientation && mOrientation != Qt::InvertedPortraitOrientation)
+            mOrientation = Qt::PortraitOrientation;
+    }
+    else
+    {
+        if (ori == Qt::LandscapeOrientation || ori == Qt::InvertedLandscapeOrientation)
+        {
+            if (mOrientation == ori)
+                return;
+
+            mOrientation = ori;
+        }
+        else if (mOrientation != Qt::LandscapeOrientation && mOrientation != Qt::InvertedLandscapeOrientation)
+            mOrientation = Qt::LandscapeOrientation;
+    }
 
     J_ORIENTATION jori = O_UNDEFINED;
-    mOrientation = ori;
 
-    switch(ori)
+    switch(mOrientation)
     {
         case Qt::LandscapeOrientation:          jori = O_LANDSCAPE; break;
         case Qt::InvertedLandscapeOrientation:  jori = O_REVERSE_LANDSCAPE; break;
@@ -981,6 +982,26 @@ void MainWindow::onScreenOrientationChanged(Qt::ScreenOrientation ori)
     }
 
     _setOrientation(jori);
+#ifdef Q_OS_IOS
+    QMargins margins = QASettings::getNotchSize();
+    MSG_DEBUG("Notch top: " << margins.top() << ", bottom: " << margins.bottom() << ", left: " << margins.left() << ", right: " << margins.right());
+
+    if (gPageManager->getSettings()->isPortrait())
+    {
+        gPageManager->setFirstTopPixel(margins.top());
+        gPageManager->setFirstLeftPixel(margins.left());
+    }
+    else
+    {
+        gPageManager->setFirstTopPixel(margins.top());
+
+        if (mOrientation == Qt::LandscapeOrientation)
+            gPageManager->setFirstLeftPixel(margins.left());
+        else if (mOrientation == Qt::InvertedLandscapeOrientation)
+            gPageManager->setFirstLeftPixel(margins.right());
+    }
+#endif
+
 }
 
 /**
@@ -1143,13 +1164,12 @@ void MainWindow::createActions()
     mToolbar->addAction(volMute);
 */
     mToolbar->addSeparator();
-#ifndef Q_OS_IOS
     const QIcon settingsIcon = QIcon::fromTheme("settings-configure", QIcon(":/images/settings.png"));
     QAction *settingsAct = new QAction(settingsIcon, tr("&Settings..."), this);
     settingsAct->setStatusTip(tr("Change the settings"));
     connect(settingsAct, &QAction::triggered, this, &MainWindow::settings);
     mToolbar->addAction(settingsAct);
-#endif
+
     const QIcon aboutIcon = QIcon::fromTheme("help-about", QIcon(":/images/info.png"));
     QAction *aboutAct = new QAction(aboutIcon, tr("&About..."), this);
     aboutAct->setShortcuts(QKeySequence::Open);
@@ -1278,7 +1298,7 @@ void MainWindow::mouseReleaseEvent(QMouseEvent* event)
 void MainWindow::settings()
 {
     DECL_TRACER("MainWindow::settings()");
-#ifndef QTSETTINGS
+#if defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
 #ifndef Q_OS_IOS
     if (gPageManager)
     {
@@ -1288,7 +1308,7 @@ void MainWindow::settings()
     else    // This "else" should never be executed!
         displayMessage("<b>Fatal error</b>: An internal mandatory class was not initialized!<br>Unable to show setup dialog!", "Fatal error");
 #else
-    displayMessage("Please use the settings in the <i>System settings</i>. Search there for <b>tpanel</b>.", "Information");
+    QASettings::openSettings();
 #endif
 #else
     // Save some old values to decide whether to start over or not.
@@ -1300,38 +1320,6 @@ void MainWindow::settings()
     bool oldToolbarSuppress = TConfig::getToolbarSuppress();
     // Initialize and open the settings dialog.
     TQtSettings *dlg_settings = new TQtSettings(this);
-#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
-    // On mobile devices we set the scale factor always because otherwise the
-    // dialog will be unusable.
-    qreal ratio = 1.0;
-
-    if (gPageManager->getSettings()->isPortrait())
-    {
-        if (gScreenWidth > gScreenHeight)
-        {
-            qreal refHeight = dlg_settings->geometry().height();
-            qreal refWidth = dlg_settings->geometry().width();
-            QRect rect = QGuiApplication::primaryScreen()->geometry();
-            qreal height = qMax(rect.width(), rect.height());
-            qreal width = qMin(rect.width(), rect.height());
-            ratio = qMin(height / refHeight, width / refWidth);
-        }
-        else
-        {
-            qreal refWidth = dlg_settings->geometry().height();
-            qreal refHeight = dlg_settings->geometry().width();
-            QRect rect = QGuiApplication::primaryScreen()->geometry();
-            qreal width = qMax(rect.width(), rect.height());
-            qreal height = qMin(rect.width(), rect.height());
-            ratio = qMin(height / refHeight, width / refWidth);
-        }
-    }
-    else
-        ratio = gScale;
-
-    dlg_settings->setScaleFactor(ratio);
-    dlg_settings->doResize();
-#endif
     int ret = dlg_settings->exec();
     bool rebootAnyway = false;
 
@@ -1421,7 +1409,7 @@ void MainWindow::settings()
     }
 
     delete dlg_settings;
-#endif  // QTSETTINGS
+#endif  // defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
 }
 
 /**
@@ -1881,6 +1869,10 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
             QJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
 #endif
 #endif
+#ifdef Q_OS_IOS
+            if (mBatTimer)
+                mBatTimer->stop();
+#endif
         break;
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)      // On a normal desktop we can ignore this signals
         case Qt::ApplicationInactive:
@@ -1894,6 +1886,10 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
             QJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
 #endif
 #endif
+#ifdef Q_OS_IOS
+            if (mBatTimer)
+                mBatTimer->stop();
+#endif
         break;
 
         case Qt::ApplicationHidden:
@@ -1905,6 +1901,10 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
 #else
             QJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
 #endif
+#endif
+#ifdef Q_OS_IOS
+            if (mBatTimer)
+                mBatTimer->stop();
 #endif
         break;
 #endif
@@ -1939,6 +1939,30 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
 #else
             QJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "resumeOrientationListener", "()V");
 #endif
+#endif
+#ifdef Q_OS_IOS
+            if (mBatTimer)
+                mBatTimer->start();
+
+            {
+                QMargins margins = QASettings::getNotchSize();
+                MSG_DEBUG("Notch top: " << margins.top() << ", bottom: " << margins.bottom() << ", left: " << margins.left() << ", right: " << margins.right());
+
+                if (gPageManager->getSettings()->isPortrait())
+                {
+                    gPageManager->setFirstTopPixel(margins.top());
+                    gPageManager->setFirstLeftPixel(margins.left());
+                }
+                else
+                {
+                    gPageManager->setFirstTopPixel(margins.top());
+
+                    if (mOrientation == Qt::LandscapeOrientation)
+                        gPageManager->setFirstLeftPixel(margins.left());
+                    else if (mOrientation == Qt::InvertedLandscapeOrientation)
+                        gPageManager->setFirstLeftPixel(margins.right());
+                }
+            }
 #endif
         break;
 #if defined(Q_OS_LINUX) || defined(Q_OS_UNIX)
@@ -3699,12 +3723,16 @@ void MainWindow::sendVirtualKeys(const string& str)
 void MainWindow::showSetup()
 {
     DECL_TRACER("MainWindow::showSetup()");
-#ifdef QTSETTINGS
+#if !defined(Q_OS_ANDROID) && !defined(Q_OS_IOS)
     settings();
 #else
+#ifndef Q_OS_IOS
     if (gPageManager)
         gPageManager->showSetup();
-#endif
+#else
+    QASettings::openSettings();
+#endif  // Q_OS_IOS
+#endif  // !defined(Q_OS_ANDROID) && !defined(Q_OS_IOS)
 }
 
 void MainWindow::playSound(const string& file)

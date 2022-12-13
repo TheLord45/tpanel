@@ -20,13 +20,16 @@
 #define QASETTINGS_H
 
 class QString;
-class QRect;
+class QMargins;
 
 class QASettings
 {
     public:
+        QASettings();
+
         // register default preferences from plist file
         void registerDefaultPrefs(void);
+        void unregisterPrefs(void);
 
         // Settings for NetLinx
         QString getNetlinxIP(void);
@@ -79,9 +82,12 @@ class QASettings
         // Some static methods
         static QString getLibraryPath(void);
         static QString getDocumentPath(void);
-        static QRect getNotchSize();
+        static QMargins getNotchSize();
+        static void openSettings();
 
     private:        /// methods
+        bool getDefaultBool(char *key, bool def);
+        int getDefaultNumber(char *key, int def);
 
 };
 

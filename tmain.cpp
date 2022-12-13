@@ -266,6 +266,7 @@ int main(int argc, char *argv[])
 #if not defined(Q_OS_ANDROID) && not defined(Q_OS_IOS)
     string pname = *argv;
     size_t pos = pname.find_last_of("/");
+    bool haveParameters = (argc > 1);
 
     if (pos != string::npos)
         pname = pname.substr(pos + 1);
@@ -273,6 +274,7 @@ int main(int argc, char *argv[])
     string pname = "tpanel";
     killed = false;
     _netRunning = false;
+    bool haveParameters = false;
 #endif
     TConfig::setProgName(pname);    // Remember the name of this application.
 #if not defined(Q_OS_ANDROID) && not defined(Q_OS_IOS)
@@ -302,6 +304,13 @@ int main(int argc, char *argv[])
         }
     }
 #endif
+    if (haveParameters && configFile.empty())
+    {
+        cerr << "ERROR: Unknown command line parameter found!" << endl;
+        usage();
+        return 1;
+    }
+
     TError::clear();                    // Clear all errors (initialize)
     TConfig config(configFile);         // Read the configuration file.
 
