@@ -24,13 +24,16 @@ class TIOSRotate
 {
     public:
         TIOSRotate();
+        ~TIOSRotate();
 
-        static void rotate(int dir);
+        void rotate(int dir);
         static void setAllowedOrientations(bool portrait) { mPortrait = portrait; }
         static bool getAllowedOrientation() { return mPortrait; }
-        static void automaticRotation(bool allow);
+        void automaticRotation(bool allow);
 
     private:
+        bool isAutomaticRotation();
+
         static bool mPortrait;
 };
 

@@ -53,7 +53,12 @@
     UIDevice *myDevice = [UIDevice currentDevice];
     [myDevice setBatteryMonitoringEnabled:YES];
     float left = [myDevice batteryLevel] * 100;
-    [self setLeft:(int)left];
+
+    if ([self getLeft] < 0.0)
+        [self setLeft:(int)([self getLeft] * -1.0)];
+    else
+        [self setLeft:(int)left];
+
     [self setState:(int)[myDevice batteryState]];
     TIOSBattery::informStatus([self getLeft], [self getState]);
     MSG_DEBUG("Event battery level: " << [self getLeft] << ", state: " << [self getState]);
@@ -91,6 +96,10 @@ void TIOSBattery::update()
     UIDevice *myDevice = [UIDevice currentDevice];
     [myDevice setBatteryMonitoringEnabled:YES];
     mLeft = [myDevice batteryLevel] * 100;
+
+    if (mLeft < 0)
+        mLeft = mLeft * -1;
+
     int status = [myDevice batteryState];
 
     switch (status)

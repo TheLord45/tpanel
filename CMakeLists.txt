@@ -81,6 +81,7 @@ endif()
 find_package(Qt6 COMPONENTS Widgets REQUIRED)
 find_package(Qt6 COMPONENTS Multimedia REQUIRED)
 find_package(Qt6 COMPONENTS MultimediaWidgets REQUIRED)
+find_package(Qt6 COMPONENTS Positioning REQUIRED)
 
 if (APPLE)
 	# In case you've installed homebrew at another location adapt
@@ -168,7 +169,7 @@ if(CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
 	target_link_libraries(tpanel stdc++fs)
 endif()
 
-target_link_libraries(tpanel m pthread ssl crypto ftp ${LIBS} ${LIBSKIA_LIBRARY} Qt6::Widgets Qt6::Multimedia Qt6::MultimediaWidgets)
+target_link_libraries(tpanel m pthread ssl crypto ftp ${LIBS} ${LIBSKIA_LIBRARY} Qt6::Widgets Qt6::Multimedia Qt6::MultimediaWidgets Qt6::Positioning)
 
 if (APPLE)
     add_definitions(-Wno-gnu-zero-variadic-macro-arguments)

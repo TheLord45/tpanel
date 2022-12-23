@@ -4861,7 +4861,7 @@ void TPageManager::doAPF(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-            setButtonCallbacks(bt);
+//            setButtonCallbacks(bt);
             bt->addPushFunction(action, pname);
         }
     }
@@ -4902,7 +4902,7 @@ void TPageManager::doBAT(int port, vector<int> &channels, vector<string> &pars)
     for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
     {
         Button::TButton *bt = *mapIter;
-        setButtonCallbacks(bt);
+//        setButtonCallbacks(bt);
 
         if (btState == 0)       // All instances?
         {
@@ -5006,7 +5006,7 @@ void TPageManager::doBAU(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-            setButtonCallbacks(bt);
+//            setButtonCallbacks(bt);
 
             if (btState == 0)       // All instances?
             {
@@ -5059,7 +5059,7 @@ void TPageManager::doBCB(int port, vector<int> &channels, vector<string> &pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-            setButtonCallbacks(bt);
+//            setButtonCallbacks(bt);
 
             if (btState == 0)       // All instances?
             {
@@ -5161,7 +5161,7 @@ void TPageManager::doBCF(int port, vector<int>& channels, vector<std::string>& p
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-            setButtonCallbacks(bt);
+//            setButtonCallbacks(bt);
 
             if (btState == 0)       // All instances?
             {
@@ -5259,7 +5259,7 @@ void TPageManager::doBCT(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-            setButtonCallbacks(bt);
+//            setButtonCallbacks(bt);
 
             if (btState == 0)       // All instances?
             {
@@ -5379,7 +5379,7 @@ void TPageManager::doBDO(int port, vector<int>& channels, vector<std::string>& p
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-            setButtonCallbacks(bt);
+//            setButtonCallbacks(bt);
 
             if (btState == 0)       // All instances?
             {
@@ -5440,7 +5440,7 @@ void TPageManager::doBFB(int port, vector<int>& channels, vector<std::string>& p
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-            setButtonCallbacks(bt);
+//            setButtonCallbacks(bt);
             bt->setFeedback(type);
         }
     }
@@ -6122,7 +6122,7 @@ void TPageManager::doBMP(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-            setButtonCallbacks(bt);
+//            setButtonCallbacks(bt);
 
             if (btState == 0)       // All instances?
             {
@@ -6268,7 +6268,7 @@ void TPageManager::doBOP(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-            setButtonCallbacks(bt);
+//            setButtonCallbacks(bt);
 
             if (btState == 0)       // All instances?
             {
@@ -6413,7 +6413,7 @@ void TPageManager::doBOR(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-            setButtonCallbacks(bt);
+//            setButtonCallbacks(bt);
             bt->setBorderStyle(border);
         }
     }
@@ -6492,7 +6492,7 @@ void TPageManager::doBRD(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-            setButtonCallbacks(bt);
+//            setButtonCallbacks(bt);
 
             if (btState == 0)       // All instances?
             {
@@ -6805,7 +6805,7 @@ void TPageManager::doBWW(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-            setButtonCallbacks(bt);
+//            setButtonCallbacks(bt);
 
             if (btState == 0)       // All instances?
             {
@@ -6879,7 +6879,7 @@ void TPageManager::doCPF(int port, vector<int>& channels, vector<string>&)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-            setButtonCallbacks(bt);
+//            setButtonCallbacks(bt);
             bt->clearPushFunctions();
         }
     }
@@ -6932,7 +6932,7 @@ void TPageManager::doDPF(int port, vector<int>& channels, vector<string>& pars)
         for (it = list.begin(); it != list.end(); it++)
         {
             Button::TButton *bt = *it;
-            setButtonCallbacks(bt);
+//            setButtonCallbacks(bt);
             bt->clearPushFunction(action);
         }
 
@@ -6954,7 +6954,7 @@ void TPageManager::doDPF(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-            setButtonCallbacks(bt);
+//            setButtonCallbacks(bt);
             bt->clearPushFunction(action);
         }
     }
@@ -6990,7 +6990,7 @@ void TPageManager::doENA(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-            setButtonCallbacks(bt);
+//            setButtonCallbacks(bt);
             bt->setEnable(((cvalue)?true:false));
         }
     }
@@ -7029,7 +7029,7 @@ void TPageManager::doFON(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-            setButtonCallbacks(bt);
+//            setButtonCallbacks(bt);
 
             if (btState == 0)       // All instances?
             {
@@ -7117,7 +7117,7 @@ void TPageManager::doGLH(int port, vector<int>& channels, vector<std::string>& p
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-            setButtonCallbacks(bt);
+//            setButtonCallbacks(bt);
             bt->setBargraphUpperLimit(limit);
         }
     }
@@ -7159,7 +7159,7 @@ void TPageManager::doGLL(int port, vector<int>& channels, vector<std::string>& p
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-            setButtonCallbacks(bt);
+//            setButtonCallbacks(bt);
             bt->setBargraphLowerLimit(limit);
         }
     }
@@ -7191,7 +7191,7 @@ void TPageManager::doGSC(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-            setButtonCallbacks(bt);
+//            setButtonCallbacks(bt);
             bt->setBargraphSliderColor(color);
         }
     }
@@ -7228,7 +7228,7 @@ void TPageManager::doICO(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-            setButtonCallbacks(bt);
+//            setButtonCallbacks(bt);
 
             if (btState == 0)       // All instances?
             {
@@ -7837,7 +7837,11 @@ void TPageManager::doTXT(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-            setButtonCallbacks(bt);
+
+            if (!bt)
+                break;
+
+//            setButtonCallbacks(bt);
 
             if (btState == 0)       // All instances?
             {
@@ -7946,7 +7950,7 @@ void TPageManager::doUNI(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-            setButtonCallbacks(bt);
+//            setButtonCallbacks(bt);
 
             if (btState == 0)       // All instances?
             {
@@ -8001,7 +8005,7 @@ void TPageManager::doUTF(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-            setButtonCallbacks(bt);
+//            setButtonCallbacks(bt);
 
             if (btState == 0)       // All instances?
             {
@@ -8125,7 +8129,7 @@ void TPageManager::doBBR(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-            setButtonCallbacks(bt);
+//            setButtonCallbacks(bt);
 
             if (btState == 0)       // All instances?
             {
@@ -8249,7 +8253,7 @@ void TPageManager::doRFR(int, vector<int>&, vector<string>& pars)
 
             if (bt->isVisible())
             {
-                setButtonCallbacks(bt);
+//                setButtonCallbacks(bt);
                 bt->refresh();
             }
         }

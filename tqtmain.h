@@ -20,6 +20,7 @@
 
 #include <QMainWindow>
 #include <QMetaType>
+#include <QGeoPositionInfoSource>
 
 #include "tpagemanager.h"
 #include "tobject.h"
@@ -41,6 +42,8 @@ class QGestureEvent;
 class QEvent;
 class QSound;
 class QMediaPlayer;
+class QGeoPositionInfo;
+class QOrientationSensor;
 #ifdef QT6_LINUX
 class QAudioOutput;
 #endif
@@ -54,6 +57,7 @@ class QListWidgetItem;
 QT_END_NAMESPACE
 #ifdef Q_OS_IOS
 class TIOSBattery;
+class TIOSRotate;
 #endif
 
 Q_DECLARE_METATYPE(size_t)
@@ -114,9 +118,7 @@ class MainWindow : public QMainWindow, TQManageQueue
         void sigOnProgressChanged(int percent);
         void sigDisplayMessage(const std::string& msg, const std::string& title);
         void sigFileDialog(ulong handle, const std::string& path, const std::string& extension, const std::string& suffix);
-#ifndef __ANDROID__
         void sigSetSizeMainWindow(int width, int height);
-#endif
 
     protected:
         bool event(QEvent *event) override;
@@ -152,10 +154,11 @@ class MainWindow : public QMainWindow, TQManageQueue
         void muteSound(bool state);
         void onAppStateChanged(Qt::ApplicationState state);
         void onScreenOrientationChanged(Qt::ScreenOrientation ori);
+        void onCurrentOrientationChanged(int currentOrientation);
+        void onPositionUpdated(const QGeoPositionInfo &update);
+        void onErrorOccurred(QGeoPositionInfoSource::Error positioningError);
         void onTListCallbackCurrentItemChanged(QListWidgetItem *current, QListWidgetItem *previous);
-#if not defined(Q_OS_ANDROID) && not defined(Q_OS_IOS)
         void setSizeMainWindow(int width, int height);
-#endif
         // Slots for the phone dialog
         void showPhoneDialog(bool state);
         void setPhoneNumber(const std::string& number);
@@ -181,9 +184,6 @@ class MainWindow : public QMainWindow, TQManageQueue
         void fileDialog(ulong handle, const std::string& path, const std::string& extension, const std::string& suffix);
         // Progress bar (busy indicator)
         void onProgressChanged(int percent);
-#ifdef Q_OS_IOS
-        void onBatteryTimeout();
-#endif
 
     private:
         bool gestureEvent(QGestureEvent *event);
@@ -227,9 +227,7 @@ class MainWindow : public QMainWindow, TQManageQueue
         void _onProgressChanged(int percent);
         void _displayMessage(const std::string& msg, const std::string& title);
         void _fileDialog(ulong handle, const std::string& path, const std::string& extension, const std::string& suffix);
-#ifndef __ANDROID__
         void _setSizeMainWindow(int width, int height);
-#endif
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         void _signalState(Qt::ApplicationState state);
         void _orientationChanged(int orientation);
@@ -244,6 +242,10 @@ class MainWindow : public QMainWindow, TQManageQueue
         void repaintObjects();
         int calcVolume(int value);
         std::string convertMask(const std::string& mask);
+#ifdef Q_OS_IOS
+        void setNotch();
+        void initGeoLocation();
+#endif
 
         bool mWasInactive{false};           // If the application was inactive this is set to true until everything was repainted.
         bool mDoRepaint{false};             // This is set to TRUE whenever a reconnection to the controller happened.
@@ -272,13 +274,15 @@ class MainWindow : public QMainWindow, TQManageQueue
         int mLastPressX{-1};                // Remember the last mouse press X coordinate
         int mLastPressY{-1};                // Remember the last mouse press Y coordinate
         Qt::ScreenOrientations mOrientation{Qt::PrimaryOrientation};
+        QOrientationSensor *mSensor{nullptr};   // Basic sensor for orientation
         QMediaPlayer *mMediaPlayer{nullptr};// Class to play sound files.
+        QGeoPositionInfoSource *mSource{nullptr};   // The geo location is used on IOS to keep app running in background
 #ifdef QT6_LINUX
         QAudioOutput *mAudioOutput{nullptr};
 #endif
 #ifdef Q_OS_IOS
         TIOSBattery *mIosBattery{nullptr};  // Class to retrive the battery status on an iPhone or iPad
-        QTimer *mBatTimer{nullptr};         // Timer used to periodically get battery state
+        TIOSRotate *mIosRotate{nullptr};    // Class to control rotation
 #endif
         std::chrono::steady_clock::time_point mTouchStart;  // Time in micro seconds of the start of a touch event
         int mTouchX{0};                        // The X coordinate of the mouse pointer

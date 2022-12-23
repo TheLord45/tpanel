@@ -52,6 +52,10 @@
 #include <QSizePolicy>
 #include <QUrl>
 #include <QThread>
+#include <QGeoPositionInfoSource>
+#ifndef __linux__
+#include <QOrientationSensor>
+#endif
 #ifdef QT5_LINUX
 #   include <QSound>
 #   include <QtSensors/QOrientationSensor>
@@ -394,6 +398,23 @@ MainWindow::MainWindow()
     grabGesture(Qt::PinchGesture);                  // We use a pinch gesture to open the settings dialog
     grabGesture(Qt::SwipeGesture);                  // We support swiping also
 
+#ifdef Q_OS_IOS                                     // Block autorotate on IOS
+    initGeoLocation();
+
+    if (!mSensor)
+    {
+        mSensor = new QOrientationSensor(this);
+
+        if (mSensor)
+        {
+            connect(mSensor, &QSensor::currentOrientationChanged, this, &MainWindow::onCurrentOrientationChanged);
+            mSensor->setCurrentOrientation(QSensor::UserOrientation);
+        }
+    }
+
+    mIosRotate = new TIOSRotate;
+    mIosRotate->automaticRotation(false);
+#endif
     if (gPageManager && gPageManager->getSettings()->isPortrait() == 1)  // portrait?
     {
         MSG_INFO("Orientation set to portrait mode.");
@@ -406,10 +427,6 @@ MainWindow::MainWindow()
         mOrientation = Qt::LandscapeOrientation;
         _setOrientation(O_LANDSCAPE);
     }
-
-#ifdef Q_OS_IOS
-    TIOSRotate::automaticRotation(false);
-#endif
 #else
     setWindowIcon(QIcon(":images/icon.png"));
 #endif
@@ -490,7 +507,7 @@ MainWindow::MainWindow()
 #endif
     gPageManager->regRepaintWindows(bind(&MainWindow::_repaintWindows, this));
     gPageManager->regToFront(bind(&MainWindow::_toFront, this, std::placeholders::_1));
-#ifndef __ANDROID__
+#if !defined (Q_OS_ANDROID) && !defined(Q_OS_IOS)
     gPageManager->regSetMainWindowSize(bind(&MainWindow::_setSizeMainWindow, this, std::placeholders::_1, std::placeholders::_2));
 #endif
     gPageManager->regDownloadSurface(bind(&MainWindow::_downloadSurface, this, std::placeholders::_1, std::placeholders::_2));
@@ -547,7 +564,7 @@ MainWindow::MainWindow()
         connect(this, &MainWindow::sigRepaintWindows, this, &MainWindow::repaintWindows);
         connect(this, &MainWindow::sigToFront, this, &MainWindow::toFront);
         connect(this, &MainWindow::sigOnProgressChanged, this, &MainWindow::onProgressChanged);
-#if not defined(Q_OS_ANDROID) && not defined(Q_OS_IOS)
+#if !defined(Q_OS_ANDROID) && !defined(Q_OS_IOS)
         connect(this, &MainWindow::sigSetSizeMainWindow, this, &MainWindow::setSizeMainWindow);
 #endif
         connect(this, &MainWindow::sigDownloadSurface, this, &MainWindow::downloadSurface);
@@ -613,6 +630,12 @@ MainWindow::MainWindow()
         // is registered, we tell the page manager to store the values.
         gPageManager->setBattery(left, state);
         MSG_DEBUG("Battery state was set to " << left << "% and state " << state);
+#ifdef QT5_LINUX
+        if (gPageManager->getSettings()->isPortrait())
+            QGuiApplication::primaryScreen()->setOrientationUpdateMask(Qt::PortraitOrientation | Qt::InvertedPortraitOrientation);
+        else
+            QGuiApplication::primaryScreen()->setOrientationUpdateMask(Qt::LandscapeOrientation | Qt::InvertedLandscapeOrientation);
+#endif
     }
 #endif  // Q_OS_IOS
 
@@ -625,6 +648,12 @@ MainWindow::~MainWindow()
 
     killed = true;
     prg_stopped = true;
+
+    if (mSource)
+    {
+        delete mSource;
+        mSource = nullptr;
+    }
 
     if (mMediaPlayer)
     {
@@ -651,20 +680,17 @@ MainWindow::~MainWindow()
 
     isRunning = false;
 #ifdef Q_OS_IOS
-    TIOSRotate::automaticRotation(true);
-
-    if (mBatTimer)
-    {
-        mBatTimer->stop();
-        delete mBatTimer;
-        mBatTimer = nullptr;
-    }
+    if (mIosRotate)
+        mIosRotate->automaticRotation(true);
 
     if (mIosBattery)
     {
         delete mIosBattery;
         mIosBattery = nullptr;
     }
+
+    if (mIosRotate)
+        delete mIosRotate;
 #endif
 }
 
@@ -804,8 +830,10 @@ void MainWindow::closeEvent(QCloseEvent *event)
  * @param event The event.
  * @return `true` when the event should be ignored.
  */
-bool MainWindow::eventFilter(QObject *, QEvent *event)
+bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 {
+    Q_UNUSED(obj);
+
     if (event->type() == QEvent::MouseMove)
         return true;    // Filter event out, i.e. stop it being handled further.
 
@@ -983,25 +1011,48 @@ void MainWindow::onScreenOrientationChanged(Qt::ScreenOrientation ori)
 
     _setOrientation(jori);
 #ifdef Q_OS_IOS
-    QMargins margins = QASettings::getNotchSize();
-    MSG_DEBUG("Notch top: " << margins.top() << ", bottom: " << margins.bottom() << ", left: " << margins.left() << ", right: " << margins.right());
-
-    if (gPageManager->getSettings()->isPortrait())
-    {
-        gPageManager->setFirstTopPixel(margins.top());
-        gPageManager->setFirstLeftPixel(margins.left());
-    }
-    else
-    {
-        gPageManager->setFirstTopPixel(margins.top());
-
-        if (mOrientation == Qt::LandscapeOrientation)
-            gPageManager->setFirstLeftPixel(margins.left());
-        else if (mOrientation == Qt::InvertedLandscapeOrientation)
-            gPageManager->setFirstLeftPixel(margins.right());
-    }
+    setNotch();
 #endif
+}
 
+void MainWindow::onCurrentOrientationChanged(int currentOrientation)
+{
+    DECL_TRACER("MainWindow::onCurrentOrientationChanged(int currentOrientation)");
+
+    MSG_DEBUG("User orientation: " << currentOrientation);
+}
+/**
+ * @brief MainWindow::onPositionUpdated
+ * This method is a callback function for the Qt framework. It is called
+ * whenever the geo position changes. The position information is never really
+ * used and is implemented only to keep the application on IOS running in the
+ * background.
+ *
+ * @param update    A structure containing the geo position information.
+ */
+void MainWindow::onPositionUpdated(const QGeoPositionInfo &update)
+{
+    DECL_TRACER("MainWindow::onPositionUpdated(const QGeoPositionInfo &update)");
+
+    QGeoCoordinate coord = update.coordinate();
+    MSG_DEBUG("Geo location: " << coord.toString().toStdString());
+}
+
+void MainWindow::onErrorOccurred(QGeoPositionInfoSource::Error positioningError)
+{
+    DECL_TRACER("MainWindow::onErrorOccurred(QGeoPositionInfoSource::Error positioningError)");
+
+    switch(positioningError)
+    {
+        case QGeoPositionInfoSource::AccessError:   MSG_ERROR("The connection setup to the remote positioning backend failed because the application lacked the required privileges."); break;
+        case QGeoPositionInfoSource::ClosedError:   MSG_ERROR("The remote positioning backend closed the connection, which happens for example in case the user is switching location services to off. As soon as the location service is re-enabled regular updates will resume."); break;
+        case QGeoPositionInfoSource::UnknownSourceError: MSG_ERROR("An unidentified error occurred."); break;
+#ifdef QT6_LINUX
+        case QGeoPositionInfoSource::UpdateTimeoutError: MSG_ERROR("Current position could not be retrieved within the specified timeout."); break;
+#endif
+        default:
+            return;
+    }
 }
 
 /**
@@ -1833,16 +1884,7 @@ void MainWindow::onProgressChanged(int percent)
 
     mDownloadBar->setProgress(percent);
 }
-#ifdef Q_OS_IOS
-void MainWindow::onBatteryTimeout()
-{
-    if (!mIosBattery || !gPageManager)
-        return;
 
-    mIosBattery->update();
-    gPageManager->informBatteryStatus(mIosBattery->getBatteryLeft(), mIosBattery->getBatteryState());
-}
-#endif
 /**
  * @brief MainWindow::appStateChanged - Is called whenever the state of the app changes.
  * This callback method is called whenever the state of the application
@@ -1868,10 +1910,9 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
 #else
             QJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
 #endif
-#endif
-#ifdef Q_OS_IOS
-            if (mBatTimer)
-                mBatTimer->stop();
+//#elif defined(Q_OS_IOS)
+//            if (mIosRotate)
+//                mIosRotate->automaticRotation(false);
 #endif
         break;
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)      // On a normal desktop we can ignore this signals
@@ -1885,10 +1926,9 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
 #else
             QJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
 #endif
-#endif
-#ifdef Q_OS_IOS
-            if (mBatTimer)
-                mBatTimer->stop();
+//#elif defined(Q_OS_IOS)
+//            if (mIosRotate)
+//                mIosRotate->automaticRotation(false);
 #endif
         break;
 
@@ -1901,10 +1941,9 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
 #else
             QJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
 #endif
-#endif
-#ifdef Q_OS_IOS
-            if (mBatTimer)
-                mBatTimer->stop();
+//#elif defined(Q_OS_IOS)
+//            if (mIosRotate)
+//                mIosRotate->automaticRotation(false);
 #endif
         break;
 #endif
@@ -1919,6 +1958,26 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
                 gPageManager->run();
                 isRunning = true;
                 mWasInactive = false;
+#ifdef Q_OS_IOS
+                if (!mSource)
+                    initGeoLocation();
+
+                if (mSource)
+                {
+                    mSource->startUpdates();
+                    MSG_DEBUG("Geo location updates started.");
+                }
+                else
+                {
+                    MSG_WARNING("Geo location is not available!");
+                }
+
+                if (mSensor)
+                {
+                    mSensor->setCurrentOrientation(QSensor::UserOrientation);
+                    mSensor->setUserOrientation(180);
+                }
+#endif
             }
             else
             {
@@ -1941,28 +2000,10 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
 #endif
 #endif
 #ifdef Q_OS_IOS
-            if (mBatTimer)
-                mBatTimer->start();
+            setNotch();
 
-            {
-                QMargins margins = QASettings::getNotchSize();
-                MSG_DEBUG("Notch top: " << margins.top() << ", bottom: " << margins.bottom() << ", left: " << margins.left() << ", right: " << margins.right());
-
-                if (gPageManager->getSettings()->isPortrait())
-                {
-                    gPageManager->setFirstTopPixel(margins.top());
-                    gPageManager->setFirstLeftPixel(margins.left());
-                }
-                else
-                {
-                    gPageManager->setFirstTopPixel(margins.top());
-
-                    if (mOrientation == Qt::LandscapeOrientation)
-                        gPageManager->setFirstLeftPixel(margins.left());
-                    else if (mOrientation == Qt::InvertedLandscapeOrientation)
-                        gPageManager->setFirstLeftPixel(margins.right());
-                }
-            }
+//            if (mIosRotate)
+//                mIosRotate->automaticRotation(true);
 #endif
         break;
 #if defined(Q_OS_LINUX) || defined(Q_OS_UNIX)
@@ -2324,7 +2365,8 @@ void MainWindow::_setOrientation(J_ORIENTATION ori)
         }
     }
 #elif defined(Q_OS_IOS)
-    TIOSRotate::rotate(ori);
+    if (mIosRotate)
+        mIosRotate->rotate(ori);
 #else
     Q_UNUSED(ori);
 #endif
@@ -2391,14 +2433,19 @@ void MainWindow::_fileDialog(ulong handle, const string &path, const std::string
 
     emit sigFileDialog(handle, path, extension, suffix);
 }
-#ifndef __ANDROID__
+
 void MainWindow::_setSizeMainWindow(int width, int height)
 {
+#if !defined (Q_OS_ANDROID) && !defined(Q_OS_IOS)
     DECL_TRACER("MainWindow::_setSizeMainWindow(int width, int height)");
 
     emit sigSetSizeMainWindow(width, height);
-}
+#else
+    Q_UNUSED(width);
+    Q_UNUSED(height);
 #endif
+}
+
 void MainWindow::doReleaseButton()
 {
     DECL_TRACER("MainWindow::doReleaseButton()");
@@ -2504,6 +2551,62 @@ string MainWindow::convertMask(const string& mask)
 
     return qMask;
 }
+
+#ifdef Q_OS_IOS
+void MainWindow::setNotch()
+{
+    DECL_TRACER("MainWindow::setNotch()");
+    QMargins margins = QASettings::getNotchSize();
+    MSG_DEBUG("Notch top: " << margins.top() << ", bottom: " << margins.bottom() << ", left: " << margins.left() << ", right: " << margins.right());
+
+    if (gPageManager->getSettings()->isPortrait())
+    {
+        gPageManager->setFirstTopPixel(margins.top());
+        gPageManager->setFirstLeftPixel(margins.left());
+    }
+    else
+    {
+        gPageManager->setFirstTopPixel(margins.top());
+
+        if (mOrientation == Qt::LandscapeOrientation)
+            gPageManager->setFirstLeftPixel(margins.left());
+        else if (mOrientation == Qt::InvertedLandscapeOrientation)
+            gPageManager->setFirstLeftPixel(margins.right());
+    }
+}
+
+/**
+ * @brief MainWindow::initGeoLocation
+ * This method is only used on IOS to let the application run in the background.
+ * It is necessary because it is the only way to let an application run in
+ * the background.
+ * The method initializes the geo position module of Qt. If the app doesn't
+ * have the permissions to retrieve the geo positions, it will not run in the
+ * background. It stops at the moment the app is not in front or the display is
+ * closed. This makes it stop communicate with the NetLinx and looses the
+ * network connection. When the app gets the focus again, it must reconnect to
+ * the NetLinx.
+ */
+void MainWindow::initGeoLocation()
+{
+    DECL_TRACER("MainWindow::initGeoLocation()");
+
+    if (mSource)
+        return;
+
+    mSource = QGeoPositionInfoSource::createDefaultSource(this);
+
+    if (mSource)
+    {
+        connect(mSource, &QGeoPositionInfoSource::positionUpdated, this, &MainWindow::onPositionUpdated);
+        connect(mSource, &QGeoPositionInfoSource::errorOccurred, this, &MainWindow::onErrorOccurred);
+    }
+    else
+    {
+        MSG_WARNING("Error creating geo positioning source!");
+    }
+}
+#endif
 
 /******************* Draw elements *************************/
 
@@ -3145,15 +3248,20 @@ void MainWindow::dropButton(ulong handle)
     gObject->removeObject(handle);
     draw_mutex.unlock();
 }
-#if not defined (Q_OS_ANDROID) && not defined(Q_OS_IOS)
+
 void MainWindow::setSizeMainWindow(int width, int height)
 {
+#if !defined (Q_OS_ANDROID) && !defined(Q_OS_IOS)
     DECL_TRACER("MainWindow::setSizeMainWindow(int width, int height)");
 
     QRect geo = geometry();
     setGeometry(geo.x(), geo.y(), width, height + menuBar()->height());
-}
+#else
+    Q_UNUSED(width);
+    Q_UNUSED(height);
 #endif
+}
+
 void MainWindow::playVideo(ulong handle, ulong parent, int left, int top, int width, int height, const string& url, const string& user, const string& pw)
 {
     draw_mutex.lock();

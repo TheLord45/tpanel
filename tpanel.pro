@@ -20,7 +20,7 @@ ios: {
 versionAtMost(QT_VERSION, 5.15.2) {
 QT = core gui widgets multimedia multimediawidgets sensors quickwidgets
 } else {
-QT = core gui widgets multimedia multimediawidgets sensors quickwidgets
+QT = core gui widgets multimedia multimediawidgets sensors positioning
 }}
 android: {
 versionAtMost(QT_VERSION, 5.15.2) {
@@ -283,13 +283,17 @@ equals(OS,iossim) {
             -lwebrtc -lilbccodec \
             -framework CFNetwork
 
+    INCLUDEPATH += $$QTDIR/include/QtGui/$$QT_VERSION/QtGui
+
     OBJECTIVE_HEADERS = $$PWD/ios/QASettings.h \
                         $$PWD/ios/tiosrotate.h \
                         $$PWD/ios/tiosbattery.h
+ #                       $$PWD/ios/tiosaskperm.h
 
     OBJECTIVE_SOURCES = $$PWD/ios/QASettings.mm \
                         $$PWD/ios/tiosrotate.mm \
                         $$PWD/ios/tiosbattery.mm
+#                        $$PWD/ios/tiosaskperm.mm
 
     QMAKE_INFO_PLIST = $$PWD/ios/Info.plist
 
