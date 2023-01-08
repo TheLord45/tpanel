@@ -40,7 +40,7 @@ class TTPInit
             std::string fname;
         }FILELIST_t;
 
-        void setPath(const std::string& p) { mPath = p; }
+        void setPath(const std::string& p);
         bool createDirectoryStructure();
         bool loadSurfaceFromController(bool force=false);
         std::vector<FILELIST_t>& getFileList(const std::string& filter);
@@ -56,12 +56,15 @@ class TTPInit
         void regCallbackProcessEvents(std::function<void ()> pe) { _processEvents = pe; }
         void regCallbackProgressBar(std::function<void (int percent)> pb) { _progressBar = pb; }
 
+        static bool haveSystemMarker();
+
     private:
         std::function<void ()> _processEvents{nullptr};
         std::function<void (int percent)> _progressBar{nullptr};
 
         bool createPanelConfigs();
         bool createSystemConfigs();
+        bool createDemoPage();
         bool _makeDir(const std::string& dir);
         bool copyFile(const std::string& fname);
         std::string getTmpFileName();
@@ -72,6 +75,10 @@ class TTPInit
         std::string mPath;
         std::vector<FILELIST_t> mDirList;
         off64_t mFileSize{0};
+        bool mDirStructureCreated{false};
+        bool mPanelConfigsCreated{false};
+        bool mSystemConfigsCreated{false};
+        bool mDemoPageCreated{false};
 };
 
 #endif // TTPINIT_H

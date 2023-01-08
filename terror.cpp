@@ -196,6 +196,14 @@ void TStreamError::setLogLevel(const std::string& slv)
     }
 
     mLogLevel |= _getLevel(slv.substr(start));
+#ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_INFO, "tpanel", "TStreamError::setLogLevel: New loglevel: %s", slv.c_str());
+#else
+    if (TError::Current()->getStream())
+        *TError::Current()->getStream() << TError::append(HLOG_INFO) << "New loglevel: " << slv << std::endl;
+    else
+        std::cout << TError::append(HLOG_INFO) << "New loglevel: " << slv << std::endl;
+#endif
 }
 
 bool TStreamError::checkFilter(terrtype_t err)
@@ -336,7 +344,7 @@ void TStreamError::_init(bool reinit)
         catch (std::exception& e)
         {
 #ifdef __ANDROID__
-            __android_log_print(ANDROID_LOG_ERROR, "tpanel", "ERROR: %s", e.what());
+            __android_log_print(ANDROID_LOG_ERROR, "tpanel", "TStreamError::_init: %s", e.what());
 #else   // __ANDROID__
             std::cerr << "ERROR: " << e.what() << std::endl;
 #endif  // __ANDROID__
@@ -349,7 +357,11 @@ void TStreamError::_init(bool reinit)
         std::cout.rdbuf(new androidbuf);
 #endif  // __ANDROID__
         mStream = &std::cout;
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_DEBUG, "tpanel", "TStreamError::_init: Stream wurde auf std::cout gesetzt.");
+#else
         std::cout << "DEBUG: Stream wurde auf std::cout gesetzt." << std::endl;
+#endif
     }
 #else  // LOGPATH == LPATH_FILE
     if (!mStream)
@@ -364,26 +376,32 @@ void TStreamError::_init(bool reinit)
     if (reinit)
         return;
 
-    if (!TConfig::isLongFormat())
+    if (mLogLevel > 0)
         *mStream << "Logfile started at " << getTime() << std::endl;
 
     *mStream << TConfig::getProgName() << " version " << VERSION_STRING() << std::endl;
-    *mStream << "(C) Copyright by Andreas Theofilu <andreas@theosys.at>" << std::endl << " " << std::endl;
+    *mStream << "(C) Copyright by Andreas Theofilu <andreas@theosys.at>\n" << std::endl;
 
-    if (TConfig::isLongFormat())
-        *mStream << "Timestamp           Type LNr., File name           , Message" << std::endl;
+    if (mLogLevel > 0)
+    {
+        if (TConfig::isLongFormat())
+            *mStream << "Timestamp           Type LNr., File name           , Message" << std::endl;
+        else
+            *mStream << "Type LNr., Message" << std::endl;
+
+        *mStream << "-----------------------------------------------------------------" << std::endl << std::flush;
+    }
     else
-        *mStream << "Type LNr., Message" << std::endl;
-
-    *mStream << "-----------------------------------------------------------------" << std::endl << std::flush;
+        *mStream << std::flush;
 }
-
+/*
 void TStreamError::logMsg(std::ostream& str)
 {
     if (!TConfig::isInitialized())
         return;
 
     message_mutex.lock();
+
     try
     {
         _init();
@@ -402,12 +420,16 @@ void TStreamError::logMsg(std::ostream& str)
     }
     catch(const std::exception& e)
     {
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_ERROR, "tpanel", "TStreamError::logMsg: %s", e.what());
+#else
         std::cerr << "ERROR: Writing a log message: " << e.what() << std::endl;
+#endif
     }
 
     message_mutex.unlock();
 }
-
+*/
 std::ostream *TStreamError::resetFlags(std::ostream *os)
 {
     if (!isStreamValid(*os))
@@ -454,7 +476,11 @@ string TStreamError::getTime()
 
     if (!timeinfo)
     {
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_ERROR, "tpanel", "TStreamError::getTime: Couldn't get the local time!");
+#else
         std::cerr << "ERROR: Couldn't get the local time!" << std::endl;
+#endif
         return string();
     }
 
@@ -469,14 +495,26 @@ std::ostream *TStreamError::getStream()
     {
         if (!isStreamValid())
         {
+#ifdef __ANDROID__
+            __android_log_print(ANDROID_LOG_ERROR, "tpanel", "TStreamError::getStream: Internal stream is invalid!");
+#else
             std::cerr << "ERROR: Internal stream is invalid!" << std::endl;
+#endif
             mInitialized = false;
             _init();
+#ifdef __ANDROID__
+            __android_log_print(ANDROID_LOG_INFO, "tpanel", "TStreamError::getStream: Reinitialized stream.");
+#else
             std::cerr << "INFO: Reinitialized stream." << std::endl;
+#endif
 
             if (!isStreamValid())
             {
+#ifdef __ANDROID__
+                __android_log_print(ANDROID_LOG_ERROR, "tpanel", "TStreamError::getStream: Reinitializing of stream failed!");
+#else
                 std::cerr << "ERROR: Reinitializing of stream failed! Using \"std::cout\" to write log messages." << std::endl;
+#endif
                 return &std::cout;
             }
         }
@@ -485,7 +523,11 @@ std::ostream *TStreamError::getStream()
     }
     catch (std::exception& e)
     {
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_ERROR, "tpanel", "TStreamError::getStream: Error retrieving the current stream!");
+#else
         std::cerr << "ERROR: Error retrieving the current stream! Using \"std::cout\" instead." << std::endl;
+#endif
     }
 
     return &std::cout;
@@ -539,6 +581,9 @@ void TStreamError::startTemporaryLogLevel(unsigned int l)
 
 void TStreamError::endTemporaryLogLevel()
 {
+    if (!haveTemporaryLogLevel)
+        return;
+
     mLogLevel = mLogLevelOld;
     haveTemporaryLogLevel = false;
 }
@@ -614,16 +659,16 @@ TTracer::~TTracer()
     if (TConfig::getProfiling())
     {
         if (!TConfig::isLongFormat())
-            TError::Current()->logMsg(*TStreamError::getStream() << "TRC      , " << indent << "}exit " << mHeadMsg << " Elapsed time: " << nanosecs << std::endl);
+            *TError::Current()->getStream() << "TRC      , " << indent << "}exit " << mHeadMsg << " Elapsed time: " << nanosecs << std::endl;
         else
-            TError::Current()->logMsg(*TStreamError::getStream() << TStreamError::getTime() << " TRC      , " << std::setw(20) << std::left << mFile << ", " << indent << "}exit " << mHeadMsg << " Elapsed time: " << nanosecs << std::endl);
+            *TError::Current()->getStream() << TStreamError::getTime() << " TRC      , " << std::setw(20) << std::left << mFile << ", " << indent << "}exit " << mHeadMsg << " Elapsed time: " << nanosecs << std::endl;
     }
     else
     {
         if (!TConfig::isLongFormat())
-            TError::Current()->logMsg(*TStreamError::getStream() << "TRC      , " << indent << "}exit " << mHeadMsg << std::endl);
+            *TError::Current()->getStream() << "TRC      , " << indent << "}exit " << mHeadMsg << std::endl;
         else
-            TError::Current()->logMsg(*TStreamError::getStream() << TStreamError::getTime() << " TRC      , " << std::setw(20) << std::left << mFile << ", " << indent << "}exit " << mHeadMsg << std::endl);
+            *TError::Current()->getStream() << TStreamError::getTime() << " TRC      , " << std::setw(20) << std::left << mFile << ", " << indent << "}exit " << mHeadMsg << std::endl;
     }
 #else
     std::stringstream s;
@@ -654,17 +699,7 @@ TError::~TError()
         mCurrent = nullptr;
     }
 }
-/*
-void TError::lock()
-{
-    message_mutex.lock();
-}
 
-void TError::unlock()
-{
-    message_mutex.unlock();
-}
-*/
 TStreamError* TError::Current()
 {
     if (!mCurrent)

@@ -145,6 +145,7 @@ set(SOURCES tmain.cpp
 			texpat++.cpp
 			tqdownload.cpp
 			tqeditline.cpp
+            tqtwait.cpp
 			tpanel.qrc)
 
 add_executable(tpanel ${SOURCES})
@@ -153,6 +154,7 @@ add_definitions(-D_REENTRANT)
 add_definitions(-D_GNU_SOURCE)
 add_definitions(-DQT6_LINUX)
 add_definitions(-DPJ_AUTOCONF)
+add_definitions(-D_OPAQUE_SKIA_)
 add_definitions(${Qt6Widgets_DEFINITIONS})
 add_compile_definitions(QT_DISABLE_DEPRECATED_BEFORE=0x050F00)
 include_directories(/usr/local/include/skia)
@@ -161,7 +163,7 @@ if (DEBUG)
    add_definitions(-g)
 endif(DEBUG)
 
-add_definitions(-pedantic -fexceptions -Wextra -Wno-attributes -Wno-nested-anon-types -Wno-gnu-anonymous-struct)
+add_definitions(-pedantic -fexceptions -Wextra -Wno-attributes)
 
 find_library(LIBSKIA_LIBRARY NAMES skia HINTS /usr/local/lib/skia)
 
@@ -172,16 +174,16 @@ endif()
 target_link_libraries(tpanel m pthread ssl crypto ftp ${LIBS} ${LIBSKIA_LIBRARY} Qt6::Widgets Qt6::Multimedia Qt6::MultimediaWidgets Qt6::Positioning)
 
 if (APPLE)
-    add_definitions(-Wno-gnu-zero-variadic-macro-arguments)
-	set(DIRS ${CMAKE_BINARY_DIR})
-	set(APPS "\${CMAKE_INSTALL_PREFIX}/${APP_NAME}.app")
-	set(CPACK_BUNDLE_NAME "tpanel-\${VERSION}")
-	set(CPACK_BUNDLE_ICON "images/icon.png")
-#	set(CPACK_BUNDLE_PLIST "")
-	set(CPACK_GENERATOR "DragNDrop")
-#	add_executable(${APP_NAME} MACOSX_BUNDLE ${SOURCES})
-#	install(CODE "include(BundleUtilities)
-#    	fixup_bundle(\"${APPS}\" \"\" \"${DIRS}\")")
+    add_definitions(-Wno-gnu-zero-variadic-macro-arguments -Wno-nested-anon-types -Wno-gnu-anonymous-struct)
+    set(DIRS ${CMAKE_BINARY_DIR})
+    set(APPS "\${CMAKE_INSTALL_PREFIX}/${APP_NAME}.app")
+    set(CPACK_BUNDLE_NAME "tpanel-\${VERSION}")
+    set(CPACK_BUNDLE_ICON "images/icon.png")
+#    set(CPACK_BUNDLE_PLIST "")
+    set(CPACK_GENERATOR "DragNDrop")
+#    add_executable(${APP_NAME} MACOSX_BUNDLE ${SOURCES})
+#    install(CODE "include(BundleUtilities)
+#   fixup_bundle(\"${APPS}\" \"\" \"${DIRS}\")")
 endif(APPLE)
 
 install(TARGETS tpanel RUNTIME DESTINATION bin)

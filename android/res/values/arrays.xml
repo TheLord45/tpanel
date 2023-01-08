@@ -1,0 +1,94 @@
+<resources>
+    <!-- Reply Preference -->
+    <string-array name="reply_entries_sound_system">
+        <item>Beep 00</item>
+        <item>Beep 01</item>
+        <item>Beep 02</item>
+        <item>Beep 03</item>
+        <item>Beep 04</item>
+        <item>Beep 05</item>
+        <item>Beep 06</item>
+        <item>Beep 07</item>
+        <item>Beep 08</item>
+        <item>Beep 09</item>
+        <item>Beep 10</item>
+    </string-array>
+
+    <string-array name="reply_values_sound_system">
+        <item>singleBeep.wav</item>
+        <item>singleBeep01.wav</item>
+        <item>singleBeep02.wav</item>
+        <item>singleBeep03.wav</item>
+        <item>singleBeep04.wav</item>
+        <item>singleBeep05.wav</item>
+        <item>singleBeep06.wav</item>
+        <item>singleBeep07.wav</item>
+        <item>singleBeep08.wav</item>
+        <item>singleBeep09.wav</item>
+        <item>singleBeep10.wav</item>
+    </string-array>
+
+    <string-array name="reply_entries_sound_single">
+        <item>Single Beep 00</item>
+        <item>Single Beep 01</item>
+        <item>Single Beep 02</item>
+        <item>Single Beep 03</item>
+        <item>Single Beep 04</item>
+        <item>Single Beep 05</item>
+        <item>Single Beep 06</item>
+        <item>Single Beep 07</item>
+        <item>Single Beep 08</item>
+        <item>Single Beep 09</item>
+        <item>Single Beep 10</item>
+    </string-array>
+
+    <string-array name="reply_values_sound_single">
+        <item>singleBeep.wav</item>
+        <item>singleBeep01.wav</item>
+        <item>singleBeep02.wav</item>
+        <item>singleBeep03.wav</item>
+        <item>singleBeep04.wav</item>
+        <item>singleBeep05.wav</item>
+        <item>singleBeep06.wav</item>
+        <item>singleBeep07.wav</item>
+        <item>singleBeep08.wav</item>
+        <item>singleBeep09.wav</item>
+        <item>singleBeep10.wav</item>
+    </string-array>
+
+    <string-array name="reply_entries_sound_double">
+        <item>Double Beep 00</item>
+        <item>Double Beep 01</item>
+        <item>Double Beep 02</item>
+        <item>Double Beep 03</item>
+        <item>Double Beep 04</item>
+        <item>Double Beep 05</item>
+        <item>Double Beep 06</item>
+        <item>Double Beep 07</item>
+        <item>Double Beep 08</item>
+        <item>Double Beep 09</item>
+        <item>Double Beep 10</item>
+    </string-array>
+
+    <string-array name="reply_values_sound_double">
+        <item>doubleBeep.wav</item>
+        <item>doubleBeep01.wav</item>
+        <item>doubleBeep02.wav</item>
+        <item>doubleBeep03.wav</item>
+        <item>doubleBeep04.wav</item>
+        <item>doubleBeep05.wav</item>
+        <item>doubleBeep06.wav</item>
+        <item>doubleBeep07.wav</item>
+        <item>doubleBeep08.wav</item>
+        <item>doubleBeep09.wav</item>
+        <item>doubleBeep10.wav</item>
+    </string-array>
+
+    <string-array name="reply_entries_surface">
+        <item>tpanel</item>
+    </string-array>
+    <string-array name="reply_values_surface">
+        <item>tpanel.TP4</item>
+    </string-array>
+
+</resources>

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021, 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2021 to 2023 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -673,7 +673,7 @@ bool TSystemDraw::getBorder(const string &family, LINE_TYPE_t lt, BORDER_t *bord
              * in our example.
              * The entity "borderStyle" is named like the member. With this
              * information we'll find the correct border style and with it the
-             * file names containing the brorder graphics.
+             * file names containing the border graphics.
              */
             vector<string>parts = StrSplit(*strIter, " ", true);
 

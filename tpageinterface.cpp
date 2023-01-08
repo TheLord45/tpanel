@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2022, 2023 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,6 +21,9 @@
 #include <include/core/SkFont.h>
 #include <include/core/SkFontMetrics.h>
 #include <include/core/SkTextBlob.h>
+#include <include/core/SkRegion.h>
+#include <include/core/SkImageFilter.h>
+#include <include/effects/SkImageFilters.h>
 
 #include "tpageinterface.h"
 #include "tsystemsound.h"
@@ -44,116 +47,227 @@ bool TPageInterface::drawText(PAGE_T& pinfo, SkBitmap *img)
     MSG_DEBUG("Searching for font number " << pinfo.sr[0].fi << " with text " << pinfo.sr[0].te);
     FONT_T font = mFonts->getFont(pinfo.sr[0].fi);
 
-    if (!font.file.empty())
+    if (font.file.empty())
     {
-        SkCanvas canvas(*img, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
-        sk_sp<SkTypeface> typeFace = mFonts->getTypeFace(pinfo.sr[0].fi);
+        MSG_WARNING("No font file name found for font " << pinfo.sr[0].fi);
+        return false;
+    }
 
-        if (!typeFace)
+    SkCanvas canvas(*img, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+    sk_sp<SkTypeface> typeFace = mFonts->getTypeFace(pinfo.sr[0].fi);
+
+    if (!typeFace)
+    {
+        MSG_ERROR("Error creating type face " << font.fullName);
+        TError::setError();
+        return false;
+    }
+
+    SkScalar fontSizePt = ((SkScalar)font.size * 1.322);    // Calculate points from pixels (close up)
+    SkFont skFont(typeFace, fontSizePt);                    // Skia require the font size in points
+
+    SkPaint paint;
+    paint.setAntiAlias(true);
+    SkColor color = TColor::getSkiaColor(pinfo.sr[0].ct);
+    paint.setColor(color);
+    paint.setStyle(SkPaint::kFill_Style);
+
+    SkFontMetrics metrics;
+    skFont.getMetrics(&metrics);
+    int lines = numberLines(pinfo.sr[0].te);
+
+    if (lines > 1 || pinfo.sr[0].ww)
+    {
+        vector<string> textLines;
+
+        if (!pinfo.sr[0].ww)
+            textLines = splitLine(pinfo.sr[0].te);
+        else
         {
-            MSG_ERROR("Error creating type face " << font.fullName);
+            textLines = splitLine(pinfo.sr[0].te, pinfo.width, pinfo.height, skFont, paint);
+            lines = textLines.size();
+        }
+
+        MSG_DEBUG("Calculated number of lines: " << textLines.size());
+        int lineHeight = calcLineHeight(pinfo.sr[0].te, skFont);
+        int totalHeight = lineHeight * lines;
+
+        if (totalHeight > pinfo.height)
+        {
+            lines = pinfo.height / lineHeight;
+            totalHeight = lineHeight * lines;
+        }
+
+        MSG_DEBUG("Line height: " << lineHeight << ", total height: " << totalHeight);
+        Button::POSITION_t position = calcImagePosition(&pinfo, pinfo.width, totalHeight, Button::SC_TEXT, 0);
+        MSG_DEBUG("Position frame: l: " << position.left << ", t: " << position.top << ", w: " << position.width << ", h: " << position.height);
+
+        if (!position.valid)
+        {
+            MSG_ERROR("Error calculating the text position!");
             TError::setError();
             return false;
         }
 
-        SkScalar fontSizePt = ((SkScalar)font.size * 1.322);    // Calculate points from pixels (close up)
-        SkFont skFont(typeFace, fontSizePt);                    // Skia require the font size in points
+        vector<string>::iterator iter;
+        int line = 0;
 
-        SkPaint paint;
-        paint.setAntiAlias(true);
-        SkColor color = TColor::getSkiaColor(pinfo.sr[0].ct);
-        paint.setColor(color);
-        paint.setStyle(SkPaint::kFill_Style);
-
-        SkFontMetrics metrics;
-        skFont.getMetrics(&metrics);
-        int lines = numberLines(pinfo.sr[0].te);
-
-        if (lines > 1 || pinfo.sr[0].ww)
+        for (iter = textLines.begin(); iter != textLines.end(); iter++)
         {
-            vector<string> textLines;
-
-            if (!pinfo.sr[0].ww)
-                textLines = ::splitLine(pinfo.sr[0].te);
-            else
-            {
-                textLines = splitLine(pinfo.sr[0].te, pinfo.width, pinfo.height, skFont, paint);
-                lines = textLines.size();
-            }
-
-            int lineHeight = calcLineHeight(pinfo.sr[0].te, skFont);
-            int totalHeight = lineHeight * lines;
-
-            if (totalHeight > pinfo.height)
-            {
-                lines = pinfo.height / lineHeight;
-                totalHeight = lineHeight * lines;
-            }
-
-            MSG_DEBUG("Line height: " << lineHeight);
-            Button::POSITION_t position = calcImagePosition(&pinfo, pinfo.width, totalHeight, Button::SC_TEXT, 1);
-            MSG_DEBUG("Position frame: l: " << position.left << ", t: " << position.top << ", w: " << position.width << ", h: " << position.height);
-
-            if (!position.valid)
-            {
-                MSG_ERROR("Error calculating the text position!");
-                TError::setError();
-                return false;
-            }
-
-            vector<string>::iterator iter;
-            int line = 0;
-
-            for (iter = textLines.begin(); iter != textLines.end(); iter++)
-            {
-                sk_sp<SkTextBlob> blob = SkTextBlob::MakeFromString(iter->c_str(), skFont);
-                SkRect rect;
-                skFont.measureText(iter->c_str(), iter->length(), SkTextEncoding::kUTF8, &rect, &paint);
-                Button::POSITION_t pos = calcImagePosition(&pinfo, rect.width(), lineHeight, Button::SC_TEXT, 1);
-
-                if (!pos.valid)
-                {
-                    MSG_ERROR("Error calculating the text position!");
-                    TError::setError();
-                    return false;
-                }
-                MSG_DEBUG("Triing to print line: " << *iter);
-
-                SkScalar startX = (SkScalar)pos.left;
-                SkScalar startY = (SkScalar)position.top + lineHeight * line;
-                MSG_DEBUG("x=" << startX << ", y=" << startY);
-                canvas.drawTextBlob(blob, startX, startY + lineHeight / 2 + 4, paint);
-                line++;
-
-                if (line > lines)
-                    break;
-            }
-        }
-        else    // single line
-        {
-            sk_sp<SkTextBlob> blob = SkTextBlob::MakeFromString(pinfo.sr[0].te.c_str(), skFont);
+            sk_sp<SkTextBlob> blob = SkTextBlob::MakeFromString(iter->c_str(), skFont);
             SkRect rect;
-            skFont.measureText(pinfo.sr[0].te.c_str(), pinfo.sr[0].te.length(), SkTextEncoding::kUTF8, &rect, &paint);
-            Button::POSITION_t position = calcImagePosition(&pinfo, rect.width(), (rect.height() * (float)lines), Button::SC_TEXT, 0);
+            skFont.measureText(iter->c_str(), iter->length(), SkTextEncoding::kUTF8, &rect, &paint);
+            Button::POSITION_t pos = calcImagePosition(&pinfo, rect.width(), lineHeight, Button::SC_TEXT, 1);
 
-            if (!position.valid)
+            if (!pos.valid)
             {
                 MSG_ERROR("Error calculating the text position!");
                 TError::setError();
                 return false;
             }
+            MSG_DEBUG("Triing to print line: " << *iter);
 
-            MSG_DEBUG("Printing line " << pinfo.sr[0].te);
-            SkScalar startX = (SkScalar)position.left;
-            SkScalar startY = (SkScalar)position.top + metrics.fCapHeight; // + metrics.fLeading; // (metrics.fAscent * -1.0);
-            canvas.drawTextBlob(blob, startX, startY, paint);
+            SkScalar startX = (SkScalar)pos.left;
+            SkScalar startY = (SkScalar)position.top + lineHeight * line;
+            MSG_DEBUG("x=" << startX << ", y=" << startY);
+            canvas.drawTextBlob(blob, startX, startY + lineHeight / 2 + 4, paint);
+            line++;
+
+            if (line > lines)
+                break;
         }
     }
-    else
+    else    // single line
     {
-        MSG_WARNING("No font file name found for font " << pinfo.sr[0].fi);
+        sk_sp<SkTextBlob> blob = SkTextBlob::MakeFromString(pinfo.sr[0].te.c_str(), skFont);
+        SkRect rect;
+        skFont.measureText(pinfo.sr[0].te.c_str(), pinfo.sr[0].te.length(), SkTextEncoding::kUTF8, &rect, &paint);
+        Button::POSITION_t position = calcImagePosition(&pinfo, rect.width(), (rect.height() * (float)lines), Button::SC_TEXT, 0);
+
+        if (!position.valid)
+        {
+            MSG_ERROR("Error calculating the text position!");
+            TError::setError();
+            return false;
+        }
+
+        MSG_DEBUG("Printing line " << pinfo.sr[0].te);
+        SkScalar startX = (SkScalar)position.left;
+        SkScalar startY = (SkScalar)position.top + metrics.fCapHeight; // + metrics.fLeading; // (metrics.fAscent * -1.0);
+        canvas.drawTextBlob(blob, startX, startY, paint);
     }
 
+    return true;
+}
+
+bool TPageInterface::drawFrame(PAGE_T& pinfo, SkBitmap* bm)
+{
+    DECL_TRACER("TPageInterface::drawFrame(PAGE_T& pinfo, SkBitmap* bm)");
+
+    int instance = 0;
+
+    if (pinfo.sr[instance].bs.empty())
+    {
+        MSG_DEBUG("No border defined.");
+        return false;
+    }
+
+    // Try to find the border in the system table
+    BORDER_t bd, bda;
+    bool classExist = (gPageManager && gPageManager->getSystemDraw());
+
+    if (!classExist)
+        return false;
+
+    string borderName = pinfo.sr[0].bs;
+
+    if (!gPageManager->getSystemDraw()->getBorder(borderName, TSystemDraw::LT_OFF, &bd, borderName))
+        return false;
+
+    MSG_DEBUG("System border \"" << borderName << "\" found.");
+    SkColor color = TColor::getSkiaColor(pinfo.sr[instance].cb);      // border color
+    SkColor bgColor = TColor::getSkiaColor(pinfo.sr[instance].cf);    // fill color
+    MSG_DEBUG("Button color: #" << std::setw(6) << std::setfill('0') << std::hex << color << std::dec);
+    // Load images
+    SkBitmap imgB, imgBR, imgR, imgTR, imgT, imgTL, imgL, imgBL;
+
+    imgB = retrieveBorderImage(bd.b, bda.b, color, bgColor);
+
+    if (imgB.empty())
+        return false;
+
+    MSG_DEBUG("Got images " << bd.b << " and " << bda.b << " with size " << imgB.info().width() << " x " << imgB.info().height());
+    imgBR = retrieveBorderImage(bd.br, bda.br, color, bgColor);
+
+    if (imgBR.empty())
+        return false;
+
+    MSG_DEBUG("Got images " << bd.br << " and " << bda.br << " with size " << imgBR.info().width() << " x " << imgBR.info().height());
+    imgR = retrieveBorderImage(bd.r, bda.r, color, bgColor);
+
+    if (imgR.empty())
+        return false;
+
+    MSG_DEBUG("Got images " << bd.r << " and " << bda.r << " with size " << imgR.info().width() << " x " << imgR.info().height());
+    imgTR = retrieveBorderImage(bd.tr, bda.tr, color, bgColor);
+
+    if (imgTR.empty())
+        return false;
+
+    MSG_DEBUG("Got images " << bd.tr << " and " << bda.tr << " with size " << imgTR.info().width() << " x " << imgTR.info().height());
+    imgT = retrieveBorderImage(bd.t, bda.t, color, bgColor);
+
+    if (imgT.empty())
+        return false;
+
+    MSG_DEBUG("Got images " << bd.t << " and " << bda.t << " with size " << imgT.info().width() << " x " << imgT.info().height());
+    imgTL = retrieveBorderImage(bd.tl, bda.tl, color, bgColor);
+
+    if (imgTL.empty())
+        return false;
+
+    MSG_DEBUG("Got images " << bd.tl << " and " << bda.tl << " with size " << imgTL.info().width() << " x " << imgTL.info().height());
+    imgL = retrieveBorderImage(bd.l, bda.l, color, bgColor);
+
+    if (imgL.empty())
+        return false;
+
+    MSG_DEBUG("Got images " << bd.l << " and " << bda.l << " with size " << imgL.info().width() << " x " << imgL.info().height());
+    imgBL = retrieveBorderImage(bd.bl, bda.bl, color, bgColor);
+
+    if (imgBL.empty())
+        return false;
+
+    MSG_DEBUG("Got images " << bd.bl << " and " << bda.bl << " with size " << imgBL.info().width() << " x " << imgBL.info().height());
+    MSG_DEBUG("Button image size: " << (imgTL.info().width() + imgT.info().width() + imgTR.info().width()) << " x " << (imgTL.info().height() + imgL.info().height() + imgBL.info().height()));
+    MSG_DEBUG("Total size: " << pinfo.width << " x " << pinfo.height);
+    stretchImageWidth(&imgB, pinfo.width - imgBL.info().width() - imgBR.info().width());
+    stretchImageWidth(&imgT, pinfo.width - imgTL.info().width() - imgTR.info().width());
+    stretchImageHeight(&imgL, pinfo.height - imgTL.info().height() - imgBL.info().height());
+    stretchImageHeight(&imgR, pinfo.height - imgTR.info().height() - imgBR.info().height());
+    MSG_DEBUG("Stretched button image size: " << (imgTL.info().width() + imgT.info().width() + imgTR.info().width()) << " x " << (imgTL.info().height() + imgL.info().height() + imgBL.info().height()));
+    // Draw the frame
+    SkPaint paint;
+    SkCanvas canvas(*bm, SkSurfaceProps());
+
+    paint.setBlendMode(SkBlendMode::kSrc);
+    paint.setColor(color);
+    sk_sp<SkImage> _image = SkImage::MakeFromBitmap(imgB);                                                                              // Bottom
+    canvas.drawImage(_image, imgBL.info().width(), pinfo.height - imgB.info().height(), SkSamplingOptions(), &paint);
+    _image = SkImage::MakeFromBitmap(imgBR);                                                                                            // Corner bottom right
+    canvas.drawImage(_image, pinfo.width - imgBR.info().width(), pinfo.height - imgBR.info().height(), SkSamplingOptions(), &paint);
+    _image = SkImage::MakeFromBitmap(imgR);                                                                                             // Right
+    canvas.drawImage(_image, pinfo.width - imgR.info().width(), imgTR.info().height(), SkSamplingOptions(), &paint);
+    _image = SkImage::MakeFromBitmap(imgTR);                                                                                            // Corner top right
+    canvas.drawImage(_image, pinfo.width - imgTR.info().width(), 0, SkSamplingOptions(), &paint);
+    _image = SkImage::MakeFromBitmap(imgT);                                                                                             // Top
+    canvas.drawImage(_image, imgTL.info().width(), 0, SkSamplingOptions(), &paint);
+    _image = SkImage::MakeFromBitmap(imgTL);                                                                                            // Corner top left
+    canvas.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
+    _image = SkImage::MakeFromBitmap(imgL);                                                                                             // Left
+    canvas.drawImage(_image, 0, imgTL.info().height(), SkSamplingOptions(), &paint);
+    _image = SkImage::MakeFromBitmap(imgBL);                                                                                            // Corner bottom left
+    canvas.drawImage(_image, 0, pinfo.height - imgBL.info().height(), SkSamplingOptions(), &paint);
     return true;
 }
 
@@ -161,14 +275,23 @@ Button::POSITION_t TPageInterface::calcImagePosition(PAGE_T *page, int width, in
 {
     DECL_TRACER("TPageInterface::calcImagePosition(PAGE_T *page, int with, int height, CENTER_CODE code, int number)");
 
+    if (!page)
+        return Button::POSITION_t();
+
     Button::SR_T act_sr;
     Button::POSITION_t position;
     int ix, iy;
 
-    if (sr.size() == 0)
-        return position;
+    if (page->sr.size() == 0)
+    {
+        if (sr.size() == 0)
+            return position;
 
-    act_sr = sr.at(0);
+        act_sr = sr.at(0);
+    }
+    else
+        act_sr = page->sr.at(0);
+
     //    int border_size = getBorderSize(act_sr.bs);
     int border_size = 0;
     int code, border = border_size;
@@ -215,39 +338,48 @@ Button::POSITION_t TPageInterface::calcImagePosition(PAGE_T *page, int width, in
         case 0: // absolute position
             position.left = ix;
 
-            if (cc == Button::SC_TEXT)
+            if (cc == Button::SC_TEXT && line > 0)
                 position.top = iy + height * line;
-        else
-            position.top = iy;
+            else
+                position.top = iy;
 
-        if (cc == Button::SC_BITMAP && ix < 0 && rwt < width)
-            position.left *= -1;
+            if (cc == Button::SC_BITMAP && ix < 0 && rwt < width)
+                position.left *= -1;
 
-        if (cc == Button::SC_BITMAP && iy < 0 && rht < height)
-            position.top += -1;
+            if (cc == Button::SC_BITMAP && iy < 0 && rht < height)
+                position.top += -1;
 
-        position.width = rwt;
-        position.height = rht;
+            position.width = rwt;
+            position.height = rht;
         break;
 
         case 1: // top, left
             if (cc == Button::SC_TEXT)
             {
                 position.left = border;
-                position.top = height * line;
+
+                if (line > 0)
+                    position.top = height * line;
+                else
+                    position.top = border;
             }
 
             position.width = rwt;
             position.height = rht;
-            break;
+        break;
 
         case 2: // center, top
             if (cc == Button::SC_TEXT)
-                position.top = height * line;
+            {
+                if (line > 0)
+                    position.top = height * line;
+                else
+                    position.top = border;
+            }
 
-        position.left = (page->width - rwt) / 2;
-        position.height = rht;
-        position.width = rwt;
+            position.left = (page->width - rwt) / 2;
+            position.height = rht;
+            position.width = rwt;
         break;
 
         case 3: // right, top
@@ -256,24 +388,32 @@ Button::POSITION_t TPageInterface::calcImagePosition(PAGE_T *page, int width, in
             if (cc == Button::SC_TEXT)
             {
                 position.left = (((position.left - border) < 0) ? 0 : position.left - border);
-                position.top = height * line;
+
+                if (line > 0)
+                    position.top = height * line;
+                else
+                    position.top = border;
             }
 
             position.width = rwt;
             position.height = rht;
-            break;
+        break;
 
         case 4: // left, middle
             if (cc == Button::SC_TEXT)
             {
                 position.left = border;
-                position.top = ((page->height - rht) / 2) + (height / 2 * line);
+
+                if (line > 0)
+                    position.top = ((page->height - rht) / 2) + (height / 2 * line);
+                else
+                    position.top = (page->height - rht) / 2;
             }
             else
                 position.top = (page->height - rht) / 2;
 
-        position.width = rwt;
-        position.height = rht;
+            position.width = rwt;
+            position.height = rht;
         break;
 
         case 6: // right, middle
@@ -282,38 +422,51 @@ Button::POSITION_t TPageInterface::calcImagePosition(PAGE_T *page, int width, in
             if (cc == Button::SC_TEXT)
             {
                 position.left = (((position.left - border) < 0) ? 0 : position.left - border);
-                position.top = ((page->height - rht) / 2) + (height / 2 * line);
+
+                if (line > 0)
+                    position.top = ((page->height - rht) / 2) + (height / 2 * line);
+                else
+                    position.top = (page->height - rht) / 2;
             }
             else
                 position.top = (page->height - rht) / 2;
 
-        position.width = rwt;
-        position.height = rht;
+            position.width = rwt;
+            position.height = rht;
         break;
 
         case 7: // left, bottom
             if (cc == Button::SC_TEXT)
             {
                 position.left = border_size;
-                position.top = (page->height - rht) - height * line;
+
+                if (line > 0)
+                    position.top = (page->height - rht) - height * line;
+                else
+                    position.top = page->height - rht;
             }
             else
                 position.top = page->height - rht;
 
-        position.width = rwt;
-        position.height = rht;
+            position.width = rwt;
+            position.height = rht;
         break;
 
         case 8: // center, bottom
             position.left = (page->width - rwt) / 2;
 
             if (cc == Button::SC_TEXT)
-                position.top = (page->height - rht) - height * line;
-        else
-            position.top = page->height - rht;
+            {
+                if (line > 0)
+                    position.top = (page->height - rht) - height * line;
+                else
+                    position.top = page->height - rht;
+            }
+            else
+                position.top = page->height - rht;
 
-        position.width = rwt;
-        position.height = rht;
+            position.width = rwt;
+            position.height = rht;
         break;
 
         case 9: // right, bottom
@@ -322,7 +475,11 @@ Button::POSITION_t TPageInterface::calcImagePosition(PAGE_T *page, int width, in
             if (cc == Button::SC_TEXT)
             {
                 position.left = (((position.left - border) < 0) ? 0 : position.left - border);
-                position.top = (page->height - rht) - height * line;
+
+                if (line > 0)
+                    position.top = (page->height - rht) - height * line;
+                else
+                    position.top = page->height - rht;
             }
             else
                 position.top = page->height - rht;
@@ -332,12 +489,17 @@ Button::POSITION_t TPageInterface::calcImagePosition(PAGE_T *page, int width, in
             position.left = (page->width - rwt) / 2;
 
             if (cc == Button::SC_TEXT)
-                position.top = ((page->height - rht) / 2) + (height / 2 * line);
-        else
-            position.top = (page->height - rht) / 2;
+            {
+                if (line > 0)
+                    position.top = ((page->height - rht) / 2) + (height / 2 * line);
+                else
+                    position.top = (page->height - rht) / 2;
+            }
+            else
+                position.top = (page->height - rht) / 2;
 
-        position.width = rwt;
-        position.height = rht;
+            position.width = rwt;
+            position.height = rht;
     }
 
     MSG_DEBUG("Type: " << dbgCC << ", PosType=" << code << ", Position: x=" << position.left << ", y=" << position.top << ", w=" << position.width << ", h=" << position.height << ", Overflow: " << (position.overflow ? "YES" : "NO"));
@@ -366,6 +528,7 @@ int TPageInterface::numberLines(const string& str)
             lines++;
     }
 
+    MSG_DEBUG("Detected " << lines << " lines.");
     return lines;
 }
 
@@ -925,3 +1088,230 @@ string TPageInterface::getSelectedItem(ulong handle)
 
     return string();
 }
+
+SkBitmap TPageInterface::retrieveBorderImage(const string& pa, const string& pb, SkColor color, SkColor bgColor)
+{
+    DECL_TRACER("TPageInterface::retrieveBorderImage(const string& pa, const string& pb, SkColor color, SkColor bgColor)");
+
+    SkBitmap bm, bma;
+
+    if (!pa.empty() && !retrieveImage(pa, &bm))
+        return SkBitmap();
+
+    if (!pb.empty() && !retrieveImage(pb, &bma))
+        return SkBitmap();
+
+    return colorImage(bm, bma, color, bgColor, false);
+}
+
+bool TPageInterface::retrieveImage(const string& path, SkBitmap* image)
+{
+    DECL_TRACER("TPageInterface::retrieveImage(const string& path, SkBitmap* image)");
+
+    sk_sp<SkData> im;
+
+    if (!(im = readImage(path)))
+        return false;
+
+    DecodeDataToBitmap(im, image);
+
+    if (image->empty())
+    {
+        MSG_WARNING("Could not create the image " << path);
+        return false;
+    }
+
+    return true;
+}
+
+SkBitmap TPageInterface::colorImage(SkBitmap& base, SkBitmap& alpha, SkColor col, SkColor bg, bool useBG)
+{
+    DECL_TRACER("TPageInterface::colorImage(SkBitmap *img, int width, int height, SkColor col, SkColor bg, bool useBG)");
+
+    int width = base.info().width();
+    int height = base.info().height();
+
+    if (width <= 0 || height <= 0)
+    {
+        MSG_WARNING("Got invalid width or height! (width: " << width << ", height: " << height << ")");
+        return SkBitmap();
+    }
+
+    if (!alpha.empty())
+    {
+        if (width != alpha.info().width() || height != alpha.info().height())
+        {
+            MSG_ERROR("Base and alpha masks have different size!");
+            return SkBitmap();
+        }
+    }
+
+    SkBitmap maskBm;
+
+    if (!allocPixels(width, height, &maskBm))
+        return SkBitmap();
+
+    maskBm.eraseColor(SK_ColorTRANSPARENT);
+
+    for (int ix = 0; ix < width; ix++)
+    {
+        for (int iy = 0; iy < height; iy++)
+        {
+            SkColor pixelAlpha = 0;
+
+            if (!alpha.empty())
+                pixelAlpha = alpha.getColor(ix, iy);
+            else
+                pixelAlpha = base.getColor(ix, iy);
+
+            uint32_t *wpix = maskBm.getAddr32(ix, iy);
+
+            if (!wpix)
+            {
+                MSG_ERROR("No pixel buffer!");
+                break;
+            }
+
+            uint32_t ala = SkColorGetA(pixelAlpha);
+
+            if (ala == 0 && !useBG)
+                pixelAlpha = col;
+            else if (ala == 0)
+                pixelAlpha = bg;
+            else
+            {
+                // We've to change the red and the blue color channel because
+                // of an error in the Skia library.
+                uint32_t red = SkColorGetR(col);
+                uint32_t green = SkColorGetG(col);
+                uint32_t blue = SkColorGetB(col);
+
+                if (alpha.empty())
+                {
+                    uint32_t pred = SkColorGetR(pixelAlpha);
+                    uint32_t pgreen = SkColorGetG(pixelAlpha);
+                    uint32_t pblue = SkColorGetB(pixelAlpha);
+                    uint32_t maxChan = SkColorGetG(SK_ColorWHITE);
+
+                    red   = ((pred == maxChan) ? pred : red);
+                    green = ((pgreen == maxChan) ? pgreen : green);
+                    blue  = ((pblue == maxChan) ? pblue : blue);
+                }
+                else if (ala == 0)
+                    red = green = blue = 0;
+
+                pixelAlpha = SkColorSetARGB(ala, red, green, blue);
+            }
+
+            *wpix = pixelAlpha;
+        }
+    }
+
+    if (!alpha.empty())
+    {
+        SkPaint paint;
+        paint.setBlendMode(SkBlendMode::kSrcOver);
+        SkCanvas can(maskBm);
+        sk_sp<SkImage> _image = SkImage::MakeFromBitmap(base);
+        can.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
+    }
+
+    return maskBm;
+}
+
+bool TPageInterface::stretchImageWidth(SkBitmap *bm, int width)
+{
+    DECL_TRACER("TPageInterface::stretchImageWidth(SkBitmap *bm, int width)");
+
+    if (!bm)
+        return false;
+
+    int rwidth = width;
+    SkPaint paint;
+    paint.setBlendMode(SkBlendMode::kSrc);
+
+    SkImageInfo info = bm->info();
+    sk_sp<SkImage> im = SkImage::MakeFromBitmap(*bm);
+
+    if (width <= 0)
+        rwidth = info.width() + width;
+
+    if (rwidth <= 0)
+        rwidth = 1;
+
+    MSG_DEBUG("Width: " << rwidth << ", Height: " << info.height());
+
+    if (!allocPixels(rwidth, info.height(), bm))
+        return false;
+
+    bm->eraseColor(SK_ColorTRANSPARENT);
+    SkCanvas can(*bm, SkSurfaceProps());
+    SkRect rect = SkRect::MakeXYWH(0, 0, rwidth, info.height());
+    can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
+    return true;
+}
+
+bool TPageInterface::stretchImageHeight(SkBitmap *bm, int height)
+{
+    DECL_TRACER("TPageInterface::stretchImageHeight(SkBitmap *bm, int height)");
+
+    if (!bm)
+        return false;
+
+    int rheight = height;
+    SkPaint paint;
+    paint.setBlendMode(SkBlendMode::kSrc);
+
+    SkImageInfo info = bm->info();
+
+    if (height <= 0)
+        rheight = info.height() + height;
+
+    if (rheight <= 0)
+        rheight = 1;
+
+    sk_sp<SkImage> im = SkImage::MakeFromBitmap(*bm);
+    MSG_DEBUG("Width: " << info.width() << ", Height: " << rheight);
+
+    if (!allocPixels(info.width(), rheight, bm))
+        return false;
+
+    bm->eraseColor(SK_ColorTRANSPARENT);
+    SkCanvas can(*bm, SkSurfaceProps());
+    SkRect rect = SkRect::MakeXYWH(0, 0, info.width(), rheight);
+    can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
+    return true;
+}
+
+#ifdef _OPAQUE_SKIA_
+bool TPageInterface::setOpacity(SkBitmap *bm, int oo)
+{
+    DECL_TRACER("TPageInterface::setOpacity(SkBitmap *bm, int oo)");
+
+    if (oo < 0 || oo > 255 || !bm)
+        return false;
+
+    SkBitmap ooButton;
+    int w = bm->info().width();
+    int h = bm->info().height();
+
+    if (!allocPixels(w, h, &ooButton))
+        return false;
+
+    SkCanvas canvas(ooButton);
+    SkIRect irect = SkIRect::MakeXYWH(0, 0, w, h);
+    SkRegion region;
+    region.setRect(irect);
+    SkScalar opaque = (SkScalar)oo;
+
+    SkScalar alpha = 1.0 / 255.0 * opaque;
+    MSG_DEBUG("Calculated alpha value: " << alpha << " (oo=" << oo << ")");
+    SkPaint paint;
+    paint.setAlphaf(alpha);
+    sk_sp<SkImage> _image = SkImage::MakeFromBitmap(*bm);
+    canvas.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
+    bm->erase(SK_ColorTRANSPARENT, {0, 0, w, h});
+    *bm = ooButton;
+    return true;
+}
+#endif

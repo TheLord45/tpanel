@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020, 2023 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -982,10 +982,10 @@ void TQtSettings::on_lineEdit_FTPpassword_textChanged(const QString& arg1)
     TConfig::saveFtpPassword(arg1.toStdString());
 }
 
-void TQtSettings::on_comboBox_FTPsurface_currentIndexChanged(const QString& arg1)
+void TQtSettings::on_comboBox_FTPsurface_currentTextChanged(const QString& arg1)
 {
     DECL_TRACER("TQtSettings::on_comboBox_FTPsurface_currentIndexChanged(const QString& arg1)");
-
+MSG_DEBUG("Comparing surface: " << arg1.toStdString() << " with " << TConfig::getFtpSurface());
     if (arg1.compare(TConfig::getFtpSurface().c_str()) == 0)
         return;
 
@@ -1192,7 +1192,7 @@ void TQtSettings::on_checkBox_SIPiphone_toggled(bool checked)
     TConfig::setSIPiphone(checked);
 }
 
-void TQtSettings::on_comboBox_SystemSound_currentIndexChanged(const QString& arg1)
+void TQtSettings::on_comboBox_SystemSound_currentTextChanged(const QString& arg1)
 {
     DECL_TRACER("TQtSettings::on_comboBox_SystemSound_currentIndexChanged(const QString& arg1)");
 
@@ -1214,7 +1214,7 @@ void TQtSettings::on_toolButton_SystemSound_clicked()
         gPageManager->getCallPlaySound()(file);
 }
 
-void TQtSettings::on_comboBox_SingleBeep_currentIndexChanged(const QString& arg1)
+void TQtSettings::on_comboBox_SingleBeep_currentTextChanged(const QString& arg1)
 {
     DECL_TRACER("TQtSettings::on_comboBox_SingleBeep_currentIndexChanged(const QString& arg1)");
 
@@ -1274,7 +1274,7 @@ void TQtSettings::on_toolButton_SingleBeep_clicked()
         gPageManager->getCallPlaySound()(file);
 }
 
-void TQtSettings::on_comboBox_DoubleBeep_currentIndexChanged(const QString& arg1)
+void TQtSettings::on_comboBox_DoubleBeep_currentTextChanged(const QString& arg1)
 {
     DECL_TRACER("TQtSettings::on_comboBox_DoubleBeep_currentIndexChanged(const QString& arg1)");
 

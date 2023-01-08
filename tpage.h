@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -68,8 +68,11 @@ class TPage : public TValidateFile, public TPageInterface
         int getNextZOrder();
         int decZOrder();
         void resetZOrder() { mZOrder = ZORDER_INVALID; }
-
+#ifdef _OPAQUE_SKIA_
         void registerCallback(std::function<void (ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color)> setBackground) { _setBackground = setBackground; }
+#else
+        void registerCallback(std::function<void (ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color, int opacity)> setBackground) { _setBackground = setBackground; }
+#endif
         void registerCallbackDB(std::function<void(ulong handle, ulong parent, unsigned char *buffer, int width, int height, int pixline, int left, int top)> displayButton) { _displayButton = displayButton; }
         void regCallDropPage(std::function<void (ulong handle)> callDropPage) { _callDropPage = callDropPage; }
         void regCallDropSubPage(std::function<void (ulong handle)> callDropSubPage) { _callDropSubPage = callDropSubPage; }
@@ -88,8 +91,11 @@ class TPage : public TValidateFile, public TPageInterface
 #endif
     private:
         void addProgress();
-
+#ifdef _OPAQUE_SKIA_
         std::function<void (ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color)> _setBackground{nullptr};
+#else
+        std::function<void (ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color, int opacity)> _setBackground{nullptr};
+#endif
         std::function<void (ulong handle, ulong parent, unsigned char *buffer, int width, int height, int pixline, int left, int top)> _displayButton{nullptr};
         std::function<void (ulong handle)> _callDropPage{nullptr};
         std::function<void (ulong handle)> _callDropSubPage{nullptr};

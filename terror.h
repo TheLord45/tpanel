@@ -71,7 +71,7 @@ class TStreamError
         static void setLogLevel(const std::string& slv);
         static void setLogLevel(unsigned int ll) { mLogLevel = ll; }
         static unsigned int getLogLevel() { return mLogLevel; }
-        static void logMsg(std::ostream& str);
+//        static void logMsg(std::ostream& str);
         static bool checkFilter(terrtype_t err);
         static bool checkFilter(int lv);
         friend std::ostream& indent(std::ostream& os);
@@ -172,8 +172,9 @@ class TError : public std::ostream
 #define IS_LOG_PROTOCOL()   TStreamError::checkFilter(HLOG_PROTOCOL)
 #define IS_LOG_ALL()        TStreamError::checkFilter(HLOG_ALL)
 
-#define START_TEMPORARY_TRACE() TStreamError::startTemporaryLogLevel(HLOG_TRACE)
-#define START_TEMPORARY_DEBUG() TStreamError::startTemporaryLogLevel(HLOG_DEBUG)
-#define END_TEMPORARY_LOG()     TStreamError::endTemporaryLogLevel()
+#define START_TEMPORARY_TRACE()     TStreamError::startTemporaryLogLevel(HLOG_TRACE)
+#define START_TEMPORARY_DEBUG()     TStreamError::startTemporaryLogLevel(HLOG_DEBUG)
+#define START_TEMPORARY_LOG(level)  TStreamError::startTemporaryLogLevel(level)
+#define END_TEMPORARY_LOG()         TStreamError::endTemporaryLogLevel()
 
 #endif

@@ -21,6 +21,7 @@
 
 #include "tcolor.h"
 #include "terror.h"
+#include "tresources.h"
 
 TPalette *TColor::mPalette = nullptr;
 
@@ -58,8 +59,8 @@ TColor::COLOR_T TColor::getAMXColor(const string& color)
 
     size_t pos = color.find('#');
 
-    if (pos == string::npos)
-    {
+    if (pos == string::npos)    // No # found?
+    {                           // No #, then try to find color in palette
         if (!mPalette)
         {
             MSG_ERROR("No palette was set! First set a palette to be able to get any color!");
@@ -72,17 +73,26 @@ TColor::COLOR_T TColor::getAMXColor(const string& color)
         if (!pd.name.empty())
             return splitColors(pd);
 
-        MSG_DEBUG("Color " << color << " not found in table!");
+        return TColor::COLOR_T();
+    }
+
+    // There was a # in the string. We assume that the color is encoded in hex
+    // after the # symbol.
+    string col = color.substr(pos + 1);
+
+    if (col.length() < 6)
+    {
+        MSG_WARNING("Invalid color " << col << " found! Ignoring it.");
         return TColor::COLOR_T();
     }
 
     TColor::COLOR_T ct;
-    ct.red = (int)strtol(color.substr(pos+1, 2).c_str(), NULL, 16);
-    ct.green = (int)strtol(color.substr(pos+3, 2).c_str(), NULL, 16);
-    ct.blue = (int)strtol(color.substr(pos+5, 2).c_str(), NULL, 16);
+    ct.red = (int)strtol(col.substr(0, 2).c_str(), NULL, 16);
+    ct.green = (int)strtol(col.substr(2, 2).c_str(), NULL, 16);
+    ct.blue = (int)strtol(col.substr(4, 2).c_str(), NULL, 16);
 
-    if (color.length() > 7)
-        ct.alpha = (int)strtol(color.substr(pos+7).c_str(), NULL, 16);
+    if (col.length() > 6)
+        ct.alpha = (int)strtol(col.substr(6).c_str(), NULL, 16);
     else
         ct.alpha = 0x00ff;
 
@@ -94,21 +104,14 @@ TColor::COLOR_T TColor::splitColors(PDATA_T& pd)
     DECL_TRACER("TColor::splitColors(PDATA_T& pd)");
 
     TColor::COLOR_T ct;
+    ct.red = (pd.color & 0xff000000) >> 24;
+    ct.green = (pd.color & 0x00ff0000) >> 16;
+    ct.blue = (pd.color & 0x0000ff00) >> 8;
 
     if (pd.color > 0x00ffffff)
-    {
-        ct.red = (pd.color & 0xff000000) >> 24;
-        ct.green = (pd.color & 0x00ff0000) >> 16;
-        ct.blue = (pd.color & 0x0000ff00) >> 8;
         ct.alpha = (pd.color & 0x000000ff);
-    }
     else
-    {
-        ct.red = (pd.color & 0xff000000) >> 24;
-        ct.green = (pd.color & 0x00ff0000) >> 16;
-        ct.blue = (pd.color & 0x0000ff00) >> 8;
         ct.alpha = 0x00ff;
-    }
 
     return ct;
 }
@@ -118,11 +121,11 @@ SkColor TColor::getSkiaColor(const std::string& color)
     DECL_TRACER("TColor::getSkiaColor(const std::string& color)");
 
     COLOR_T col = getAMXColor(color);
-//#if defined(__ANDROID__) || defined(TARGET_OS_IPHONE) || defined(TARGET_OS_IOS)
-//    return SkColorSetARGB(col.alpha, col.blue, col.green, col.red); // Workaround for a bug in Skia
-//#else
-    return SkColorSetARGB(col.alpha, col.red, col.green, col.blue);
-//#endif
+
+    if (isBigEndian())
+        return SkColorSetARGB(col.alpha, col.blue, col.green, col.red);
+    else
+        return SkColorSetARGB(col.alpha, col.red, col.green, col.blue);
 }
 
 ulong TColor::getColor(const std::string& color)

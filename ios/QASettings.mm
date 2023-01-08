@@ -148,6 +148,13 @@
 // ---- C++ part starts here
 // -----------------------------------------------------------------------------
 
+std::string QASettings::oldNetlinx;
+int QASettings::oldPort{0};
+int QASettings::oldChannelID{0};
+std::string QASettings::oldSurface;
+bool QASettings::oldToolbarSuppress{false};
+bool QASettings::oldToolbarForce{false};
+
 SetupController *mSetup = nil;
 
 QASettings::QASettings()
@@ -510,5 +517,13 @@ void QASettings::openSettings()
     if (!url)
         return;
 
+    // Save current settings
+    oldNetlinx = TConfig::getController();
+    oldPort = TConfig::getPort();
+    oldChannelID = TConfig::getChannel();
+    oldSurface = TConfig::getFtpSurface();
+    oldToolbarSuppress = TConfig::getToolbarSuppress();
+    oldToolbarForce = TConfig::getToolbarForce();
+    // Launch the setup
     [[UIApplication sharedApplication] openURL:url];
 }

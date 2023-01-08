@@ -1157,7 +1157,7 @@ namespace Button
             int listComponent{0};   // ListView component
             int listLayout{0};      // ListView layout.
             std::map<std::string,std::string> listFieldMap; // Maps the fields from the source to the columns of the list
-            LIST_SORT listSort{LIST_SORT_NONE}; // ListView sort algorithm
+//            LIST_SORT listSort{LIST_SORT_NONE}; // ListView sort algorithm
             std::string listSortOverride;   // A SQL ORDER BY command like sort option. Only valid if listStort == LIST_SORT_OVERRIDE
             std::string listSourceUser;   // The user name (optional)
             std::string listSourcePass;   // The password (optional)

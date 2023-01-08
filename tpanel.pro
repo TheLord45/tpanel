@@ -18,15 +18,15 @@ TARGET = tpanel
 
 ios: {
 versionAtMost(QT_VERSION, 5.15.2) {
-QT = core gui widgets multimedia multimediawidgets sensors quickwidgets
+QT = core gui widgets multimedia multimediawidgets sensors
 } else {
 QT = core gui widgets multimedia multimediawidgets sensors positioning
 }}
 android: {
 versionAtMost(QT_VERSION, 5.15.2) {
-QT = core gui gui-private widgets multimedia multimediawidgets sensors quickwidgets androidextras
+QT = core gui widgets multimedia multimediawidgets sensors androidextras
 } else {
-QT = core gui widgets multimedia multimediawidgets sensors quickwidgets
+QT = core gui widgets multimedia multimediawidgets sensors
 }}
 
 # The main application
@@ -84,6 +84,7 @@ HEADERS = \
    $$PWD/tvector.h \
    $$PWD/turl.h \
    $$PWD/tqnetworkinfo.h \
+   $$PWD/tqtwait.h \
    $$PWD/ftplib/ftplib.h
 
 SOURCES = \
@@ -139,6 +140,7 @@ SOURCES = \
    $$PWD/texpat++.cpp \
    $$PWD/turl.cpp \
    $$PWD/tqnetworkinfo.cpp \
+   $$PWD/tqtwait.cpp \
    $$PWD/ftplib/ftplib.cpp
 
 android: {
@@ -148,7 +150,10 @@ OTHER_FILES += \
         $$PWD/android/src/org/qtproject/theosys/PhoneCallState.java \
         $$PWD/android/src/org/qtproject/theosys/UriToPath.java \
         $$PWD/android/src/org/qtproject/theosys/Logger.java \
-        $$PWD/android/src/org/qtproject/theosys/Orientation.java
+        $$PWD/android/src/org/qtproject/theosys/Orientation.java \
+        $$PWD/android/src/org/qtproject/theosys/Settings.java \
+        $$PWD/android/src/org/qtproject/theosys/SettingsActivity.java \
+        $$PWD/android/src/org/qtpeoject/theosys/HideToolbar.java
 
 INCLUDEPATH = \
     $$PWD/. \
@@ -168,7 +173,7 @@ ios: {
 }
 
 CONFIG += c++17
-QMAKE_CXXFLAGS += -std=c++17 -DPJ_AUTOCONF
+QMAKE_CXXFLAGS += -std=c++17 -DPJ_AUTOCONF -D_OPAQUE_SKIA_
 QMAKE_LFLAGS += -std=c++17
 
 equals(ANDROID_TARGET_ARCH,arm64-v8a) {
@@ -283,17 +288,15 @@ equals(OS,iossim) {
             -lwebrtc -lilbccodec \
             -framework CFNetwork
 
-    INCLUDEPATH += $$QTDIR/include/QtGui/$$QT_VERSION/QtGui
+    INCLUDEPATH += $$(QTDIR)/include/QtGui/$$QT_VERSION/QtGui
 
     OBJECTIVE_HEADERS = $$PWD/ios/QASettings.h \
                         $$PWD/ios/tiosrotate.h \
                         $$PWD/ios/tiosbattery.h
- #                       $$PWD/ios/tiosaskperm.h
 
     OBJECTIVE_SOURCES = $$PWD/ios/QASettings.mm \
                         $$PWD/ios/tiosrotate.mm \
                         $$PWD/ios/tiosbattery.mm
-#                        $$PWD/ios/tiosaskperm.mm
 
     QMAKE_INFO_PLIST = $$PWD/ios/Info.plist
 
@@ -336,9 +339,11 @@ FORMS += \
     keypad.ui \
     tqtsettings.ui \
     tqtphone.ui \
-    download.ui
+    download.ui \
+    wait.ui
 
 android: {
+    INCLUDEPATH += $$(QTDIR)/include/QtGui/$$QT_VERSION/QtGui
     LIBS += -lcrypto_1_1 -lssl_1_1 -lEGL -landroid -lmediandk
 
     DISTFILES += \
@@ -349,7 +354,14 @@ android: {
         android/gradle/wrapper/gradle-wrapper.properties \
         android/gradlew \
         android/gradlew.bat \
-        android/res/values/libs.xml
+        android/res/values/libs.xml \
+        android/res/layout/settings_activity.xml \
+        android/res/values/arrays.xml \
+        android/res/values/strings.xml \
+        android/res/values/styles.xml \
+        android/res/values/themes.xml \
+        android/res/xml/root_preferences.xml
+
 
     ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
     CONFIG += sdk_no_version_check
@@ -361,3 +373,7 @@ android: {
 
 # Add the ftp library
 DEPENDPATH += $$PWD/ftplib
+
+DISTFILES += \
+    android/src/org/qtproject/theosys/HideToolbar.java \
+    android/src/org/qtproject/theosys/Settings.java

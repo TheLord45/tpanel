@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -287,14 +287,7 @@ void TPage::initialize(const string& nm)
     if (TPageInterface::getButtons())
         sortButtons();
 }
-/*
-void TPage::registerListCallback(TButton *button)
-{
-    DECL_TRACER("TPage::registerListCallback(TButton *button)");
 
-    TPageInterface::registerListCallback<TPage>(button, this);
-}
-*/
 void TPage::addProgress()
 {
     DECL_TRACER("TPage::addProgress()");
@@ -472,7 +465,10 @@ void TPage::show()
     ulong handle = (mPage.pageID << 16) & 0xffff0000;
     MSG_DEBUG("Processing page " << mPage.pageID);
     SkBitmap target;
-    target.allocN32Pixels(mPage.width, mPage.height);
+
+    if (!allocPixels(mPage.width, mPage.height, &target))
+        return;
+
     target.eraseColor(TColor::getSkiaColor(sr[0].cf));
     // Draw the background, if any
     if (sr.size() > 0 && (!sr[0].bm.empty() || !sr[0].mi.empty()))
@@ -574,9 +570,12 @@ void TPage::show()
                 calcPosition(lwidth, lheight, &left, &top);
                 // Create a canvas and draw new image
                 sk_sp<SkImage> im = SkImage::MakeFromBitmap(target);
-                target.allocN32Pixels(twidth, theight);
+
+                if (!allocPixels(twidth, theight, &target))
+                    return;
+
                 target.eraseColor(TColor::getSkiaColor(sr[0].cf));
-                SkCanvas can(target, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+                SkCanvas can(target, SkSurfaceProps());
                 SkRect rect = SkRect::MakeXYWH(left, top, lwidth, lheight);
                 can.drawImageRect(im, rect, &paint);
                 rowBytes = target.info().minRowBytes();
@@ -584,8 +583,13 @@ void TPage::show()
                 MSG_DEBUG("Scaled size of background image: " << left << ", " << top << ", " << lwidth << ", " << lheight);
             }
 #endif
-            if (sr[0].te.empty())
+#ifdef _OPAQUE_SKIA_
+            if (sr[0].te.empty() && sr[0].bs.empty())
                 _setBackground(handle, (unsigned char *)target.getPixels(), size, rowBytes, target.info().width(), target.info().height(), TColor::getColor(sr[0].cf));
+#else
+            if (sr[0].te.empty() && sr[0].bs.empty())
+                _setBackground(handle, (unsigned char *)target.getPixels(), size, rowBytes, target.info().width(), target.info().height(), TColor::getColor(sr[0].cf), sr[0].oo);
+#endif
         }
     }
 
@@ -593,20 +597,36 @@ void TPage::show()
     {
         MSG_DEBUG("Drawing text on background image ...");
 
-        if (!drawText(mPage, &target))
-            return;
+        if (drawText(mPage, &target))
+            haveImage = true;
+    }
 
+    // Check for a frame and draw it if there is one.
+    if (!sr[0].bs.empty())
+    {
+        if (drawFrame(mPage, &target))
+            haveImage = true;
+    }
+
+    if (haveImage)
+    {
         SkImageInfo info = target.info();
         size_t rowBytes = info.minRowBytes();
         size_t size = info.computeByteSize(rowBytes);
+#ifdef _OPAQUE_SKIA_
         _setBackground(handle, (unsigned char *)target.getPixels(), size, rowBytes, target.info().width(), target.info().height(), TColor::getColor(sr[0].cf));
-        haveImage = true;
+#else
+        _setBackground(handle, (unsigned char *)target.getPixels(), size, rowBytes, target.info().width(), target.info().height(), TColor::getColor(sr[0].cf), sr[0].oo);
+#endif
     }
-
-    if (sr.size() > 0 && !haveImage)
+    else if (sr.size() > 0 && !haveImage)
     {
         MSG_DEBUG("Calling \"setBackground\" with no image ...");
+#ifdef _OPAQUE_SKIA_
         _setBackground(handle, nullptr, 0, 0, 0, 0, TColor::getColor(sr[0].cf));
+#else
+        _setBackground(handle, nullptr, 0, 0, 0, 0, TColor::getColor(sr[0].cf), sr[0].oo);
+#endif
     }
 
     // Draw the buttons

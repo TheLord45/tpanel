@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2022, 2023 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -190,7 +190,10 @@ class TPageInterface
         virtual ~TPageInterface() {}
 
         bool drawText(PAGE_T& pinfo, SkBitmap *img);
-
+        bool drawFrame(PAGE_T& pinfo, SkBitmap* bm);
+#ifdef _OPAQUE_SKIA_
+        bool setOpacity(SkBitmap *bm, int oo);
+#endif
         virtual int getNumber() = 0;
         virtual std::string& getName() = 0;
         virtual void show() = 0;
@@ -257,6 +260,11 @@ class TPageInterface
         int calcLineHeight(const std::string& text, SkFont& font);
         int numberLines(const std::string& str);
         int getSystemSelection(int ta, std::vector<std::string>& list);
+        SkBitmap retrieveBorderImage(const std::string& pa, const std::string& pb, SkColor color, SkColor bgColor);
+        bool retrieveImage(const std::string& path, SkBitmap* image);
+        SkBitmap colorImage(SkBitmap& base, SkBitmap& alpha, SkColor col, SkColor bg, bool useBG);
+        bool stretchImageWidth(SkBitmap *bm, int width);
+        bool stretchImageHeight(SkBitmap *bm, int height);
 
         Button::BUTTONS_T *mButtons{nullptr};    // Chain of buttons
         int mLastButton{0};             // Internal counter for iterating through button chain.

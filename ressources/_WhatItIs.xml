@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<root><page type="subpage"><pageID>502</pageID><name>_WhatItIs</name><left>30</left><top>70</top><width>420</width><height>330</height><showEffect>1</showEffect><showTime>3</showTime><hideEffect>1</hideEffect><hideTime>2</hideTime><sr number="1"><bs>AMX Elite Raised -M</bs><cb>Lime</cb><cf>White</cf><ct>Black</ct><ec>#000000FF</ec><oo>220</oo><fi>23</fi><te>TPanel is a free touch panel compatible
+to a G4 panel of AMX. It works together
+with any NetLinx and supports even
+some G5 commands.
+TPanel is available for Android 11
+and newer, as well as iPhone and iPad
+with IOS 16.1.2 or newer.
+It is also available for Linux and Mac.
+The source is free and can be
+downloaded from 
+https://www.github.com/TheLord45/tpanel</te><jt>4</jt></sr></page></root>

@@ -1,0 +1,220 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory android:title="NetLinx">
+
+        <EditTextPreference
+            android:id="@+id/netlinxIp"
+            android:defaultValue="0.0.0.0"
+            android:key="netlinx_ip"
+            android:title="NetLinx IP"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            android:id="@+id/netlinxPort"
+            android:defaultValue="1319"
+            android:key="netlinx_port"
+            android:title="Network port"
+            android:maxLength="6"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            android:id="@+id/netlinxChannel"
+            android:defaultValue="10001"
+            android:key="netlinx_channel"
+            android:title="Channel number"
+            android:maxLength="5"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            android:id="@+id/netlinxType"
+            android:defaultValue="Android"
+            android:key="netlinx_type"
+            android:title="Panel type"
+            android:maxLength="15"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            android:id="@+id/netlinxFtpUser"
+            android:defaultValue="administrator"
+            android:key="netlinx_ftp_user"
+            android:title="FTP user name"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            android:id="@+id/netlinxFtpPassword"
+            android:defaultValue="password"
+            android:summary="********"
+            android:inputType="textPassword"
+            android:key="netlinx_ftp_password"
+            android:title="FTP password" />
+
+        <DropDownPreference
+            android:key="netlinx_surface"
+            android:title="Surface file name"
+            android:entries="@array/reply_entries_surface"
+            android:entryValues="@array/reply_values_surface"
+            app:useSimpleSummaryProvider="true" />
+
+        <SwitchPreference
+            android:id="@+id/netlinxFtpPassive"
+            android:defaultValue="true"
+            android:key="netlinx_ftp_passive"
+            android:title="FTP passive mode" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="View">
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="view_scale"
+            android:title="Scale to fit" />
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="view_toolbar"
+            android:title="Toolbar visible"
+            app:isPreferenceVisible="false" />
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="view_toolbar_force"
+            android:title="Force toolbar visible" />
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="view_rotation"
+            android:title="Fixed rotation" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="Sound">
+        <ListPreference
+            android:defaultValue="singleBeep.wav"
+            android:entries="@array/reply_entries_sound_system"
+            android:entryValues="@array/reply_values_sound_system"
+            android:key="sound_system"
+            android:title="System sound"
+            app:useSimpleSummaryProvider="true" />
+        <ListPreference
+            android:defaultValue="singleBeep.wav"
+            android:entries="@array/reply_entries_sound_single"
+            android:entryValues="@array/reply_values_sound_single"
+            android:key="sound_single"
+            android:title="Single beep"
+            app:useSimpleSummaryProvider="true" />
+        <ListPreference
+            android:defaultValue="doubleBeep.wav"
+            android:entries="@array/reply_entries_sound_double"
+            android:entryValues="@array/reply_values_sound_double"
+            android:key="sound_double"
+            android:title="Double beep"
+            app:useSimpleSummaryProvider="true" />
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="sound_enable"
+            android:title="Enable system sound" />
+        <SeekBarPreference
+            android:defaultValue="100"
+            android:key="sound_volume"
+            android:title="Volume"
+            android:max="100" />
+        <SeekBarPreference
+            android:defaultValue="0"
+            android:key="sound_gain"
+            android:title="Gain"
+            android:max="100"
+            app:showSeekBarValue="true"
+            app:isPreferenceVisible="false" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="SIP">
+        <EditTextPreference
+            android:defaultValue="0.0.0.0"
+            android:key="sip_proxy"
+            android:title="SIP proxy"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            android:defaultValue="5060"
+            android:key="sip_port"
+            android:title="Network port"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            android:defaultValue="0"
+            android:key="sip_tls_port"
+            android:title="Network RLS port"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            android:defaultValue=""
+            android:key="sip_stun"
+            android:title="STUN"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            android:defaultValue=""
+            android:key="sip_domain"
+            android:title="Domain"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            android:defaultValue=""
+            android:key="sip_user"
+            android:title="User"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            android:defaultValue=""
+            android:key="sip_password"
+            android:title="Password"
+            android:summary="********"
+            android:inputType="textPassword" />
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="sip_ipv4"
+            android:title="Network IPv4" />
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="sip_ipv6"
+            android:title="Network IPv6" />
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="sip_enabled"
+            android:title="SIP enabled" />
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="sip_internal_phone"
+            android:title="Use integrated phone" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="Logging">
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="logging_info"
+            android:title="Information" />
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="logging_warning"
+            android:title="Warnings" />
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="logging_error"
+            android:title="Errors" />
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="logging_trace"
+            android:title="Trace" />
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="logging_debug"
+            android:title="Debug" />
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="logging_profile"
+            android:title="Profiling" />
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="logging_long_format"
+            android:title="Long format" />
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="logging_logfile_enabled"
+            android:title="Enable logfile" />
+        <EditTextPreference
+            android:defaultValue="tpanel.log"
+            android:key="logging_logfile"
+            android:title="Logfile"
+            app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+
+</PreferenceScreen>

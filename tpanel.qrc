@@ -1859,5 +1859,17 @@
         <file>ressources/__system/graphics/draw.xma</file>
         <file>ressources/__system/graphics/fnt.xma</file>
         <file>ressources/__system/graphics/version.xma</file>
+        <file>ressources/_Copyright.xml</file>
+        <file>ressources/_WhatItIs.xml</file>
+        <file>ressources/_main.xml</file>
+        <file>ressources/external.xma</file>
+        <file>ressources/fnt.xma</file>
+        <file>ressources/icon.xma</file>
+        <file>ressources/manifest.xma</file>
+        <file>ressources/map.xma</file>
+        <file>ressources/pal_001.xma</file>
+        <file>ressources/prj.xma</file>
+        <file>ressources/table.xma</file>
+        <file>ressources/images/theosys_logo.png</file>
     </qresource>
 </RCC>

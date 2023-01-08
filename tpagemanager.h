@@ -130,7 +130,11 @@ class TPageManager : public TAmxCommands
         void registerCBsetVisible(std::function<void(ulong handle, bool state)> setVisible) { _setVisible = setVisible; }
         void registerCallbackSP(std::function<void (ulong handle, int width, int height)> setPage) { _setPage = setPage; }
         void registerCallbackSSP(std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate)> setSubPage) { _setSubPage = setSubPage; }
+#ifdef _OPAQUE_SKIA_
         void registerCallbackSB(std::function<void (ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color)> setBackground) {_setBackground = setBackground; }
+#else
+        void registerCallbackSB(std::function<void (ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color, int opacity)> setBackground) {_setBackground = setBackground; }
+#endif
         void deployCallbacks();
 #ifdef __ANDROID__
         void initNetworkState();
@@ -142,6 +146,7 @@ class TPageManager : public TAmxCommands
         void informBatteryStatus(jint level, jboolean charging, jint chargeType);
         void informPhoneState(bool call, const std::string& pnumber);
         void initOrientation();
+        void enterSetup();
 #endif
 #ifdef Q_OS_IOS
         void informBatteryStatus(int level, int state);
@@ -181,11 +186,14 @@ class TPageManager : public TAmxCommands
         void regFileDialogFunction(std::function<void (ulong handle, const std::string& path, const std::string& extension, const std::string& suffix)> fdlg) { _fileDialog = fdlg; }
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         void regOnOrientationChange(std::function<void (int orientation)> orientationChange) { _onOrientationChange = orientationChange; }
+        void regOnSettingsChanged(std::function<void (const std::string& oldNetlinx, int oldPort, int oldChannelID, const std::string& oldSurface, bool oldToolbarSuppress, bool oldToolbarForce)> settingsChanged) { _onSettingsChanged = settingsChanged; }
 #endif
         void regRepaintWindows(std::function<void ()> repaintWindows) { _repaintWindows = repaintWindows; }
         void regToFront(std::function<void (ulong handle)> toFront) { _toFront = toFront; }
         void regSetMainWindowSize(std::function<void (int width, int height)> setSize) { _setMainWindowSize = setSize; }
         void regDownloadSurface(std::function<void (const std::string& file, size_t size)> dl) { _downloadSurface = dl; }
+        void regStartWait(std::function<void (const std::string& text)> sw) { _startWait = sw; }
+        void regStopWait(std::function<void ()> sw) { _stopWait = sw; }
 
         /**
          * The following function must be called to start non graphics part
@@ -407,7 +415,11 @@ class TPageManager : public TAmxCommands
         std::function<void (ulong handle, ulong parent, unsigned char *buffer, int width, int height, int pixline, int left, int top)> getCallbackDB() { return _displayButton; }
         std::function<void (ulong handle)> getCallDropButton() { return _dropButton; }
         std::function<void (ulong handle, bool state)> getVisible() { return _setVisible; };
+#ifdef _OPAQUE_SKIA_
         std::function<void (ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color)> getCallbackBG() { return _setBackground; }
+#else
+        std::function<void (ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color, int opacity)> getCallbackBG() { return _setBackground; }
+#endif
         std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw)> getCallbackPV() { return _callPlayVideo; }
         std::function<void (ulong handle, int width, int height)> getCallbackSetPage() { return _setPage; }
         std::function<void (Button::TButton *button, Button::BITMAP_t& bm, int frame)> getCallbackInputText() { return _callInputText; }
@@ -428,8 +440,11 @@ class TPageManager : public TAmxCommands
         std::function<void (const std::string& file, size_t size)> getDownloadSurface() { return _downloadSurface; }
         std::function<void (const std::string& msg, const std::string& title)> getDisplayMessage() { return _displayMessage; }
         std::function<void (ulong handle, const std::string& path, const std::string& extension, const std::string& suffix)> getFileDialogFunction() { return _fileDialog; }
+        std::function<void (const std::string& text)> getStartWait() { return _startWait; }
+        std::function<void ()> getStopWait() { return _stopWait; }
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         std::function<void (int orientation)> onOrientationChange() { return _onOrientationChange; }
+        std::function<void (const std::string& oldNetlinx, int oldPort, int oldChannelID, const std::string& oldSurface, bool oldToolbarSuppress, bool oldToolbarForce)> onSettingsChanged() { return _onSettingsChanged; }
 #endif
         std::function<void ()> getRepaintWindows() { return _repaintWindows; }
         int getOrientation() { return mOrientation; }
@@ -491,7 +506,11 @@ class TPageManager : public TAmxCommands
         std::function<void (ulong handle, bool state)> _setVisible{nullptr};
         std::function<void (ulong handle, int width, int height)> _setPage{nullptr};
         std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate)> _setSubPage{nullptr};
+#ifdef _OPAQUE_SKIA_
         std::function<void (ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color)> _setBackground{nullptr};
+#else
+        std::function<void (ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color, int opacity)> _setBackground{nullptr};
+#endif
         std::function<void (ulong handle, const std::string& text, const std::string& font, const std::string& family, int size, int x, int y, ulong color, ulong effectColor, FONT_STYLE style, Button::TEXT_ORIENTATION ori, Button::TEXT_EFFECT effect, bool ww)> _setText{nullptr};
         std::function<void (ulong handle)> _callDropPage{nullptr};
         std::function<void (ulong handle)> _callDropSubPage{nullptr};
@@ -518,8 +537,11 @@ class TPageManager : public TAmxCommands
         std::function<void (const std::string& file, size_t size)> _downloadSurface{nullptr};
         std::function<void (const std::string& msg, const std::string& title)> _displayMessage{nullptr};
         std::function<void (ulong handle, const std::string& path, const std::string& extension, const std::string& suffix)> _fileDialog{nullptr};
-#if defined(__ANDROID__) || defined(Q_OS_IOS)
+        std::function<void (const std::string& text)> _startWait{nullptr};
+        std::function<void ()> _stopWait{nullptr};
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         std::function<void (int orientation)> _onOrientationChange{nullptr};
+        std::function<void (const std::string& oldNetlinx, int oldPort, int oldChannelID, const std::string& oldSurface, bool oldToolbarSuppress, bool oldToolbarForce)> _onSettingsChanged{nullptr};
 #endif
         typedef struct _FTP_SURFACE_t
         {
@@ -771,6 +793,51 @@ extern "C" {
     JNIEXPORT void JNICALL Java_org_qtproject_theosys_PhoneCallState_informPhoneState(JNIEnv *env, jclass cl, jboolean call, jstring pnumber);
     JNIEXPORT void JNICALL Java_org_qtproject_theosys_Logger_logger(JNIEnv *env, jclass cl, jint mode, jstring msg);
     JNIEXPORT void JNICALL Java_org_qtproject_theosys_Orientation_informTPanelOrientation(JNIEnv */*env*/, jclass /*clazz*/, jint orientation);
+    // Settings
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setNetlinxIp(JNIEnv *env, jclass clazz, jstring ip);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setNetlinxPort(JNIEnv *env, jclass clazz, jint port);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setNetlinxChannel(JNIEnv *env, jclass clazz, jint channel);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setNetlinxType(JNIEnv *env, jclass clazz, jstring type);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setNetlinxFtpUser(JNIEnv *env, jclass clazz, jstring user);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setNetlinxFtpPassword(JNIEnv *env, jclass clazz, jstring pw);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setNetlinxSurface(JNIEnv *env, jclass clazz, jstring surface);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setNetlinxFtpPassive(JNIEnv *env, jclass clazz, jboolean passive);
+
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setViewScale(JNIEnv *env, jclass clazz, jboolean scale);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setViewToolbar(JNIEnv *env, jclass clazz, jboolean bar);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setViewToolbarForce(JNIEnv *env, jclass clazz, jboolean bar);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setViewRotation(JNIEnv *env, jclass clazz, jboolean rotate);
+
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSoundSystem(JNIEnv *env, jclass clazz, jstring sound);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSoundSingle(JNIEnv *env, jclass clazz, jstring sound);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSoundDouble(JNIEnv *env, jclass clazz, jstring sound);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSoundEnable(JNIEnv *env, jclass clazz, jboolean sound);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSoundVolume(JNIEnv *env, jclass clazz, jint sound);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSoundGaim(JNIEnv *env, jclass clazz, jint sound);
+
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSipProxy(JNIEnv *env, jclass clazz, jstring sip);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSipPort(JNIEnv *env, jclass clazz, jint sip);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSipTlsPort(JNIEnv *env, jclass clazz, jint sip);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSipStun(JNIEnv *env, jclass clazz, jstring sip);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSipDomain(JNIEnv *env, jclass clazz, jstring sip);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSipUser(JNIEnv *env, jclass clazz, jstring sip);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSipPassword(JNIEnv *env, jclass clazz, jstring sip);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSipIpv4(JNIEnv *env, jclass clazz, jboolean sip);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSipIpv6(JNIEnv *env, jclass clazz, jboolean sip);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSipEnabled(JNIEnv *env, jclass clazz, jboolean sip);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSipIphone(JNIEnv *env, jclass clazz, jboolean sip);
+
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setLogInfo(JNIEnv *env, jclass clazz, jboolean log);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setLogWarning(JNIEnv *env, jclass clazz, jboolean log);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setLogError(JNIEnv *env, jclass clazz, jboolean log);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setLogTrace(JNIEnv *env, jclass clazz, jboolean log);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setLogDebug(JNIEnv *env, jclass clazz, jboolean log);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setLogProfile(JNIEnv *env, jclass clazz, jboolean log);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setLogLongFormat(JNIEnv *env, jclass clazz, jboolean log);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setLogEnableFile(JNIEnv *env, jclass clazz, jboolean log);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setLogFile(JNIEnv *env, jclass clazz, jstring log);
+
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_saveSettings(JNIEnv *env, jclass clazz);
 }
 #endif  // __ANDROID__
 

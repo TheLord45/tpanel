@@ -84,6 +84,8 @@ std::unique_ptr<SkStreamAsset> GetResourceAsStream(const char* resource, _RESOUR
 sk_sp<SkTypeface> MakeResourceAsTypeface(const char* resource, int ttcIndex = 0, _RESOURCE_TYPE rs = RESTYPE_FONT);
 
 sk_sp<SkData> readImage(const std::string& fname);
+SkBitmap *allocPixels(int width, int height, SkBitmap *bm);
+SkColor reverseColor(const SkColor& col);
 
 std::string toLower(std::string& str);
 std::string toUpper(std::string& str);
@@ -112,6 +114,7 @@ bool StrContains(const std::string& str, const std::string& part);
 bool isTrue(const std::string& value);
 bool isFalse(const std::string& value);
 bool isNumeric(const std::string& str, bool blank=false);
+bool isBigEndian();
 
 static inline std::string &ltrim(std::string &s)
 {

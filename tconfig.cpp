@@ -54,6 +54,7 @@ bool TConfig::mInitialized{false};
 int TConfig::mChannel{0};
 bool TConfig::mMute{false};
 bool TConfig::mTemporary{false};
+bool TConfig::mLogFileEnabled{false};
 
 /**
  * @struct SETTINGS
@@ -1491,8 +1492,8 @@ TConfig::SIP_FIREWALL_t TConfig::sipFirewallStrToEnum(const std::string& str)
 string TConfig::makeConfigDefault(const std::string& log, const std::string& project)
 {
     string content = "LogFile=" + log + "\n";
-#if defined(QT_DEBUG) || defined(NDEBUG)
-    content += "LogLevel=PROTOCOL\n";
+#if defined(QT_DEBUG) || defined(DEBUG)
+    content += "LogLevel=INFO|WARNING|ERROR|DEBUG\n";
 #else
     content += "LogLevel=NONE\n";
 #endif
@@ -1916,12 +1917,6 @@ bool TConfig::readConfig()
     localSettings.ftpSurface = "tpanel.tp4";
     localSettings.sip_port = 5060;
     localSettings.sip_portTLS = 0;
-#ifdef __ANDROID__
-    localSettings.logLevel = SLOG_NONE;
-    localSettings.logLevelBits = HLOG_NONE;
-#else
-    localSettings.logLevel = SLOG_PROTOCOL;
-#endif
 
     // Now get the settings from file
     try
@@ -2009,7 +2004,11 @@ bool TConfig::readConfig()
 
                 if (localSettings.ID < 10000 || localSettings.ID >= 29000)
                 {
+#ifdef __ANDROID__
+                    __android_log_print(ANDROID_LOG_ERROR, "tpanel", "TConfig::readConfig: Invalid port number %s", right.c_str());
+#else
                     cerr << "TConfig::readConfig: Invalid port number " << right << endl;
+#endif
                     localSettings.ID = 0;
                 }
 
@@ -2107,6 +2106,7 @@ bool TConfig::readConfig()
     fs.close();
     mInitialized = true;
     TStreamError::setLogLevel(localSettings.logLevel);
+//    TStreamError::setLogLevel("INFO|WARNING|ERROR|DEBUG");
     TStreamError::setLogFile(localSettings.logFile);
 
     if (localSettings.uuid.empty())

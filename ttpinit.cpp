@@ -27,6 +27,7 @@
 #include <unistd.h>
 
 #include <QFile>
+#include <QDir>
 #ifdef Q_OS_ANDROID
 #ifdef QT5_LINUX
 #include <QtAndroidExtras/QtAndroid>
@@ -85,12 +86,43 @@ TTPInit::TTPInit(const string& path)
 
     createDirectoryStructure();
     createPanelConfigs();
-    loadSurfaceFromController();
+
+    if (!loadSurfaceFromController())
+        createDemoPage();
+}
+
+void TTPInit::setPath(const string& p)
+{
+    DECL_TRACER("TTPInit::setPath(const string& p)");
+
+    mPath = p;
+    string dirs = "/__system";
+    string config = p + "/__system/prj.xma";
+    string sysFiles = p + "/__system/graphics/version.xma";
+    string regular = p + "/prj.xma";
+
+    if (!fs::exists(dirs))
+        createDirectoryStructure();
+
+    if (!fs::exists(sysFiles))
+        createSystemConfigs();
+
+    if (!fs::exists(config))
+        createPanelConfigs();
+
+    if (!fs::exists(regular))
+        createDemoPage();
 }
 
 bool TTPInit::createPanelConfigs()
 {
     DECL_TRACER("TTPInit::createPanelConfigs()");
+
+    if (!fs::exists(mPath + "/__system/prj.xma"))
+        mPanelConfigsCreated = false;
+
+    if (mPanelConfigsCreated)
+        return false;
 
     vector<string> resFiles = {
         ":ressources/__system/Controller.xml",
@@ -131,8 +163,46 @@ bool TTPInit::createPanelConfigs()
             err = true;
     }
 
-    if (!err)
-        err = createSystemConfigs();
+    mPanelConfigsCreated = !err;
+    return err;
+}
+
+bool TTPInit::createDemoPage()
+{
+    DECL_TRACER("TTPInit::createDemoPage()");
+
+    if (fs::exists(mPath + "/prj.xma"))
+    {
+        MSG_DEBUG("There exists already a page.");
+        return false;
+    }
+
+    if (mDemoPageCreated)
+        return false;
+
+    vector<string> resFiles = {
+        ":ressources/_Copyright.xml",
+        ":ressources/_WhatItIs.xml",
+        ":ressources/_main.xml",
+        ":ressources/external.xma",
+        ":ressources/fnt.xma",
+        ":ressources/icon.xma",
+        ":ressources/images/theosys_logo.png",
+        ":ressources/manifest.xma",
+        ":ressources/map.xma",
+        ":ressources/pal_001.xma",
+        ":ressources/prj.xma",
+        ":ressources/table.xma"
+    };
+
+    bool err = false;
+    vector<string>::iterator iter;
+
+    for (iter = resFiles.begin(); iter != resFiles.end(); ++iter)
+    {
+        if (!copyFile(*iter))
+            err = true;
+    }
 
     // Mark files as system default files
     try
@@ -149,12 +219,19 @@ bool TTPInit::createPanelConfigs()
         err = true;
     }
 
+    mDemoPageCreated = !err;
     return err;
 }
 
 bool TTPInit::createSystemConfigs()
 {
     DECL_TRACER("TTPInit::createSystemConfigs()");
+
+    if (!fs::exists(mPath + "/__system/graphics/sounds/docked.mp3"))
+        mSystemConfigsCreated = false;
+
+    if (mSystemConfigsCreated)
+        return false;
 
     vector<string> resFiles = {
         ":ressources/__system/graphics/fonts/amxbold_.ttf",
@@ -1980,6 +2057,7 @@ bool TTPInit::createSystemConfigs()
             err = true;
     }
 
+    mSystemConfigsCreated = !err;
     return err;
 }
 
@@ -1992,6 +2070,12 @@ bool TTPInit::createDirectoryStructure()
         MSG_ERROR("Got no path to create the directory structure!");
         return false;
     }
+
+    if (!fs::exists(mPath + "/__system/graphics/fonts/arial.ttf"))
+        mDirStructureCreated = false;
+
+    if (mDirStructureCreated)
+        return true;
 
     string pfad = mPath;
 
@@ -2063,6 +2147,7 @@ bool TTPInit::createDirectoryStructure()
     if (!_makeDir(pfad))
         return false;
 
+    mDirStructureCreated = true;
     return true;
 }
 
@@ -2107,6 +2192,23 @@ bool TTPInit::copyFile(const std::string& fname)
         // If the target already exists we must delete it first.
         if (access(bname.data(), F_OK) == 0)
             remove(bname.data());
+
+        // Check if target path exists and create it if not.
+        if ((pos = bname.find_last_of("/")) != string::npos)
+        {
+            string targetPath = bname.substr(0, pos);
+            QDir dir = QDir(targetPath.c_str());
+
+            if (!dir.exists())
+            {
+                if (!dir.mkpath(targetPath.c_str()))
+                {
+                    MSG_ERROR("Error creating path <" << targetPath << ">");
+                    return false;
+                }
+            }
+        }
+
 
         if (!external.copy(path))
         {
@@ -2204,15 +2306,15 @@ bool TTPInit::loadSurfaceFromController(bool force)
 
     TFsfReader reader;
     reader.regCallbackProgress(bind(&TTPInit::progressCallback, this, std::placeholders::_1));
-    bool temp = TConfig::getTemporary();
+/*    bool temp = TConfig::getTemporary();
 
     if (gPageManager && gPageManager->isSetupActive())
         TConfig::setTemporary(true);
     else
         TConfig::setTemporary(false);
-
+*/
     string surface = TConfig::getFtpSurface();
-    TConfig::setTemporary(temp);
+//    TConfig::setTemporary(temp);
     string target = mPath + "/" + surface;
     size_t pos = 0;
 
@@ -2221,9 +2323,11 @@ bool TTPInit::loadSurfaceFromController(bool force)
 
     if (!force)
     {
-        if (!isVirgin() || TConfig::getFtpDownloadTime() > 0)
+        if (!isVirgin() && TConfig::getFtpDownloadTime() > 0)
             return false;
     }
+
+    MSG_INFO("Starting download of surface " << surface << " from " << TConfig::getController());
 
     if (_processEvents)
         _processEvents();
@@ -2249,6 +2353,8 @@ bool TTPInit::loadSurfaceFromController(bool force)
             createPanelConfigs();
         }
 
+        mDemoPageCreated = false;
+        createDemoPage();
         return false;
     }
 
@@ -2258,6 +2364,8 @@ bool TTPInit::loadSurfaceFromController(bool force)
     if (!reader.unpack(target, mPath))
     {
         MSG_ERROR("Unpacking was not successfull.");
+        mDemoPageCreated = false;
+        createDemoPage();
         return false;
     }
 
@@ -2338,7 +2446,6 @@ vector<TTPInit::FILELIST_t>& TTPInit::getFileList(const string& filter)
             string buf = buffer;
             string fname, sSize;
             size_t size = 0;
-            MSG_DEBUG("FTP line: " << buf);
             // We must detect whether we have a new NetLinx or an old one.
             if (buf.at(42) != ' ')
                 oldNetLinx = true;
@@ -2461,13 +2568,6 @@ bool TTPInit::isSystemDefault()
     try
     {
         string marker = mPath + SYSTEM_DEFAULT;
-
-        if (fs::exists(mPath + "/prj.xma"))
-            return false;
-
-        if (fs::exists(mPath + "/__system/prj.xma"))
-            return true;
-
         return fs::exists(marker);
     }
     catch (std::exception& e)
@@ -2552,6 +2652,24 @@ void TTPInit::logging(int level, const std::string &msg)
         case LOG_TRACE:     MSG_TRACE(msg); break;
         case LOG_DEBUG:     MSG_DEBUG(msg); break;
     }
+}
+
+bool TTPInit::haveSystemMarker()
+{
+    DECL_TRACER("TTPInit::haveSystemMarker()");
+
+    try
+    {
+        string marker = TConfig::getConfigPath() + SYSTEM_DEFAULT;
+        return fs::exists(marker);
+    }
+    catch (std::exception& e)
+    {
+        MSG_ERROR("File system error: " << e.what())
+        return false;
+    }
+
+    return true;
 }
 
 #ifdef Q_OS_ANDROID

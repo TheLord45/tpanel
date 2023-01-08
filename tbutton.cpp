@@ -22,23 +22,6 @@
 #include <codecvt>
 #include <fstream>
 
-#ifdef __MACH__
-#include <skia/core/SkPixmap.h>
-#include <skia/core/SkSize.h>
-#include <skia/core/SkColor.h>
-#include <skia/core/SkFont.h>
-#include <skia/core/SkTypeface.h>
-#include <skia/core/SkFontMetrics.h>
-#include <skia/core/SkTextBlob.h>
-#include <skia/core/SkRegion.h>
-#include <skia/core/SkImageFilter.h>
-#include <skia/effects/SkImageFilters.h>
-#include <skia/core/SkPath.h>
-#include <skia/core/SkSurfaceProps.h>
-#include <skia/core/SkMaskFilter.h>
-#include <skia/core/SkImageEncoder.h>
-#include <skia/core/SkRRect.h>
-#else
 #include <include/core/SkPixmap.h>
 #include <include/core/SkSize.h>
 #include <include/core/SkColor.h>
@@ -51,11 +34,13 @@
 #include <include/effects/SkImageFilters.h>
 #include <include/core/SkPath.h>
 #include <include/core/SkSurfaceProps.h>
+#ifndef __MACH__
 #include <include/core/SkFilterQuality.h>
+#endif
 #include <include/core/SkMaskFilter.h>
 #include <include/core/SkImageEncoder.h>
 #include <include/core/SkRRect.h>
-#endif
+
 //#ifdef __ANDROID__
 //#include <QtAndroidExtras/QAndroidJniObject>
 //#include <QtAndroid>
@@ -2606,7 +2591,9 @@ void TButton::_imageRefresh(const string& url)
     }
 
     SkBitmap imgButton;
-    imgButton.allocN32Pixels(wt, ht);
+
+    if (!allocPixels(wt, ht, &imgButton))
+        return;
 
     for (int i = 0; i < ORD_ELEM_COUNT; i++)
     {
@@ -2711,7 +2698,10 @@ void TButton::_imageRefresh(const string& url)
         SkBitmap ooButton;
         int w = imgButton.width();
         int h = imgButton.height();
-        ooButton.allocN32Pixels(w, h, true);
+
+        if (!allocPixels(w, h, &ooButton))
+            return;
+
         SkCanvas canvas(ooButton);
         SkIRect irect = SkIRect::MakeXYWH(0, 0, w, h);
         SkRegion region;
@@ -2774,7 +2764,7 @@ void TButton::_imageRefresh(const string& url)
             sk_sp<SkImage> im = SkImage::MakeFromBitmap(imgButton);
             imgButton.allocN32Pixels(width, height);
             imgButton.eraseColor(SK_ColorTRANSPARENT);
-            SkCanvas can(imgButton, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+            SkCanvas can(imgButton, SkSurfaceProps());
             SkRect rect = SkRect::MakeXYWH(0, 0, width, height);
             can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
             rowBytes = imgButton.info().minRowBytes();
@@ -3081,7 +3071,10 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
                 if (!imgMask.installPixels(bmBm.pixmap()))
                 {
                     MSG_ERROR("Error installing pixmap " << sr[instance].bm << " for chameleon image!");
-                    imgMask.allocN32Pixels(imgRed.info().width(), imgRed.info().height());
+
+                    if (!allocPixels(imgRed.info().width(), imgRed.info().height(), &imgMask))
+                        return false;
+
                     imgMask.eraseColor(SK_ColorTRANSPARENT);
                     haveBothImages = false;
                 }
@@ -3089,7 +3082,10 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
             else
             {
                 MSG_WARNING("No or invalid bitmap! Ignoring bitmap for cameleon image.");
-                imgMask.allocN32Pixels(imgRed.info().width(), imgRed.info().height());
+
+                if (!allocPixels(imgRed.info().width(), imgRed.info().height(), &imgMask))
+                    return false;
+
                 imgMask.eraseColor(SK_ColorTRANSPARENT);
                 haveBothImages = false;
             }
@@ -3109,7 +3105,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
         }
 
         MSG_DEBUG("Have both images: " << (haveBothImages ? "YES" : "NO"));
-        SkCanvas ctx(img, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+        SkCanvas ctx(img, SkSurfaceProps());
         SkImageInfo info = img.info();
         SkPaint paint;
         paint.setBlendMode(SkBlendMode::kSrcOver);
@@ -3125,7 +3121,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
             return false;
         }
 
-        SkCanvas can(*bm, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+        SkCanvas can(*bm, SkSurfaceProps());
         paint.setBlendMode(SkBlendMode::kSrc);
 
         if (sr[instance].sb == 0)
@@ -3215,7 +3211,6 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
 
         IMAGE_SIZE_t isize = calcImageSize(image.info().width(), image.info().height(), instance, true);
         POSITION_t position = calcImagePosition((sr[instance].sb ? isize.width : image.info().width()), (sr[instance].sb ? isize.height : image.info().height()), SC_BITMAP, instance);
-//        POSITION_t position = calcImagePosition(sr[instance].bm_width, sr[instance].bm_height, SC_BITMAP, instance);
 
         if (!position.valid)
         {
@@ -3227,7 +3222,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
         MSG_DEBUG("Putting bitmap on top of image ...");
         SkPaint paint;
         paint.setBlendMode(SkBlendMode::kSrcOver);
-        SkCanvas can(*bm, SkSurfaceProps(SkSurfaceProps::kUseDeviceIndependentFonts_Flag, kUnknown_SkPixelGeometry));
+        SkCanvas can(*bm, SkSurfaceProps());
 
         if (sr[instance].sb == 0)   // Scale bitmap?
         {                           // No, keep size
@@ -3352,7 +3347,7 @@ bool TButton::buttonDynamic(SkBitmap* bm, int instance, bool show, bool *state)
 
         SkPaint paint;
         paint.setBlendMode(SkBlendMode::kSrcOver);
-        SkCanvas can(*bm, SkSurfaceProps(SkSurfaceProps::kUseDeviceIndependentFonts_Flag, kUnknown_SkPixelGeometry));
+        SkCanvas can(*bm, SkSurfaceProps());
 
         if (sr[instance].sb == 0)   // Scale bitmap?
         {                           // No, keep size
@@ -3802,7 +3797,7 @@ bool TButton::loadImage(SkBitmap* bm, SkBitmap& image, int instance)
     SkPaint paint;
     paint.setBlendMode(SkBlendMode::kSrc);
 
-    SkCanvas can(*bm, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+    SkCanvas can(*bm, SkSurfaceProps());
 
     if (sr[instance].sb == 0)
     {
@@ -3863,7 +3858,9 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
             height = sr[0].mi_height;
         }
 
-        img.allocPixels(SkImageInfo::MakeN32Premul(sr[0].mi_width, sr[0].mi_height));
+        if (!allocPixels(sr[0].mi_width, sr[0].mi_height, &img))
+            return false;
+
         SkCanvas canvas(img);
         SkColor col1 = TColor::getSkiaColor(sr[1].cf);
         SkColor col2 = TColor::getSkiaColor(sr[1].cb);
@@ -3902,7 +3899,7 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
             return false;
         }
 
-        SkCanvas ctx(img, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+        SkCanvas ctx(img, SkSurfaceProps());
         SkPaint paint;
         paint.setBlendMode(SkBlendMode::kSrcATop);
         sk_sp<SkImage> _image = SkImage::MakeFromBitmap(imgMask);
@@ -3917,7 +3914,7 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
             return false;
         }
 
-        SkCanvas can(*bm, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+        SkCanvas can(*bm, SkSurfaceProps());
         paint.setBlendMode(SkBlendMode::kSrc);
         _image = SkImage::MakeFromBitmap(img);
         can.drawImage(_image, position.left, position.top, SkSamplingOptions(), &paint);
@@ -3929,7 +3926,7 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
 
         TImgCache::getBitmap(sr[0].bm, &image1, _BMTYPE_BITMAP, &sr[0].bm_width, &sr[0].bm_height);   // State when level = 0%
         TImgCache::getBitmap(sr[1].bm, &image2, _BMTYPE_BITMAP, &sr[1].bm_width, &sr[1].bm_height);   // State when level = 100%
-        SkCanvas can_bm(*bm, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+        SkCanvas can_bm(*bm, SkSurfaceProps());
 
 
         if (image1.empty())
@@ -3972,9 +3969,12 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
         MSG_DEBUG("dr=" << dr << ", startX=" << startX << ", startY=" << startY << ", width=" << width << ", height=" << height << ", level=" << level);
         MSG_TRACE("Creating bargraph ...");
         SkBitmap img_bar;
-        img_bar.allocPixels(SkImageInfo::MakeN32Premul(sr[1].bm_width, sr[1].bm_height));
+
+        if (!allocPixels(sr[1].bm_width, sr[1].bm_height, &img_bar))
+            return false;
+
         img_bar.eraseColor(SK_ColorTRANSPARENT);
-        SkCanvas bar(img_bar, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+        SkCanvas bar(img_bar, SkSurfaceProps());
 
         for (int ix = 0; ix < sr[1].bm_width; ix++)
         {
@@ -4006,7 +4006,7 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
         MSG_TRACE("Drawing second image " << sr[1].bm << " ...");
         SkBitmap image;
         TImgCache::getBitmap(sr[1].bm, &image, _BMTYPE_BITMAP, &sr[1].bm_width, &sr[1].bm_height);   // State when level = 100%
-        SkCanvas can_bm(*bm, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+        SkCanvas can_bm(*bm, SkSurfaceProps());
 
         if (image.empty())
         {
@@ -4041,9 +4041,12 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
         MSG_DEBUG("dr=" << dr << ", startX=" << startX << ", startY=" << startY << ", width=" << width << ", height=" << height << ", level=" << level);
         MSG_TRACE("Creating bargraph ...");
         SkBitmap img_bar;
-        img_bar.allocPixels(SkImageInfo::MakeN32Premul(sr[1].bm_width, sr[1].bm_height));
+
+        if (!allocPixels(sr[1].bm_width, sr[1].bm_height, &img_bar))
+            return false;
+
         img_bar.eraseColor(SK_ColorTRANSPARENT);
-        SkCanvas bar(img_bar, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+        SkCanvas bar(img_bar, SkSurfaceProps());
         SkPaint pt;
 
         for (int ix = 0; ix < sr[1].bm_width; ix++)
@@ -4095,7 +4098,7 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
 
         SkPaint paint;
         paint.setBlendMode(SkBlendMode::kSrc);
-        SkCanvas can(*bm, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+        SkCanvas can(*bm, SkSurfaceProps());
         paint.setStyle(SkPaint::kFill_Style);
         paint.setAntiAlias(true);
         paint.setStrokeWidth(4);
@@ -4219,9 +4222,12 @@ SkBitmap TButton::drawSliderButton(const string& slider, SkColor col)
 
     SkPaint paint;
     paint.setBlendMode(SkBlendMode::kSrc);
-    slButton.allocN32Pixels(width, height);
+
+    if (!allocPixels(width, height, &slButton))
+        return slButton;
+
     slButton.eraseColor(SK_ColorTRANSPARENT);
-    SkCanvas slCan(slButton, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+    SkCanvas slCan(slButton, SkSurfaceProps());
     vector<SLIDER_t>::iterator sltIter;
     // Loop through list of slider graphic files
     for (sltIter = sltList.begin(); sltIter != sltList.end(); ++sltIter)
@@ -4369,7 +4375,7 @@ bool TButton::buttonIcon(SkBitmap* bm, int instance)
     MSG_DEBUG("Putting Icon on top of bitmap ...");
     SkPaint paint;
     paint.setBlendMode(SkBlendMode::kSrcOver);
-    SkCanvas can(*bm, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+    SkCanvas can(*bm, SkSurfaceProps());
 
     if (position.overflow)
     {
@@ -4421,7 +4427,7 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
     }
 
     sk_sp<SkTypeface> typeFace = mFonts->getTypeFace(sr[instance].fi);
-    SkCanvas canvas(*bm, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+    SkCanvas canvas(*bm);
 
     if (!typeFace)
     {
@@ -4904,10 +4910,10 @@ bool TButton::buttonBorder(SkBitmap* bm, int inst)
             stretchImageHeight(&imgR, ht - imgTR.info().height() - imgBR.info().height());
             MSG_DEBUG("Stretched button image size: " << (imgTL.info().width() + imgT.info().width() + imgTR.info().width()) << " x " << (imgTL.info().height() + imgL.info().height() + imgBL.info().height()));
             // Draw the frame
-            SkCanvas canvas(*bm, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+            SkCanvas canvas(*bm, SkSurfaceProps());
             SkPaint paint;
 
-            paint.setBlendMode(SkBlendMode::kSrcOver);
+            paint.setBlendMode(SkBlendMode::kSrc);
             sk_sp<SkImage> _image = SkImage::MakeFromBitmap(imgB);
             canvas.drawImage(_image, imgBL.info().width(), ht - imgB.info().height(), SkSamplingOptions(), &paint);
             _image = SkImage::MakeFromBitmap(imgBR);
@@ -4944,7 +4950,7 @@ bool TButton::buttonBorder(SkBitmap* bm, int inst)
     if (sr[instance].bs.compare(sysBorders[borderIndex].name) == 0)
     {
         MSG_DEBUG("Border " << sysBorders[borderIndex].name << " found.");
-        SkCanvas canvas(*bm, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+        SkCanvas canvas(*bm, SkSurfaceProps());
         SkPaint paint;
         SkColor color = TColor::getSkiaColor(sr[instance].cb);
 
@@ -5357,7 +5363,10 @@ bool TButton::drawButton(int instance, bool show)
     }
 
     SkBitmap imgButton;
-    imgButton.allocN32Pixels(wt, ht);
+
+    if (!allocPixels(wt, ht, &imgButton))
+        return false;
+
     bool dynState = false;
 
     for (int i = 0; i < ORD_ELEM_COUNT; i++)
@@ -5374,13 +5383,11 @@ bool TButton::drawButton(int instance, bool show)
         {
             if (!sr[instance].dynamic && !buttonBitmap(&imgButton, instance))
             {
-                MSG_DEBUG("Button reported an error. Abort drawing!");
                 mutex_button.unlock();
                 return false;
             }
             else if (sr[instance].dynamic && !buttonDynamic(&imgButton, instance, show, &dynState))
             {
-                MSG_DEBUG("Dynamic button reported an error. Abort drawing!");
                 mutex_button.unlock();
                 return false;
             }
@@ -5416,7 +5423,10 @@ bool TButton::drawButton(int instance, bool show)
         SkBitmap ooButton;
         int w = imgButton.width();
         int h = imgButton.height();
-        ooButton.allocN32Pixels(w, h, true);
+
+        if (!allocPixels(w, h, &ooButton))
+            return false;
+
         SkCanvas canvas(ooButton);
         SkIRect irect = SkIRect::MakeXYWH(0, 0, w, h);
         SkRegion region;
@@ -5479,7 +5489,7 @@ bool TButton::drawButton(int instance, bool show)
             sk_sp<SkImage> im = SkImage::MakeFromBitmap(imgButton);
             imgButton.allocN32Pixels(width, height);
             imgButton.eraseColor(SK_ColorTRANSPARENT);
-            SkCanvas can(imgButton, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+            SkCanvas can(imgButton, SkSurfaceProps());
             SkRect rect = SkRect::MakeXYWH(0, 0, width, height);
             can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
             rowBytes = imgButton.info().minRowBytes();
@@ -5525,7 +5535,9 @@ bool TButton::drawTextArea(int instance)
         return false;
 
     SkBitmap imgButton;
-    imgButton.allocN32Pixels(wt, ht);
+
+    if (!allocPixels(wt, ht, &imgButton))
+        return false;
 
     for (int i = 0; i < ORD_ELEM_COUNT; i++)
     {
@@ -5558,7 +5570,10 @@ bool TButton::drawTextArea(int instance)
         SkBitmap ooButton;
         int w = imgButton.width();
         int h = imgButton.height();
-        ooButton.allocN32Pixels(w, h, true);
+
+        if (!allocPixels(w, h, &ooButton))
+            return false;
+
         SkCanvas canvas(ooButton);
         SkIRect irect = SkIRect::MakeXYWH(0, 0, w, h);
         SkRegion region;
@@ -5622,7 +5637,7 @@ bool TButton::drawTextArea(int instance)
             sk_sp<SkImage> im = SkImage::MakeFromBitmap(imgButton);
             imgButton.allocN32Pixels(width, height);
             imgButton.eraseColor(SK_ColorTRANSPARENT);
-            SkCanvas can(imgButton, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+            SkCanvas can(imgButton, SkSurfaceProps());
             SkRect rect = SkRect::MakeXYWH(0, 0, width, height);
             can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
             rowBytes = imgButton.info().minRowBytes();
@@ -5688,7 +5703,9 @@ bool TButton::drawMultistateBargraph(int level, bool show)
     }
 
     SkBitmap imgButton;
-    imgButton.allocN32Pixels(wt, ht);
+
+    if (!allocPixels(wt, ht, &imgButton))
+        return false;
 
     for (int i = 0; i < ORD_ELEM_COUNT; i++)
     {
@@ -5739,7 +5756,10 @@ bool TButton::drawMultistateBargraph(int level, bool show)
         SkBitmap ooButton;
         int w = imgButton.width();
         int h = imgButton.height();
-        ooButton.allocN32Pixels(w, h, true);
+
+        if (!allocPixels(w, h, &ooButton))
+            return false;
+
         SkCanvas canvas(ooButton);
         SkIRect irect = SkIRect::MakeXYWH(0, 0, w, h);
         SkRegion region;
@@ -5803,7 +5823,7 @@ bool TButton::drawMultistateBargraph(int level, bool show)
             sk_sp<SkImage> im = SkImage::MakeFromBitmap(imgButton);
             imgButton.allocN32Pixels(width, height);
             imgButton.eraseColor(SK_ColorTRANSPARENT);
-            SkCanvas can(imgButton, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+            SkCanvas can(imgButton, SkSurfaceProps());
             SkRect rect = SkRect::MakeXYWH(0, 0, width, height);
             can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
             MSG_DEBUG("Old rowBytes: " << rowBytes);
@@ -5836,7 +5856,9 @@ bool TButton::drawList(bool show)
         return false;
 
     SkBitmap imgButton;
-    imgButton.allocN32Pixels(wt, ht);
+
+    if (!allocPixels(wt, ht, &imgButton))
+        return false;
 
     for (int i = 0; i < ORD_ELEM_COUNT; i++)
     {
@@ -5869,7 +5891,10 @@ bool TButton::drawList(bool show)
         SkBitmap ooButton;
         int w = imgButton.width();
         int h = imgButton.height();
-        ooButton.allocN32Pixels(w, h, true);
+
+        if (!allocPixels(w, h, &ooButton))
+            return false;
+
         SkCanvas canvas(ooButton);
         SkIRect irect = SkIRect::MakeXYWH(0, 0, w, h);
         SkRegion region;
@@ -5933,7 +5958,7 @@ bool TButton::drawList(bool show)
             sk_sp<SkImage> im = SkImage::MakeFromBitmap(imgButton);
             imgButton.allocN32Pixels(width, height);
             imgButton.eraseColor(SK_ColorTRANSPARENT);
-            SkCanvas can(imgButton, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+            SkCanvas can(imgButton, SkSurfaceProps());
             SkRect rect = SkRect::MakeXYWH(0, 0, width, height);
             can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
             rowBytes = imgButton.info().minRowBytes();
@@ -6014,7 +6039,10 @@ bool TButton::drawBargraph(int instance, int level, bool show)
     }
 
     SkBitmap imgButton;
-    imgButton.allocN32Pixels(wt, ht);
+
+    if (!allocPixels(wt, ht, &imgButton))
+        return false;
+
     imgButton.eraseColor(TColor::getSkiaColor(sr[0].cf));
     bool haveFrame = false;
 
@@ -6069,7 +6097,10 @@ bool TButton::drawBargraph(int instance, int level, bool show)
         SkBitmap ooButton;
         int w = imgButton.width();
         int h = imgButton.height();
-        ooButton.allocN32Pixels(w, h, true);
+
+        if (!allocPixels(w, h, &ooButton))
+            return false;
+
         SkCanvas canvas(ooButton);
         SkIRect irect = SkIRect::MakeXYWH(0, 0, w, h);
         SkRegion region;
@@ -6132,7 +6163,7 @@ bool TButton::drawBargraph(int instance, int level, bool show)
             sk_sp<SkImage> im = SkImage::MakeFromBitmap(imgButton);
             imgButton.allocN32Pixels(width, height);
             imgButton.eraseColor(SK_ColorTRANSPARENT);
-            SkCanvas can(imgButton, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+            SkCanvas can(imgButton, SkSurfaceProps());
             SkRect rect = SkRect::MakeXYWH(0, 0, width, height);
             can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
             rowBytes = imgButton.info().minRowBytes();
@@ -6487,7 +6518,10 @@ SkBitmap TButton::drawImageButton(SkBitmap& imgRed, SkBitmap& imgMask, int width
         haveBothImages = false;
 
     SkBitmap maskBm;
-    maskBm.allocPixels(SkImageInfo::MakeN32Premul(width, height));
+
+    if (!allocPixels(width, height, &maskBm))
+        return SkBitmap();
+
     maskBm.eraseColor(SK_ColorTRANSPARENT);
 
     for (int ix = 0; ix < width; ix++)
@@ -6555,7 +6589,9 @@ SkBitmap TButton::combineImages(SkBitmap& base, SkBitmap& alpha, SkColor col)
         return Bm;
     }
 
-    Bm.allocN32Pixels(width, height);
+    if (!allocPixels(width, height, &Bm))
+        return Bm;
+
     Bm.eraseColor(SK_ColorTRANSPARENT);
 
     for (int ix = 0; ix < width; ix++)
@@ -6573,14 +6609,17 @@ SkBitmap TButton::combineImages(SkBitmap& base, SkBitmap& alpha, SkColor col)
             if (pixelAlpha == 0)
                 red = green = blue = 0;
 
-            // Skia has a bug and has changed the red and the blue color
-            // channel. Therefor we must change this 2 color channels for
-            // Linux based OSs here. On Android this is not necessary.
-//#ifdef __ANDROID__
-            *bpix = SkColorSetARGB(al, red, green, blue);
-//#else
-//            *bpix = SkColorSetARGB(al, blue, green, red);
-//#endif
+            // Skia reads image files in the natural byte order of the CPU.
+            // While on Intel CPUs the byte order is little endian it is
+            // mostly big endian on other CPUs. This means that the order of
+            // the colors is RGB on big endian CPUs (ARM, ...) and BGR on others.
+            // To compensate this, we check the endianess of the CPU and set
+            // the byte order according.
+
+            if (isBigEndian())
+                *bpix = SkColorSetARGB(al, blue, green, red);
+            else
+                *bpix = SkColorSetARGB(al, red, green, blue);
         }
     }
 
@@ -6615,7 +6654,10 @@ SkBitmap TButton::colorImage(SkBitmap& base, SkBitmap& alpha, SkColor col, SkCol
     }
 
     SkBitmap maskBm;
-    maskBm.allocPixels(SkImageInfo::MakeN32Premul(width, height));
+
+    if (!allocPixels(width, height, &maskBm))
+        return SkBitmap();
+
     maskBm.eraseColor(SK_ColorTRANSPARENT);
 
     for (int ix = 0; ix < width; ix++)
@@ -6645,17 +6687,37 @@ SkBitmap TButton::colorImage(SkBitmap& base, SkBitmap& alpha, SkColor col, SkCol
                 pixelAlpha = bg;
             else
             {
-                // We've to change the red and the blue color channel because
-                // of an error in the Skia library.
-                uint32_t blue = SkColorGetR(col);
+                uint32_t blue, red;
+
+                if (isBigEndian())
+                {
+                    red = SkColorGetR(col);
+                    blue = SkColorGetB(col);
+                }
+                else
+                {
+                    blue = SkColorGetR(col);
+                    red = SkColorGetB(col);
+                }
+
                 uint32_t green = SkColorGetG(col);
-                uint32_t red = SkColorGetB(col);
 
                 if (alpha.empty())
                 {
-                    uint32_t pred = SkColorGetR(pixelAlpha);
+                    uint32_t pred, pblue;
+
+                    if (isBigEndian())
+                    {
+                        pred = SkColorGetR(pixelAlpha);
+                        pblue = SkColorGetB(pixelAlpha);
+                    }
+                    else
+                    {
+                        pblue = SkColorGetR(pixelAlpha);
+                        pred = SkColorGetB(pixelAlpha);
+                    }
+
                     uint32_t pgreen = SkColorGetG(pixelAlpha);
-                    uint32_t pblue = SkColorGetB(pixelAlpha);
                     uint32_t maxChan = SkColorGetG(SK_ColorWHITE);
 
                     red   = ((pred == maxChan) ? pred : red);
@@ -6844,7 +6906,9 @@ void TButton::hide(bool total)
 
         try
         {
-            imgButton.allocN32Pixels(rwidth, rheight);
+            if (!allocPixels(wt, ht, &imgButton))
+                return;
+
             imgButton.eraseColor(SK_ColorTRANSPARENT);
             rowBytes = imgButton.info().minRowBytes();
         }
@@ -7113,9 +7177,12 @@ bool TButton::scaleImage(SkBitmap *bm, double scaleWidth, double scaleHeight)
     MSG_DEBUG("Scaling image to size " << width << " x " << height);
     // Create a canvas and draw new image
     sk_sp<SkImage> im = SkImage::MakeFromBitmap(*bm);
-    bm->allocN32Pixels(width, height);
+
+    if (!allocPixels(width, height, bm))
+        return false;
+
     bm->eraseColor(SK_ColorTRANSPARENT);
-    SkCanvas can(*bm, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+    SkCanvas can(*bm, SkSurfaceProps());
     SkRect rect = SkRect::MakeXYWH(0, 0, width, height);
     can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
     return true;
@@ -7143,9 +7210,12 @@ bool TButton::stretchImageWidth(SkBitmap *bm, int width)
         rwidth = 1;
 
     MSG_DEBUG("Width: " << rwidth << ", Height: " << info.height());
-    bm->allocN32Pixels(rwidth, info.height());
+
+    if (!allocPixels(rwidth, info.height(), bm))
+        return false;
+
     bm->eraseColor(SK_ColorTRANSPARENT);
-    SkCanvas can(*bm, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+    SkCanvas can(*bm, SkSurfaceProps());
     SkRect rect = SkRect::MakeXYWH(0, 0, rwidth, info.height());
     can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
     return true;
@@ -7173,9 +7243,12 @@ bool TButton::stretchImageHeight(SkBitmap *bm, int height)
 
     sk_sp<SkImage> im = SkImage::MakeFromBitmap(*bm);
     MSG_DEBUG("Width: " << info.width() << ", Height: " << rheight);
-    bm->allocN32Pixels(info.width(), rheight);
+
+    if (!allocPixels(info.width(), rheight, bm))
+        return false;
+
     bm->eraseColor(SK_ColorTRANSPARENT);
-    SkCanvas can(*bm, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+    SkCanvas can(*bm, SkSurfaceProps());
     SkRect rect = SkRect::MakeXYWH(0, 0, info.width(), rheight);
     can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
     return true;
@@ -7210,9 +7283,12 @@ bool TButton::stretchImageWH(SkBitmap *bm, int width, int height)
 
     sk_sp<SkImage> im = SkImage::MakeFromBitmap(*bm);
     MSG_DEBUG("Width: " << rwidth << ", Height: " << rheight);
-    bm->allocN32Pixels(rwidth, rheight);
+
+    if (!allocPixels(rwidth, rheight, bm))
+        return false;
+
     bm->eraseColor(SK_ColorTRANSPARENT);
-    SkCanvas can(*bm, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+    SkCanvas can(*bm, SkSurfaceProps());
     SkRect rect = SkRect::MakeXYWH(0, 0, rwidth, rheight);
     can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
     return true;
@@ -8231,11 +8307,13 @@ SkColor TButton::baseColor(SkColor basePix, SkColor maskPix, SkColor col1, SkCol
 {
     uint alpha = SkColorGetA(basePix);
     uint green = SkColorGetG(basePix);
-#if defined(__ANDROID__) || defined(__APPLE__)
-    uint red = SkColorGetB(basePix);
-#else
-    uint red = SkColorGetR(basePix);
-#endif
+    uint red = 0;
+//#if (defined(__x86_64__) || defined(_M_X64)) && !defined(__MACH__)
+    if (isBigEndian())
+        red = SkColorGetB(basePix);
+    else
+        red = SkColorGetR(basePix);
+//#endif
 
     if (alpha == 0)
         return maskPix;

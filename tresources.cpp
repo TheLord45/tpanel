@@ -230,9 +230,12 @@ SkString GetResourcePath(const char* resource, _RESOURCE_TYPE rs)
 
 bool DecodeDataToBitmap(sk_sp<SkData> data, SkBitmap* dst)
 {
+    if (!data || !dst)
+        return false;
+
     std::unique_ptr<SkImageGenerator> gen(SkImageGenerator::MakeFromEncoded(std::move(data)));
     return gen && dst->tryAllocPixels(gen->getInfo()) &&
-    gen->getPixels(gen->getInfo().makeColorType(kBGRA_8888_SkColorType).makeAlphaType(kPremul_SkAlphaType), dst->getPixels(), dst->rowBytes());
+            gen->getPixels(gen->getInfo().makeColorSpace(nullptr), dst->getPixels(), dst->rowBytes());
 }
 
 std::unique_ptr<SkStreamAsset> GetResourceAsStream(const char* resource, _RESOURCE_TYPE rs)
@@ -245,6 +248,7 @@ std::unique_ptr<SkStreamAsset> GetResourceAsStream(const char* resource, _RESOUR
 sk_sp<SkData> GetResourceAsData(const char* resource, _RESOURCE_TYPE rs)
 {
     SkString str = GetResourcePath(resource, rs);
+
     sk_sp<SkData> data = SkData::MakeFromFileName(str.c_str());
 
     if (data)
@@ -278,6 +282,47 @@ sk_sp<SkData> readImage(const string& fname)
     }
 
     return data;
+}
+
+SkBitmap *allocPixels(int width, int height, SkBitmap *bm)
+{
+    DECL_TRACER("TButton::allocPixels(int width, int height, SkBitmap *bm)");
+
+    if (!bm)
+        return nullptr;
+
+    // Skia reads image files in the natural byte order of the CPU.
+    // While on Intel CPUs the byte order is little endian it is
+    // mostly big endian on other CPUs. This means that the order of
+    // the colors is RGB on big endian CPUs (ARM, ...) and BGR on others.
+    // To compensate this, we check the endianess of the CPU and set
+    // the byte order according.
+    SkImageInfo info;
+
+    if (isBigEndian())
+        info = SkImageInfo::Make(width, height, kRGBA_8888_SkColorType, kPremul_SkAlphaType);
+    else
+        info = SkImageInfo::Make(width, height, kBGRA_8888_SkColorType, kPremul_SkAlphaType);
+
+    if (!bm->tryAllocPixels(info))
+    {
+        MSG_ERROR("Error allocating " << (width * height) << " pixels!");
+        return nullptr;
+    }
+
+    return bm;
+}
+
+SkColor reverseColor(const SkColor& col)
+{
+    DECL_TRACER("reverseColor(const SkColor& col)");
+
+    int red = SkColorGetR(col);
+    int green = SkColorGetG(col);
+    int blue = SkColorGetB(col);
+    int alpha = SkColorGetA(col);
+
+    return SkColorSetARGB(alpha, blue, green, red);
 }
 
 vector<string> StrSplit(const string& str, const string& seps, const bool trimEmpty)
@@ -1056,4 +1101,15 @@ bool isNumeric(const std::string &str, bool blank)
     }
 
     return true;
+}
+
+bool isBigEndian()
+{
+    union
+    {
+        uint32_t i;
+        char c[4];
+    } bint = {0x01020304};
+
+    return bint.c[0] == 1;
 }

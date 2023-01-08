@@ -34,7 +34,11 @@ TQManageQueue::~TQManageQueue()
     }
 }
 
+#ifdef _OPAQUE_SKIA_
 void TQManageQueue::addBackground(ulong handle, unsigned char* image, size_t size, size_t rowBytes, int width, int height, ulong color)
+#else
+void TQManageQueue::addBackground(ulong handle, unsigned char* image, size_t size, size_t rowBytes, int width, int height, ulong color, int opacity)
+#endif
 {
     DECL_TRACER("TQManageQueue::addBackground(ulong handle, unsigned char* image, size_t size, size_t rowBytes, int width, int height, ulong color)");
 
@@ -50,10 +54,17 @@ void TQManageQueue::addBackground(ulong handle, unsigned char* image, size_t siz
     eq->width = width;
     eq->height = height;
     eq->color = color;
+#ifndef _OPAQUE_SKIA_
+    eq->opacity = opacity;
+#endif
     removeDuplicates();
 }
 
+#ifdef _OPAQUE_SKIA_
 bool TQManageQueue::getBackground(ulong* handle, unsigned char **image, size_t* size, size_t* rowBytes, int* width, int* height, ulong* color)
+#else
+bool TQManageQueue::getBackground(ulong* handle, unsigned char **image, size_t* size, size_t* rowBytes, int* width, int* height, ulong* color, int *opacity)
+#endif
 {
     DECL_TRACER("TQManageQueue::getBackground(ulong* handle, unsigned char ** image, size_t* size, size_t* rowBytes, int* width, int* height, ulong* color)");
 
@@ -70,6 +81,10 @@ bool TQManageQueue::getBackground(ulong* handle, unsigned char **image, size_t* 
             *width = eq->width;
             *height = eq->height;
             *color = eq->color;
+#ifndef _OPAQUE_SKIA_
+            if (opacity)
+                *opacity = eq->opacity;
+#endif
             return true;
         }
 
@@ -214,7 +229,11 @@ bool TQManageQueue::getPage(ulong* handle, int* width, int* height)
     return false;
 }
 
+#ifdef _OPAQUE_SKIA_
 void TQManageQueue::addSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t anim)
+#else
+void TQManageQueue::addSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t anim, int opacity)
+#endif
 {
     DECL_TRACER("TQManageQueue::addSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t anim)");
 
@@ -230,10 +249,17 @@ void TQManageQueue::addSubPage(ulong handle, ulong parent, int left, int top, in
     eq->width = width;
     eq->height = height;
     eq->animate = anim;
+#ifndef _OPAQUE_SKIA_
+    eq->opacity = opacity;
+#endif
     removeDuplicates();
 }
 
+#ifdef _OPAQUE_SKIA_
 bool TQManageQueue::getSubPage(ulong* handle, ulong *parent, int* left, int* top, int* width, int* height, ANIMATION_t* anim)
+#else
+bool TQManageQueue::getSubPage(ulong* handle, ulong *parent, int* left, int* top, int* width, int* height, ANIMATION_t* anim, int *opacity)
+#endif
 {
     DECL_TRACER("TQManageQueue::getSubPage(ulong* handle, ulong *parent, int* left, int* top, int* width, int* height, ANIMATION_t* anim)");
 
@@ -250,6 +276,10 @@ bool TQManageQueue::getSubPage(ulong* handle, ulong *parent, int* left, int* top
             *width = eq->width;
             *height = eq->height;
             *anim = eq->animate;
+#ifndef _OPAQUE_SKIA_
+            if (opacity)
+                *opacity = eq->opacity;
+#endif
             return true;
         }
 

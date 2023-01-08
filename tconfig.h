@@ -88,6 +88,8 @@ class TConfig
         static std::string& getLogLevel();
         static uint getLogLevelBits();
         static bool isLongFormat();
+        static bool getLogFileEnabled() { return mLogFileEnabled; }
+        static void setLogFileEnabled(bool lf) { mLogFileEnabled = lf; }
         static bool showBanner();
         static bool getScale();
         static bool getToolbarForce();
@@ -202,6 +204,7 @@ class TConfig
         static int mChannel;        // If the channel was changed by a command, this variable holds the new value.
         static bool mMute;          // Holds the mute status. This is temporary!
         static bool mTemporary;     // If TRUE the temporary parameter table is used
+        static bool mLogFileEnabled;// if TRUE the logging is written into the logfile, if there is a valid name.
 #ifdef __ANDROID__
         std::string mRoot;
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020, 2023 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -71,7 +71,7 @@ class TQtSettings : public QDialog
         void on_lineEdit_PType_textChanged(const QString &arg1);
         void on_lineEdit_FTPuser_textChanged(const QString &arg1);
         void on_lineEdit_FTPpassword_textChanged(const QString &arg1);
-        void on_comboBox_FTPsurface_currentIndexChanged(const QString &arg1);
+        void on_comboBox_FTPsurface_currentTextChanged(const QString &arg1);
         void on_toolButton_Download_clicked();
         void on_checkBox_FTPpassive_toggled(bool checked);
         // SIP
@@ -94,11 +94,11 @@ class TQtSettings : public QDialog
         void on_checkBox_Toolbar_toggled(bool checked);
         void on_checkBox_Rotation_toggled(bool checked);
         // Sound
-        void on_comboBox_SystemSound_currentIndexChanged(const QString& arg1);
+        void on_comboBox_SystemSound_currentTextChanged(const QString& arg1);
         void on_toolButton_SystemSound_clicked();
-        void on_comboBox_SingleBeep_currentIndexChanged(const QString& arg1);
+        void on_comboBox_SingleBeep_currentTextChanged(const QString& arg1);
         void on_toolButton_SingleBeep_clicked();
-        void on_comboBox_DoubleBeep_currentIndexChanged(const QString& arg1);
+        void on_comboBox_DoubleBeep_currentTextChanged(const QString& arg1);
         void on_toolButton_DoubleBeep_clicked();
         void on_checkBox_SystemSound_toggled(bool checked);
         void on_toolButton_TestSound_clicked();

@@ -99,6 +99,26 @@ mutex surface_mutex;
 bool prg_stopped = false;
 
 #ifdef __ANDROID__
+string javaJStringToString(JNIEnv *env, jstring str)
+{
+    if (!str)
+        return string();
+
+    const jclass stringClass = env->GetObjectClass(str);
+    const jmethodID getBytes = env->GetMethodID(stringClass, "getBytes", "(Ljava/lang/String;)[B");
+    const jbyteArray stringJbytes = (jbyteArray) env->CallObjectMethod(str, getBytes, env->NewStringUTF("UTF-8"));
+
+    size_t length = (size_t) env->GetArrayLength(stringJbytes);
+    jbyte* pBytes = env->GetByteArrayElements(stringJbytes, NULL);
+
+    string ret = std::string((char *)pBytes, length);
+    env->ReleaseByteArrayElements(stringJbytes, pBytes, JNI_ABORT);
+
+    env->DeleteLocalRef(stringJbytes);
+    env->DeleteLocalRef(stringClass);
+    return ret;
+}
+
 JNIEXPORT void JNICALL Java_org_qtproject_theosys_BatteryState_informBatteryStatus(JNIEnv *, jclass, jint level, jboolean charging, jint chargeType)
 {
     DECL_TRACER("JNICALL Java_org_qtproject_theosys_BatteryState_informBatteryStatus(JNIEnv *, jclass, jint level, jboolean charging, jint chargeType)");
@@ -122,20 +142,7 @@ JNIEXPORT void JNICALL Java_org_qtproject_theosys_PhoneCallState_informPhoneStat
     string phoneNumber;
 
     if (pnumber)
-    {
-        const jclass stringClass = env->GetObjectClass(pnumber);
-        const jmethodID getBytes = env->GetMethodID(stringClass, "getBytes", "(Ljava/lang/String;)[B");
-        const jbyteArray stringJbytes = (jbyteArray) env->CallObjectMethod(pnumber, getBytes, env->NewStringUTF("UTF-8"));
-
-        size_t length = (size_t) env->GetArrayLength(stringJbytes);
-        jbyte* pBytes = env->GetByteArrayElements(stringJbytes, NULL);
-
-        phoneNumber = string((char *)pBytes, length);
-        env->ReleaseByteArrayElements(stringJbytes, pBytes, JNI_ABORT);
-
-        env->DeleteLocalRef(stringJbytes);
-        env->DeleteLocalRef(stringClass);
-    }
+        phoneNumber = javaJStringToString(env, pnumber);
 
     if (gPageManager)
         gPageManager->informPhoneState(call, phoneNumber);
@@ -143,32 +150,18 @@ JNIEXPORT void JNICALL Java_org_qtproject_theosys_PhoneCallState_informPhoneStat
 
 JNIEXPORT void JNICALL Java_org_qtproject_theosys_Logger_logger(JNIEnv *env, jclass, jint mode, jstring msg)
 {
-    DECL_TRACER("JNICALL Java_org_qtproject_theosys_Logger_logger(JNIEnv *env, jclass cl, jint mode, jstring msg)");
-
     if (!msg)
         return;
 
-    const jclass stringClass = env->GetObjectClass(msg);
-    const jmethodID getBytes = env->GetMethodID(stringClass, "getBytes", "(Ljava/lang/String;)[B");
-    const jbyteArray stringJbytes = (jbyteArray) env->CallObjectMethod(msg, getBytes, env->NewStringUTF("UTF-8"));
-
-    size_t length = (size_t) env->GetArrayLength(stringJbytes);
-    jbyte* pBytes = env->GetByteArrayElements(stringJbytes, NULL);
-
-    string ret = std::string((char *)pBytes, length);
-    env->ReleaseByteArrayElements(stringJbytes, pBytes, JNI_ABORT);
-
-    env->DeleteLocalRef(stringJbytes);
-    env->DeleteLocalRef(stringClass);
+    string ret = javaJStringToString(env, msg);
 
     try
     {
-//        TError::lock();
-
         if (TStreamError::checkFilter(mode))
-            TError::Current()->logMsg(TError::append(mode, *TStreamError::getStream()) << ret << std::endl);
-
-//        TError::unlock();
+        {
+            *TError::Current()->getStream() << TError::append(mode) << ret << std::endl;
+            TStreamError::resetFlags();
+        }
     }
     catch (std::exception& e)
     {
@@ -180,8 +173,6 @@ JNIEXPORT void JNICALL Java_org_qtproject_theosys_Orientation_informTPanelOrient
 {
     DECL_TRACER("Java_org_qtproject_theosys_Orientation_informTPanelOrientation(JNIEnv */*env*/, jclass /*clazz*/, jint orientation)");
 
-    MSG_PROTOCOL("Received android orientation " << orientation);
-
     if (!gPageManager)
         return;
 
@@ -192,6 +183,511 @@ JNIEXPORT void JNICALL Java_org_qtproject_theosys_Orientation_informTPanelOrient
 
     if (gPageManager->getInformOrientation())
         gPageManager->sendOrientation();
+}
+
+/* -------- Settings -------- */
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_saveSettings(JNIEnv *env, jclass clazz)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_SettingsActivity_saveSettings(JNIEnv *env, jclass clazz)");
+
+    Q_UNUSED(env);
+    Q_UNUSED(clazz);
+
+    TConfig::setTemporary(true);
+    string oldNetlinx = TConfig::getController();
+    int oldPort = TConfig::getPort();
+    int oldChannelID = TConfig::getChannel();
+    string oldSurface = TConfig::getFtpSurface();
+    bool oldToolbarSuppress = TConfig::getToolbarSuppress();
+    bool oldToolbarForce = TConfig::getToolbarForce();
+    TConfig::setTemporary(false);
+    MSG_DEBUG("Old values:\n" <<
+              "   NetLinx: " << oldNetlinx << "\n" <<
+              "   Port:    " << oldPort << "\n" <<
+              "   Channel: " << oldChannelID << "\n" <<
+              "   Surface: " << oldSurface << "\n" <<
+              "   TB suppr:" << oldToolbarSuppress << "\n" <<
+              "   TB force:" << oldToolbarForce);
+    TConfig::saveSettings();
+
+    MSG_DEBUG("New values:\n" <<
+              "   NetLinx: " << TConfig::getController() << "\n" <<
+              "   Port:    " << TConfig::getPort() << "\n" <<
+              "   Channel: " << TConfig::getChannel() << "\n" <<
+              "   Surface: " << TConfig::getFtpSurface() << "\n" <<
+              "   TB suppr:" << TConfig::getToolbarSuppress() << "\n" <<
+              "   TB force:" << TConfig::getToolbarForce());
+
+    if (gPageManager && gPageManager->onSettingsChanged())
+        gPageManager->onSettingsChanged()(oldNetlinx, oldPort, oldChannelID, oldSurface, oldToolbarSuppress, oldToolbarForce);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setNetlinxIp(JNIEnv *env, jclass clazz, jstring ip)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setNetlinxIp(JNIEnv *env, jclass clazz, jstring ip)");
+
+    Q_UNUSED(clazz);
+
+    string netlinxIp = javaJStringToString(env, ip);
+
+    if (TConfig::getController() != netlinxIp)
+        TConfig::saveController(netlinxIp);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setNetlinxPort(JNIEnv *env, jclass clazz, jint port)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setNetlinxPort(JNIEnv *env, jclass clazz, jint port)");
+
+    Q_UNUSED(env);
+    Q_UNUSED(clazz);
+
+    if (port > 0 && port < 65535 && TConfig::getPort() != port)
+        TConfig::savePort(port);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setNetlinxChannel(JNIEnv *env, jclass clazz, jint channel)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setNetlinxChannel(JNIEnv *env, jclass clazz, jint channel)");
+
+    Q_UNUSED(env);
+    Q_UNUSED(clazz);
+
+    if (channel >= 10000 && channel < 20000 && TConfig::getChannel() != channel)
+        TConfig::savePort(channel);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setNetlinxType(JNIEnv *env, jclass clazz, jstring type)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setNetlinxType(JNIEnv *env, jclass clazz, jstring type)");
+
+    Q_UNUSED(clazz);
+
+    string netlinxType = javaJStringToString(env, type);
+
+    if (TConfig::getPanelType() != netlinxType)
+        TConfig::savePanelType(netlinxType);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setNetlinxFtpUser(JNIEnv *env, jclass clazz, jstring user)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setNetlinxFtpUser(JNIEnv *env, jclass clazz, jstring user)");
+
+    Q_UNUSED(clazz);
+
+    string netlinxFtpUser = javaJStringToString(env, user);
+
+    if (TConfig::getFtpUser() != netlinxFtpUser)
+        TConfig::saveFtpUser(netlinxFtpUser);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setNetlinxFtpPassword(JNIEnv *env, jclass clazz, jstring pw)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setNetlinxFtpPassword(JNIEnv *env, jclass clazz, jstring pw)");
+
+    Q_UNUSED(clazz);
+
+    string netlinxPw = javaJStringToString(env, pw);
+
+    if (TConfig::getFtpPassword() != netlinxPw)
+        TConfig::saveFtpPassword(netlinxPw);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setNetlinxSurface(JNIEnv *env, jclass clazz, jstring surface)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setNetlinxIp(JNIEnv *env, jclass clazz, jstring surface)");
+
+    Q_UNUSED(clazz);
+
+    string netlinxSurface = javaJStringToString(env, surface);
+
+    if (TConfig::getFtpSurface() != netlinxSurface)
+        TConfig::saveFtpSurface(netlinxSurface);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setNetlinxFtpPassive(JNIEnv *env, jclass clazz, jboolean passive)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setNetlinxIp(JNIEnv *env, jclass clazz, jboolean passive)");
+
+    Q_UNUSED(env);
+    Q_UNUSED(clazz);
+
+    if (TConfig::getFtpPassive() != passive)
+        TConfig::saveFtpPassive(passive);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setViewScale(JNIEnv *env, jclass clazz, jboolean scale)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setViewScale(JNIEnv *env, jclass clazz, jboolean scale)");
+
+    Q_UNUSED(env);
+    Q_UNUSED(clazz);
+
+    if (TConfig::getScale() != scale)
+        TConfig::saveScale(scale);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setViewToolbar(JNIEnv *env, jclass clazz, jboolean bar)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setViewToolbar(JNIEnv *env, jclass clazz, jboolean bar)");
+
+    Q_UNUSED(env);
+    Q_UNUSED(clazz);
+
+    if (TConfig::getToolbarSuppress() == bar)
+        TConfig::saveToolbarSuppress(!bar);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setViewToolbarForce(JNIEnv *env, jclass clazz, jboolean bar)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setViewToolbarForce(JNIEnv *env, jclass clazz, jboolean bar)");
+
+    Q_UNUSED(env);
+    Q_UNUSED(clazz);
+
+    if (TConfig::getToolbarForce() != bar)
+        TConfig::saveToolbarForce(bar);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setViewRotation(JNIEnv *env, jclass clazz, jboolean rotate)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setViewRotation(JNIEnv *env, jclass clazz, jboolean rotate)");
+
+    Q_UNUSED(env);
+    Q_UNUSED(clazz);
+
+    if (TConfig::getRotationFixed() != rotate)
+        TConfig::setRotationFixed(rotate);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSoundSystem(JNIEnv *env, jclass clazz, jstring sound)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setSoundSystem(JNIEnv *env, jclass clazz, jstring sound)");
+
+    Q_UNUSED(clazz);
+
+    string s = javaJStringToString(env, sound);
+
+    if (TConfig::getSystemSound() != s)
+        TConfig::saveSystemSoundFile(s);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSoundSingle(JNIEnv *env, jclass clazz, jstring sound)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setSoundSingle(JNIEnv *env, jclass clazz, jstring sound)");
+
+    Q_UNUSED(clazz);
+
+    string s = javaJStringToString(env, sound);
+
+    if (TConfig::getSingleBeepSound() != s)
+        TConfig::saveSingleBeepFile(s);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSoundDouble(JNIEnv *env, jclass clazz, jstring sound)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setSoundDouble(JNIEnv *env, jclass clazz, jstring sound)");
+
+    Q_UNUSED(clazz);
+
+    string s = javaJStringToString(env, sound);
+
+    if (TConfig::getDoubleBeepSound() != s)
+        TConfig::saveDoubleBeepFile(s);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSoundEnable(JNIEnv *env, jclass clazz, jboolean sound)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setSoundEnable(JNIEnv *env, jclass clazz, jboolean sound)");
+
+    Q_UNUSED(env);
+    Q_UNUSED(clazz);
+
+    if (TConfig::getSystemSoundState() != sound)
+        TConfig::saveSystemSoundState(sound);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSoundVolume(JNIEnv *env, jclass clazz, jint sound)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setSoundVolume(JNIEnv *env, jclass clazz, jint sound)");
+
+    Q_UNUSED(env);
+    Q_UNUSED(clazz);
+
+    if (TConfig::getSystemVolume() != sound)
+        TConfig::saveSystemVolume(sound);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSoundGain(JNIEnv *env, jclass clazz, jint sound)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setSoundGain(JNIEnv *env, jclass clazz, jint sound)");
+
+    Q_UNUSED(env);
+    Q_UNUSED(clazz);
+
+    if (TConfig::getSystemGain() != sound)
+        TConfig::saveSystemGain(sound);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSipProxy(JNIEnv *env, jclass clazz, jstring sip)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setSipProxy(JNIEnv *env, jclass clazz, jstring sip)");
+
+    Q_UNUSED(clazz);
+
+    string sipStr = javaJStringToString(env, sip);
+
+    if (TConfig::getSIPproxy() != sipStr)
+        TConfig::setSIPproxy(sipStr);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSipPort(JNIEnv *env, jclass clazz, jint sip)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setSipPort(JNIEnv *env, jclass clazz, jint sip)");
+
+    Q_UNUSED(env);
+    Q_UNUSED(clazz);
+
+    if (TConfig::getSIPport() != sip)
+        TConfig::setSIPport(sip);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSipTlsPort(JNIEnv *env, jclass clazz, jint sip)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setSipTlsPort(JNIEnv *env, jclass clazz, jint sip)");
+
+    Q_UNUSED(env);
+    Q_UNUSED(clazz);
+
+    if (TConfig::getSIPportTLS() != sip)
+        TConfig::setSIPportTLS(sip);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSipStun(JNIEnv *env, jclass clazz, jstring sip)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setSipStun(JNIEnv *env, jclass clazz, jstring sip)");
+
+    Q_UNUSED(clazz);
+
+    string sipStr = javaJStringToString(env, sip);
+
+    if (TConfig::getSIPstun() != sipStr)
+        TConfig::setSIPstun(sipStr);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSipDomain(JNIEnv *env, jclass clazz, jstring sip)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setSipDomain(JNIEnv *env, jclass clazz, jstring sip)");
+
+    Q_UNUSED(clazz);
+
+    string sipStr = javaJStringToString(env, sip);
+
+    if (TConfig::getSIPdomain() != sipStr)
+        TConfig::setSIPdomain(sipStr);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSipUser(JNIEnv *env, jclass clazz, jstring sip)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setSipUser(JNIEnv *env, jclass clazz, jstring sip)");
+
+    Q_UNUSED(clazz);
+
+    string sipStr = javaJStringToString(env, sip);
+
+    if (TConfig::getSIPuser() != sipStr)
+        TConfig::setSIPuser(sipStr);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSipPassword(JNIEnv *env, jclass clazz, jstring sip)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setSipPassword(JNIEnv *env, jclass clazz, jstring sip)");
+
+    Q_UNUSED(clazz);
+
+    string sipStr = javaJStringToString(env, sip);
+
+    if (TConfig::getSIPpassword() != sipStr)
+        TConfig::setSIPpassword(sipStr);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSipIpv4(JNIEnv *env, jclass clazz, jboolean sip)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setSipIpv4(JNIEnv *env, jclass clazz, jboolean sip)");
+
+    Q_UNUSED(env);
+    Q_UNUSED(clazz);
+
+    if (TConfig::getSIPnetworkIPv4() != sip)
+        TConfig::setSIPnetworkIPv4(sip);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSipIpv6(JNIEnv *env, jclass clazz, jboolean sip)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setSipIpv6(JNIEnv *env, jclass clazz, jboolean sip)");
+
+    Q_UNUSED(env);
+    Q_UNUSED(clazz);
+
+    if (TConfig::getSIPnetworkIPv6() != sip)
+        TConfig::setSIPnetworkIPv6(sip);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSipEnabled(JNIEnv *env, jclass clazz, jboolean sip)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setSipEnabled(JNIEnv *env, jclass clazz, jboolean sip)");
+
+    Q_UNUSED(env);
+    Q_UNUSED(clazz);
+
+    if (TConfig::getSIPstatus() != sip)
+        TConfig::setSIPstatus(sip);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setSipIphone(JNIEnv *env, jclass clazz, jboolean sip)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setSipIphone(JNIEnv *env, jclass clazz, jboolean sip)");
+
+    Q_UNUSED(env);
+    Q_UNUSED(clazz);
+
+    if (TConfig::getSIPiphone() != sip)
+        TConfig::setSIPiphone(sip);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setLogInfo(JNIEnv *env, jclass clazz, jboolean log)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setLogInfo(JNIEnv *env, jclass clazz, jboolean log)");
+
+    Q_UNUSED(env);
+    Q_UNUSED(clazz);
+
+    uint logSwitch = (log ? HLOG_INFO : 0);
+
+    if ((TConfig::getLogLevelBits() & HLOG_INFO) != logSwitch)
+    {
+        if (!(TConfig::getLogLevelBits() & HLOG_INFO))
+            TConfig::saveLogLevel(TConfig::getLogLevelBits() | HLOG_INFO);
+        else
+            TConfig::saveLogLevel(TConfig::getLogLevelBits() ^ HLOG_INFO);
+    }
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setLogWarning(JNIEnv *env, jclass clazz, jboolean log)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setLogWarning(JNIEnv *env, jclass clazz, jboolean log)");
+
+    Q_UNUSED(env);
+    Q_UNUSED(clazz);
+
+    uint logSwitch = (log ? HLOG_WARNING : 0);
+
+    if ((TConfig::getLogLevelBits() & HLOG_WARNING) != logSwitch)
+    {
+        if (!(TConfig::getLogLevelBits() & HLOG_INFO))
+            TConfig::saveLogLevel(TConfig::getLogLevelBits() | HLOG_WARNING);
+        else
+            TConfig::saveLogLevel(TConfig::getLogLevelBits() ^ HLOG_WARNING);
+    }
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setLogError(JNIEnv *env, jclass clazz, jboolean log)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setLogError(JNIEnv *env, jclass clazz, jboolean log)");
+
+    Q_UNUSED(env);
+    Q_UNUSED(clazz);
+
+    uint logSwitch = (log ? HLOG_ERROR : 0);
+
+    if ((TConfig::getLogLevelBits() & HLOG_ERROR) != logSwitch)
+    {
+        if (!(TConfig::getLogLevelBits() & HLOG_ERROR))
+            TConfig::saveLogLevel(TConfig::getLogLevelBits() | HLOG_ERROR);
+        else
+            TConfig::saveLogLevel(TConfig::getLogLevelBits() ^ HLOG_ERROR);
+    }
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setLogTrace(JNIEnv *env, jclass clazz, jboolean log)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setLogTrace(JNIEnv *env, jclass clazz, jboolean log)");
+
+    Q_UNUSED(env);
+    Q_UNUSED(clazz);
+
+    uint logSwitch = (log ? HLOG_TRACE : 0);
+
+    if ((TConfig::getLogLevelBits() & HLOG_TRACE) != logSwitch)
+    {
+        if (!(TConfig::getLogLevelBits() & HLOG_TRACE))
+            TConfig::saveLogLevel(TConfig::getLogLevelBits() | HLOG_TRACE);
+        else
+            TConfig::saveLogLevel(TConfig::getLogLevelBits() ^ HLOG_TRACE);
+    }
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setLogDebug(JNIEnv *env, jclass clazz, jboolean log)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setLogDebug(JNIEnv *env, jclass clazz, jboolean log)");
+
+    Q_UNUSED(env);
+    Q_UNUSED(clazz);
+
+    uint logSwitch = (log ? HLOG_DEBUG : 0);
+
+    if ((TConfig::getLogLevelBits() & HLOG_DEBUG) != logSwitch)
+    {
+        if (!(TConfig::getLogLevelBits() & HLOG_DEBUG))
+            TConfig::saveLogLevel(TConfig::getLogLevelBits() | HLOG_DEBUG);
+        else
+            TConfig::saveLogLevel(TConfig::getLogLevelBits() ^ HLOG_DEBUG);
+    }
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setLogProfile(JNIEnv *env, jclass clazz, jboolean log)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setLogProfile(JNIEnv *env, jclass clazz, jboolean log)");
+
+    Q_UNUSED(env);
+    Q_UNUSED(clazz);
+
+    if (TConfig::getProfiling() != log)
+        TConfig::saveProfiling(log);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setLogLongFormat(JNIEnv *env, jclass clazz, jboolean log)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setLogLongFormat(JNIEnv *env, jclass clazz, jboolean log)");
+
+    Q_UNUSED(env);
+    Q_UNUSED(clazz);
+
+    if (TConfig::isLongFormat() != log)
+        TConfig::saveFormat(log);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setLogEnableFile(JNIEnv *env, jclass clazz, jboolean log)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setLogEnableFile(JNIEnv *env, jclass clazz, jboolean log)");
+
+    Q_UNUSED(env);
+    Q_UNUSED(clazz);
+
+    if (TConfig::getLogFileEnabled() != log)
+        TConfig::setLogFileEnabled(log);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setLogFile(JNIEnv *env, jclass clazz, jstring log)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_Settings_setLogFile(JNIEnv *env, jclass clazz, jstring sip)");
+
+    Q_UNUSED(clazz);
+
+    string logStr = javaJStringToString(env, log);
+
+    if (TConfig::getLogFile() != logStr)
+        TConfig::saveLogFile(logStr);
 }
 #endif
 
@@ -869,7 +1365,43 @@ void TPageManager::showSetup()
 {
     DECL_TRACER("TPageManager::showSetup()");
 #ifdef Q_OS_ANDROID
-    if (mSetupActive)
+    // Scan Netlinx for TP4 files and update the list of setup.
+    if (TConfig::getController().compare("0.0.0.0") != 0)
+    {
+        if (_startWait)
+            _startWait(string("Please wait while I try to load the list of surface files from Netlinx (") + TConfig::getController() + ")");
+
+        TTPInit tpinit;
+        std::vector<TTPInit::FILELIST_t> fileList;
+        tpinit.setPath(TConfig::getProjectPath());
+        fileList = tpinit.getFileList(".tp4");
+
+        if (fileList.size() > 0)
+        {
+            vector<TTPInit::FILELIST_t>::iterator iter;
+#ifdef QT5_LINUX
+            QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "clearSurfaces");
+#else
+            QJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "clearSurfaces");
+#endif
+            for (iter = fileList.begin(); iter != fileList.end(); ++iter)
+            {
+#ifdef QT5_LINUX
+                QAndroidJniObject str = QAndroidJniObject::fromString(iter->fname.c_str());
+                QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "addSurface", "(Ljava/lang/String;)V", str.object<jstring>());
+#else
+                QJniObject str = QJniObject::fromString(iter->fname.c_str());
+                QJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "addSurface", "(Ljava/lang/String;)V", str.object<jstring>());
+#endif
+            }
+        }
+
+        if (_stopWait)
+            _stopWait();
+    }
+
+    enterSetup();
+/*    if (mSetupActive)
         return;
 
     mSetupActive = true;
@@ -892,6 +1424,7 @@ void TPageManager::showSetup()
     }
 
     setPage(SYSTEM_PAGE_CONTROLLER, true);    // Call the page "Controller" (NetLinx settings)
+*/
 #else
         if (_callShowSetup)
             _callShowSetup();
@@ -3057,7 +3590,7 @@ void TPageManager::showSubPage(int number, bool force)
             int top = pg->getTop();
             int width = pg->getWidth();
             int height = pg->getHeight();
-            #ifdef _SCALE_SKIA_
+#ifdef _SCALE_SKIA_
             if (mScaleFactor != 1.0)
             {
                 left = (int)((double)left * mScaleFactor);
@@ -3066,7 +3599,7 @@ void TPageManager::showSubPage(int number, bool force)
                 height = (int)((double)height * mScaleFactor);
                 MSG_DEBUG("Scaled subpage: left=" << left << ", top=" << top << ", width=" << width << ", height=" << height);
             }
-            #endif
+#endif
             ANIMATION_t ani;
             ani.showEffect = pg->getShowEffect();
             ani.showTime = pg->getShowTime();
@@ -3430,6 +3963,18 @@ void TPageManager::initOrientation()
     QJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "Init", "(Landroid/app/Activity;I)V", activity.object(), rotate);
 #endif
     activity.callStaticMethod<void>("org/qtproject/theosys/Orientation", "InstallOrientationListener", "()V");
+}
+
+void TPageManager::enterSetup()
+{
+    DECL_TRACER("TPageManager::enterSetup()");
+#ifdef QT5_LINUX
+    QAndroidJniObject activity = QtAndroid::androidActivity();
+    QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "callSettings", "(Landroid/app/Activity;)V", activity.object());
+#else
+    QJniObject activity = QNativeInterface::QAndroidApplication::context();
+    QJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "callSettings", "(Landroid/app/Activity;)V", activity.object());
+#endif
 }
 #endif  // __ANDROID__
 #ifdef Q_OS_IOS

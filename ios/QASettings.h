@@ -19,6 +19,8 @@
 #ifndef QASETTINGS_H
 #define QASETTINGS_H
 
+#include <string>
+
 class QString;
 class QMargins;
 
@@ -85,9 +87,24 @@ class QASettings
         static QMargins getNotchSize();
         static void openSettings();
 
+        static std::string& getOldNetlinx() { return oldNetlinx; }
+        static int getOldPort() { return oldPort; }
+        static int getOoldChannelID() { return oldChannelID; }
+        static std::string& getOldSurface() { return oldSurface; }
+        static bool getOldToolbarSuppress() { return oldToolbarSuppress; }
+        static bool getOldToolbarForce() { return oldToolbarForce; }
+
     private:        /// methods
         bool getDefaultBool(char *key, bool def);
         int getDefaultNumber(char *key, int def);
+
+        // private variables
+        static std::string oldNetlinx;
+        static int oldPort;
+        static int oldChannelID;
+        static std::string oldSurface;
+        static bool oldToolbarSuppress;
+        static bool oldToolbarForce;
 
 };
 

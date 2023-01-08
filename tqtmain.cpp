@@ -1,6 +1,5 @@
-
 /*
- * Copyright (C) 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,6 +25,7 @@
  * the rest of the application which makes it easy to change the surface by
  * any other technology.
  */
+#include "tresources.h"
 #include <QApplication>
 #include <QGuiApplication>
 #include <QByteArray>
@@ -52,8 +52,7 @@
 #include <QSizePolicy>
 #include <QUrl>
 #include <QThread>
-#include <QGeoPositionInfoSource>
-#ifndef __linux__
+#ifdef Q_OS_IOS
 #include <QOrientationSensor>
 #endif
 #ifdef QT5_LINUX
@@ -61,6 +60,7 @@
 #   include <QtSensors/QOrientationSensor>
 #   include <qpa/qplatformscreen.h>
 #else
+#   include <QGeoPositionInfoSource>
 #   include <QPlainTextEdit>
 #   include <QtSensors/QOrientationReading>
 #endif
@@ -70,7 +70,7 @@
 #endif
 #include <functional>
 #include <mutex>
-#ifdef __ANDROID__
+#ifdef Q_OS_ANDROID
 #include <android/log.h>
 #endif
 #include "tpagemanager.h"
@@ -87,6 +87,7 @@
 #include "tqdownload.h"
 #include "tqtphone.h"
 #include "tqeditline.h"
+#include "tqtwait.h"
 #include "terror.h"
 #ifdef Q_OS_IOS
 #include "ios/QASettings.h"
@@ -172,10 +173,18 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
 #ifdef __ANDROID__
     MSG_INFO("Android API version: " << __ANDROID_API__);
 
-#   if __ANDROID_API__ < 29
-#       warn "The Android API version is less than 29! Some functions may not work!"
-#   endif
-#endif
+#if __ANDROID_API__ < 30
+#warning "The Android API version is less than 30! Some functions may not work!"
+#endif  // __ANDROID_API__
+#ifdef QT5_LINUX
+    QAndroidJniObject activity = QtAndroid::androidActivity();
+    QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/HideToolbar", "hide", "(Landroid/app/Activity;Z)V", activity.object(), true);
+#else
+    QJniObject activity = QNativeInterface::QAndroidApplication::context();
+    QJniObject::callStaticMethod<void>("org/qtproject/theosys/HideToolbar", "hide", "(Landroid/app/Activity;Z)V", activity.object(), true);
+#endif  // QT5_LINUX
+#endif  // __ANDROID__
+
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
     QApplication::setAttribute(Qt::AA_ForceRasterWidgets);
     QApplication::setAttribute(Qt::AA_Use96Dpi);
@@ -318,6 +327,14 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
     }
 #endif  // defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
 
+    string endian;
+
+    if (isBigEndian())
+        endian = "BIG";
+    else
+        endian = "LITTLE";
+
+    *TError::Current()->getStream() << TError::append(HLOG_INFO) << "Machine has " << endian << " endian." << std::endl;
 #if not defined(Q_OS_ANDROID) && not defined(Q_OS_IOS)
     double setupScaleFactor = 1.0;
 
@@ -470,8 +487,12 @@ MainWindow::MainWindow()
                                          std::placeholders::_4,
                                          std::placeholders::_5,
                                          std::placeholders::_6,
+#ifdef _OPAQUE_SKIA_
                                          std::placeholders::_7));
-
+#else
+                                         std::placeholders::_7,
+                                         std::placeholders::_8));
+#endif
     gPageManager->regCallDropPage(bind(&MainWindow::_dropPage, this, std::placeholders::_1));
     gPageManager->regCallDropSubPage(bind(&MainWindow::_dropSubPage, this, std::placeholders::_1));
     gPageManager->regCallPlayVideo(bind(&MainWindow::_playVideo, this,
@@ -504,6 +525,12 @@ MainWindow::MainWindow()
     gPageManager->regSetPhoneState(bind(&MainWindow::_setPhoneState, this, std::placeholders::_1, std::placeholders::_2));
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
     gPageManager->regOnOrientationChange(bind(&MainWindow::_orientationChanged, this, std::placeholders::_1));
+    gPageManager->regOnSettingsChanged(bind(&MainWindow::_activateSettings, this, std::placeholders::_1,
+                                            std::placeholders::_2,
+                                            std::placeholders::_3,
+                                            std::placeholders::_4,
+                                            std::placeholders::_5,
+                                            std::placeholders::_6));
 #endif
     gPageManager->regRepaintWindows(bind(&MainWindow::_repaintWindows, this));
     gPageManager->regToFront(bind(&MainWindow::_toFront, this, std::placeholders::_1));
@@ -517,7 +544,8 @@ MainWindow::MainWindow()
                                              std::placeholders::_2,
                                              std::placeholders::_3,
                                              std::placeholders::_4));
-
+    gPageManager->regStartWait(bind(&MainWindow::_startWait, this, std::placeholders::_1));
+    gPageManager->regStopWait(bind(&MainWindow::_stopWait, this));
     gPageManager->deployCallbacks();
     createActions();
 
@@ -570,10 +598,13 @@ MainWindow::MainWindow()
         connect(this, &MainWindow::sigDownloadSurface, this, &MainWindow::downloadSurface);
         connect(this, &MainWindow::sigDisplayMessage, this, &MainWindow::displayMessage);
         connect(this, &MainWindow::sigFileDialog, this, &MainWindow::fileDialog);
+        connect(this, &MainWindow::sigStartWait, this, &MainWindow::startWait);
+        connect(this, &MainWindow::sigStopWait, this, &MainWindow::stopWait);
         connect(qApp, &QGuiApplication::applicationStateChanged, this, &MainWindow::onAppStateChanged);
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         QScreen *screen = QGuiApplication::primaryScreen();
         connect(screen, &QScreen::orientationChanged, this, &MainWindow::onScreenOrientationChanged);
+        connect(this, &MainWindow::sigActivateSettings, this, &MainWindow::activateSettings);
 #endif
     }
     catch (std::exception& e)
@@ -648,13 +679,13 @@ MainWindow::~MainWindow()
 
     killed = true;
     prg_stopped = true;
-
+#ifdef Q_OS_IOS
     if (mSource)
     {
         delete mSource;
         mSource = nullptr;
     }
-
+#endif
     if (mMediaPlayer)
     {
 #ifdef QT6_LINUX
@@ -744,6 +775,152 @@ void MainWindow::_orientationChanged(int orientation)
     }
 }
 
+void MainWindow::_activateSettings(const std::string& oldNetlinx, int oldPort, int oldChannelID, const std::string& oldSurface, bool oldToolbarSuppress, bool oldToolbarForce)
+{
+    DECL_TRACER("MainWindow::_activateSettings(const std::string& oldNetlinx, int oldPort, int oldChannelID, const std::string& oldSurface, bool oldToolbarSuppress, bool oldToolbarForce)");
+
+    emit sigActivateSettings(oldNetlinx, oldPort, oldChannelID, oldSurface, oldToolbarSuppress, oldToolbarForce);
+}
+
+/**
+ * @brief MainWindow::activateSettings
+ * This method activates some urgent settings. It is called on Android and IOS
+ * after the setup dialog was closed. The method expects some values taken
+ * immediately before the setup dialog was started. If takes some actions like
+ * downloading a surface when the setting for it changed or removes the
+ * toolbar on the right if the user reuqsted it.
+ *
+ * @param oldNetlinx        The IP or name of the Netlinx
+ * @param oldPort           The network port number used to connect to Netlinx
+ * @param oldChannelID      The channel ID TPanel uses to identify against the
+ *                          Netlinx.
+ * @param oldSurface        The name of theprevious TP4 file.
+ * @param oldToolbarSuppress    State of toolbar suppress switch
+ * @param oldToolbarForce   The state of toolbar force switch
+ */
+void MainWindow::activateSettings(const std::string& oldNetlinx, int oldPort, int oldChannelID, const std::string& oldSurface, bool oldToolbarSuppress, bool oldToolbarForce)
+{
+    DECL_TRACER("MainWindow::activateSettings(const std::string& oldNetlinx, int oldPort, int oldChannelID, const std::string& oldSurface, bool oldToolbarSuppress, bool oldToolbarForce)");
+
+#ifdef Q_OS_IOS
+    TConfig cf(TConfig::getConfigPath() + "/" + TConfig::getConfigFileName());
+#endif
+    bool rebootAnyway = false;
+    bool doDownload = false;
+    string newSurface = TConfig::getFtpSurface();
+
+    if (!TConfig::getToolbarSuppress() && oldToolbarForce != TConfig::getToolbarForce())
+    {
+        QMessageBox msgBox(this);
+        msgBox.setText("The change for the visibility of the toolbar will be active on the next start of TPanel!");
+        msgBox.exec();
+    }
+    else if (oldToolbarSuppress != TConfig::getToolbarSuppress() && TConfig::getToolbarSuppress())
+    {
+        if (mToolbar)
+        {
+            mToolbar->close();
+            delete mToolbar;
+            mToolbar = nullptr;
+        }
+    }
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+    if (newSurface != oldSurface || TTPInit::haveSystemMarker())
+#else
+    time_t dlTime = TConfig::getFtpDownloadTime();
+    time_t actTime = time(NULL);
+
+    if (newSurface != oldSurface || dlTime == 0 || dlTime < (actTime - 60))
+#endif
+    {
+        MSG_DEBUG("Surface should be downloaded (Old: " << oldSurface << ", New: " << newSurface << ")");
+
+        QMessageBox msgBox(this);
+        msgBox.setText(QString("Should the surface <b>") + newSurface.c_str() + "</b> be installed?");
+        msgBox.addButton(QMessageBox::Yes);
+        msgBox.addButton(QMessageBox::No);
+        int ret = msgBox.exec();
+
+        if (ret == QMessageBox::Yes)
+        {
+            doDownload = true;
+            TTPInit tpinit;
+            std::vector<TTPInit::FILELIST_t> mFileList;
+            // Get the list of TP4 files from NetLinx, if there are any.
+            TQtWait waitBox(this, string("Please wait while I'm looking at the disc of Netlinx (") + TConfig::getController().c_str() + ") for TP4 files ...");
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+            waitBox.setScaleFactor(mScaleFactor);
+            waitBox.doResize();
+            waitBox.start();
+#endif
+            tpinit.setPath(TConfig::getProjectPath());
+            tpinit.regCallbackProcessEvents(bind(&MainWindow::runEvents, this));
+            tpinit.regCallbackProgressBar(bind(&MainWindow::_onProgressChanged, this, std::placeholders::_1));
+            mFileList = tpinit.getFileList(".tp4");
+            bool found = false;
+
+            if (mFileList.size() > 0)
+            {
+                vector<TTPInit::FILELIST_t>::iterator iter;
+
+                for (iter = mFileList.begin(); iter != mFileList.end(); ++iter)
+                {
+                    if (iter->fname == newSurface)
+                    {
+                        tpinit.setFileSize(iter->size);
+                        found = true;
+                        break;
+                    }
+                }
+            }
+
+            waitBox.end();
+
+            if (found)
+            {
+                string msg = "Loading file <b>" + newSurface + "</b>.";
+                MSG_DEBUG("Download of surface " << newSurface << " was forced!");
+
+                downloadBar(msg, this);
+
+                if (tpinit.loadSurfaceFromController(true))
+                    rebootAnyway = true;
+
+                mDownloadBar->close();
+                mBusy = false;
+            }
+            else
+            {
+                MSG_PROTOCOL("The surface " << newSurface << " does not exist on NetLinx or the NetLinx " << TConfig::getController() << " was not found!");
+                displayMessage("The surface " + newSurface + " does not exist on NetLinx or the NetLinx " + TConfig::getController() + " was not found!", "Information");
+            }
+        }
+    }
+
+    if (doDownload &&
+        (TConfig::getController() != oldNetlinx ||
+        TConfig::getChannel() != oldChannelID ||
+        TConfig::getPort() != oldPort || rebootAnyway))
+    {
+        // Start over by exiting this class
+        MSG_INFO("Program will start over!");
+        _restart_ = true;
+        prg_stopped = true;
+        killed = true;
+
+        if (gAmxNet)
+            gAmxNet->stop();
+
+        close();
+    }
+#ifdef Q_OS_ANDROID
+    else
+    {
+        TConfig cf(TConfig::getConfigPath() + "/" + TConfig::getConfigFileName());
+    }
+#endif
+}
+
 /**
  * @brief MainWindow::_freezeWorkaround: A workaround for the screen freeze.
  * On Android the screen sometimes stay freezed after the application state
@@ -786,6 +963,20 @@ void MainWindow::_downloadSurface(const string &file, size_t size)
     DECL_TRACER("MainWindow::_downloadSurface(const string &file, size_t size)");
 
     emit sigDownloadSurface(file, size);
+}
+
+void MainWindow::_startWait(const string& text)
+{
+    DECL_TRACER("MainWindow::_startWait(const string& text)");
+
+    emit sigStartWait(text);
+}
+
+void MainWindow::_stopWait()
+{
+    DECL_TRACER("MainWindow::_stopWait()");
+
+    emit sigStopWait();
 }
 
 /**
@@ -841,7 +1032,7 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
         return gestureEvent(static_cast<QGestureEvent*>(event));
     else if (event->type() == QEvent::OrientationChange)
     {
-        MSG_PROTOCOL("The orientation has changed!");
+        MSG_DEBUG("eventFilter: The orientation has changed!");
     }
 
     return false;
@@ -858,7 +1049,7 @@ bool MainWindow::event(QEvent* event)
         return gestureEvent(static_cast<QGestureEvent*>(event));
     else if (event->type() == QEvent::OrientationChange)
     {
-        MSG_TRACE("The orientation has changed!");
+        MSG_DEBUG("event: The orientation has changed!");
     }
     else if (event->type() == QEvent::KeyPress)
     {
@@ -867,9 +1058,10 @@ bool MainWindow::event(QEvent* event)
         if (sKey && sKey->key() == Qt::Key_Back && !mToolbar)
         {
             QMessageBox msgBox(this);
-            msgBox.setText(QString("Should TPanel display the setup dialog or quit?"));
-            msgBox.addButton("Quit", QMessageBox::AcceptRole);      // This is correct! QT seems to change here the buttons.
-            msgBox.addButton("Setup", QMessageBox::RejectRole);     // This is correct! QT seems to change here the buttons.
+            msgBox.setText("Select what to do next:");
+            msgBox.addButton("Quit", QMessageBox::AcceptRole);
+            msgBox.addButton("Setup", QMessageBox::RejectRole);
+            msgBox.addButton("Cancel", QMessageBox::ResetRole);
             int ret = msgBox.exec();
 
             if (ret == QMessageBox::Accepted)   // This is correct! QT seems to change here the buttons.
@@ -877,8 +1069,10 @@ bool MainWindow::event(QEvent* event)
                 showSetup();
                 return true;
             }
-            else
+            else if (ret == QMessageBox::Rejected)  // This is correct! QT seems to change here the buttons.
                 close();
+            else
+                return true;
         }
     }
     else if (event->type() == QEvent::KeyRelease)
@@ -1030,6 +1224,7 @@ void MainWindow::onCurrentOrientationChanged(int currentOrientation)
  *
  * @param update    A structure containing the geo position information.
  */
+#ifdef Q_OS_IOS
 void MainWindow::onPositionUpdated(const QGeoPositionInfo &update)
 {
     DECL_TRACER("MainWindow::onPositionUpdated(const QGeoPositionInfo &update)");
@@ -1054,7 +1249,7 @@ void MainWindow::onErrorOccurred(QGeoPositionInfoSource::Error positioningError)
             return;
     }
 }
-
+#endif
 /**
  * @brief Displays or hides a phone dialog window.
  * This method creates and displays a phone dialog window containing everything
@@ -1154,7 +1349,7 @@ void MainWindow::createActions()
     mToolbar->setFloatable(false);
     mToolbar->setMovable(false);
 #ifdef Q_OS_ANDROID
-    if (TConfig::getScale() && gPageManager && gScale != 1.0)
+    if (isScaled())
     {
         int width = (int)((double)gPageManager->getSettings()->getWidth() * gScale);
         int tbWidth = (int)(48.0 * gScale);
@@ -1167,6 +1362,7 @@ void MainWindow::createActions()
             return;
         }
 
+        MSG_DEBUG("Icon size: " << icWidth << "x" << icWidth << ", Toolbar width: " << tbWidth);
         QSize iSize(icWidth, icWidth);
         mToolbar->setIconSize(iSize);
     }
@@ -1350,7 +1546,7 @@ void MainWindow::settings()
 {
     DECL_TRACER("MainWindow::settings()");
 #if defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
-#ifndef Q_OS_IOS
+#ifdef Q_OS_ANDROID
     if (gPageManager)
     {
         gPageManager->showSetup();
@@ -1359,6 +1555,7 @@ void MainWindow::settings()
     else    // This "else" should never be executed!
         displayMessage("<b>Fatal error</b>: An internal mandatory class was not initialized!<br>Unable to show setup dialog!", "Fatal error");
 #else
+    mIOSSettingsActive = true;
     QASettings::openSettings();
 #endif
 #else
@@ -1481,13 +1678,30 @@ void MainWindow::about()
 {
     DECL_TRACER("MainWindow::about()");
 
+#ifdef Q_OS_IOS
+    // On IOS the explicit about dialog is shown over the whole screen with
+    // the text in a small stripe on the left. This looks ugly and therefor
+    // we construct our own about dialog.
+    std::string msg = "About TPanel\n\n";
+    msg.append("Simulation of an AMX G4 panel\n");
+    msg.append("Version v").append(VERSION_STRING()).append("\n");
+    msg.append("(C) Copyright 2020 to 2023 by Andreas Theofilu (andreas@theosys.at)\n");
+
+    QMessageBox about(this);
+    about.addButton(QMessageBox::Ok);
+    about.setWindowTitle(tr("About TPanel"));
+    about.setIconPixmap(QPixmap(":images/icon.png"));
+    about.setTextFormat(Qt::PlainText);
+    about.setText(tr(msg.c_str()));
+    about.setInformativeText(tr("This program is under the terms of GPL version 3!"));
+    about.exec();
+#else
     std::string msg = "Simulation of an AMX G4 panel\n";
     msg.append("Version v").append(VERSION_STRING()).append("\n");
-    msg.append("(C) Copyright 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>\n");
-    msg.append("This program is under the terms of GPL version 3");
-
-    QMessageBox::about(this, tr("About TPanel"),
-                       tr(msg.c_str()));
+    msg.append("(C) Copyright 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>\n");
+    msg.append("This program is under the terms of GPL version 3!");
+    QMessageBox::about(this, tr("About TPanel"), tr(msg.c_str()));
+#endif
 }
 
 void MainWindow::arrowUp()
@@ -1745,11 +1959,12 @@ void MainWindow::displayMessage(const string &msg, const string &title)
     DECL_TRACER("MainWindow::displayMessage(const string &msg, const string &title)");
 
     QMessageBox msgBox(this);
-    msgBox.setText(QString(msg.c_str()));
+    msgBox.setText(msg.c_str());
 
     if (!title.empty())
         msgBox.setWindowTitle(title.c_str());
 
+    msgBox.setWindowModality(Qt::WindowModality::ApplicationModal);
     msgBox.addButton(QMessageBox::Ok);
     msgBox.exec();
 }
@@ -1885,6 +2100,36 @@ void MainWindow::onProgressChanged(int percent)
     mDownloadBar->setProgress(percent);
 }
 
+void MainWindow::startWait(const string& text)
+{
+    DECL_TRACER("MainWindow::startWait(const string& text)");
+
+    if (mWaitBox)
+    {
+        mWaitBox->setText(text);
+        return;
+    }
+
+    mWaitBox = new TQtWait(this, text);
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+    mWaitBox->setScaleFactor(mScaleFactor);
+    mWaitBox->doResize();
+    mWaitBox->start();
+#endif
+}
+
+void MainWindow::stopWait()
+{
+    DECL_TRACER("MainWindow::stopWait()");
+
+    if (!mWaitBox)
+        return;
+
+    mWaitBox->end();
+    delete mWaitBox;
+    mWaitBox = nullptr;
+}
+
 /**
  * @brief MainWindow::appStateChanged - Is called whenever the state of the app changes.
  * This callback method is called whenever the state of the application
@@ -2002,6 +2247,17 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
 #ifdef Q_OS_IOS
             setNotch();
 
+            if (mIOSSettingsActive)
+            {
+                mIOSSettingsActive = false;
+                MSG_DEBUG("Activating settings");
+                activateSettings(QASettings::getOldNetlinx(),
+                                  QASettings::getOldPort(),
+                                  QASettings::getOoldChannelID(),
+                                  QASettings::getOldSurface(),
+                                  QASettings::getOldToolbarSuppress(),
+                                  QASettings::getOldToolbarForce());
+            }
 //            if (mIosRotate)
 //                mIosRotate->automaticRotation(true);
 #endif
@@ -2132,16 +2388,24 @@ void MainWindow::_setSubPage(ulong handle, ulong parent, int left, int top, int 
 #endif
 }
 
+#ifdef _OPAQUE_SKIA_
 void MainWindow::_setBackground(ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color)
+#else
+void MainWindow::_setBackground(ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color, int opacity)
+#endif
 {
-    DECL_TRACER("MainWindow::_setBackground(ulong handle, unsigned char *image, size_t size, size_t rowBytes, ulong color)");
+    DECL_TRACER("MainWindow::_setBackground(ulong handle, unsigned char *image, size_t size, size_t rowBytes, ulong color [, int opacity])");
 
     if (prg_stopped)
         return;
 
     if (!mHasFocus)
     {
+#ifdef _OPAQUE_SKIA_
         addBackground(handle, image, size, rowBytes, width, height, color);
+#else
+        addBackground(handle, image, size, rowBytes, width, height, color, opacity);
+#endif
         return;
     }
 
@@ -2150,9 +2414,10 @@ void MainWindow::_setBackground(ulong handle, unsigned char *image, size_t size,
     if (image && size > 0)
         buf.insert(0, (const char *)image, size);
 
+#ifdef _OPAQUE_SKIA_
     emit sigSetBackground(handle, buf, rowBytes, width, height, color);
-#ifndef Q_OS_ANDROID
-    std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT));
+#else
+    emit sigSetBackground(handle, buf, rowBytes, width, height, color, opacity);
 #endif
 }
 
@@ -2998,10 +3263,14 @@ void MainWindow::setSubPage(ulong handle, ulong parent, int left, int top, int w
     draw_mutex.unlock();
 }
 
+#if _OPAQUE_SKIA_
 void MainWindow::setBackground(ulong handle, QByteArray image, size_t rowBytes, int width, int height, ulong color)
+#else
+void MainWindow::setBackground(ulong handle, QByteArray image, size_t rowBytes, int width, int height, ulong color, int opacity)
+#endif
 {
     draw_mutex.lock();
-    DECL_TRACER("MainWindow::setBackground(ulong handle, QByteArray image, size_t rowBytes, ulong color)");
+    DECL_TRACER("MainWindow::setBackground(ulong handle, QByteArray image, size_t rowBytes, ulong color [, int opacity])");
 
     if (!gObject)
     {
@@ -3065,10 +3334,34 @@ void MainWindow::setBackground(ulong handle, QByteArray image, size_t rowBytes, 
         else
         {
             MSG_DEBUG("Setting image as background for subpage " << ((handle >> 16) & 0x0000ffff));
+#ifndef _OPAQUE_SKIA_
+            qreal oo;
+
+            if (opacity < 0)
+                oo = 0.0;
+            else if (opacity > 255)
+                oo = 1.0;
+            else
+                oo = 1.0 / 255.0 * (qreal)opacity;
+
+            if (oo < 1.0)
+            {
+                QPixmap image(pix.size()); //Image with given size and format.
+                image.fill(Qt::transparent); //fills with transparent
+                QPainter p(&image);
+                p.setOpacity(oo); // set opacity from 0.0 to 1.0, where 0.0 is fully transparent and 1.0 is fully opaque.
+                p.drawPixmap(0, 0, pix); // given pixmap into the paint device.
+                p.end();
+                MSG_DEBUG("Opacity was set to " << oo);
+            }
+#endif
             QPalette palette;
             palette.setBrush(QPalette::Window, QBrush(pix));
             obj->object.widget->setPalette(palette);
-
+#ifndef _OPAQUE_SKIA_
+            if (oo < 1.0)
+                obj->object.widget->setWindowOpacity(oo);
+#endif
             if (mHasFocus)
                 obj->object.widget->show();
         }
@@ -3838,6 +4131,7 @@ void MainWindow::showSetup()
     if (gPageManager)
         gPageManager->showSetup();
 #else
+    mIOSSettingsActive = true;
     QASettings::openSettings();
 #endif  // Q_OS_IOS
 #endif  // !defined(Q_OS_ANDROID) && !defined(Q_OS_IOS)
@@ -3912,6 +4206,9 @@ void MainWindow::playShowList()
         size_t size = 0;
         size_t rowBytes = 0;
         ulong color = 0;
+#ifndef _OPAQUE_SKIA_
+        int opacity = 255;
+#endif
         ANIMATION_t animate;
         std::string url;
         std::string user;
@@ -3922,7 +4219,11 @@ void MainWindow::playShowList()
         switch(etype)
         {
             case ET_BACKGROUND:
+#ifdef _OPAQUE_SKIA_
                 if (getBackground(&handle, &image, &size, &rowBytes, &width, &height, &color))
+#else
+                if (getBackground(&handle, &image, &size, &rowBytes, &width, &height, &color, &opacity))
+#endif
                 {
                     QByteArray buf;
 
@@ -3930,7 +4231,11 @@ void MainWindow::playShowList()
                         buf.insert(0, (const char *)image, size);
 
                     MSG_PROTOCOL("Replay: BACKGROUND of object " << TObject::handleToString(handle));
+#ifdef _OPAQUE_SKIA_
                     emit sigSetBackground(handle, buf, rowBytes, width, height, color);
+#else
+                    emit sigSetBackground(handle, buf, rowBytes, width, height, color, opacity);
+#endif
                 }
             break;
 
@@ -4024,10 +4329,15 @@ void MainWindow::playShowList()
 
 int MainWindow::scale(int value)
 {
-    if (value <= 0 || mScaleFactor == 1.0)
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+    double s = gScale;
+#else
+    double s = mScaleFactor;
+#endif
+    if (value <= 0 || s == 1.0 || s < 0.0)
         return value;
 
-    return (int)((double)value * mScaleFactor);
+    return (int)((double)value * s);
 }
 
 int MainWindow::scaleSetup(int value)
@@ -4040,6 +4350,19 @@ int MainWindow::scaleSetup(int value)
     double val = (double)value * mSetupScaleFactor;
 
     return (int)val;
+}
+
+bool MainWindow::isScaled()
+{
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+    double s = gScale;
+#else
+    double s = mScaleFactor;
+#endif
+    if (s > 0.0 && s != 1.0 && gPageManager && TConfig::getScale())
+        return true;
+
+    return false;
 }
 
 bool MainWindow::isSetupScaled()

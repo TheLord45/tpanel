@@ -222,7 +222,11 @@ bool _startUp(int, int argc, char *argv[])
 
     if (TError::isError())
     {
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_FATAL, "tpanel", "There was an unrecoverable error in creating the page manager!");
+#else
         cerr << "FATAL: There was an unrecoverable error in creating the page manager!" << endl;
+#endif
         delete pageManager;
         pageManager = nullptr;
         return false;
@@ -306,7 +310,11 @@ int main(int argc, char *argv[])
 #endif
     if (haveParameters && configFile.empty())
     {
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_ERROR, "tpanel", "Unknown command line parameter found!");
+#else
         cerr << "ERROR: Unknown command line parameter found!" << endl;
+#endif
         usage();
         return 1;
     }
@@ -347,16 +355,17 @@ int main(int argc, char *argv[])
         if (!ret)
         {
 #ifdef __ANDROID__
-            __android_log_print(ANDROID_LOG_ERROR, "tpanel", "Terminating because of a previous fatal error!");
-#endif
+            __android_log_print(ANDROID_LOG_FATAL, "tpanel", "Terminating because of a previous fatal error!");
+#else
             MSG_ERROR("Terminating because of a previous fatal error!");
+#endif
             return 1;
         }
     }
     catch (std::exception& e)
     {
 #ifdef __ANDROID__
-        __android_log_print(ANDROID_LOG_ERROR, "tpanel", "FATAL: %s", e.what());
+        __android_log_print(ANDROID_LOG_FATAL, "tpanel", "%s", e.what());
 #endif
         MSG_ERROR("Fatal: " << e.what());
         return 1;

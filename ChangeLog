@@ -3,6 +3,20 @@ ChangeLog
 
 Release: 1.3.3
 ===============================================================================
+2023-01-07 Improved the colors for all plattforms.
+           Improved the frames of subpages.
+           Fixed some bugs in logging mechanism for Mac and Linux.
+
+2023-01-06 Added the possibility to select a surface file for Android setup.
+           Tried to find a bullet proof algorithm to have the colors correct.
+
+2023-01-05 Added a new special animated wait box.
+
+2022-12-30 Added partial support for settings activity in Android.
+
+2022.12.25 Fixed the chameleon and button background colors for all kinds of
+           CPUs.
+
 2022.12.23 Fixes background run for IOS.
 
 2022.12.13 Repairs the broken Android compilation.

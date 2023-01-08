@@ -56,6 +56,7 @@ class TQEmitQueue
         size_t size{0};
         size_t rowBytes{0};
         ulong color{0};
+        int opacity{255};
         ANIMATION_t animate;
         std::string url;
         std::string user;
@@ -77,16 +78,26 @@ class TQManageQueue
 
         void addButton(ulong handle, ulong parent, unsigned char *buffer, int pixline, int left, int top, int width, int height);
         void addPage(ulong handle, int width, int height);
+#ifdef _OPAQUE_SKIA_
         void addSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t anim);
         void addBackground(ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color);
+#else
+        void addSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t anim, int opacity=255);
+        void addBackground(ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color, int opacity=255);
+#endif
         void addVideo(ulong handle, ulong parent, ulong left, ulong top, ulong width, ulong height, std::string url, std::string user, std::string pw);
         void addInText(ulong handle, Button::TButton *button, Button::BITMAP_t bm, int frame);
         void addListBox(Button::TButton *button, Button::BITMAP_t bm, int frame);
 
         bool getButton(ulong *handle, ulong *parent, unsigned char **buffer, int *pixline, int *left, int *top, int *width, int *height);
         bool getPage(ulong *handle, int *width, int *height);
+#ifdef _OPAQUE_SKIA_
         bool getSubPage(ulong *handle, ulong *parent, int *left, int *top, int *width, int *height, ANIMATION_t *anim);
         bool getBackground(ulong *handle, unsigned char **image, size_t *size, size_t *rowBytes, int *width, int *height, ulong *color);
+#else
+        bool getSubPage(ulong *handle, ulong *parent, int *left, int *top, int *width, int *height, ANIMATION_t *anim, int *opacity=nullptr);
+        bool getBackground(ulong *handle, unsigned char **image, size_t *size, size_t *rowBytes, int *width, int *height, ulong *color, int *opacity=nullptr);
+#endif
         bool getVideo(ulong *handle, ulong *parent, int *left, int *top, int *width, int *height, std::string *url, std::string *user, std::string *pw);
         bool getInText(ulong *handle, Button::TButton **button, Button::BITMAP_t *bm, int *frame);
 

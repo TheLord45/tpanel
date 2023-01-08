@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -335,7 +335,10 @@ void TSubPage::show()
     ulong handle = (mSubpage.pageID << 16) & 0xffff0000;
     MSG_DEBUG("Processing subpage " << mSubpage.pageID << ": " << mSubpage.name);
     SkBitmap target;
-    target.allocN32Pixels(mSubpage.width, mSubpage.height);
+
+    if (!allocPixels(mSubpage.width, mSubpage.height, &target))
+        return;
+
     target.eraseColor(TColor::getSkiaColor(mSubpage.sr[0].cf));
     // Draw the background, if any
     if (mSubpage.sr.size() > 0 && (!mSubpage.sr[0].bm.empty() || !mSubpage.sr[0].mi.empty()))
@@ -414,7 +417,10 @@ void TSubPage::show()
                 if (!drawText(mSubpage, &target))
                     return;
             }
-
+#ifdef _OPAQUE_SKIA_
+            if (mSubpage.sr[0].oo < 255 && mSubpage.sr[0].te.empty() && mSubpage.sr[0].bs.empty())
+                setOpacity(&target, mSubpage.sr[0].oo);
+#endif
             SkImageInfo info = target.info();
             size_t rowBytes = info.minRowBytes();
             size_t size = info.computeByteSize(rowBytes);
@@ -437,9 +443,12 @@ void TSubPage::show()
                 calcPosition(lwidth, lheight, &left, &top);
                 // Create a canvas and draw new image
                 sk_sp<SkImage> im = SkImage::MakeFromBitmap(target);
-                target.allocN32Pixels(twidth, theight);
+
+                if (!allocPixels(twidth, theight, &target))
+                    return;
+
                 target.eraseColor(TColor::getSkiaColor(mSubpage.sr[0].cf));
-                SkCanvas can(target, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+                SkCanvas can(target, SkSurfaceProps());
                 SkRect rect = SkRect::MakeXYWH(left, top, lwidth, lheight);
                 can.drawImageRect(im, rect, &paint);
                 rowBytes = target.info().minRowBytes();
@@ -447,8 +456,13 @@ void TSubPage::show()
                 MSG_DEBUG("Scaled size of background image: " << left << ", " << top << ", " << lwidth << ", " << lheight);
             }
 #endif
-            if (mSubpage.sr[0].te.empty())
+#ifdef _OPAQUE_SKIA_
+            if (mSubpage.sr[0].te.empty() && mSubpage.sr[0].bs.empty())
                 _setBackground(handle, (unsigned char *)target.getPixels(), size, rowBytes, target.info().width(), target.info().height(), TColor::getColor(mSubpage.sr[0].cf));
+#else
+            if (mSubpage.sr[0].te.empty() && mSubpage.sr[0].bs.empty())
+                _setBackground(handle, (unsigned char *)target.getPixels(), size, rowBytes, target.info().width(), target.info().height(), TColor::getColor(mSubpage.sr[0].cf), mSubpage.sr[0].oo);
+#endif
         }
     }
 
@@ -456,22 +470,42 @@ void TSubPage::show()
     {
         MSG_DEBUG("Drawing a text only on background image ...");
 
-        if (!drawText(mSubpage, &target))
-            return;
+        if (drawText(mSubpage, &target))
+            haveImage = true;
+    }
 
+    // Check for a frame and draw it if there is one.
+    if (!mSubpage.sr[0].bs.empty())
+    {
+        if (drawFrame(mSubpage, &target))
+            haveImage = true;
+    }
+
+    if (haveImage)
+    {
+#ifdef _OPAQUE_SKIA_
+        if (mSubpage.sr[0].oo < 255)
+            setOpacity(&target, mSubpage.sr[0].oo);
+#endif
         SkImageInfo info = target.info();
         size_t rowBytes = info.minRowBytes();
         size_t size = info.computeByteSize(rowBytes);
         rowBytes = target.info().minRowBytes();
         size = target.info().computeByteSize(rowBytes);
+#ifdef _OPAQUE_SKIA_
         _setBackground(handle, (unsigned char *)target.getPixels(), size, rowBytes, target.info().width(), target.info().height(), TColor::getColor(mSubpage.sr[0].cf));
-        haveImage = true;
+#else
+        _setBackground(handle, (unsigned char *)target.getPixels(), size, rowBytes, target.info().width(), target.info().height(), TColor::getColor(mSubpage.sr[0].cf), mSubpage.sr[0].oo);
+#endif
     }
-
-    if (mSubpage.sr.size() > 0 && !haveImage)
+    else if (mSubpage.sr.size() > 0 && !haveImage)
     {
         MSG_DEBUG("Calling \"setBackground\" with no image ...");
+#ifdef _OPAQUE_SKIA_
         _setBackground(handle, nullptr, 0, 0, 0, 0, TColor::getColor(mSubpage.sr[0].cf));
+#else
+        _setBackground(handle, nullptr, 0, 0, 0, 0, TColor::getColor(mSubpage.sr[0].cf), mSubpage.sr[0].oo);
+#endif
     }
 
     // Draw the buttons
