@@ -21,6 +21,7 @@
 #include <ios>
 #include <time.h>
 #include <mutex>
+#include <thread>
 
 #include "terror.h"
 #include "tconfig.h"
@@ -40,6 +41,8 @@
 
 using std::string;
 std::mutex message_mutex;
+std::mutex mulock;
+static bool _isLocked{false};
 
 bool TError::mHaveError{false};
 terrtype_t TError::mErrType{TERRNONE};
@@ -55,6 +58,34 @@ bool TStreamError::mInitialized{false};
 unsigned int TStreamError::mLogLevel{HLOG_PROTOCOL};
 unsigned int TStreamError::mLogLevelOld{HLOG_NONE};
 bool TStreamError::haveTemporaryLogLevel{false};
+
+bool lockMutexIf()
+{
+    if (!_isLocked)
+    {
+        lockMutex();
+        return true;
+    }
+
+    return false;
+}
+
+void lockMutex()
+{
+    while (!message_mutex.try_lock())
+        std::this_thread::sleep_for(std::chrono::microseconds(10));
+
+    _isLocked = true;
+}
+
+void unlockMutex()
+{
+    if (!_isLocked)
+        return;
+
+    message_mutex.unlock();
+    _isLocked = false;
+}
 
 #if LOGPATH == LPATH_SYSLOG || defined(__ANDROID__)
 class androidbuf : public std::streambuf
@@ -81,6 +112,7 @@ class androidbuf : public std::streambuf
 
             if (this->pbase() != this->pptr())
             {
+                bool _l = lockMutexIf();
                 char writebuf[bufsize+1];
                 memcpy(writebuf, this->pbase(), this->pptr() - this->pbase());
                 writebuf[this->pptr() - this->pbase()] = '\0';
@@ -112,6 +144,9 @@ class androidbuf : public std::streambuf
                 rc = 1;
 #endif
                 this->setp(buffer, buffer + bufsize - 1);
+
+                if (_l)
+                    unlockMutex();
             }
 
             return rc;
@@ -126,8 +161,6 @@ TStreamError::TStreamError(const string& logFile, const std::string& logLevel)
     if (!TConfig::isInitialized())
         return;
 
-    message_mutex.lock();
-
     if (!logFile.empty())
         mLogfile = logFile;
     else if (!TConfig::getLogFile().empty())
@@ -139,7 +172,6 @@ TStreamError::TStreamError(const string& logFile, const std::string& logLevel)
         setLogLevel(TConfig::getLogFile());
 
     _init();
-    message_mutex.unlock();
 }
 
 TStreamError::~TStreamError()
@@ -196,6 +228,7 @@ void TStreamError::setLogLevel(const std::string& slv)
     }
 
     mLogLevel |= _getLevel(slv.substr(start));
+    bool l = lockMutexIf();
 #ifdef __ANDROID__
     __android_log_print(ANDROID_LOG_INFO, "tpanel", "TStreamError::setLogLevel: New loglevel: %s", slv.c_str());
 #else
@@ -204,6 +237,9 @@ void TStreamError::setLogLevel(const std::string& slv)
     else
         std::cout << TError::append(HLOG_INFO) << "New loglevel: " << slv << std::endl;
 #endif
+
+    if (l)
+        unlockMutex();
 }
 
 bool TStreamError::checkFilter(terrtype_t err)
@@ -394,42 +430,7 @@ void TStreamError::_init(bool reinit)
     else
         *mStream << std::flush;
 }
-/*
-void TStreamError::logMsg(std::ostream& str)
-{
-    if (!TConfig::isInitialized())
-        return;
 
-    message_mutex.lock();
-
-    try
-    {
-        _init();
-
-        if (!isStreamValid(str))
-        {
-            message_mutex.unlock();
-            return;
-        }
-
-        // Print out the message
-        std::stringstream s;
-        s << str.rdbuf() << std::ends;
-        *mStream << s.str() << std::flush;
-        resetFlags(mStream);
-    }
-    catch(const std::exception& e)
-    {
-#ifdef __ANDROID__
-        __android_log_print(ANDROID_LOG_ERROR, "tpanel", "TStreamError::logMsg: %s", e.what());
-#else
-        std::cerr << "ERROR: Writing a log message: " << e.what() << std::endl;
-#endif
-    }
-
-    message_mutex.unlock();
-}
-*/
 std::ostream *TStreamError::resetFlags(std::ostream *os)
 {
     if (!isStreamValid(*os))
@@ -456,7 +457,11 @@ std::ostream *TStreamError::resetFlags(std::ostream *os)
 
 void TStreamError::resetFlags()
 {
+    bool l = lockMutexIf();
     resetFlags(TError::Current()->getStream());
+
+    if (l)
+        unlockMutex();
 }
 
 void TStreamError::decIndent()
@@ -608,12 +613,12 @@ TTracer::TTracer(const std::string msg, int line, char *file)
     TError::setErrorType(TERRTRACE);
 
 #if LOGPATH == LPATH_FILE
+    lockMutex();
+
     if (!TConfig::isLongFormat())
         *TError::Current()->getStream() << "TRC " << std::setw(5) << std::right << line << ", " << indent << "{entry " << msg << std::endl;
-//        TError::Current()->logMsg(*TStreamError::getStream() << "TRC " << std::setw(5) << std::right << line << ", " << indent << "{entry " << msg << std::endl);
     else
         *TError::Current()->getStream() << TStreamError::getTime() <<  " TRC " << std::setw(5) << std::right << line << ", " << std::setw(20) << std::left << mFile << ", " << indent << "{entry " << msg << std::endl;
-//        TError::Current()->logMsg(*TStreamError::getStream() << TStreamError::getTime() <<  " TRC " << std::setw(5) << std::right << line << ", " << std::setw(20) << std::left << mFile << ", " << indent << "{entry " << msg << std::endl);
 #else
     std::stringstream s;
 
@@ -625,6 +630,7 @@ TTracer::TTracer(const std::string msg, int line, char *file)
     TError::Current()->logMsg(s);
 #endif
     TError::Current()->incIndent();
+    unlockMutex();
     mHeadMsg = msg;
     mLine = line;
 
@@ -656,6 +662,8 @@ TTracer::~TTracer()
     }
 
 #if LOGPATH == LPATH_FILE
+    lockMutex();
+
     if (TConfig::getProfiling())
     {
         if (!TConfig::isLongFormat())
@@ -670,6 +678,8 @@ TTracer::~TTracer()
         else
             *TError::Current()->getStream() << TStreamError::getTime() << " TRC      , " << std::setw(20) << std::left << mFile << ", " << indent << "}exit " << mHeadMsg << std::endl;
     }
+
+    unlockMutex();
 #else
     std::stringstream s;
 
@@ -713,18 +723,22 @@ void TError::logHex(char* str, size_t size)
     if (!str || !size)
         return;
 
-    message_mutex.lock();
+    bool l = lockMutexIf();
 
     if (!Current())
     {
-        message_mutex.unlock();
+        if (l)
+            unlockMutex();
+
         return;
     }
     // Print out the message
     std::ostream *stream = mCurrent->getStream();
     *stream << strToHex(str, size, 16, true, 12) << std::endl;
     *stream << mCurrent->resetFlags(stream);
-    message_mutex.unlock();
+
+    if (l)
+        unlockMutex();
 }
 
 string TError::toHex(int num, int width)

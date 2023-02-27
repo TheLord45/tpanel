@@ -25,7 +25,6 @@
  * the rest of the application which makes it easy to change the surface by
  * any other technology.
  */
-#include "tresources.h"
 #include <QApplication>
 #include <QGuiApplication>
 #include <QByteArray>
@@ -33,6 +32,7 @@
 #include <QCommandLineOption>
 #include <QLabel>
 #include <QtWidgets>
+#include <QStackedWidget>
 #include <QMouseEvent>
 #include <QMoveEvent>
 #include <QTouchEvent>
@@ -42,7 +42,7 @@
 #include <QFontDatabase>
 #include <QtMultimediaWidgets/QVideoWidget>
 #include <QtMultimedia/QMediaPlayer>
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 #   include <QtMultimedia/QMediaPlaylist>
 #else
 #   include <QAudioOutput>
@@ -55,16 +55,20 @@
 #ifdef Q_OS_IOS
 #include <QOrientationSensor>
 #endif
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 #   include <QSound>
+#if defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
 #   include <QtSensors/QOrientationSensor>
 #   include <qpa/qplatformscreen.h>
+#endif
 #else
-#   include <QGeoPositionInfoSource>
 #   include <QPlainTextEdit>
+#if defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
+#   include <QGeoPositionInfoSource>
 #   include <QtSensors/QOrientationReading>
 #endif
-#if defined(Q_OS_ANDROID) && defined(QT5_LINUX)
+#endif
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0) && defined(Q_OS_ANDROID)
 #include <QtAndroidExtras/QAndroidJniObject>
 #include <QtAndroidExtras/QtAndroid>
 #endif
@@ -89,6 +93,8 @@
 #include "tqeditline.h"
 #include "tqtwait.h"
 #include "terror.h"
+#include "tresources.h"
+#include "tqscrollarea.h"
 #ifdef Q_OS_IOS
 #include "ios/QASettings.h"
 #include "ios/tiosrotate.h"
@@ -126,7 +132,6 @@ extern bool _restart_;                          //!< If this is set to true then
 extern TPageManager *gPageManager;              //!< The pointer to the global defined main class.
 std::mutex draw_mutex;                          //!< We're using threads and need to block execution sometimes
 static bool isRunning = false;                  //!< TRUE = the pageManager was started.
-TObject *gObject = nullptr;                     //!< Internal used pointer to a TObject class. (Necessary because of threads!)
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
 static double gScale = 1.0;                     //!< Global variable holding the scale factor.
 static int gFullWidth = 0;                      //!< Global variable holding the width of the AMX screen. This is used to calculate the scale factor for the settings dialog.
@@ -134,6 +139,7 @@ std::atomic<double> mScaleFactorW{1.0};
 std::atomic<double> mScaleFactorH{1.0};
 int gScreenWidth{0};
 int gScreenHeight{0};
+bool isPortrait{false};
 #endif
 
 using std::bind;
@@ -176,7 +182,7 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
 #if __ANDROID_API__ < 30
 #warning "The Android API version is less than 30! Some functions may not work!"
 #endif  // __ANDROID_API__
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QAndroidJniObject activity = QtAndroid::androidActivity();
     QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/HideToolbar", "hide", "(Landroid/app/Activity;Z)V", activity.object(), true);
 #else
@@ -185,10 +191,9 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
 #endif  // QT5_LINUX
 #endif  // __ANDROID__
 
-#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+#if defined(Q_OS_ANDROID)
     QApplication::setAttribute(Qt::AA_ForceRasterWidgets);
-    QApplication::setAttribute(Qt::AA_Use96Dpi);
-//    QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+//    QApplication::setAttribute(Qt::AA_Use96Dpi);
 //    QApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
 #endif
 
@@ -196,50 +201,24 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
     // Set the orientation
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
     QScreen *screen = QGuiApplication::primaryScreen();
-    QOrientationReading::Orientation ori = QOrientationReading::Undefined;
-    Qt::ScreenOrientations mask = Qt::PrimaryOrientation;
-    QOrientationSensor qOri;
-    QOrientationReading *pORead = qOri.reading();
-
-    if (pORead)
-    {
-        ori = pORead->orientation();
-
-        switch(ori)
-        {
-            case QOrientationReading::LeftUp:   mask = Qt::InvertedLandscapeOrientation; break;
-            case QOrientationReading::RightUp:  mask = Qt::LandscapeOrientation; break;
-            case QOrientationReading::TopDown:  mask = Qt::InvertedPortraitOrientation; break;
-            default:
-                mask = Qt::PortraitOrientation;
-        }
-    }
 
     if (!screen)
     {
         MSG_ERROR("Couldn't determine the primary screen!")
         return 1;
     }
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     if (pmanager->getSettings()->isPortrait())  // portrait?
     {
         MSG_INFO("Orientation set to portrait mode.");
-
-        if (mask == Qt::InvertedPortraitOrientation)
-            screen->setOrientationUpdateMask(Qt::InvertedPortraitOrientation);
-        else
-            screen->setOrientationUpdateMask(Qt::PortraitOrientation);
+        screen->setOrientationUpdateMask(Qt::PortraitOrientation);
     }
     else
     {
         MSG_INFO("Orientation set to landscape mode.");
-
-        if (mask == Qt::InvertedLandscapeOrientation)
-            screen->setOrientationUpdateMask(Qt::InvertedLandscapeOrientation);
-        else
-            screen->setOrientationUpdateMask(Qt::LandscapeOrientation);
+        screen->setOrientationUpdateMask(Qt::LandscapeOrientation);
     }
-#endif  // QT5_LINUX
+#endif  // QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     double scale = 1.0;
     double setupScaleFactor = 1.0;
     // Calculate the scale factor
@@ -251,21 +230,18 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
         // resolution of the first (built in) screen.
         // TODO: Find a way to get the screen the application will start and
         // take this screen to calculate the scale factor.
-        QList<QScreen *> screens = QGuiApplication::screens();
-        QRect screenGeometry = screens.at(0)->availableGeometry();
+        QRect screenGeometry = screen->availableGeometry();
         double width = 0.0;
         double height = 0.0;
         double sysWidth = 0.0;
         double sysHeight = 0.0;
-        gScreenWidth = screenGeometry.width();
-        gScreenHeight = screenGeometry.height();
+        gScreenWidth = std::max(screenGeometry.width(), screenGeometry.height());
+        gScreenHeight = std::min(screenGeometry.height(), screenGeometry.width());
 
-        if (gScreenWidth < gScreenHeight)
-        {
-            int w = gScreenWidth;
-            gScreenWidth = gScreenHeight;
-            gScreenHeight = w;
-        }
+        if (screenGeometry.width() > screenGeometry.height())
+            isPortrait = false;
+        else
+            isPortrait = true;
 
         int minWidth = pmanager->getSettings()->getWidth();
         int minHeight = pmanager->getSettings()->getHeight();
@@ -326,15 +302,6 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
 #endif  // _SCALE_SKIA_
     }
 #endif  // defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
-
-    string endian;
-
-    if (isBigEndian())
-        endian = "BIG";
-    else
-        endian = "LITTLE";
-
-    *TError::Current()->getStream() << TError::append(HLOG_INFO) << "Machine has " << endian << " endian." << std::endl;
 #if not defined(Q_OS_ANDROID) && not defined(Q_OS_IOS)
     double setupScaleFactor = 1.0;
 
@@ -358,6 +325,7 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
         double scaleFactorW = width / (double)minWidth;
         double scaleFactorH = height / (double)minHeight;
         setupScaleFactor = std::min(scaleFactorW, scaleFactorH);
+        MSG_DEBUG("Scale factor for setup screen: " << setupScaleFactor);
     }
 #endif
     // Initialize the application
@@ -382,7 +350,10 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
     mainWin.setStyleSheet("QMainWindow {background: 'black';}");    // Keep the background black. Helps to save battery on OLED displays.
     mainWin.grabGesture(Qt::PinchGesture);
     mainWin.grabGesture(Qt::SwipeGesture);
-
+    mainWin.setOrientation(Qt::PrimaryOrientation);
+//#ifdef Q_OS_IOS
+ //   mainWin.setWindowFlag(Qt::MaximizeUsingFullscreenGeometryHint, true);
+//#endif
     if (setupScaleFactor != 1.0 && setupScaleFactor > 0.0)
         mainWin.setSetupScaleFactor(setupScaleFactor);
 
@@ -408,7 +379,10 @@ MainWindow::MainWindow()
 {
     DECL_TRACER("MainWindow::MainWindow()");
 
-    gObject = new TObject;
+    if (!gPageManager)
+    {
+        EXCEPTFATALMSG("The class TPageManager was not initialized!");
+    }
 
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
     setAttribute(Qt::WA_AcceptTouchEvents, true);   // We accept touch events
@@ -417,6 +391,8 @@ MainWindow::MainWindow()
 
 #ifdef Q_OS_IOS                                     // Block autorotate on IOS
     initGeoLocation();
+    mIosRotate = new TIOSRotate;
+    mIosRotate->automaticRotation(false);           // FIXME: This doesn't work!
 
     if (!mSensor)
     {
@@ -425,32 +401,87 @@ MainWindow::MainWindow()
         if (mSensor)
         {
             connect(mSensor, &QSensor::currentOrientationChanged, this, &MainWindow::onCurrentOrientationChanged);
-            mSensor->setCurrentOrientation(QSensor::UserOrientation);
+            mSensor->setAxesOrientationMode(QSensor::UserOrientation);
+            mSensor->setUserOrientation(180);
+
+            if (gPageManager && gPageManager->getSettings()->isPortrait())
+                mSensor->setCurrentOrientation(Qt::PortraitOrientation);
+            else
+                mSensor->setCurrentOrientation(Qt::LandscapeOrientation);
         }
     }
+#endif  // Q_OS_IOS
+#endif  // defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
 
-    mIosRotate = new TIOSRotate;
-    mIosRotate->automaticRotation(false);
-#endif
-    if (gPageManager && gPageManager->getSettings()->isPortrait() == 1)  // portrait?
+    // We create the central widget here to make sure the application
+    // initializes correct. On mobiles the whole screen is used while on
+    // desktops a window with the necessary size is created.
+    QWidget *central = new QWidget;
+    central->setObjectName("centralWidget");
+    central->setBackgroundRole(QPalette::Window);
+#if defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
+//    central->setAutoFillBackground(false);
+    central->setFixedSize(gScreenWidth, gScreenHeight);
+#endif  // defined(Q_OS_IOS) || defined(Q_OSANDROID)
+    setCentralWidget(central);      // Here we set the central widget
+    central->show();
+    // This is a stacked widget used to hold all pages. With it we can also
+    // simply manage the objects bound to a page.
+    mCentralWidget = new QStackedWidget(central);
+    mCentralWidget->setObjectName("stackedPageWidgets");
+#if defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
+    MSG_DEBUG("Size will be set for " << (isPortrait ? "PORTRAIT" : "LANDSCAPE"));
+
+    if (gPageManager && gPageManager->getSettings()->isLandscape())
+    {
+        if (!isPortrait)
+            mCentralWidget->setFixedSize((mToolbar ? gScreenWidth - mToolbar->width() : gScreenWidth), gScreenHeight);
+        else
+            mCentralWidget->setFixedSize(gScreenWidth, gScreenHeight);
+    }
+    else
+    {
+        if (isPortrait)
+            mCentralWidget->setFixedSize((mToolbar ? gScreenHeight - mToolbar->width() : gScreenHeight), gScreenWidth);
+        else
+            mCentralWidget->setFixedSize(gScreenHeight, gScreenWidth);
+    }
+#else
+    QSize qs = menuBar()->sizeHint();
+    QSize icSize =  iconSize();
+    int lwidth = gPageManager->getSettings()->getWidth() + icSize.width() + 16;
+    int lheight = gPageManager->getSettings()->getHeight() + qs.height();
+    mCentralWidget->setFixedSize(gPageManager->getSettings()->getWidth(), gPageManager->getSettings()->getHeight());
+#endif  // defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
+
+#if defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
+    if (gPageManager->getSettings()->isPortrait())  // portrait?
     {
         MSG_INFO("Orientation set to portrait mode.");
-        mOrientation = Qt::PortraitOrientation;
         _setOrientation(O_PORTRAIT);
+        mOrientation = Qt::PortraitOrientation;
     }
     else
     {
         MSG_INFO("Orientation set to landscape mode.");
-        mOrientation = Qt::LandscapeOrientation;
         _setOrientation(O_LANDSCAPE);
+        mOrientation = Qt::LandscapeOrientation;
     }
 #else
-    setWindowIcon(QIcon(":images/icon.png"));
+    QRect rectMain = geometry();
+    rectMain.setWidth(lwidth);
+    rectMain.setHeight(lheight);
+    setGeometry(rectMain);
+    MSG_DEBUG("Height of main window:  " << rectMain.height());
+    MSG_DEBUG("Height of panel screen: " << lheight);
+    // If our first top pixel is not 0, maybe because of a menu, window
+    // decorations or a toolbar, we must add this extra height to the
+    // positions of widgets and mouse presses.
+    int avHeight = rectMain.height() - gPageManager->getSettings()->getHeight();
+    MSG_DEBUG("Difference in height:   " << avHeight);
+    gPageManager->setFirstTopPixel(avHeight);
 #endif
-    if (!gPageManager)
-    {
-        EXCEPTFATALMSG("The class TPageManager was not initialized!");
-    }
+    setWindowIcon(QIcon(":images/icon.png"));
 
     // First we register all our surface callbacks to the underlying work
     // layer. All the graphics are drawn by the Skia library. The layer below
@@ -463,8 +494,23 @@ MainWindow::MainWindow()
                                        std::placeholders::_4,
                                        std::placeholders::_5,
                                        std::placeholders::_6,
-                                       std::placeholders::_7,
-                                       std::placeholders::_8));
+                                       std::placeholders::_7));
+
+    gPageManager->regDisplayViewButton(bind(&MainWindow::_displayViewButton, this,
+                                          std::placeholders::_1,
+                                          std::placeholders::_2,
+                                          std::placeholders::_3,
+                                          std::placeholders::_4,
+                                          std::placeholders::_5,
+                                          std::placeholders::_6,
+                                          std::placeholders::_7,
+                                          std::placeholders::_8,
+                                          std::placeholders::_9,
+                                          std::placeholders::_10));
+
+    gPageManager->regAddViewButtonItems(bind(&MainWindow::_addViewButtonItems, this,
+                                             std::placeholders::_1,
+                                             std::placeholders::_2));
 
     gPageManager->registerCallbackSP(bind(&MainWindow::_setPage, this,
                                          std::placeholders::_1,
@@ -485,13 +531,11 @@ MainWindow::MainWindow()
                                          std::placeholders::_2,
                                          std::placeholders::_3,
                                          std::placeholders::_4,
-                                         std::placeholders::_5,
-                                         std::placeholders::_6,
 #ifdef _OPAQUE_SKIA_
-                                         std::placeholders::_7));
+                                         std::placeholders::_5));
 #else
-                                         std::placeholders::_7,
-                                         std::placeholders::_8));
+                                         std::placeholders::_5,
+                                         std::placeholders::_6));
 #endif
     gPageManager->regCallDropPage(bind(&MainWindow::_dropPage, this, std::placeholders::_1));
     gPageManager->regCallDropSubPage(bind(&MainWindow::_dropSubPage, this, std::placeholders::_1));
@@ -546,22 +590,29 @@ MainWindow::MainWindow()
                                              std::placeholders::_4));
     gPageManager->regStartWait(bind(&MainWindow::_startWait, this, std::placeholders::_1));
     gPageManager->regStopWait(bind(&MainWindow::_stopWait, this));
+    gPageManager->regPageFinished(bind(&MainWindow::_pageFinished, this, std::placeholders::_1));
     gPageManager->deployCallbacks();
-    createActions();
+
+    createActions();        // Create the toolbar, if enabled by settings.
 
 #ifndef QT_NO_SESSIONMANAGER
-#if defined(QT5_LINUX) && !defined(QT6_LINUX)
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QGuiApplication::setFallbackSessionManagementEnabled(false);
     connect(qApp, &QGuiApplication::commitDataRequest,
             this, &MainWindow::writeSettings);
-#endif
-#endif
+#endif  // QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+#endif  // QT_NO_SESSIONMANAGER
+
     // Some types used to transport data from the layer below.
     qRegisterMetaType<size_t>("size_t");
     qRegisterMetaType<QByteArray>("QByteArray");
     qRegisterMetaType<ANIMATION_t>("ANIMATION_t");
     qRegisterMetaType<Button::TButton *>("TButton");
     qRegisterMetaType<std::string>("std::string");
+    qRegisterMetaType<SUBVIEWLIST_T>("SUBVIEWLIST_T");
+    qRegisterMetaType<PGSUBVIEWITEM_T>("PGSUBVIEWITEM_T");
+    qRegisterMetaType<PGSUBVIEWATOM_T>("PGSUBVIEWATOM_T");
+    qRegisterMetaType<TBitmap>("TBitmap");
 
     // All the callback functions doesn't act directly. Instead they emit an
     // event. Then Qt decides whether the real function is started directly and
@@ -570,6 +621,8 @@ MainWindow::MainWindow()
     try
     {
         connect(this, &MainWindow::sigDisplayButton, this, &MainWindow::displayButton);
+        connect(this, &MainWindow::sigDisplayViewButton, this, &MainWindow::displayViewButton);
+        connect(this, &MainWindow::sigAddViewButtonItems, this, &MainWindow::addViewButtonItems);
         connect(this, &MainWindow::sigSetPage, this, &MainWindow::setPage);
         connect(this, &MainWindow::sigSetSubPage, this, &MainWindow::setSubPage);
         connect(this, &MainWindow::sigSetBackground, this, &MainWindow::setBackground);
@@ -600,6 +653,7 @@ MainWindow::MainWindow()
         connect(this, &MainWindow::sigFileDialog, this, &MainWindow::fileDialog);
         connect(this, &MainWindow::sigStartWait, this, &MainWindow::startWait);
         connect(this, &MainWindow::sigStopWait, this, &MainWindow::stopWait);
+        connect(this, &MainWindow::sigPageFinished, this, &MainWindow::pageFinished);
         connect(qApp, &QGuiApplication::applicationStateChanged, this, &MainWindow::onAppStateChanged);
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         QScreen *screen = QGuiApplication::primaryScreen();
@@ -652,22 +706,19 @@ MainWindow::MainWindow()
 
     mIosBattery->update();
 
-    if (gPageManager)
-    {
-        int left = mIosBattery->getBatteryLeft();
-        int state = mIosBattery->getBatteryState();
-        // At this point no buttons are registered and therefore the battery
-        // state will not be visible. To have the state at the moment a button
-        // is registered, we tell the page manager to store the values.
-        gPageManager->setBattery(left, state);
-        MSG_DEBUG("Battery state was set to " << left << "% and state " << state);
-#ifdef QT5_LINUX
-        if (gPageManager->getSettings()->isPortrait())
-            QGuiApplication::primaryScreen()->setOrientationUpdateMask(Qt::PortraitOrientation | Qt::InvertedPortraitOrientation);
-        else
-            QGuiApplication::primaryScreen()->setOrientationUpdateMask(Qt::LandscapeOrientation | Qt::InvertedLandscapeOrientation);
-#endif
-    }
+    int left = mIosBattery->getBatteryLeft();
+    int state = mIosBattery->getBatteryState();
+    // At this point no buttons are registered and therefore the battery
+    // state will not be visible. To have the state at the moment a button
+    // is registered, we tell the page manager to store the values.
+    gPageManager->setBattery(left, state);
+    MSG_DEBUG("Battery state was set to " << left << "% and state " << state);
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    if (gPageManager->getSettings()->isPortrait())
+        QGuiApplication::primaryScreen()->setOrientationUpdateMask(Qt::PortraitOrientation | Qt::InvertedPortraitOrientation);
+    else
+        QGuiApplication::primaryScreen()->setOrientationUpdateMask(Qt::LandscapeOrientation | Qt::InvertedLandscapeOrientation);
+#endif  // QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 #endif  // Q_OS_IOS
 
     _restart_ = false;
@@ -688,7 +739,7 @@ MainWindow::~MainWindow()
 #endif
     if (mMediaPlayer)
     {
-#ifdef QT6_LINUX
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
         delete mAudioOutput;
 #endif
         delete mMediaPlayer;
@@ -701,12 +752,6 @@ MainWindow::~MainWindow()
     {
         removeToolBar(mToolbar);
         mToolbar = nullptr;
-    }
-
-    if (gObject)
-    {
-        delete gObject;
-        gObject = nullptr;
     }
 
     isRunning = false;
@@ -747,7 +792,7 @@ void MainWindow::_orientationChanged(int orientation)
 {
     DECL_TRACER("MainWindow::_orientationChanged(int orientation)");
 
-    if (gPageManager && gPageManager->getSettings()->isPortrait() == 1)  // portrait?
+    if (gPageManager && gPageManager->getSettings()->isPortrait())  // portrait?
     {
         if (orientation == O_REVERSE_PORTRAIT && mOrientation != Qt::InvertedPortraitOrientation)
         {
@@ -923,12 +968,20 @@ void MainWindow::activateSettings(const std::string& oldNetlinx, int oldPort, in
 
 /**
  * @brief MainWindow::_freezeWorkaround: A workaround for the screen freeze.
- * On Android the screen sometimes stay freezed after the application state
- * changes to ACTIVE.
+ * On Mobiles the screen sometimes stay frozen after the application state
+ * changes to ACTIVE or some yet unidentified things happened.
  * The workaround produces a faked geometry change which makes the Qt framework
- * to reattach to the screen. This workaround is only for QT5.x necessary.
+ * to reattach to the screen.
+ * There may be situations where this workaround could trigger a repaint of all
+ * objects on the screen but then the surface is still frozen. At the moment of
+ * writing this comment I have no workaround or even an explanation for this.
  */
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+/**
+ * @brief MainWindow::_freezeWorkaround
+ * This hack was made from Thomas Andersen. You'll find it at:
+ * https://bugreports.qt.io/browse/QTBUG-76142
+ */
 void MainWindow::_freezeWorkaround()
 {
     DECL_TRACER("MainWindow::_freezeWorkaround()");
@@ -937,11 +990,11 @@ void MainWindow::_freezeWorkaround()
     QPlatformScreen* l_pScr = scr->handle(); /*QAndroidPlatformScreen*/
     QRect l_geomHackAdjustedRect = l_pScr->availableGeometry();
     QRect l_geomHackRect = l_geomHackAdjustedRect;
-    l_geomHackAdjustedRect.adjust(0,0,0,5);
+    l_geomHackAdjustedRect.adjust(0, 0, 0, 5);
     QMetaObject::invokeMethod(dynamic_cast<QObject*>(l_pScr), "setAvailableGeometry", Qt::DirectConnection, Q_ARG( const QRect &, l_geomHackAdjustedRect ));
     QMetaObject::invokeMethod(dynamic_cast<QObject*>(l_pScr), "setAvailableGeometry", Qt::QueuedConnection, Q_ARG( const QRect &, l_geomHackRect ));
 }
-#endif  // QT5_LINUX
+#endif  // QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 #endif  // Q_OS_ANDROID || Q_OS_IOS
 
 void MainWindow::_repaintWindows()
@@ -977,6 +1030,13 @@ void MainWindow::_stopWait()
     DECL_TRACER("MainWindow::_stopWait()");
 
     emit sigStopWait();
+}
+
+void MainWindow::_pageFinished(uint handle)
+{
+    DECL_TRACER("MainWindow::_pageFinished(uint handle)");
+
+    emit sigPageFinished(handle);
 }
 
 /**
@@ -1160,16 +1220,24 @@ bool MainWindow::gestureEvent(QGestureEvent* event)
 void MainWindow::onScreenOrientationChanged(Qt::ScreenOrientation ori)
 {
     DECL_TRACER("MainWindow::onScreenOrientationChanged(int ori)");
-
-    MSG_PROTOCOL("Orientation changed to " << ori << " (mOrientation: " << mOrientation << ")");
-
+#if defined(QT_DEBUG) && (defined(Q_OS_IOS) || defined(Q_OS_ANDROID))
+    MSG_PROTOCOL("Orientation changed to " << orientationToString(ori) << " (mOrientation: " << orientationToString(mOrientation) << ")");
+#endif
     if (!gPageManager)
         return;
 
     if (gPageManager->getSettings()->isPortrait())
     {
+#ifdef Q_OS_IOS
+        if (!mHaveNotchPortrait)
+            setNotch();
+#endif
         if (ori == Qt::PortraitOrientation || ori == Qt::InvertedPortraitOrientation)
         {
+#ifdef Q_OS_IOS
+            if (mSensor)
+                mSensor->setCurrentOrientation(ori);
+#endif
             if (mOrientation == ori)
                 return;
 
@@ -1180,8 +1248,16 @@ void MainWindow::onScreenOrientationChanged(Qt::ScreenOrientation ori)
     }
     else
     {
+#ifdef Q_OS_IOS
+        if (!mHaveNotchLandscape)
+            setNotch();
+#endif
         if (ori == Qt::LandscapeOrientation || ori == Qt::InvertedLandscapeOrientation)
         {
+#ifdef Q_OS_IOS
+            if (mSensor)
+                mSensor->setCurrentOrientation(ori);
+#endif
             if (mOrientation == ori)
                 return;
 
@@ -1212,8 +1288,11 @@ void MainWindow::onScreenOrientationChanged(Qt::ScreenOrientation ori)
 void MainWindow::onCurrentOrientationChanged(int currentOrientation)
 {
     DECL_TRACER("MainWindow::onCurrentOrientationChanged(int currentOrientation)");
-
-    MSG_DEBUG("User orientation: " << currentOrientation);
+#if defined(QT_DEBUG) && (defined(Q_OS_IOS) || defined(Q_OS_ANDROID))
+    MSG_DEBUG("User orientation: " << orientationToString((Qt::ScreenOrientation)currentOrientation));
+#else
+    Q_UNUSED(currentOrientation);
+#endif
 }
 /**
  * @brief MainWindow::onPositionUpdated
@@ -1242,7 +1321,7 @@ void MainWindow::onErrorOccurred(QGeoPositionInfoSource::Error positioningError)
         case QGeoPositionInfoSource::AccessError:   MSG_ERROR("The connection setup to the remote positioning backend failed because the application lacked the required privileges."); break;
         case QGeoPositionInfoSource::ClosedError:   MSG_ERROR("The remote positioning backend closed the connection, which happens for example in case the user is switching location services to off. As soon as the location service is re-enabled regular updates will resume."); break;
         case QGeoPositionInfoSource::UnknownSourceError: MSG_ERROR("An unidentified error occurred."); break;
-#ifdef QT6_LINUX
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
         case QGeoPositionInfoSource::UpdateTimeoutError: MSG_ERROR("Current position could not be retrieved within the specified timeout."); break;
 #endif
         default:
@@ -1450,8 +1529,26 @@ void MainWindow::mousePressEvent(QMouseEvent* event)
 
     if(event->button() == Qt::LeftButton)
     {
-        int x = event->x();
-        int y = event->y();
+        int nx = 0, ny = 0;
+#ifdef Q_OS_IOS
+        if (mHaveNotchPortrait && gPageManager->getSettings()->isPortrait())
+        {
+            nx = mNotchPortrait.left();
+            ny = mNotchPortrait.top();
+        }
+        else if (mHaveNotchLandscape && gPageManager->getSettings()->isLandscape())
+        {
+            nx = mNotchLandscape.left();
+            ny = mNotchLandscape.top();
+        }
+        else
+        {
+            MSG_WARNING("Have no notch distances!");
+        }
+#endif
+        int x = event->x() - nx;
+        int y = event->y() - ny;
+        MSG_DEBUG("Mouse press coordinates: x: " << event->x() << ", y: " << event->y() << " [new x: " << x << ", y: " << y << " -- \notch\" nx: " << nx << ", ny: " << ny << "]");
 
         mLastPressX = x;
         mLastPressY = y;
@@ -1494,9 +1591,22 @@ void MainWindow::mouseReleaseEvent(QMouseEvent* event)
 
     if(event->button() == Qt::LeftButton)
     {
-        int x = ((mLastPressX >= 0) ? mLastPressX : event->x());
-        int y = ((mLastPressY >= 0) ? mLastPressY : event->y());
-
+        int nx = 0, ny = 0;
+#ifdef Q_OS_IOS
+        if (mHaveNotchPortrait && gPageManager->getSettings()->isPortrait())
+        {
+            nx = mNotchPortrait.left();
+            ny = mNotchPortrait.top();
+        }
+        else if (mHaveNotchLandscape && gPageManager->getSettings()->isLandscape())
+        {
+            nx = mNotchLandscape.left();
+            ny = mNotchLandscape.top();
+        }
+#endif
+        int x = ((mLastPressX >= 0) ? mLastPressX : (event->x() - nx));
+        int y = ((mLastPressY >= 0) ? mLastPressY : (event->y() - ny));
+        MSG_DEBUG("Mouse press coordinates: x: " << event->x() << ", y: " << event->y());
         mLastPressX = mLastPressY = -1;
 
         if (gPageManager->isSetupActive() && isSetupScaled())
@@ -1820,33 +1930,27 @@ void MainWindow::animationFinished()
 {
     DECL_TRACER("MainWindow::animationFinished()");
 
-    if (!gObject)
-    {
-        MSG_ERROR(_NO_OBJECT);
-        return;
-    }
-
-    TObject::OBJECT_t *obj = gObject->getMarkedRemove();
+    TObject::OBJECT_t *obj = getMarkedRemove();
 
     while (obj)
     {
         if (obj->animation && obj->animation->state() != QAbstractAnimation::Running)
             break;
 
-        obj = gObject->getNextMarkedRemove(obj);
+        obj = getNextMarkedRemove(obj);
     }
 
     if (obj && obj->animation)
     {
-        MSG_DEBUG("Dropping object " << TObject::handleToString(obj->handle));
+        MSG_DEBUG("Dropping object " << handleToString(obj->handle));
         delete obj->animation;
         obj->animation = nullptr;
-        gObject->dropContent(obj);
+        dropContent(obj);
 
         if (mLastObject == obj)
             mLastObject = nullptr;
 
-        gObject->removeObject(obj->handle);
+        removeObject(obj->handle);
     }
     else
     {
@@ -1869,17 +1973,11 @@ void MainWindow::toFront(ulong handle)
 {
     DECL_TRACER("MainWindow::toFront(ulong handle)");
 
-    if (!gObject)
-    {
-        MSG_ERROR(_NO_OBJECT);
-        return;
-    }
-
-    TObject::OBJECT_t *obj = gObject->findObject(handle);
+    TObject::OBJECT_t *obj = findObject(handle);
 
     if (!obj)
     {
-        MSG_WARNING("Object with " << TObject::handleToString(handle) << " not found!");
+        MSG_WARNING("Object with " << handleToString(handle) << " not found!");
         return;
     }
 
@@ -2020,7 +2118,7 @@ void MainWindow::fileDialog(ulong handle, const string &path, const std::string&
 
     if (fileName.contains("content://"))
     {
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
         QAndroidJniObject uri = QAndroidJniObject::callStaticObjectMethod(
             "android/net/Uri", "parse", "(Ljava/lang/String;)Landroid/net/Uri;",
             QAndroidJniObject::fromString(fileName).object<jstring>());
@@ -2061,18 +2159,12 @@ void MainWindow::onTListCallbackCurrentItemChanged(QListWidgetItem *current, QLi
     if (!current || current == previous)
         return;
 
-    if (!gObject)
-    {
-        MSG_ERROR(_NO_OBJECT);
-        return;
-    }
-
     QListWidget *w = current->listWidget();
-    TObject::OBJECT_t *objWindow = gObject->findFirstWindow();
+    TObject::OBJECT_t *objWindow = findFirstWindow();
 
     while(objWindow)
     {
-        TObject::OBJECT_t *objItem = gObject->findFirstChild(objWindow->handle);
+        TObject::OBJECT_t *objItem = findFirstChild(objWindow->handle);
 
         while (objItem)
         {
@@ -2083,10 +2175,10 @@ void MainWindow::onTListCallbackCurrentItemChanged(QListWidgetItem *current, QLi
                 return;
             }
 
-            objItem = gObject->findNextChild(objItem->handle);
+            objItem = findNextChild(objItem->handle);
         }
 
-        objWindow = gObject->findNextWindow(objWindow);
+        objWindow = findNextWindow(objWindow);
     }
 }
 
@@ -2130,6 +2222,53 @@ void MainWindow::stopWait()
     mWaitBox = nullptr;
 }
 
+void MainWindow::pageFinished(ulong handle)
+{
+    DECL_TRACER("MainWindow::pageFinished(uint handle)");
+
+    TObject::OBJECT_t *obj = findObject(handle);
+
+    if (obj)
+    {
+        if (obj->type == TObject::OBJ_SUBPAGE && obj->object.widget)
+            obj->object.widget->show();
+
+        if (obj->type == TObject::OBJ_SUBPAGE && obj->animate.showEffect != SE_NONE)
+            startAnimation(obj, obj->animate);
+
+        if ((obj->type == TObject::OBJ_PAGE || obj->type == TObject::OBJ_SUBPAGE) && obj->object.widget)
+        {
+            QObjectList list = obj->object.widget->children();
+            QObjectList::Iterator iter;
+            int i = 0;
+
+            for (iter = list.begin(); iter != list.end(); ++iter)
+            {
+                QObject *o = *iter;
+                QString obName = o->objectName();
+
+                if (obName.startsWith("Label_"))
+                {
+                    QLabel *l = dynamic_cast<QLabel *>(o);
+
+                    if (l->isHidden())
+                    {
+                        i++;
+                        l->show();
+                    }
+                }
+            }
+
+            MSG_DEBUG("Enabled " << i << " objects on widget " << handleToString(handle) << " with a total of " << list.count() << " objects.");
+        }
+
+        if (obj->type == OBJ_SUBVIEW && obj->object.list)
+            obj->object.area->show();
+    }
+
+    cleanMarked();
+}
+
 /**
  * @brief MainWindow::appStateChanged - Is called whenever the state of the app changes.
  * This callback method is called whenever the state of the application
@@ -2142,7 +2281,7 @@ void MainWindow::stopWait()
  */
 void MainWindow::onAppStateChanged(Qt::ApplicationState state)
 {
-    DECL_TRACER("MainWindow::appStateChanged(Qt::ApplicationState state)");
+    DECL_TRACER("MainWindow::onAppStateChanged(Qt::ApplicationState state)");
 
     switch (state)
     {
@@ -2150,7 +2289,7 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
             MSG_INFO("Switched to mode SUSPEND");
             mHasFocus = false;
 #ifdef Q_OS_ANDROID
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
             QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
 #else
             QJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
@@ -2166,14 +2305,11 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
             mHasFocus = false;
             mWasInactive = true;
 #ifdef Q_OS_ANDROID
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
             QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
 #else
             QJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
 #endif
-//#elif defined(Q_OS_IOS)
-//            if (mIosRotate)
-//                mIosRotate->automaticRotation(false);
 #endif
         break;
 
@@ -2181,14 +2317,11 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
             MSG_INFO("Switched to mode HIDDEN");
             mHasFocus = false;
 #ifdef Q_OS_ANDROID
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
             QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
 #else
             QJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
 #endif
-//#elif defined(Q_OS_IOS)
-//            if (mIosRotate)
-//                mIosRotate->automaticRotation(false);
 #endif
         break;
 #endif
@@ -2219,14 +2352,38 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
 
                 if (mSensor)
                 {
-                    mSensor->setCurrentOrientation(QSensor::UserOrientation);
-                    mSensor->setUserOrientation(180);
+                    if (mIosRotate && mOrientation == Qt::PrimaryOrientation) // Unknown?
+                    {
+                        switch(mIosRotate->getCurrentOrientation())
+                        {
+                            case O_PORTRAIT:            mOrientation = Qt::PortraitOrientation; break;
+                            case O_REVERSE_PORTRAIT:    mOrientation = Qt::InvertedPortraitOrientation; break;
+                            case O_REVERSE_LANDSCAPE:   mOrientation = Qt::InvertedLandscapeOrientation; break;
+                            case O_LANDSCAPE:           mOrientation = Qt::LandscapeOrientation; break;
+                        }
+                    }
+#ifdef QT_DEBUG
+                    MSG_DEBUG("Orientation after activate: " << orientationToString(mOrientation));
+#endif
+                    if (gPageManager && mIosRotate && gPageManager->getSettings()->isPortrait() &&
+                        mOrientation != Qt::PortraitOrientation)
+                    {
+                        mIosRotate->rotate(O_PORTRAIT);
+                        mOrientation = Qt::PortraitOrientation;
+                    }
+                    else if (gPageManager && mIosRotate && mOrientation != Qt::LandscapeOrientation)
+                    {
+                        mIosRotate->rotate(O_LANDSCAPE);
+                        mOrientation = Qt::LandscapeOrientation;
+                    }
+
+                    setNotch();
                 }
 #endif
             }
             else
             {
-#if defined(QT5_LINUX) && defined(Q_OS_ANDROID)
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0) && defined(Q_OS_ANDROID)
                 _freezeWorkaround();
 #endif
                 playShowList();
@@ -2238,15 +2395,17 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
                 mWasInactive = false;
             }
 #ifdef Q_OS_ANDROID
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+            QAndroidJniObject activity = QtAndroid::androidActivity();
+            QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/HideToolbar", "hide", "(Landroid/app/Activity;Z)V", activity.object(), true);
             QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "resumeOrientationListener", "()V");
 #else
+            QJniObject activity = QNativeInterface::QAndroidApplication::context();
+            QJniObject::callStaticMethod<void>("org/qtproject/theosys/HideToolbar", "hide", "(Landroid/app/Activity;Z)V", activity.object(), true);
             QJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "resumeOrientationListener", "()V");
 #endif
 #endif
 #ifdef Q_OS_IOS
-            setNotch();
-
             if (mIOSSettingsActive)
             {
                 mIOSSettingsActive = false;
@@ -2258,11 +2417,9 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
                                   QASettings::getOldToolbarSuppress(),
                                   QASettings::getOldToolbarForce());
             }
-//            if (mIosRotate)
-//                mIosRotate->automaticRotation(true);
 #endif
         break;
-#if defined(Q_OS_LINUX) || defined(Q_OS_UNIX)
+#if not defined(Q_OS_IOS) && not defined(Q_OS_ANDROID)
         default:
             mHasFocus = true;
 #endif
@@ -2306,38 +2463,53 @@ void MainWindow::_resetSurface()
     close();
 }
 
-void MainWindow::_displayButton(ulong handle, ulong parent, unsigned char* buffer, int width, int height, int pixline, int left, int top)
+void MainWindow::_displayButton(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top)
 {
-    DECL_TRACER("MainWindow::_displayButton(ulong handle, ulong parent, unsigned char* buffer, int width, int height, int pixline, int left, int top)");
+    DECL_TRACER("MainWindow::_displayButton(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top)");
 
     if (prg_stopped)
         return;
 
     if (!mHasFocus)     // Suspended?
     {
-        addButton(handle, parent, buffer, pixline, left, top, width, height);
+        addButton(handle, parent, buffer, left, top, width, height);
         return;
     }
 
-    QByteArray buf;
+    emit sigDisplayButton(handle, parent, buffer, width, height, left, top);
+}
 
-    if (buffer && pixline > 0)
+void MainWindow::_displayViewButton(ulong handle, ulong parent, bool vertical, TBitmap buffer, int width, int height, int left, int top, int space, TColor::COLOR_T fillColor)
+{
+    DECL_TRACER("MainWindow::_displayViewButton(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top)");
+
+    if (prg_stopped)
+        return;
+
+    if (!mHasFocus)     // Suspended?
     {
-        size_t size = width * height * (pixline / width);
-        MSG_DEBUG("Buffer size=" << size << ", width=" << width << ", height=" << height << ", left=" << left << ", top=" << top);
-        buf.insert(0, (const char *)buffer, size);
+        addViewButton(handle, parent, vertical, buffer, left, top, width, height, space, fillColor);
+        return;
     }
+
+    emit sigDisplayViewButton(handle, parent, vertical, buffer, width, height, left, top, space, fillColor);
+}
+
+void MainWindow::_addViewButtonItems(ulong parent, vector<PGSUBVIEWITEM_T> items)
+{
+    DECL_TRACER("MainWindow::_addViewButtonItems(ulong parent, vector<PGSUBVIEWITEM_T> items)");
+
+    if (prg_stopped)
+        return;
 
     try
     {
-        emit sigDisplayButton(handle, parent, buf, width, height, pixline, left, top);
+        emit sigAddViewButtonItems(parent, items);
     }
-    catch (std::exception& e)
+    catch(std::exception& e)
     {
-        MSG_ERROR("Error triggering function \"displayButton()\": " << e.what());
+        MSG_ERROR("Error triggering function \"addViewButtonItems()\": " << e.what());
     }
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT));
 }
 
 void MainWindow::_setVisible(ulong handle, bool state)
@@ -2389,12 +2561,12 @@ void MainWindow::_setSubPage(ulong handle, ulong parent, int left, int top, int 
 }
 
 #ifdef _OPAQUE_SKIA_
-void MainWindow::_setBackground(ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color)
+void MainWindow::_setBackground(ulong handle, TBitmap image, int width, int height, ulong color)
 #else
-void MainWindow::_setBackground(ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color, int opacity)
+void MainWindow::_setBackground(ulong handle, TBitmap image, int width, int height, ulong color, int opacity)
 #endif
 {
-    DECL_TRACER("MainWindow::_setBackground(ulong handle, unsigned char *image, size_t size, size_t rowBytes, ulong color [, int opacity])");
+    DECL_TRACER("MainWindow::_setBackground(ulong handle, TBitmap image, int width, int height, ulong color [, int opacity])");
 
     if (prg_stopped)
         return;
@@ -2402,22 +2574,17 @@ void MainWindow::_setBackground(ulong handle, unsigned char *image, size_t size,
     if (!mHasFocus)
     {
 #ifdef _OPAQUE_SKIA_
-        addBackground(handle, image, size, rowBytes, width, height, color);
+        addBackground(handle, image, width, height, color);
 #else
-        addBackground(handle, image, size, rowBytes, width, height, color, opacity);
+        addBackground(handle, image, width, height, color, opacity);
 #endif
         return;
     }
 
-    QByteArray buf;
-
-    if (image && size > 0)
-        buf.insert(0, (const char *)image, size);
-
 #ifdef _OPAQUE_SKIA_
-    emit sigSetBackground(handle, buf, rowBytes, width, height, color);
+    emit sigSetBackground(handle, image, width, height, color);
 #else
-    emit sigSetBackground(handle, buf, rowBytes, width, height, color, opacity);
+    emit sigSetBackground(handle, image, width, height, color, opacity);
 #endif
 }
 
@@ -2491,16 +2658,16 @@ void MainWindow::_playVideo(ulong handle, ulong parent, int left, int top, int w
 #endif
 }
 
-void MainWindow::_inputText(Button::TButton* button, Button::BITMAP_t& bm, int frame)
+void MainWindow::_inputText(Button::TButton& button, Button::BITMAP_t& bm, int frame)
 {
-    DECL_TRACER("MainWindow::_inputText(Button::TButton* button, Button::BITMAP_t& bm, int frame)");
+    DECL_TRACER("MainWindow::_inputText(Button::TButton& button, Button::BITMAP_t& bm, int frame)");
 
-    if (prg_stopped || !button)
+    if (prg_stopped)
         return;
 
     if (!mHasFocus)
     {
-        addInText(button->getHandle(), button, bm, frame);
+        addInText(button.getHandle(), &button, bm, frame);
         return;
     }
 
@@ -2518,16 +2685,16 @@ void MainWindow::_inputText(Button::TButton* button, Button::BITMAP_t& bm, int f
 #endif
 }
 
-void MainWindow::_listBox(Button::TButton* button, Button::BITMAP_t& bm, int frame)
+void MainWindow::_listBox(Button::TButton& button, Button::BITMAP_t& bm, int frame)
 {
-    DECL_TRACER("MainWindow::_listBox(Button::TButton* button, Button::BITMAP_t& bm, int frame)");
+    DECL_TRACER("MainWindow::_listBox(Button::TButton& button, Button::BITMAP_t& bm, int frame)");
 
-    if (prg_stopped || !button)
+    if (prg_stopped)
         return;
 
     if (!mHasFocus)
     {
-        addListBox(button, bm, frame);
+        addListBox(&button, bm, frame);
         return;
     }
 
@@ -2606,7 +2773,7 @@ void MainWindow::_setOrientation(J_ORIENTATION ori)
 
     if (ori == O_FACE_UP || ori == O_FACE_DOWN)
         return;
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QAndroidJniObject activity = QAndroidJniObject::callStaticObjectMethod("org/qtproject/qt5/android/QtNative", "activity", "()Landroid/app/Activity;");
 #else
     QJniObject activity = QJniObject::callStaticObjectMethod("org/qtproject/qt/android/QtNative", "activity", "()Landroid/app/Activity;");
@@ -2631,7 +2798,24 @@ void MainWindow::_setOrientation(J_ORIENTATION ori)
     }
 #elif defined(Q_OS_IOS)
     if (mIosRotate)
+    {
         mIosRotate->rotate(ori);
+#ifdef QT_DEBUG
+        string msg;
+
+        switch(ori)
+        {
+            case O_LANDSCAPE:           msg = "LANDSCAPE"; break;
+            case O_PORTRAIT:            msg = "PORTRAIT"; break;
+            case O_REVERSE_PORTRAIT:    msg = "INVERTED PORTRAIT"; break;
+            case O_REVERSE_LANDSCAPE:   msg = "INVERTED LANDSCAPE"; break;
+            default:
+                msg = "unknown";
+        }
+
+        MSG_DEBUG("Rotated to " << msg);
+#endif
+    }
 #else
     Q_UNUSED(ori);
 #endif
@@ -2711,6 +2895,19 @@ void MainWindow::_setSizeMainWindow(int width, int height)
 #endif
 }
 
+void MainWindow::_listViewArea(ulong handle, ulong parent, Button::TButton& button, SUBVIEWLIST_T& list)
+{
+    DECL_TRACER("MainWindow::_listViewArea(ulong handle, ulong parent, Button::TButton *button, SUBVIEWLIST_T& list)");
+
+    if (!handle || !parent || list.id <= 0)
+    {
+        MSG_WARNING("Invalid parameters for scroll area!");
+        return;
+    }
+
+    emit sigListViewArea(handle, parent, button, list);
+}
+
 void MainWindow::doReleaseButton()
 {
     DECL_TRACER("MainWindow::doReleaseButton()");
@@ -2747,27 +2944,21 @@ void MainWindow::repaintObjects()
 {
     DECL_TRACER("MainWindow::repaintObjects()");
 
-    if (!gObject)
-    {
-        MSG_ERROR(_NO_OBJECT);
-        return;
-    }
-
     draw_mutex.lock();
 #ifdef Q_OS_ANDROID
     std::this_thread::sleep_for(std::chrono::milliseconds(200));    // Necessary for slow devices
 #endif
-    TObject::OBJECT_t *obj = gObject->findFirstWindow();
+    TObject::OBJECT_t *obj = findFirstWindow();
 
     while (obj)
     {
         if (!obj->remove && obj->object.widget)
         {
-            MSG_PROTOCOL("Refreshing widget " << TObject::handleToString (obj->handle));
+            MSG_PROTOCOL("Refreshing widget " << handleToString (obj->handle));
             obj->object.widget->repaint();
         }
 
-        obj = gObject->findNextWindow(obj);
+        obj = findNextWindow(obj);
     }
 
     draw_mutex.unlock();
@@ -2778,7 +2969,7 @@ int MainWindow::calcVolume(int value)
     DECL_TRACER("TQtSettings::calcVolume(int value)");
 
     // volumeSliderValue is in the range [0..100]
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     qreal linearVolume = QAudio::convertVolume(value / qreal(100.0),
                                                QAudio::LogarithmicVolumeScale,
                                                QAudio::LinearVolumeScale);
@@ -2789,6 +2980,14 @@ int MainWindow::calcVolume(int value)
 #endif
 }
 
+/**
+ * @brief MainWindow::convertMask
+ * Converts the AMX mask for input lines into Qt mask sympols for input lines.
+ *
+ * @param mask  A string containing the AMX mask symbols.
+ *
+ * @return The converted mask string for Qt input lines.
+ */
 string MainWindow::convertMask(const string& mask)
 {
     DECL_TRACER("MainWindow::convertMask(const string& mask)");
@@ -2817,26 +3016,94 @@ string MainWindow::convertMask(const string& mask)
     return qMask;
 }
 
+#ifdef Q_OS_ANDROID
+void MainWindow::hideAndroidBars()
+{
+    DECL_TRACER("MainWindow::hideAndroidBars()");
+}
+#endif
 #ifdef Q_OS_IOS
 void MainWindow::setNotch()
 {
     DECL_TRACER("MainWindow::setNotch()");
-    QMargins margins = QASettings::getNotchSize();
-    MSG_DEBUG("Notch top: " << margins.top() << ", bottom: " << margins.bottom() << ", left: " << margins.left() << ", right: " << margins.right());
 
-    if (gPageManager->getSettings()->isPortrait())
-    {
-        gPageManager->setFirstTopPixel(margins.top());
-        gPageManager->setFirstLeftPixel(margins.left());
-    }
+    Qt::ScreenOrientation so = getRealOrientation();
+
+    if (so == Qt::PrimaryOrientation)
+        return;
+
+    QMargins margins;
+
+    if (mHaveNotchPortrait && (so == Qt::PortraitOrientation || so == Qt::InvertedPortraitOrientation))
+        margins = mNotchPortrait;
+    else if (mHaveNotchLandscape && (so == Qt::LandscapeOrientation || so == Qt::InvertedLandscapeOrientation))
+        margins = mNotchLandscape;
     else
     {
-        gPageManager->setFirstTopPixel(margins.top());
+        margins = QASettings::getNotchSize();
 
-        if (mOrientation == Qt::LandscapeOrientation)
-            gPageManager->setFirstLeftPixel(margins.left());
-        else if (mOrientation == Qt::InvertedLandscapeOrientation)
-            gPageManager->setFirstLeftPixel(margins.right());
+        if (gPageManager && gPageManager->getSettings()->isPortrait())
+        {
+            if (so == Qt::LandscapeOrientation)
+            {
+                int left = margins.left();
+                int top = margins.top();
+                margins.setTop(margins.right());
+                margins.setLeft(top);
+                margins.setRight(margins.bottom());
+                margins.setBottom(left);
+            }
+            else if (so == Qt::InvertedLandscapeOrientation)
+            {
+                int right = margins.right();
+                int top = margins.top();
+                margins.setTop(margins.left());
+                margins.setLeft(top);
+                margins.setRight(margins.bottom());
+                margins.setBottom(right);
+            }
+        }
+        else if (gPageManager && gPageManager->getSettings()->isLandscape())
+        {
+            if (so == Qt::PortraitOrientation)
+            {
+                int top = margins.top();
+                int right = margins.right();
+                margins.setTop(margins.left());
+                margins.setLeft(top);
+                margins.setRight(margins.bottom());
+                margins.setBottom(right);
+            }
+            else if (so == Qt::InvertedPortraitOrientation)
+            {
+                int top = margins.top();
+                int left = margins.left();
+                margins.setTop(margins.right());
+                margins.setLeft(margins.bottom());
+                margins.setRight(top);
+                margins.setBottom(left);
+            }
+        }
+    }
+#ifdef QT_DEBUG
+    MSG_DEBUG("Notch top: " << margins.top() << ", bottom: " << margins.bottom() << ", left: " << margins.left() << ", right: " << margins.right() << ", Orientation real: " << orientationToString(so) << ", estimated: " << orientationToString(mOrientation));
+#endif
+    if (gPageManager)
+    {
+        // If the real orientation "so" differs from "mOrientation" then
+        // "mOrientation" contains the wanted orientation and not the real one!
+        if (gPageManager->getSettings()->isPortrait() &&
+            (mOrientation == Qt::PortraitOrientation || mOrientation == Qt::InvertedPortraitOrientation))
+        {
+            mNotchPortrait = margins;
+            mHaveNotchPortrait = true;
+        }
+        else if (gPageManager->getSettings()->isLandscape() &&
+            (mOrientation == Qt::LandscapeOrientation || mOrientation == Qt::InvertedLandscapeOrientation))
+        {
+            mNotchLandscape = margins;
+            mHaveNotchLandscape = true;
+        }
     }
 }
 
@@ -2871,6 +3138,48 @@ void MainWindow::initGeoLocation()
         MSG_WARNING("Error creating geo positioning source!");
     }
 }
+
+#ifdef Q_OS_IOS
+Qt::ScreenOrientation MainWindow::getRealOrientation()
+{
+    DECL_TRACER("MainWindow::getRealOrientation()");
+
+    QScreen *screen = QGuiApplication::primaryScreen();
+
+    if (!screen)
+    {
+        MSG_ERROR("Couldn't determine the primary screen!")
+        return Qt::PrimaryOrientation;
+    }
+
+    QRect rect = screen->availableGeometry();
+
+    if (rect.width() > rect.height())
+        return Qt::LandscapeOrientation;
+
+    return Qt::PortraitOrientation;
+}
+#endif
+#endif
+
+#if defined(QT_DEBUG) && (defined(Q_OS_IOS) || defined(Q_OS_ANDROID))
+string MainWindow::orientationToString(Qt::ScreenOrientation ori)
+{
+    string sori;
+
+    switch(ori)
+    {
+        case Qt::PortraitOrientation:           sori = "PORTRAIT"; break;
+        case Qt::InvertedPortraitOrientation:   sori = "INVERTED PORTRAIT"; break;
+        case Qt::LandscapeOrientation:          sori = "LANDSCAPE"; break;
+        case Qt::InvertedLandscapeOrientation:  sori = "INVERTED LANDSCAPE"; break;
+        default:
+            sori = "Unknown: ";
+            sori.append(intToString(ori));
+    }
+
+    return sori;
+}
 #endif
 
 /******************* Draw elements *************************/
@@ -2890,26 +3199,20 @@ void MainWindow::initGeoLocation()
  * @param left      The prosition from the left.
  * @param top       The position from the top.
  */
-void MainWindow::displayButton(ulong handle, ulong parent, QByteArray buffer, int width, int height, int pixline, int left, int top)
+void MainWindow::displayButton(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top)
 {
     DECL_TRACER("MainWindow::displayButton(ulong handle, unsigned char* buffer, size_t size, int width, int height, int pixline, int left, int top)");
 
-    if (!gObject)
-    {
-        MSG_ERROR(_NO_OBJECT);
-        return;
-    }
-
     draw_mutex.lock();
 
-    TObject::OBJECT_t *obj = gObject->findObject(handle);
-    TObject::OBJECT_t *par = gObject->findObject(parent);
-    MSG_TRACE("Processing button " << TObject::handleToString(handle) << " from parent " << TObject::handleToString(parent));
+    TObject::OBJECT_t *obj = findObject(handle);
+    TObject::OBJECT_t *par = findObject(parent);
+    MSG_TRACE("Processing button " << handleToString(handle) << " from parent " << handleToString(parent));
 
     if (!par)
     {
         if (TStreamError::checkFilter(HLOG_DEBUG))
-            MSG_WARNING("Button " << TObject::handleToString(handle) << " has no parent (" << TObject::handleToString(parent) << ")! Ignoring it.");
+            MSG_WARNING("Button " << handleToString(handle) << " has no parent (" << handleToString(parent) << ")! Ignoring it.");
 
         draw_mutex.unlock();
         return;
@@ -2919,12 +3222,12 @@ void MainWindow::displayButton(ulong handle, ulong parent, QByteArray buffer, in
     {
         if (par->animation->state() == QAbstractAnimation::Running)
         {
-            MSG_WARNING("Object " << TObject::handleToString(parent) << " is busy with an animation!");
+            MSG_WARNING("Object " << handleToString(parent) << " is busy with an animation!");
             par->animation->stop();
         }
         else
         {
-            MSG_WARNING("Object " << TObject::handleToString(parent) << " has not finished the animation!");
+            MSG_WARNING("Object " << handleToString(parent) << " has not finished the animation!");
         }
 
         draw_mutex.unlock();
@@ -2932,15 +3235,15 @@ void MainWindow::displayButton(ulong handle, ulong parent, QByteArray buffer, in
     }
     else if (par->remove)
     {
-        MSG_WARNING("Object " << TObject::handleToString(parent) << " is marked for remove. Will not draw image!");
+        MSG_WARNING("Object " << handleToString(parent) << " is marked for remove. Will not draw image!");
         draw_mutex.unlock();
         return;
     }
 
     if (!obj)
     {
-        MSG_DEBUG("Adding new object " << TObject::handleToString(handle) << " ...");
-        obj = gObject->addObject();
+        MSG_DEBUG("Adding new object " << handleToString(handle) << " ...");
+        obj = addObject();
 
         if (!obj)
         {
@@ -2968,67 +3271,38 @@ void MainWindow::displayButton(ulong handle, ulong parent, QByteArray buffer, in
             obj->top = scale(top);
         }
 
-        if (par->type == TObject::OBJ_PAGE)
-            obj->object.label = new QLabel("", centralWidget());
-        else
-            obj->object.label = new QLabel("", par->object.widget);
-
+        obj->object.label = new QLabel("", par->object.widget);
+        obj->object.label->setObjectName(QString("Label_") + handleToString(handle).c_str());
         obj->object.label->installEventFilter(this);
         obj->object.label->grabGesture(Qt::PinchGesture);
         obj->object.label->grabGesture(Qt::SwipeGesture);
-        obj->object.label->setFixedSize(obj->width, obj->height);
         obj->object.label->move(obj->left, obj->top);
+        obj->object.label->setFixedSize(obj->width, obj->height);
         obj->object.label->setAttribute(Qt::WA_TransparentForMouseEvents);
     }
     else
-        MSG_DEBUG("Object " << TObject::handleToString(handle) << " of type " << TObject::objectToString(obj->type) << " found!");
+        MSG_DEBUG("Object " << handleToString(handle) << " of type " << TObject::objectToString(obj->type) << " found!");
 
     if (obj->type != TObject::OBJ_INPUT)
     {
         try
         {
-            if (buffer.size() > 0 && pixline > 0)
+            if (buffer.getSize() > 0 && buffer.getPixline() > 0)
             {
-                MSG_DEBUG("Setting image for " << TObject::handleToString(handle) << " ...");
-                QImage img((unsigned char *)buffer.data(), width, height, pixline, QImage::Format_ARGB32);  // Original size
-
-                if (img.isNull() || !img.valid(width-1, height-1))
-                {
-                    MSG_ERROR("Unable to create a valid image!");
-                    draw_mutex.unlock();
-                    return;
-                }
-
-                QSize size(obj->width, obj->height);
-                QPixmap pixmap;
-                bool ret = false;
-
-                if (isScaled() || (gPageManager && gPageManager->isSetupActive()))
-                    ret = pixmap.convertFromImage(img.scaled(size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation)); // Scaled size
-                else
-                    ret = pixmap.convertFromImage(img);
-
-                if (!ret || pixmap.isNull())
-                {
-                    MSG_ERROR("Unable to create a pixmap out of an image!");
-                    draw_mutex.unlock();
-                    return;
-                }
+                MSG_DEBUG("Setting image for " << handleToString(handle) << " ...");
+                QPixmap pixmap = scaleImage((unsigned char *)buffer.getBitmap(), buffer.getWidth(), buffer.getHeight(), buffer.getPixline());
 
                 if (obj->object.label)
                     obj->object.label->setPixmap(pixmap);
                 else
                 {
-                    MSG_WARNING("Object " << TObject::handleToString(handle) << " does not exist any more!");
+                    MSG_WARNING("Object " << handleToString(handle) << " does not exist any more!");
                 }
             }
-
-            if (obj->object.label)
-                obj->object.label->show();
         }
         catch(std::exception& e)
         {
-            MSG_ERROR("Error drawing button " << TObject::handleToString(handle) << ": " << e.what());
+            MSG_ERROR("Error drawing button " << handleToString(handle) << ": " << e.what());
         }
         catch(...)
         {
@@ -3036,36 +3310,168 @@ void MainWindow::displayButton(ulong handle, ulong parent, QByteArray buffer, in
         }
     }
 
-    gObject->cleanMarked();     // We want to be sure to have no dead entries.
     draw_mutex.unlock();
+}
+
+void MainWindow::displayViewButton(ulong handle, ulong parent, bool vertical, TBitmap buffer, int width, int height, int left, int top, int space, TColor::COLOR_T fillColor)
+{
+    DECL_TRACER("MainWindow::displayViewButton(ulong handle, TBitmap buffer, size_t size, int width, int height, int left, int top)");
+
+    draw_mutex.lock();
+
+    TObject::OBJECT_t *obj = findObject(handle);
+    TObject::OBJECT_t *par = findObject(parent);
+    MSG_TRACE("Processing button " << handleToString(handle) << " from parent " << handleToString(parent));
+
+    if (!par)
+    {
+        if (TStreamError::checkFilter(HLOG_DEBUG))
+            MSG_WARNING("Button " << handleToString(handle) << " has no parent (" << handleToString(parent) << ")! Ignoring it.");
+
+        draw_mutex.unlock();
+        return;
+    }
+
+    if (par->animation && !par->aniDirection)
+    {
+        if (par->animation->state() == QAbstractAnimation::Running)
+        {
+            MSG_WARNING("Object " << handleToString(parent) << " is busy with an animation!");
+            par->animation->stop();
+        }
+        else
+        {
+            MSG_WARNING("Object " << handleToString(parent) << " has not finished the animation!");
+        }
+
+        draw_mutex.unlock();
+        return;
+    }
+    else if (par->remove)
+    {
+        MSG_WARNING("Object " << handleToString(parent) << " is marked for remove. Will not draw image!");
+        draw_mutex.unlock();
+        return;
+    }
+
+    if (!obj)
+    {
+        MSG_DEBUG("Adding new object " << handleToString(handle) << " ...");
+        obj = addObject();
+
+        if (!obj)
+        {
+            MSG_ERROR("Error creating an object!");
+            TError::setError();
+            draw_mutex.unlock();
+            return;
+        }
+
+        obj->type = OBJ_SUBVIEW;
+        obj->handle = handle;
+
+        obj->width = scale(width);
+        obj->height = scale(height);
+        obj->left = scale(left);
+        obj->top = scale(top);
+
+        obj->object.area = new TQScrollArea(par->object.widget, obj->width, obj->height, vertical);
+        obj->object.area->setObjectName(QString("View_") + handleToString(handle).c_str());
+        obj->object.area->setScaleFactor(mScaleFactor);
+        obj->object.area->setSpace(space);
+        obj->object.area->move(obj->left, obj->top);
+        connect(obj->object.area, &TQScrollArea::objectClicked, this, &MainWindow::onSubViewItemClicked);
+    }
+    else if (obj->type != OBJ_SUBVIEW)
+    {
+        MSG_ERROR("Object " << handleToString(handle) << " is of wrong type " << objectToString(obj->type) << "!");
+        draw_mutex.unlock();
+        return;
+    }
+    else
+        MSG_DEBUG("Object " << handleToString(handle) << " of type " << TObject::objectToString(obj->type) << " found!");
+
+    try
+    {
+        // Set background color
+        if (obj->object.area)
+        {
+            QColor color(qRgba(fillColor.red, fillColor.green, fillColor.blue, fillColor.alpha));
+            obj->object.area->setBackGroundColor(color);
+        }
+
+        if (buffer.getSize() > 0 && buffer.getPixline() > 0)
+        {
+            MSG_DEBUG("Setting image for " << handleToString(handle) << " ...");
+            QPixmap pixmap = scaleImage((unsigned char *)buffer.getBitmap(), buffer.getWidth(), buffer.getHeight(), buffer.getPixline());
+
+            if (pixmap.isNull())
+            {
+                MSG_ERROR("Unable to create a pixmap out of an image!");
+                draw_mutex.unlock();
+                return;
+            }
+
+            if (obj->object.area)
+            {
+                obj->object.area->setBackgroundImage(pixmap);
+            }
+            else
+            {
+                MSG_WARNING("Object " << handleToString(handle) << " does not exist any more!");
+            }
+        }
+    }
+    catch(std::exception& e)
+    {
+        MSG_ERROR("Error drawing button " << handleToString(handle) << ": " << e.what());
+    }
+    catch(...)
+    {
+        MSG_ERROR("Unexpected exception occured [MainWindow::displayViewButton()]");
+    }
+
+    draw_mutex.unlock();
+}
+
+void MainWindow::addViewButtonItems(ulong parent, vector<PGSUBVIEWITEM_T> items)
+{
+    DECL_TRACER("MainWindow::addViewButtonItems(ulong parent, vector<PGSUBVIEWITEM_T> items)");
+
+    if (items.empty())
+        return;
+
+    OBJECT_t *par = findObject(parent);
+
+    if (!par || par->type != OBJ_SUBVIEW || !par->object.area)
+    {
+        MSG_ERROR("No object with handle " << handleToString(parent) << " found or object is not a subview list!");
+        return;
+    }
+
+    par->object.area->addItems(items);
 }
 
 void MainWindow::SetVisible(ulong handle, bool state)
 {
     DECL_TRACER("MainWindow::SetVisible(ulong handle, bool state)");
 
-    if (!gObject)
-    {
-        MSG_ERROR(_NO_OBJECT);
-        return;
-    }
-
-    TObject::OBJECT_t *obj = gObject->findObject(handle);
+    TObject::OBJECT_t *obj = findObject(handle);
 
     if (!obj)
     {
-        MSG_ERROR("Object " << TObject::handleToString(handle) << " not found!");
+        MSG_ERROR("Object " << handleToString(handle) << " not found!");
         return;
     }
 
     if (obj->type == TObject::OBJ_BUTTON && obj->object.label)
     {
-        MSG_DEBUG("Setting object " << TObject::handleToString(handle) << " visibility to " << (state ? "TRUE" : "FALSE"));
+        MSG_DEBUG("Setting object " << handleToString(handle) << " visibility to " << (state ? "TRUE" : "FALSE"));
         obj->object.label->setVisible(state);
     }
     else
     {
-        MSG_DEBUG("Ignoring non button object " << TObject::handleToString(handle));
+        MSG_DEBUG("Ignoring non button object " << handleToString(handle));
     }
 }
 
@@ -3087,20 +3493,26 @@ void MainWindow::setPage(ulong handle, int width, int height)
 {
     DECL_TRACER("MainWindow::setPage(ulong handle, int width, int height)");
 
-    if (!gObject)
-    {
-        MSG_ERROR(_NO_OBJECT);
-        return;
-    }
-
     if (handle == mActualPageHandle)
         return;
 
     draw_mutex.lock();
     QWidget *wBackground = centralWidget();
 
-    // The following should be true only for the first time this method is called.
     if (!wBackground)
+    {
+        MSG_ERROR("No central widget!");
+        return;
+    }
+
+    if (!mCentralWidget)
+    {
+        MSG_ERROR("Stack for pages not initialized!");
+        return;
+    }
+
+    // The following should be true only for the first time this method is called.
+    if (!mCentralInitialized)
     {
         QSize qs = menuBar()->sizeHint();
 
@@ -3108,17 +3520,20 @@ void MainWindow::setPage(ulong handle, int width, int height)
             setMinimumSize(scaleSetup(width), scaleSetup(height) + qs.height());
         else
             setMinimumSize(scale(width), scale(height) + qs.height());
+
+        mCentralInitialized = true;
     }
 
-    TObject::OBJECT_t *obj = gObject->findObject(handle);
+    TObject::OBJECT_t *obj = findObject(handle);
 
     if (!obj)
     {
-        obj = gObject->addObject();
+        MSG_DEBUG("Adding new object " << handleToString(handle));
+        obj = addObject();
 
         if (!obj)
         {
-            MSG_ERROR("Error crating an object for handle " << TObject::handleToString(handle));
+            MSG_ERROR("Error crating an object for handle " << handleToString(handle));
             TError::setError();
             draw_mutex.unlock();
             return;
@@ -3126,7 +3541,7 @@ void MainWindow::setPage(ulong handle, int width, int height)
 
         obj->handle = handle;
         obj->type = TObject::OBJ_PAGE;
-        obj->object.widget = nullptr;   // We don't need this because the widget is the centralWidget()
+        obj->object.widget = nullptr;
 
         if (gPageManager && gPageManager->isSetupActive())
         {
@@ -3139,42 +3554,35 @@ void MainWindow::setPage(ulong handle, int width, int height)
             obj->width = scale(width);
         }
     }
-
-    if (!wBackground)
+    else if (obj->object.widget)
     {
-        wBackground = new QWidget();
-        wBackground->grabGesture(Qt::PinchGesture);
-        wBackground->grabGesture(Qt::SwipeGesture);
-        wBackground->setAutoFillBackground(true);
-        wBackground->setBackgroundRole(QPalette::Window);
-        wBackground->setForegroundRole(QPalette::WindowText);
-#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
-        wBackground->setFixedSize(obj->width, obj->height);
-#else
-        QRect rectMain = this->geometry();
-        QSize icSize =  this->iconSize();
-        int lwidth = rectMain.width() + icSize.width() + 16;
-        rectMain.setWidth(lwidth);
-        setGeometry(rectMain);
-        MSG_DEBUG("Height of main window:  " << rectMain.height());
-        MSG_DEBUG("Height of panel screen: " << height);
-        // If our first top pixel is not 0, maybe because of a menu, window
-        // decorations or a toolbar, we must add this extra height to the
-        // positions of widgets and mouse presses.
-        int avHeight = rectMain.height() - height;
-        MSG_DEBUG("Difference in height:   " << avHeight);
-        gPageManager->setFirstTopPixel(avHeight);
-#endif
+        if (obj->object.widget->isHidden() && mCentralWidget->indexOf(obj->object.widget) >= 0)
+            obj->object.widget->setParent(wBackground);
+
+        obj->invalid = false;
+        MSG_DEBUG("Hidden object " << handleToString(handle) << " was reactivated.");
     }
 
-    if (!centralWidget())
+    if (!obj->object.widget)
     {
-        setCentralWidget(wBackground);
-        centralWidget()->show();
+        obj->object.widget = new QWidget;
+        obj->object.widget->setObjectName(QString("Page_") + handleToString(handle).c_str());
+        obj->object.widget->installEventFilter(this);
+        obj->object.widget->grabGesture(Qt::PinchGesture);
+        obj->object.widget->grabGesture(Qt::SwipeGesture);
+        obj->object.widget->setAutoFillBackground(true);
+        obj->invalid = false;
+        obj->object.widget->move(0, 0);
+#if defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
+        obj->object.widget->setFixedSize(obj->width, obj->height);
+#else
+        obj->object.widget->setGeometry(geometry());
+#endif
+        mCentralWidget->addWidget(obj->object.widget);
     }
 
     mActualPageHandle = handle;
-    MSG_PROTOCOL("Current page: " << TObject::handleToString(handle));
+    MSG_PROTOCOL("Current page: " << handleToString(handle));
     draw_mutex.unlock();
 }
 
@@ -3183,35 +3591,51 @@ void MainWindow::setSubPage(ulong handle, ulong parent, int left, int top, int w
     draw_mutex.lock();
     DECL_TRACER("MainWindow::setSubPage(ulong handle, int left, int top, int width, int height)");
 
-    if (!gObject)
+    TObject::OBJECT_t *par = findObject(parent);
+
+    if (!par || par->type != TObject::OBJ_PAGE)
     {
-        MSG_ERROR(_NO_OBJECT);
+        if (!par)
+        {
+            MSG_ERROR("Subpage " << handleToString(handle) << " has no parent! Ignoring it.");
+        }
+        else
+        {
+            MSG_ERROR("Subpage " << handleToString(handle) << " has invalid parent " << handleToString(parent) << " which is no page! Ignoring it.");
+        }
+
         draw_mutex.unlock();
         return;
     }
 
-    TObject::OBJECT_t *par = gObject->findObject(parent);
-
-    if (!par || par->type != TObject::OBJ_PAGE)
+    if (!par->object.widget)
     {
-        MSG_ERROR("Subpage " << TObject::handleToString(handle) << " has no parent or parent is no page! Ignoring it.");
+        MSG_ERROR("Parent page has no widget defined!");
+        draw_mutex.unlock();
         return;
     }
 
-    TObject::OBJECT_t *obj = gObject->findObject(handle);
-
-    if (obj)
+    if (mCentralWidget && mCentralWidget->currentWidget() != par->object.widget)
     {
-        MSG_DEBUG("Object " << TObject::handleToString(handle) << " exists. Deleting it and create a new one!");
-        gObject->removeAllChilds(handle, false);
-        gObject->removeObject(handle, false);
+        MSG_WARNING("The parent page " << handleToString(parent) << " is not the current page " << handleToString(handle) << "!");
+        draw_mutex.unlock();
+        return;
     }
 
-    obj = gObject->addObject();
+    TObject::OBJECT_t *obj = findObject(handle);
+
+    if (obj && obj->type != TObject::OBJ_SUBPAGE)
+    {
+        MSG_WARNING("Object " << handleToString(handle) << " exists but is not a subpage! Refusing to create a new page with this handle.");
+        draw_mutex.unlock();
+        return;
+    }
+    else if (!obj)
+        obj = addObject();
 
     if (!obj)
     {
-        MSG_ERROR("Error adding an object!");
+        MSG_ERROR("Error adding the subpage " << handleToString(handle));
         TError::setError();
         draw_mutex.unlock();
         return;
@@ -3239,70 +3663,76 @@ void MainWindow::setSubPage(ulong handle, ulong parent, int left, int top, int w
 
     obj->type = TObject::OBJ_SUBPAGE;
     obj->handle = handle;
-    obj->object.widget = new QWidget((par->object.widget ? par->object.widget : centralWidget()));
+
+    if (!obj->object.widget)
+    {
+        obj->object.widget = new QWidget(par->object.widget);
+        obj->object.widget->setObjectName(QString("Subpage_%1").arg(handleToString(handle).c_str()));
+    }
+    else
+        obj->object.widget->setParent(par->object.widget);
+
     obj->object.widget->setAutoFillBackground(true);
-    obj->object.widget->setFixedSize(scWidth, scHeight);
     obj->object.widget->move(scLeft, scTop);
+    obj->object.widget->setFixedSize(scWidth, scHeight);
     obj->left = scLeft;
     obj->top = scTop;
     obj->width = scWidth;
     obj->height = scHeight;
+    obj->invalid = false;
     // filter move event
     obj->object.widget->installEventFilter(this);
     obj->object.widget->grabGesture(Qt::PinchGesture);
     obj->object.widget->grabGesture(Qt::SwipeGesture);
-    // By default set a transparent background
-    QPixmap pix(scWidth, scHeight);
-    pix.fill(QColor::fromRgba(qRgba(0,0,0,0xff)));
-    QPalette palette;
-    palette.setBrush(QPalette::Window, QBrush(pix));
-    obj->object.widget->setPalette(palette);
     obj->aniDirection = true;
-
-    startAnimation(obj, animate);
+    obj->animate = animate;
     draw_mutex.unlock();
 }
 
-#if _OPAQUE_SKIA_
-void MainWindow::setBackground(ulong handle, QByteArray image, size_t rowBytes, int width, int height, ulong color)
+#ifdef _OPAQUE_SKIA_
+void MainWindow::setBackground(ulong handle, TBitmap image, int width, int height, ulong color)
 #else
-void MainWindow::setBackground(ulong handle, QByteArray image, size_t rowBytes, int width, int height, ulong color, int opacity)
+void MainWindow::setBackground(ulong handle, TBitmap image, int width, int height, ulong color, int opacity)
 #endif
 {
     draw_mutex.lock();
-    DECL_TRACER("MainWindow::setBackground(ulong handle, QByteArray image, size_t rowBytes, ulong color [, int opacity])");
+    DECL_TRACER("MainWindow::setBackground(ulong handle, TBitmap image, ulong color [, int opacity])");
 
-    if (!gObject)
+    if (!mCentralWidget)
     {
-        MSG_ERROR(_NO_OBJECT);
+        MSG_ERROR("The internal page stack is not initialized!");
         draw_mutex.unlock();
         return;
     }
 
-    TObject::OBJECT_t *obj = gObject->findObject(handle);
+    TObject::OBJECT_t *obj = findObject(handle);
 
-    if (!obj || obj->remove)
+    if (!obj || obj->remove || obj->invalid)
     {
-        MSG_WARNING("No object " << TObject::handleToString(handle) << " found!");
+#ifdef QT_DEBUG
+        MSG_WARNING("No object " << handleToString(handle) << " found! (Flag remove: " << (obj->remove ? "TRUE" : "FALSE") << ", flag invalid: " << (obj->invalid ? "TRUE" : "FALSE") << ")");
+#else
+        MSG_WARNING("No object " << handleToString(handle) << " found!");
+#endif
         draw_mutex.unlock();
         return;
     }
 
-    MSG_DEBUG("Object " << TObject::handleToString(handle) << " of type " << gObject->objectToString(obj->type) << " found!");
+    MSG_DEBUG("Object " << handleToString(handle) << " of type " << objectToString(obj->type) << " found!");
 
     if (obj->type == TObject::OBJ_BUTTON || obj->type == TObject::OBJ_SUBPAGE)
     {
-        MSG_DEBUG("Processing object " << gObject->objectToString(obj->type));
+        MSG_DEBUG("Processing object " << objectToString(obj->type));
 
         if (obj->type == TObject::OBJ_BUTTON && !obj->object.label)
         {
-            MSG_ERROR("The label of the object " << TObject::handleToString(handle) << " was not initialized!");
+            MSG_ERROR("The label of the object " << handleToString(handle) << " was not initialized!");
             draw_mutex.unlock();
             return;
         }
         else if (obj->type == TObject::OBJ_SUBPAGE && !obj->object.widget)
         {
-            MSG_ERROR("The widget of the object " << TObject::handleToString(handle) << " was not initialized!");
+            MSG_ERROR("The widget of the object " << handleToString(handle) << " was not initialized!");
             draw_mutex.unlock();
             return;
         }
@@ -3310,10 +3740,10 @@ void MainWindow::setBackground(ulong handle, QByteArray image, size_t rowBytes, 
         QPixmap pix(obj->width, obj->height);
         pix.fill(QColor::fromRgba(qRgba(TColor::getRed(color),TColor::getGreen(color),TColor::getBlue(color),TColor::getAlpha(color))));
 
-        if (image.size() > 0)
+        if (image.isValid() > 0)
         {
-            MSG_DEBUG("Setting image of size " << image.size() << " (" << width << " x " << height << ")");
-            QImage img((unsigned char *)image.data(), width, height, rowBytes, QImage::Format_ARGB32);
+            MSG_DEBUG("Setting image of size " << image.getSize() << " (" << image.getWidth() << " x " << image.getHeight() << ")");
+            QImage img(image.getBitmap(), image.getWidth(), image.getHeight(), image.getPixline(), QImage::Format_ARGB32);
 
             if (isScaled() || (gPageManager && gPageManager->isSetupActive()))
             {
@@ -3328,12 +3758,18 @@ void MainWindow::setBackground(ulong handle, QByteArray image, size_t rowBytes, 
         {
             obj->object.label->setPixmap(pix);
 
-            if (mHasFocus)
+/*            if (mHasFocus)
+            {
                 obj->object.label->show();
+
+                if (!obj->object.label->isActiveWindow())
+                    obj->object.label->activateWindow();
+            } */
         }
         else
         {
-            MSG_DEBUG("Setting image as background for subpage " << ((handle >> 16) & 0x0000ffff));
+            MSG_DEBUG("Setting image as background for subpage " << handleToString(handle));
+            QPalette palette;
 #ifndef _OPAQUE_SKIA_
             qreal oo;
 
@@ -3346,35 +3782,74 @@ void MainWindow::setBackground(ulong handle, QByteArray image, size_t rowBytes, 
 
             if (oo < 1.0)
             {
-                QPixmap image(pix.size()); //Image with given size and format.
-                image.fill(Qt::transparent); //fills with transparent
+                QPixmap image(pix.size());      //Image with given size and format.
+                image.fill(Qt::transparent);    //fills with transparent
                 QPainter p(&image);
-                p.setOpacity(oo); // set opacity from 0.0 to 1.0, where 0.0 is fully transparent and 1.0 is fully opaque.
-                p.drawPixmap(0, 0, pix); // given pixmap into the paint device.
+                p.setOpacity(oo);               // set opacity from 0.0 to 1.0, where 0.0 is fully transparent and 1.0 is fully opaque.
+                p.drawPixmap(0, 0, pix);        // given pixmap into the paint device.
                 p.end();
+                palette.setBrush(QPalette::Window, QBrush(image));
                 MSG_DEBUG("Opacity was set to " << oo);
             }
-#endif
-            QPalette palette;
+            else
+                palette.setBrush(QPalette::Window, QBrush(pix));
+#else
             palette.setBrush(QPalette::Window, QBrush(pix));
-            obj->object.widget->setPalette(palette);
-#ifndef _OPAQUE_SKIA_
-            if (oo < 1.0)
-                obj->object.widget->setWindowOpacity(oo);
 #endif
-            if (mHasFocus)
-                obj->object.widget->show();
+            obj->object.widget->setPalette(palette);
+
+//            if (mHasFocus && obj->type == TObject::OBJ_BUTTON)
+//                obj->object.label->show();
         }
     }
     else if (obj->type == TObject::OBJ_PAGE)
     {
-        QWidget *central = nullptr;
+        QWidget *central = obj->object.widget;
 
-        if (!(central = centralWidget()))
+        if (!central)
         {
+            MSG_ERROR("There is no page widget initialized for page " << handleToString(handle));
+            draw_mutex.unlock();
             displayMessage("Can't set a background without an active page!", "Internal error");
             return;
         }
+
+        QWidget *current = mCentralWidget->currentWidget();
+        int index = -1;
+
+        if (current && central != current)
+        {
+            if ((index = mCentralWidget->indexOf(central)) < 0)
+            {
+                QString obName = QString("Page_%1").arg(handleToString(handle).c_str());
+
+                for (int i = 0; i < mCentralWidget->count(); ++i)
+                {
+                    QWidget *w = mCentralWidget->widget(i);
+                    MSG_DEBUG("Checking widget " << w->objectName().toStdString());
+
+                    if (w->objectName() == obName)
+                    {
+                        index = i;
+                        break;
+                    }
+                }
+
+                if (index < 0)
+                {
+                    MSG_WARNING("Missing page " << handleToString(handle) << "! Will add it to the stack.");
+                    index = mCentralWidget->addWidget(central);
+                    MSG_DEBUG("Number pages on stack: " << mCentralWidget->count());
+                    QRect geomMain = geometry();
+                    QRect geomCent = mCentralWidget->geometry();
+                    MSG_DEBUG("Geometry MainWindow: left: " << geomMain.left() << ", right: " << geomMain.right() << ", top: " << geomMain.top() << ", bottom: " << geomMain.bottom());
+                    MSG_DEBUG("Geometry CentWindow: left: " << geomCent.left() << ", right: " << geomCent.right() << ", top: " << geomCent.top() << ", bottom: " << geomCent.bottom());
+                }
+            }
+        }
+        else
+            index = mCentralWidget->indexOf(central);
+
 #ifdef Q_OS_ANDROID
         if (obj->width <= 0 || obj->height <= 0 || obj->width > gScreenWidth || obj->height > gScreenHeight)
         {
@@ -3386,11 +3861,11 @@ void MainWindow::setBackground(ulong handle, QByteArray image, size_t rowBytes, 
         QColor backgroundColor = QColor::fromRgba(qRgba(TColor::getRed(color),TColor::getGreen(color),TColor::getBlue(color),TColor::getAlpha(color)));
         pix.fill(backgroundColor);
         QImage bgImage;
-        MSG_PROTOCOL("Filled background of size " << pix.width() << "x" << pix.height() << " with color #" << std::setfill('0') << std::setw(8) << std::hex << color);
+        MSG_DEBUG("Filled background of size " << pix.width() << "x" << pix.height() << " with color #" << std::setfill('0') << std::setw(8) << std::hex << color);
 
-        if (width > 0 && image.size() >= (width * height * (int)(rowBytes / (unsigned)width)))
+        if (width > 0 && image.isValid())
         {
-            QImage img((unsigned char *)image.data(), width, height, rowBytes, QImage::Format_ARGB32);
+            QImage img(image.getBitmap(), image.getWidth(), image.getHeight(), image.getPixline(), QImage::Format_ARGB32);
             bool valid = false;
 
             if (!img.isNull())
@@ -3399,12 +3874,12 @@ void MainWindow::setBackground(ulong handle, QByteArray image, size_t rowBytes, 
                 {
                     bgImage = img.scaled(obj->width, obj->height, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
                     valid = pix.convertFromImage(bgImage);
-                    MSG_PROTOCOL("Scaled image from " << width << "x" << height << " to " << obj->width << "x" << obj->height);
+                    MSG_DEBUG("Scaled image from " << width << "x" << height << " to " << obj->width << "x" << obj->height);
                 }
                 else
                 {
                     valid = pix.convertFromImage(img);
-                    MSG_PROTOCOL("Converted image to pixmap.");
+                    MSG_DEBUG("Converted image to pixmap.");
                 }
             }
 
@@ -3414,7 +3889,7 @@ void MainWindow::setBackground(ulong handle, QByteArray image, size_t rowBytes, 
                     pix = QPixmap(obj->width, obj->height);
 
                 pix.fill(backgroundColor);
-                MSG_WARNING("Error converting an image! Size raw data: " << image.size() << ", Width: " << width << ", Height: " << height << ", Bytes per row: " << rowBytes);
+                MSG_WARNING("Error converting an image! Size raw data: " << image.getSize() << ", Width: " << image.getWidth() << ", Height: " << image.getHeight() << ", Bytes per row: " << image.getPixline());
             }
         }
 
@@ -3422,12 +3897,13 @@ void MainWindow::setBackground(ulong handle, QByteArray image, size_t rowBytes, 
         palette.setBrush(QPalette::Window, QBrush(pix));
         central->setPalette(palette);
 
-        if (mHasFocus)
+        if (index >= 0)
+            mCentralWidget->setCurrentIndex(index);
+        else if (mCentralWidget)
         {
-            central->show();
-#if defined(Q_OS_ANDROID) && defined(QT5_LINUX)
-            _freezeWorkaround();
-#endif
+            index = mCentralWidget->addWidget(central);
+            mCentralWidget->setCurrentIndex(index);
+            MSG_DEBUG("Page widget " << handleToString(handle) << " was added at index " << index);
         }
 
         MSG_DEBUG("Background set");
@@ -3441,16 +3917,19 @@ void MainWindow::dropPage(ulong handle)
     draw_mutex.lock();
     DECL_TRACER("MainWindow::dropPage(ulong handle)");
 
-    if (!gObject)
-    {
-        MSG_ERROR(_NO_OBJECT);
-        draw_mutex.unlock();
-        return;
-    }
+    MSG_PROTOCOL("Dropping page " << handleToString(handle));
 
-    MSG_PROTOCOL("Dropping page " << TObject::handleToString(handle));
-    gObject->removeAllChilds(handle);
-    gObject->removeObject(handle);
+    TObject::OBJECT_t *obj = findObject(handle);
+
+    removeAllChilds(handle);
+
+    if (obj)
+    {
+        obj->object.widget->setHidden(true);
+    }
+    else
+        removeObject(handle);
+
     draw_mutex.unlock();
 }
 
@@ -3459,18 +3938,11 @@ void MainWindow::dropSubPage(ulong handle)
     draw_mutex.lock();
     DECL_TRACER("MainWindow::dropSubPage(ulong handle)");
 
-    if (!gObject)
-    {
-        MSG_ERROR(_NO_OBJECT);
-        draw_mutex.unlock();
-        return;
-    }
-
-    TObject::OBJECT_t *obj = gObject->findObject(handle);
+    TObject::OBJECT_t *obj = findObject(handle);
 
     if (!obj)
     {
-        MSG_WARNING("Object " << TObject::handleToString(handle) << " does not exist. Ignoring!");
+        MSG_WARNING("Object " << handleToString(handle) << " does not exist. Ignoring!");
         draw_mutex.unlock();
         return;
     }
@@ -3481,8 +3953,8 @@ void MainWindow::dropSubPage(ulong handle)
         return;
     }
 
-    MSG_PROTOCOL("Dropping subpage " << TObject::handleToString(handle));
-    gObject->removeAllChilds(handle);
+    MSG_PROTOCOL("Dropping subpage " << handleToString(handle));
+    removeAllChilds(handle);
     obj->aniDirection = false;
 
     if (gPageManager && gPageManager->isSetupActive())
@@ -3493,11 +3965,57 @@ void MainWindow::dropSubPage(ulong handle)
 
     if (obj->animate.hideEffect == SE_NONE || !o)
     {
-        gObject->dropContent(obj);
-        gObject->removeObject(handle);
+        dropContent(obj);
+        removeObject(handle);
     }
 
     draw_mutex.unlock();
+}
+
+void MainWindow::listViewArea(ulong handle, ulong parent, Button::TButton& button, SUBVIEWLIST_T& list)
+{
+    DECL_TRACER("MainWindow::listViewArea(ulong handle, ulong parent, Button::TButton& button, SUBVIEWLIST_T& list)");
+    Q_UNUSED(handle);
+    Q_UNUSED(parent);
+    Q_UNUSED(button);
+    Q_UNUSED(list);
+/*
+    if (list.id <= 0 || list.items.empty())
+        return;
+
+    TObject::OBJECT_t *par = findObject(parent);
+
+    if (!par)
+    {
+        MSG_WARNING("Parent object " << handleToString(parent) << " does not exist. Ignoring!");
+        return;
+    }
+
+    TObject::OBJECT_t *obj = findObject(handle);
+
+    if (!obj)
+    {
+        obj = addObject();
+
+        if (!obj)
+        {
+            MSG_ERROR("Error adding another object!");
+            return;
+        }
+
+        obj->type = OBJ_SUBVIEW;
+        obj->width = scale(button.getWidth());
+        obj->height = scale(button.getHeight());
+        obj->object.scroll = new QScrollArea(par->object.widget);
+        obj->object.scroll->move(obj->width, obj->height);
+        obj->object.scroll->setFixedSize(scale(list.pgWidth), scale(list.pgHeight));
+        // Here we create the items as defined
+        QLabel *lb = new QLabel;
+        lb->setFixedSize(obj->width, obj->height);
+
+
+    }
+*/
 }
 
 void MainWindow::dropButton(ulong handle)
@@ -3505,18 +4023,11 @@ void MainWindow::dropButton(ulong handle)
     draw_mutex.lock();
     DECL_TRACER("MainWindow::dropButton(ulong handle)");
 
-    if (!gObject)
-    {
-        MSG_ERROR(_NO_OBJECT);
-        draw_mutex.unlock();
-        return;
-    }
-
-    TObject::OBJECT_t *obj = gObject->findObject(handle);
+    TObject::OBJECT_t *obj = findObject(handle);
 
     if (!obj)
     {
-        MSG_WARNING("Object " << TObject::handleToString(handle) << " does not exist. Ignoring!");
+        MSG_WARNING("Object " << handleToString(handle) << " does not exist. Ignoring!");
         draw_mutex.unlock();
         return;
     }
@@ -3531,14 +4042,16 @@ void MainWindow::dropButton(ulong handle)
     {
         obj->object.label->close();
         obj->object.label = nullptr;
+        obj->invalid = true;
     }
     else if ((obj->type == TObject::OBJ_INPUT || obj->type == TObject::OBJ_TEXT) && obj->object.plaintext)
     {
         obj->object.plaintext->close();
         obj->object.plaintext = nullptr;
+        obj->invalid = true;
     }
 
-    gObject->removeObject(handle);
+    removeObject(handle);
     draw_mutex.unlock();
 }
 
@@ -3560,16 +4073,9 @@ void MainWindow::playVideo(ulong handle, ulong parent, int left, int top, int wi
     draw_mutex.lock();
     DECL_TRACER("MainWindow::playVideo(ulong handle, const string& url, const string& user, const string& pw))");
 
-    if (!gObject)
-    {
-        MSG_ERROR(_NO_OBJECT);
-        draw_mutex.unlock();
-        return;
-    }
-
-    TObject::OBJECT_t *obj = gObject->findObject(handle);
-    TObject::OBJECT_t *par = gObject->findObject(parent);
-    MSG_TRACE("Processing button " << TObject::handleToString(handle) << " from parent " << TObject::handleToString(parent));
+    TObject::OBJECT_t *obj = findObject(handle);
+    TObject::OBJECT_t *par = findObject(parent);
+    MSG_TRACE("Processing button " << handleToString(handle) << " from parent " << handleToString(parent));
 
     if (!par)
     {
@@ -3581,7 +4087,7 @@ void MainWindow::playVideo(ulong handle, ulong parent, int left, int top, int wi
     if (!obj)
     {
         MSG_DEBUG("Adding new video object ...");
-        obj = gObject->addObject();
+        obj = addObject();
 
         if (!obj)
         {
@@ -3613,9 +4119,9 @@ void MainWindow::playVideo(ulong handle, ulong parent, int left, int top, int wi
         obj->object.vwidget->installEventFilter(this);
     }
     else
-        MSG_DEBUG("Object " << TObject::handleToString(handle) << " of type " << gObject->objectToString(obj->type) << " found!");
+        MSG_DEBUG("Object " << handleToString(handle) << " of type " << objectToString(obj->type) << " found!");
 
-#if defined(QT5_LINUX) && !defined(QT6_LINUX)
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QMediaPlaylist *playlist = new QMediaPlaylist;
 #endif
     QUrl qurl(url.c_str());
@@ -3626,11 +4132,11 @@ void MainWindow::playVideo(ulong handle, ulong parent, int left, int top, int wi
     if (!pw.empty())
         qurl.setPassword(pw.c_str());
 
-#if defined(QT5_LINUX) && !defined(QT6_LINUX)
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     playlist->addMedia(qurl);
 #endif
     obj->player = new QMediaPlayer;
-#if defined(QT5_LINUX) && !defined(QT6_LINUX)
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     obj->player->setPlaylist(playlist);
 #else
     obj->player->setSource(qurl);
@@ -3639,29 +4145,18 @@ void MainWindow::playVideo(ulong handle, ulong parent, int left, int top, int wi
 
     obj->object.vwidget->show();
     obj->player->play();
+    draw_mutex.unlock();
 }
 
-void MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, int height, int frame, size_t pixline)
+void MainWindow::inputText(Button::TButton& button, QByteArray buf, int width, int height, int frame, size_t pixline)
 {
-    DECL_TRACER("MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, int height, int frame, size_t pixline)");
+    DECL_TRACER("MainWindow::inputText(Button::TButton& button, QByteArray buf, int width, int height, int frame, size_t pixline)");
 
-    if (!gObject)
-    {
-        MSG_ERROR(_NO_OBJECT);
-        return;
-    }
-
-    if (!button)
-    {
-        MSG_WARNING("No valid button!");
-        return;
-    }
-
-    ulong handle = button->getHandle();
-    ulong parent = button->getParent();
-    TObject::OBJECT_t *obj = gObject->findObject(handle);
-    TObject::OBJECT_t *par = gObject->findObject(parent);
-    MSG_TRACE("Processing button " << TObject::handleToString(handle) << " from parent " << gObject->handleToString(parent) << " with frame width " << frame);
+    ulong handle = button.getHandle();
+    ulong parent = button.getParent();
+    TObject::OBJECT_t *obj = findObject(handle);
+    TObject::OBJECT_t *par = findObject(parent);
+    MSG_TRACE("Processing button " << handleToString(handle) << " from parent " << handleToString(parent) << " with frame width " << frame);
 
     if (!par)
     {
@@ -3669,15 +4164,18 @@ void MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, i
         return;
     }
 
+    draw_mutex.lock();
+
     if (!obj)
     {
         MSG_DEBUG("Adding new input object ...");
-        obj = gObject->addObject();
+        obj = addObject();
 
         if (!obj)
         {
             MSG_ERROR("Error creating an input object!");
             TError::setError();
+            draw_mutex.unlock();
             return;
         }
 
@@ -3688,41 +4186,38 @@ void MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, i
         {
             obj->width = scaleSetup(width);
             obj->height = scaleSetup(height);
-            obj->left = scaleSetup(button->getLeftPosition());
-            obj->top = scaleSetup(button->getTopPosition());
+            obj->left = scaleSetup(button.getLeftPosition());
+            obj->top = scaleSetup(button.getTopPosition());
         }
         else
         {
             obj->width = scale(width);
             obj->height = scale(height);
-            obj->left = scale(button->getLeftPosition());
-            obj->top = scale(button->getTopPosition());
+            obj->left = scale(button.getLeftPosition());
+            obj->top = scale(button.getTopPosition());
         }
 
-        string text = button->getText();
-        string mask = button->getInputMask();
+        string text = button.getText();
+        string mask = button.getInputMask();
 
-        if (par->type == TObject::OBJ_PAGE)
-            obj->object.plaintext = new TQEditLine(text, centralWidget(), button->isMultiLine());
-        else
-            obj->object.plaintext = new TQEditLine(text, par->object.widget, button->isMultiLine());
-
+        obj->object.plaintext = new TQEditLine(text, par->object.widget, button.isMultiLine());
+        obj->object.plaintext->setObjectName(string("EditLine_") + handleToString(handle));
         obj->object.plaintext->setHandle(handle);
-        obj->object.plaintext->setFixedSize(obj->width, obj->height);
         obj->object.plaintext->move(obj->left, obj->top);
+        obj->object.plaintext->setFixedSize(obj->width, obj->height);
         obj->object.plaintext->setPadding(frame, frame, frame, frame);
-        obj->object.plaintext->setWordWrapMode(button->getTextWordWrap());
-        obj->object.plaintext->setPasswordChar(button->getPasswordChar());
+        obj->object.plaintext->setWordWrapMode(button.getTextWordWrap());
+        obj->object.plaintext->setPasswordChar(button.getPasswordChar());
         obj->wid = obj->object.plaintext->winId();
 
         if (gPageManager->isSetupActive())
         {
             int ch = 0;
 
-            if (button->getAddressPort() == 0 && button->getAddressChannel() > 0)
-                ch = button->getAddressChannel();
-            else if (button->getChannelPort() == 0 && button->getChannelNumber() > 0)
-                ch = button->getChannelNumber();
+            if (button.getAddressPort() == 0 && button.getAddressChannel() > 0)
+                ch = button.getAddressChannel();
+            else if (button.getChannelPort() == 0 && button.getChannelNumber() > 0)
+                ch = button.getChannelNumber();
 
             switch(ch)
             {
@@ -3745,6 +4240,7 @@ void MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, i
         {
             MSG_ERROR("No image!");
             TError::setError();
+            draw_mutex.unlock();
             return;
         }
 
@@ -3760,7 +4256,7 @@ void MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, i
             pix.convertFromImage(img);
 
         // Load the font
-        FONT_T font = button->getFont();
+        FONT_T font = button.getFont();
         vector<string> fontList = TFont::getFontPathList();
         vector<string>::iterator iter;
         string ffile;
@@ -3779,6 +4275,7 @@ void MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, i
         if (ffile.empty())
         {
             MSG_ERROR("Font " << font.file << " doesn't exists!");
+            draw_mutex.unlock();
             return;
         }
 
@@ -3791,7 +4288,7 @@ void MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, i
 
         QFont ft;
         ft.setFamily(font.name.c_str());
-        int eighty = (int)((double)button->getHeight() / 100.0 * 85.0);
+        int eighty = (int)((double)button.getHeight() / 100.0 * 85.0);
 
         if (gPageManager && gPageManager->isSetupActive())
             ft.setPixelSize(scaleSetup(eighty - frame * 2));
@@ -3800,7 +4297,7 @@ void MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, i
 
         MSG_DEBUG("Using font \"" << font.name << "\" with size " << font.size << "px.");
 
-        switch (button->getFontStyle())
+        switch (button.getFontStyle())
         {
             case FONT_BOLD:     ft.setBold(true); break;
             case FONT_ITALIC:   ft.setItalic(true); break;
@@ -3815,8 +4312,8 @@ void MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, i
         }
 
         QPalette palette;
-        TColor::COLOR_T textColor = TColor::getAMXColor(button->getTextColor());
-        TColor::COLOR_T fillColor = TColor::getAMXColor(button->getFillColor());
+        TColor::COLOR_T textColor = TColor::getAMXColor(button.getTextColor());
+        TColor::COLOR_T fillColor = TColor::getAMXColor(button.getFillColor());
         QColor txcolor(QColor::fromRgba(qRgba(textColor.red, textColor.green, textColor.blue, textColor.alpha)));
         QColor cfcolor(QColor::fromRgba(qRgba(fillColor.red, fillColor.green, fillColor.blue, fillColor.alpha)));
         palette.setColor(QPalette::Base, cfcolor);
@@ -3830,41 +4327,30 @@ void MainWindow::inputText(Button::TButton* button, QByteArray buf, int width, i
     }
     else
     {
-        MSG_DEBUG("Object " << TObject::handleToString(handle) << " of type " << gObject->objectToString(obj->type) << " found!");
+        MSG_DEBUG("Object " << handleToString(handle) << " of type " << objectToString(obj->type) << " found!");
 
-        string text = button->getText();
-        string mask = button->getInputMask();
+        string text = button.getText();
+        string mask = button.getInputMask();
         obj->object.plaintext->setText(text);
 
         if (!mask.empty())
             obj->object.plaintext->setInputMask(convertMask(mask));
 
-        gObject->cleanMarked();     // We want to be sure to have no dead entries.
         obj->object.plaintext->show();
     }
+
+    draw_mutex.unlock();
 }
 
-void MainWindow::listBox(Button::TButton* button, QByteArray buffer, int width, int height, int frame, size_t pixline)
+void MainWindow::listBox(Button::TButton& button, QByteArray buffer, int width, int height, int frame, size_t pixline)
 {
-    DECL_TRACER("MainWindow::listBox(Button::TButton* button, QByteArray buffer, int width, int height, int frame, size_t pixline)");
+    DECL_TRACER("MainWindow::listBox(Button::TButton& button, QByteArray buffer, int width, int height, int frame, size_t pixline)");
 
-    if (!gObject)
-    {
-        MSG_ERROR(_NO_OBJECT);
-        return;
-    }
-
-    if (!button)
-    {
-        MSG_WARNING("No valid button!");
-        return;
-    }
-
-    ulong handle = button->getHandle();
-    ulong parent = button->getParent();
-    TObject::OBJECT_t *obj = gObject->findObject(handle);
-    TObject::OBJECT_t *par = gObject->findObject(parent);
-    MSG_TRACE("Processing list " << TObject::handleToString(handle) << " from parent " << gObject->handleToString(parent) << " with frame width " << frame);
+    ulong handle = button.getHandle();
+    ulong parent = button.getParent();
+    TObject::OBJECT_t *obj = findObject(handle);
+    TObject::OBJECT_t *par = findObject(parent);
+    MSG_TRACE("Processing list " << handleToString(handle) << " from parent " << handleToString(parent) << " with frame width " << frame);
 
     if (!par)
     {
@@ -3875,7 +4361,7 @@ void MainWindow::listBox(Button::TButton* button, QByteArray buffer, int width, 
     if (!obj)
     {
         MSG_DEBUG("Adding new list object ...");
-        obj = gObject->addObject();
+        obj = addObject();
 
         if (!obj)
         {
@@ -3886,33 +4372,33 @@ void MainWindow::listBox(Button::TButton* button, QByteArray buffer, int width, 
 
         obj->type = TObject::OBJ_LIST;
         obj->handle = handle;
-        obj->rows = button->getListNumRows();
-        obj->cols = button->getListNumCols();
+        obj->rows = button.getListNumRows();
+        obj->cols = button.getListNumCols();
 
         if (gPageManager && gPageManager->isSetupActive())
         {
             obj->width = scaleSetup(width);
             obj->height = scaleSetup(height);
-            obj->left = scaleSetup(button->getLeftPosition());
-            obj->top = scaleSetup(button->getTopPosition());
+            obj->left = scaleSetup(button.getLeftPosition());
+            obj->top = scaleSetup(button.getTopPosition());
         }
         else
         {
             obj->width = scale(width);
             obj->height = scale(height);
-            obj->left = scale(button->getLeftPosition());
-            obj->top = scale(button->getTopPosition());
+            obj->left = scale(button.getLeftPosition());
+            obj->top = scale(button.getTopPosition());
         }
 
-        vector<string> listContent = button->getListContent();
+        vector<string> listContent = button.getListContent();
 
         if (par->type == TObject::OBJ_PAGE)
-            obj->object.list = new QListWidget(centralWidget());
+            obj->object.list = new QListWidget(par->object.widget ? par->object.widget : centralWidget());
         else
             obj->object.list = new QListWidget(par->object.widget);
 
-        obj->object.list->setFixedSize(obj->width, obj->height);
         obj->object.list->move(obj->left, obj->top);
+        obj->object.list->setFixedSize(obj->width, obj->height);
         connect(obj->object.list, &QListWidget::currentItemChanged, this, &MainWindow::onTListCallbackCurrentItemChanged);
 
         if (!buffer.size() || pixline == 0)
@@ -3934,7 +4420,7 @@ void MainWindow::listBox(Button::TButton* button, QByteArray buffer, int width, 
             pix.convertFromImage(img);
 
         // Load the font
-        FONT_T font = button->getFont();
+        FONT_T font = button.getFont();
         vector<string> fontList = TFont::getFontPathList();
         vector<string>::iterator iter;
         string ffile;
@@ -3973,7 +4459,7 @@ void MainWindow::listBox(Button::TButton* button, QByteArray buffer, int width, 
 
         MSG_DEBUG("Using font \"" << font.name << "\" with size " << font.size << "pt.");
 
-        switch (button->getFontStyle())
+        switch (button.getFontStyle())
         {
             case FONT_BOLD:     ft.setBold(true); break;
             case FONT_ITALIC:   ft.setItalic(true); break;
@@ -3988,8 +4474,8 @@ void MainWindow::listBox(Button::TButton* button, QByteArray buffer, int width, 
         }
 
         QPalette palette;
-        TColor::COLOR_T textColor = TColor::getAMXColor(button->getTextColor());
-        TColor::COLOR_T fillColor = TColor::getAMXColor(button->getFillColor());
+        TColor::COLOR_T textColor = TColor::getAMXColor(button.getTextColor());
+        TColor::COLOR_T fillColor = TColor::getAMXColor(button.getFillColor());
         QColor txcolor(QColor::fromRgba(qRgba(textColor.red, textColor.green, textColor.blue, textColor.alpha)));
         QColor cfcolor(QColor::fromRgba(qRgba(fillColor.red, fillColor.green, fillColor.blue, fillColor.alpha)));
         palette.setColor(QPalette::Base, cfcolor);
@@ -4027,7 +4513,7 @@ void MainWindow::listBox(Button::TButton* button, QByteArray buffer, int width, 
         obj->object.list->show();
     }
     else
-        MSG_DEBUG("Object " << TObject::handleToString(handle) << " of type " << gObject->objectToString(obj->type) << " found!");
+        MSG_DEBUG("Object " << handleToString(handle) << " of type " << objectToString(obj->type) << " found!");
 }
 
 void MainWindow::showKeyboard(const std::string& init, const std::string& prompt, bool priv)
@@ -4149,12 +4635,12 @@ void MainWindow::playSound(const string& file)
     if (!mMediaPlayer)
     {
         mMediaPlayer = new QMediaPlayer;
-#ifdef QT6_LINUX
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
         mAudioOutput = new QAudioOutput;
 #endif
     }
 
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     mMediaPlayer->setMedia(QUrl::fromLocalFile(file.c_str()));
     mMediaPlayer->setVolume(calcVolume(TConfig::getSystemVolume()));
 #else
@@ -4176,7 +4662,7 @@ void MainWindow::muteSound(bool state)
 {
     DECL_TRACER("MainWindow::muteSound(bool state)");
 
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     if (mMediaPlayer)
         mMediaPlayer->setMuted(state);
 #else
@@ -4195,17 +4681,16 @@ void MainWindow::playShowList()
     {
         ulong handle = 0;
         ulong parent = 0;
-        unsigned char *buffer;
-        int pixline = 0;
         int left = 0;
         int top = 0;
         int width = 0;
         int height = 0;
         int frame = 0;
-        unsigned char *image;
-        size_t size = 0;
-        size_t rowBytes = 0;
+        TBitmap image;
         ulong color = 0;
+        int space{0};
+        bool vertical = false;
+        TColor::COLOR_T fillColor;
 #ifndef _OPAQUE_SKIA_
         int opacity = 255;
 #endif
@@ -4220,39 +4705,25 @@ void MainWindow::playShowList()
         {
             case ET_BACKGROUND:
 #ifdef _OPAQUE_SKIA_
-                if (getBackground(&handle, &image, &size, &rowBytes, &width, &height, &color))
+                if (getBackground(&handle, &image, &width, &height, &color))
 #else
-                if (getBackground(&handle, &image, &size, &rowBytes, &width, &height, &color, &opacity))
+                if (getBackground(&handle, &image, &width, &height, &color, &opacity))
 #endif
                 {
-                    QByteArray buf;
-
-                    if (image && size > 0)
-                        buf.insert(0, (const char *)image, size);
-
-                    MSG_PROTOCOL("Replay: BACKGROUND of object " << TObject::handleToString(handle));
+                    MSG_PROTOCOL("Replay: BACKGROUND of object " << handleToString(handle));
 #ifdef _OPAQUE_SKIA_
-                    emit sigSetBackground(handle, buf, rowBytes, width, height, color);
+                    emit sigSetBackground(handle, image, width, height, color);
 #else
-                    emit sigSetBackground(handle, buf, rowBytes, width, height, color, opacity);
+                    emit sigSetBackground(handle, image, width, height, color, opacity);
 #endif
                 }
             break;
 
             case ET_BUTTON:
-                if (getButton(&handle, &parent, &buffer, &pixline, &left, &top, &width, &height))
+                if (getButton(&handle, &parent, &image, &left, &top, &width, &height))
                 {
-                    QByteArray buf;
-
-                    if (buffer && pixline > 0)
-                    {
-                        size_t size = width * height * (pixline / width);
-                        MSG_DEBUG("Buffer size=" << size << ", width=" << width << ", height=" << height << ", left=" << left << ", top=" << top);
-                        buf.insert(0, (const char *)buffer, size);
-                    }
-
-                    MSG_PROTOCOL("Replay: BUTTON object " << TObject::handleToString(handle));
-                    emit sigDisplayButton(handle, parent, buf, width, height, pixline, left, top);
+                    MSG_PROTOCOL("Replay: BUTTON object " << handleToString(handle));
+                    emit sigDisplayButton(handle, parent, image, width, height, left, top);
                 }
             break;
 
@@ -4263,19 +4734,19 @@ void MainWindow::playShowList()
 
                     if (bm.buffer && bm.rowBytes > 0)
                     {
-                        size_t size = bm.width * bm.height * (bm.rowBytes / bm.width);
-                        buf.insert(0, (const char *)bm.buffer, size);
+                        size_t s = bm.width * bm.height * (bm.rowBytes / bm.width);
+                        buf.insert(0, (const char *)bm.buffer, s);
                     }
 
-                    MSG_PROTOCOL("Replay: INTEXT object " << TObject::handleToString(handle));
-                    emit sigInputText(button, buf, bm.width, bm.height, bm.rowBytes, frame);
+                    MSG_PROTOCOL("Replay: INTEXT object " << handleToString(handle));
+                    emit sigInputText(*button, buf, bm.width, bm.height, bm.rowBytes, frame);
                 }
             break;
 
             case ET_PAGE:
                 if (getPage(&handle, &width, &height))
                 {
-                    MSG_PROTOCOL("Replay: PAGE object " << TObject::handleToString(handle));
+                    MSG_PROTOCOL("Replay: PAGE object " << handleToString(handle));
 
                     if (isDeleted())
                         emit sigDropPage(handle);
@@ -4287,7 +4758,7 @@ void MainWindow::playShowList()
             case ET_SUBPAGE:
                 if (getSubPage(&handle, &parent, &left, &top, &width, &height, &animate))
                 {
-                    MSG_PROTOCOL("Replay: SUBPAGE object " << TObject::handleToString(handle));
+                    MSG_PROTOCOL("Replay: SUBPAGE object " << handleToString(handle));
 
                     if (isDeleted())
                         emit sigDropSubPage(handle);
@@ -4296,10 +4767,18 @@ void MainWindow::playShowList()
                 }
             break;
 
+            case ET_SUBVIEW:
+                if (getViewButton(&handle, &parent, &vertical, &image, &left, &top, &width, &height, &space, &fillColor))
+                {
+                    MSG_PROTOCOL("Replay: SUBVIEW object " << handleToString(handle));
+                    emit sigDisplayViewButton(handle, parent, vertical, image, width, height, left, top, space, fillColor);
+                }
+            break;
+
             case ET_VIDEO:
                 if (getVideo(&handle, &parent, &left, &top, &width, &height, &url, &user, &pw))
                 {
-                    MSG_PROTOCOL("Replay: VIDEO object " << TObject::handleToString(handle));
+                    MSG_PROTOCOL("Replay: VIDEO object " << handleToString(handle));
                     emit sigPlayVideo(handle, parent, left, top, width, height, url, user, pw);
                 }
             break;
@@ -4354,6 +4833,8 @@ int MainWindow::scaleSetup(int value)
 
 bool MainWindow::isScaled()
 {
+    DECL_TRACER("MainWindow::isScaled()");
+
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
     double s = gScale;
 #else
@@ -4382,14 +4863,23 @@ void MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
         return;
     }
 
+    if (obj->object.widget)
+    {
+        QObjectList list = obj->object.widget->children();
+
+        if (list.count() > 50)
+        {
+            MSG_WARNING("More that 50 childs in widget " << handleToString(obj->handle) << "! By a total of " << list.count() << " objects I refuse to animate the widget!");
+            return;
+        }
+    }
+
     SHOWEFFECT_t effect;
     int scLeft = obj->left;
     int scTop = obj->top;
     int scWidth = obj->width;
     int scHeight = obj->height;
     mLastObject = nullptr;
-
-    obj->animate = ani;
 
     if (in)
         effect = ani.showEffect;
@@ -4401,14 +4891,20 @@ void MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
 
     if (effect == SE_FADE)
     {
-        MSG_DEBUG("Fading object " << TObject::handleToString(obj->handle) << (in ? " IN" : " OUT"));
+        MSG_DEBUG("Fading object " << handleToString(obj->handle) << (in ? " IN" : " OUT"));
         QGraphicsOpacityEffect *effect = new QGraphicsOpacityEffect(obj->object.widget);
-        obj->object.widget->setGraphicsEffect(effect);
-        obj->animation = new QPropertyAnimation(effect, "opacity");
+
+        if (effect)
+        {
+            if (obj->object.widget)
+                obj->object.widget->setGraphicsEffect(effect);
+
+            obj->animation = new QPropertyAnimation(effect, "opacity");
+        }
     }
     else
     {
-        MSG_DEBUG("Moving object " << TObject::handleToString(obj->handle) << (in ? " IN" : " OUT"));
+        MSG_DEBUG("Moving object " << handleToString(obj->handle) << (in ? " IN" : " OUT"));
         obj->animation = new QPropertyAnimation(obj->object.widget);
         obj->animation->setTargetObject(obj->object.widget);
     }
@@ -4507,8 +5003,12 @@ void MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
         case SE_FADE:
             if (in)
             {
-                obj->object.widget->setWindowOpacity(0.0);
-                obj->object.widget->show();
+                if (obj->object.widget)
+                {
+                    obj->object.widget->setWindowOpacity(0.0);
+                    obj->object.widget->show();
+                }
+
                 obj->animation->setStartValue(0.0);
                 obj->animation->setEndValue(1.0);
             }
@@ -4551,6 +5051,69 @@ void MainWindow::runEvents()
     DECL_TRACER("MainWindow::runEvents()");
 
     QApplication::processEvents();
+}
+
+void MainWindow::onSubViewItemClicked(ulong handle, bool pressed)
+{
+    DECL_TRACER("MainWindow::onSubViewItemClicked(ulong handle)");
+
+    if (!handle)
+        return;
+
+    // Create a thread and call the base program function.
+    // We create a thread to not interrupt the QT framework longer then
+    // necessary.
+    if (gPageManager)
+    {
+        try
+        {
+            std::thread thr = std::thread([=] { gPageManager->mouseEvent(handle, pressed); });
+            thr.detach();
+        }
+        catch (std::exception& e)
+        {
+            MSG_ERROR("Couldn't start a thread to handle a mouse click!");
+        }
+    }
+}
+
+QPixmap MainWindow::scaleImage(QPixmap& pix)
+{
+    DECL_TRACER("MainWindow::scaleImage(QPixmap& pix)");
+
+    int width = scale(pix.width());
+    int height = scale(pix.height());
+
+    return pix.scaled(width, height);
+}
+
+QPixmap MainWindow::scaleImage(unsigned char* buffer, int width, int height, int pixline)
+{
+    DECL_TRACER("MainWindow::scaleImage(unsigned char* buffer, int width, int height, int pixline)");
+
+    QImage img(buffer, width, height, pixline, QImage::Format_ARGB32);  // Original size
+
+    if (img.isNull() || !img.valid(width-1, height-1))
+    {
+        MSG_ERROR("Unable to create a valid image!");
+        return QPixmap();
+    }
+
+    QSize size(scale(width), scale(height));
+    QPixmap pixmap;
+    bool ret = false;
+
+    if (isScaled())
+        ret = pixmap.convertFromImage(img.scaled(size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation)); // Scaled size
+    else
+        ret = pixmap.convertFromImage(img);
+
+    if (!ret || pixmap.isNull())
+    {
+        MSG_ERROR("Unable to create a pixmap out of an image!");
+    }
+
+    return pixmap;
 }
 
 #ifndef QT_NO_SESSIONMANAGER

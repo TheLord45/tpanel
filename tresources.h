@@ -40,7 +40,11 @@
 #include <include/core/SkData.h>
 #endif
 
-#include "terror.h"
+//#include "terror.h"
+
+#ifndef ulong
+typedef unsigned long ulong;
+#endif
 
 class SkBitmap;
 class SkData;
@@ -93,6 +97,8 @@ std::vector<std::string> StrSplit(const std::string& str, const std::string& sep
 std::string UTF8ToCp1250(const std::string& str);
 std::string cp1250ToUTF8(const std::string& str);
 std::string latin1ToUTF8(const std::string& str);
+std::string intToString(int num);
+std::string ReplaceString(const std::string subject, const std::string& search, const std::string& replace);
 
 void *renew(char **mem, size_t old_size, size_t new_size);
 std::vector<std::string> splitLine(const std::string& str);
@@ -115,6 +121,7 @@ bool isTrue(const std::string& value);
 bool isFalse(const std::string& value);
 bool isNumeric(const std::string& str, bool blank=false);
 bool isBigEndian();
+std::string handleToString(ulong handle);
 
 static inline std::string &ltrim(std::string &s)
 {

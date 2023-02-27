@@ -44,11 +44,9 @@ TQtPhone::TQtPhone(QWidget* parent)
     ui->label_Status->setText("");
     ui->toolButton_Call->setText("");
     ui->toolButton_Call->setIcon(QIcon(":images/pickup.png"));
-
-//    connect(ui->pushButton_Clear, &QAbstractButton::pressed, this, &TQtPhone::on_pushButton_Clear_clicked);
-//    connect(ui->toolButton_Call, &QAbstractButton::pressed, this, &TQtPhone::on_toolButton_Call_clicked);
-
-//    connect(ui->pushButton_Exit, &QAbstractButton::pressed, this, &TQtPhone::on_pushButton_Exit_clicked);
+#ifdef Q_OS_IOS
+    setAttribute(Qt::WA_ContentsMarginsRespectsSafeArea, true);
+#endif
 }
 
 TQtPhone::~TQtPhone()

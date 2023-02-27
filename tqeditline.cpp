@@ -27,7 +27,7 @@
 #include <QEvent>
 #include <QKeyEvent>
 #include <QApplication>
-#ifdef QT6_LINUX
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 #include <QAnyStringView>
 #endif
 using std::string;
@@ -64,9 +64,9 @@ void TQEditLine::init()
 {
     DECL_TRACER("TQEditLine::init()");
 
-    QWidget::setAttribute(Qt::WA_DeleteOnClose);
-    QWidget::setAttribute(Qt::WA_LayoutOnEntireRect);
-    QWidget::setAttribute(Qt::WA_LayoutUsesWidgetRect);
+//    QWidget::setAttribute(Qt::WA_DeleteOnClose);
+//    QWidget::setAttribute(Qt::WA_LayoutOnEntireRect);
+//    QWidget::setAttribute(Qt::WA_LayoutUsesWidgetRect);
 
     if (!mLayout)
     {
@@ -124,6 +124,22 @@ void TQEditLine::setText(string &text)
         mTextArea->setText(text.c_str());
     else if (!mMultiline && mEdit)
         mEdit->setText(text.c_str());
+}
+
+void TQEditLine::setObjectName(const string& name)
+{
+    DECL_TRACER("TQEditLine::setObjectName(const string& name)");
+
+    if (name.empty())
+        return;
+
+    if (mMultiline && mTextArea)
+        mTextArea->setObjectName(name.c_str());
+    else if (!mMultiline && mEdit)
+        mEdit->setObjectName(name.c_str());
+
+    if (mLayout)
+        mLayout->setObjectName(QString("Layout:%1").arg(name.c_str()));
 }
 
 void TQEditLine::setPasswordChar(uint c)

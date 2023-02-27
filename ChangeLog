@@ -3,6 +3,21 @@ ChangeLog
 
 Release: 1.3.3
 ===============================================================================
+2023-02-27 Added click accepts to subviw lists.
+
+2013-02-12 Added subview lists. The list is displayed but doesn't accept
+           clicks currently.
+
+2023-01-19 System keyboard keys for a keyboard are working now.
+
+2023-01-12 Refactored the handling of the central widget of the Qt framework.
+           Added a stacked widget to handle pages.
+           Fixed the mouse coordinates for IOS by taking a possible notch into
+           consideration.
+
+2023-01-11 Removed the preprocessor variables QT5_LINUX and QT6_LINUX and
+           replaced them by a macro checking the Qt version.
+
 2023-01-07 Improved the colors for all plattforms.
            Improved the frames of subpages.
            Fixed some bugs in logging mechanism for Mac and Linux.

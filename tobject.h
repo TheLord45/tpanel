@@ -21,7 +21,7 @@
 
 #include <string>
 
-#include "tsubpage.h"
+#include "tpageinterface.h"
 #include "tqeditline.h"
 
 QT_BEGIN_NAMESPACE
@@ -33,6 +33,7 @@ class QMediaPlayer;
 class QVideoWidget;
 class QPropertyAnimation;
 class QListWidget;
+class TQScrollArea;
 QT_END_NAMESPACE
 
 class TObject
@@ -47,7 +48,8 @@ class TObject
             OBJ_TEXT,
             OBJ_INPUT,
             OBJ_LIST,
-            OBJ_VIDEO
+            OBJ_VIDEO,
+            OBJ_SUBVIEW
         }OBJECT_TYPE;
 
         typedef union _OBJ
@@ -57,6 +59,7 @@ class TObject
             QWidget *widget;                // For subpage
             TQEditLine *plaintext;          // For text input
             QListWidget *list;              // For lists
+            TQScrollArea *area;             // For scroll area
         }_OBJ;
 
         typedef struct OBJECT_t
@@ -71,6 +74,7 @@ class TObject
             int height{0};
             int rows{0};
             int cols{0};
+            bool invalid{true};
             QPropertyAnimation *animation{nullptr};
             ANIMATION_t animate;
             bool aniDirection{false};
@@ -97,13 +101,6 @@ class TObject
         void removeObject(ulong handle, bool drop=true);
         void invalidateAllObjects();
         void invalidateAllSubObjects(ulong handle);
-
-        static std::string handleToString(ulong handle)
-        {
-            ulong part1 = (handle >> 16) & 0x0000ffff;
-            ulong part2 = handle & 0x0000ffff;
-            return std::to_string(part1)+":"+std::to_string(part2);
-        }
 
         static std::string objectToString(OBJECT_TYPE o);
         void dropContent(OBJECT_t *obj, bool lock=true);

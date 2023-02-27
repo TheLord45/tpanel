@@ -490,7 +490,7 @@ bool TConfig::saveChannel(int channel)
 {
     DECL_TRACER("TConfig::saveChannel(int channel)");
 
-    if (channel < 10000 || channel > 12000)
+    if (channel < 10000 || channel > 20000)
         return false;
 
     if (mTemporary)

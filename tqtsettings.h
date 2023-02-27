@@ -20,7 +20,7 @@
 #define __TQTSETTINGS_H__
 
 #include <QDialog>
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 #include <QAudio>
 #endif
 

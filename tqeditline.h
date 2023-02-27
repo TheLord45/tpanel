@@ -37,6 +37,7 @@ class TQEditLine : public QWidget
         ~TQEditLine();
 
         void setText(std::string &text);
+        void setObjectName(const std::string& name);
         void setPasswordChar(uint c);
         std::string& getText() { return mText; }
         void setFixedSize(int w, int h);

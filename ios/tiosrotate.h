@@ -30,6 +30,7 @@ class TIOSRotate
         static void setAllowedOrientations(bool portrait) { mPortrait = portrait; }
         static bool getAllowedOrientation() { return mPortrait; }
         void automaticRotation(bool allow);
+        int getCurrentOrientation();
 
     private:
         bool isAutomaticRotation();

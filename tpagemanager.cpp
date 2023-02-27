@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,12 +16,14 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
+#include <QtGlobal>
+
 #include <vector>
 #include <thread>
 #include <mutex>
 
 #ifdef __ANDROID__
-#   ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 #       include <QtAndroidExtras/QAndroidJniObject>
 #       include <QtAndroidExtras/QtAndroid>
 #   else
@@ -70,11 +72,14 @@ namespace fs = std::filesystem;
 #include "tbutton.h"
 #include "tprjresources.h"
 #include "tresources.h"
-#include "tobject.h"
+#include "tresources.h"
 #include "tsystemsound.h"
 #include "tvalidatefile.h"
 #include "ttpinit.h"
 #include "tconfig.h"
+#ifdef Q_OS_IOS
+#include "ios/tiosbattery.h"
+#endif
 
 using std::vector;
 using std::string;
@@ -254,7 +259,7 @@ JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setNetlinxCha
     Q_UNUSED(clazz);
 
     if (channel >= 10000 && channel < 20000 && TConfig::getChannel() != channel)
-        TConfig::savePort(channel);
+        TConfig::saveChannel(channel);
 }
 
 JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setNetlinxType(JNIEnv *env, jclass clazz, jstring type)
@@ -718,10 +723,8 @@ TPageManager::TPageManager()
 
     if (!haveSurface)
     {
-        if (isValidFile(pp))
-            haveSurface = true;
-        else
-            haveSurface = tinit->reinitialize();
+        if (!isValidFile(pp))
+            tinit->reinitialize();
     }
     else
         tinit->makeSystemFiles();
@@ -1018,11 +1021,15 @@ TPageManager::TPageManager()
     REG_CMD(doLEVEL, "LEVEL");
     REG_CMD(doBLINK, "BLINK");
     REG_CMD(doVER, "^VER?");    // Return version string to master
+#ifndef _NOSIP_
     REG_CMD(doWCN, "^WCN?");    // Return SIP phone number
+#endif
     // TPControl commands
     REG_CMD(doTPCCMD, "TPCCMD");    // Profile related options
     REG_CMD(doTPCACC, "TPCACC");    // Device orientation
+#ifndef _NOSIP_
     REG_CMD(doTPCSIP, "TPCSIP");    // Show the built in SIP phone
+#endif
     // Virtual internal commands
     REG_CMD(doFTR, "#FTR");     // File transfer (virtual internal command)
 
@@ -1379,14 +1386,14 @@ void TPageManager::showSetup()
         if (fileList.size() > 0)
         {
             vector<TTPInit::FILELIST_t>::iterator iter;
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
             QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "clearSurfaces");
 #else
             QJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "clearSurfaces");
 #endif
             for (iter = fileList.begin(); iter != fileList.end(); ++iter)
             {
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
                 QAndroidJniObject str = QAndroidJniObject::fromString(iter->fname.c_str());
                 QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "addSurface", "(Ljava/lang/String;)V", str.object<jstring>());
 #else
@@ -1492,7 +1499,7 @@ int TPageManager::getSelectedRow(ulong handle)
         return subPg->getSelectedRow(handle);
     }
 
-    MSG_WARNING("Invalid handle " << TObject::handleToString(handle) << " detected!");
+    MSG_WARNING("Invalid handle " << handleToString(handle) << " detected!");
     return -1;
 }
 
@@ -1521,7 +1528,7 @@ string TPageManager::getSelectedItem(ulong handle)
         return subPg->getSelectedItem(handle);
     }
 
-    MSG_WARNING("Invalid handle " << TObject::handleToString(handle) << " detected!");
+    MSG_WARNING("Invalid handle " << handleToString(handle) << " detected!");
     return string();
 }
 
@@ -1880,7 +1887,11 @@ void TPageManager::regCallbackBatteryState(std::function<void (int, int)> callBa
         return;
 
     mBatteryCalls.insert(std::pair<int, std::function<void (int, int)> >(handle, callBatteryState));
+#ifdef Q_OS_IOS
+    mLastBatteryLevel = TIOSBattery::getBatteryLeft();
+    mLastBatteryState = TIOSBattery::getBatteryState();
 
+#endif
     if (mLastBatteryLevel > 0 || mLastBatteryState > 0)
         informBatteryStatus(mLastBatteryLevel, mLastBatteryState);
 }
@@ -2532,6 +2543,129 @@ bool TPageManager::readSubPage(int ID)
         return false;
 
     return true;
+}
+
+vector<TSubPage *> TPageManager::createSubViewList(int id)
+{
+    DECL_TRACER("TPageManager::createSubViewList(int id)");
+
+    vector<TSubPage *> subviews;
+
+    if (id <= 0)
+        return subviews;
+
+    if (!mPageList)
+    {
+        MSG_WARNING("Missing page list and because of this can't make a subview list!");
+        return subviews;
+    }
+
+    SUBVIEWLIST_T slist = mPageList->findSubViewList(id);
+
+    if (slist.id <= 0 || slist.items.empty())
+    {
+        if (slist.id <= 0)
+        {
+            MSG_WARNING("Found no subview list with ID " << id);
+        }
+        else
+        {
+            MSG_WARNING("Subview list " << id << " gas no items!");
+        }
+
+        return subviews;
+    }
+
+    vector<SUBVIEWITEM_T>::iterator iter;
+
+    for (iter = slist.items.begin(); iter != slist.items.end(); ++iter)
+    {
+        if (!haveSubPage(iter->pageID))
+        {
+            if (!readSubPage(iter->pageID))
+                return vector<TSubPage *>();
+        }
+
+        TSubPage *pg = getSubPage(iter->pageID);
+
+        if (pg)
+            subviews.push_back(pg);
+        else
+        {
+            MSG_DEBUG("No subpage with ID " << id);
+        }
+    }
+
+    return subviews;
+}
+
+void TPageManager::showSubViewList(int id, Button::TButton *bt)
+{
+    DECL_TRACER("TPageManager::showSubViewList(int id, Button::TButton *bt)");
+
+    vector<TSubPage *> subviews = createSubViewList(id);
+
+    if (subviews.empty() || !_addViewButtonItems || !_displayViewButton || !bt)
+    {
+        MSG_DEBUG("Number views: " << subviews.size() << (_addViewButtonItems ? ", addView" : ", NO addView") << (_displayViewButton ? " display" : " NO display"));
+        return;
+    }
+
+    MSG_DEBUG("Working on button " << handleToString(bt->getHandle()) << " (" << bt->getName() << ") with " << subviews.size() << " pages.");
+    TBitmap bm = bt->getLastBitmap();
+    TColor::COLOR_T fillColor = TColor::getAMXColor(bt->getFillColor());
+    ulong btHandle = bt->getHandle();
+    _displayViewButton(btHandle, bt->getParent(), bt->isSubViewVertical(), bm, bt->getWidth(), bt->getHeight(), bt->getTopPosition(), bt->getLeftPosition(), bt->getSubViewSpace(), fillColor);
+
+    vector<PGSUBVIEWITEM_T> items;
+    PGSUBVIEWITEM_T svItem;
+    PGSUBVIEWATOM_T svAtom;
+    vector<TSubPage *>::iterator iter;
+
+    for (iter = subviews.begin(); iter != subviews.end(); ++iter)
+    {
+        TSubPage *sub = *iter;
+
+        svItem.clear();
+        Button::TButton *button = sub->getFirstButton();
+        SkBitmap bitmap = sub->getBgImage();
+
+        svItem.handle = sub->getHandle();
+        svItem.parent = btHandle;
+        svItem.width = sub->getWidth();
+        svItem.height = sub->getHeight();
+        svItem.bgcolor = TColor::getAMXColor(sub->getFillColor());
+
+        if (!bitmap.empty())
+            svItem.image.setBitmap((unsigned char *)bitmap.getPixels(), bitmap.info().width(), bitmap.info().height(), bitmap.info().bytesPerPixel());
+
+        while (button)
+        {
+            button->drawButton(0, false);
+            svAtom.clear();
+            svAtom.handle = button->getHandle();
+            svAtom.parent = sub->getHandle();
+            svAtom.width = button->getWidth();
+            svAtom.height = button->getHeight();
+            svAtom.left = button->getLeftPosition();
+            svAtom.top = button->getTopPosition();
+            svAtom.bgcolor = TColor::getAMXColor(button->getFillColor());
+            Button::BITMAP_t bmap = button->getLastImage();
+
+            if (bmap.buffer)
+                svAtom.image.setBitmap(bmap.buffer, bmap.width, bmap.height, bmap.rowBytes / bmap.width);
+
+            svItem.atoms.push_back(svAtom);
+            button = sub->getNextButton();
+        }
+
+        items.push_back(svItem);
+    }
+
+    _addViewButtonItems(bt->getHandle(), items);
+
+    if (_pageFinished)
+        _pageFinished(bt->getHandle());
 }
 
 void TPageManager::updateActualPage()
@@ -3466,12 +3600,16 @@ void TPageManager::showSubPage(const string& name)
             if (!page)
             {
                 MSG_ERROR("No active page found! Internal error.");
+                END_TEMPORARY_LOG();
                 return;
             }
         }
 
         if (!haveSubPage(pg->getNumber()) && !page->addSubPage(pg))
+        {
+            END_TEMPORARY_LOG();
             return;
+        }
 
         pg->setZOrder(page->getNextZOrder());
 
@@ -3651,6 +3789,7 @@ void TPageManager::mouseEvent(int x, int y, bool pressed)
     TError::clear();
     int realX = x - mFirstLeftPixel;
     int realY = y - mFirstTopPixel;
+
     MSG_DEBUG("Mouse at " << realX << ", " << realY << ", state " << ((pressed) ? "PRESSED" : "RELEASED") << ", [ " << x << " | " << y << " ]");
 #ifdef _SCALE_SKIA_
     if (mScaleFactor != 1.0 && mScaleFactor > 0.0)
@@ -3677,15 +3816,15 @@ void TPageManager::mouseEvent(int x, int y, bool pressed)
         if (bt)
         {
             MSG_DEBUG("Button on page " << bt->getButtonIndex() << ": size: left=" << bt->getLeftPosition() << ", top=" << bt->getTopPosition() << ", width=" << bt->getWidth() << ", height=" << bt->getHeight());
-
-            if (TConfig::getSystemSoundState())
+/*
+            if (pressed && TConfig::getSystemSoundState())
             {
                 TSystemSound sysSound(TConfig::getSystemPath(TConfig::SOUNDS));
 
-                if (pressed && _playSound && sysSound.getSystemSoundState())
+                if (_playSound && sysSound.getSystemSoundState())
                     _playSound(sysSound.getTouchFeedbackSound());
             }
-
+*/
             bt->doClick(x - bt->getLeftPosition(), y - bt->getTopPosition(), pressed);
         }
 
@@ -3702,6 +3841,33 @@ void TPageManager::mouseEvent(int x, int y, bool pressed)
     subPage->doClick(realX - subPage->getLeft(), realY - subPage->getTop(), pressed);
 }
 
+void TPageManager::mouseEvent(ulong handle, bool pressed)
+{
+    DECL_TRACER("TPageManager::mouseEvent(ulong handle, bool pressed)");
+
+    if (!handle)
+        return;
+
+    int pageID = (handle >> 16) & 0x0000ffff;
+    int buttonID = (handle & 0x0000ffff);
+
+    if (pageID == 0 || buttonID == 0)
+        return;
+
+    TSubPage *subPage = getSubPage(pageID);
+
+    if (subPage)
+    {
+        Button::TButton *bt = subPage->getButton(buttonID);
+
+        if (bt)
+        {
+            MSG_DEBUG("Button on page " << pageID << ": " << bt->getButtonIndex());
+            bt->doClick(bt->getLeftPosition() + bt->getWidth() / 2, bt->getTopPosition() + bt->getHeight() / 2, pressed);
+        }
+    }
+}
+
 void TPageManager::inputButtonFinished(ulong handle, const std::string &content)
 {
     DECL_TRACER("TPageManager::inputButtonFinished(ulong handle, const std::string &content)");
@@ -3710,7 +3876,7 @@ void TPageManager::inputButtonFinished(ulong handle, const std::string &content)
 
     if (!bt)
     {
-        MSG_WARNING("Invalid button handle " << TObject::handleToString(handle));
+        MSG_WARNING("Invalid button handle " << handleToString(handle));
         return;
     }
 
@@ -3726,7 +3892,7 @@ void TPageManager::setTextToButton(ulong handle, const string& txt, bool redraw)
 
     if (!button)
     {
-        MSG_ERROR("No button with handle " << TObject::handleToString(handle) << " found!");
+        MSG_ERROR("No button with handle " << handleToString(handle) << " found!");
         return;
     }
 
@@ -3827,7 +3993,7 @@ vector<Button::TButton *> TPageManager::collectButtons(vector<TMap::MAP_T>& map)
 void TPageManager::initNetworkState()
 {
     DECL_TRACER("TPageManager::initNetworkState()");
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QAndroidJniObject activity = QtAndroid::androidActivity();
     QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/NetworkStatus", "Init", "(Landroid/app/Activity;)V", activity.object());
     activity.callStaticMethod<void>("org/qtproject/theosys/NetworkStatus", "InstallNetworkListener", "()V");
@@ -3841,7 +4007,7 @@ void TPageManager::initNetworkState()
 void TPageManager::stopNetworkState()
 {
     DECL_TRACER("TPageManager::stopNetworkState()");
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/NetworkStatus", "destroyNetworkListener", "()V");
 #else
     QJniObject::callStaticMethod<void>("org/qtproject/theosys/NetworkStatus", "destroyNetworkListener", "()V");
@@ -3851,7 +4017,7 @@ void TPageManager::stopNetworkState()
 void TPageManager::initBatteryState()
 {
     DECL_TRACER("TPageManager::initBatteryState()");
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QAndroidJniObject activity = QtAndroid::androidActivity();
     QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/BatteryState", "Init", "(Landroid/app/Activity;)V", activity.object());
 #else
@@ -3864,7 +4030,7 @@ void TPageManager::initBatteryState()
 void TPageManager::initPhoneState()
 {
     DECL_TRACER("TPageManager::initPhoneState()");
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QAndroidJniObject activity = QtAndroid::androidActivity();
     QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/PhoneCallState", "Init", "(Landroid/app/Activity;)V", activity.object());
 #else
@@ -3877,7 +4043,7 @@ void TPageManager::initPhoneState()
 void TPageManager::stopBatteryState()
 {
     DECL_TRACER("TPageManager::stopBatteryState()");
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/BatteryState", "destroyBatteryListener", "()V");
 #else
     QJniObject::callStaticMethod<void>("org/qtproject/theosys/BatteryState", "destroyBatteryListener", "()V");
@@ -3955,7 +4121,7 @@ void TPageManager::initOrientation()
     DECL_TRACER("TPageManager::initOrientation()");
 
     int rotate = getSettings()->getRotate();
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QAndroidJniObject activity = QtAndroid::androidActivity();
     QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "Init", "(Landroid/app/Activity;I)V", activity.object(), rotate);
 #else
@@ -3968,7 +4134,7 @@ void TPageManager::initOrientation()
 void TPageManager::enterSetup()
 {
     DECL_TRACER("TPageManager::enterSetup()");
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QAndroidJniObject activity = QtAndroid::androidActivity();
     QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "callSettings", "(Landroid/app/Activity;)V", activity.object());
 #else
@@ -4104,16 +4270,7 @@ void TPageManager::sendKeypad(const std::string& text)
 {
     DECL_TRACER("TPageManager::sendKeypad(const std::string& text)");
 
-    amx::ANET_SEND scmd;
-    scmd.port = 1;
-    scmd.channel = 0;
-    scmd.msg = UTF8ToCp1250(text);
-    scmd.MC = 0x008b;
-
-    if (gAmxNet)
-        gAmxNet->sendCommand(scmd);
-    else
-        MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+    sendKeyboard(text);
 }
 
 void TPageManager::sendString(uint handle, const std::string& text)
@@ -4124,7 +4281,7 @@ void TPageManager::sendString(uint handle, const std::string& text)
 
     if (!bt)
     {
-        MSG_WARNING("Button " << TObject::handleToString(handle) << " not found!");
+        MSG_WARNING("Button " << handleToString(handle) << " not found!");
         return;
     }
 
@@ -4718,6 +4875,7 @@ void TPageManager::doVER(int, vector<int>&, vector<string>&)
  * Returns the user name used to connect to a SIP server. An empty string is
  * returned if there is no user defined.
  */
+#ifndef _NOSIP_
 void TPageManager::doWCN(int, vector<int>&, vector<string>&)
 {
     DECL_TRACER("TPageManager::doWCN(int, vector<int>&, vector<string>&)");
@@ -4736,7 +4894,7 @@ void TPageManager::doWCN(int, vector<int>&, vector<string>&)
     else
         MSG_WARNING("Missing global class TAmxNet. Can't send message!");
 }
-
+#endif
 /**
  * Flip to specified page using the named animation.
  * FIXME: Implement animation for pages.
@@ -5506,10 +5664,7 @@ void TPageManager::doBAU(int port, vector<int>& channels, vector<string>& pars)
                 }
 
                 if (inHex && !isHex(c))
-                {
-                    inHex = false;
                     break;
-                }
 
                 if (inHex && isHex(c))
                 {
@@ -10062,6 +10217,7 @@ void TPageManager::doTPCACC(int, vector<int>&, vector<string>& pars)
     }
 }
 
+#ifndef _NOSIP_
 void TPageManager::doTPCSIP(int, vector<int>&, vector<string>& pars)
 {
     DECL_TRACER("TPageManager::doTPCSIP(int port, vector<int>& channels, vector<string>& pars)");
@@ -10078,3 +10234,4 @@ void TPageManager::doTPCSIP(int, vector<int>&, vector<string>& pars)
         MSG_ERROR("There is no phone dialog registered!");
     }
 }
+#endif

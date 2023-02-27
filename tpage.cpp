@@ -29,7 +29,6 @@
 #include "tpage.h"
 #include "tdrawimage.h"
 #include "texpat++.h"
-#include "tobject.h"
 #include "tconfig.h"
 
 #if __cplusplus < 201402L
@@ -548,15 +547,12 @@ void TPage::show()
                     return;
             }
 
-            SkImageInfo info = target.info();
-            size_t rowBytes = info.minRowBytes();
-            size_t size = info.computeByteSize(rowBytes);
-
 #ifdef _SCALE_SKIA_
             if (gPageManager && gPageManager->getScaleFactor() != 1.0)
             {
                 SkPaint paint;
                 int left, top;
+                SkImageInfo info = target.info();
 
                 paint.setBlendMode(SkBlendMode::kSrc);
                 paint.setFilterQuality(kHigh_SkFilterQuality);
@@ -578,18 +574,19 @@ void TPage::show()
                 SkCanvas can(target, SkSurfaceProps());
                 SkRect rect = SkRect::MakeXYWH(left, top, lwidth, lheight);
                 can.drawImageRect(im, rect, &paint);
-                rowBytes = target.info().minRowBytes();
-                size = target.info().computeByteSize(rowBytes);
                 MSG_DEBUG("Scaled size of background image: " << left << ", " << top << ", " << lwidth << ", " << lheight);
             }
 #endif
+/*
+            TBitmap image((unsigned char *)target.getPixels(), target.info().width(), target.info().height());
 #ifdef _OPAQUE_SKIA_
             if (sr[0].te.empty() && sr[0].bs.empty())
-                _setBackground(handle, (unsigned char *)target.getPixels(), size, rowBytes, target.info().width(), target.info().height(), TColor::getColor(sr[0].cf));
+                _setBackground(handle, image, target.info().width(), target.info().height(), TColor::getColor(sr[0].cf));
 #else
             if (sr[0].te.empty() && sr[0].bs.empty())
-                _setBackground(handle, (unsigned char *)target.getPixels(), size, rowBytes, target.info().width(), target.info().height(), TColor::getColor(sr[0].cf), sr[0].oo);
+                _setBackground(handle, image, target.info().width(), target.info().height(), TColor::getColor(sr[0].cf), sr[0].oo);
 #endif
+*/
         }
     }
 
@@ -611,21 +608,20 @@ void TPage::show()
     if (haveImage)
     {
         SkImageInfo info = target.info();
-        size_t rowBytes = info.minRowBytes();
-        size_t size = info.computeByteSize(rowBytes);
+        TBitmap image((unsigned char *)target.getPixels(), info.width(), info.height());
 #ifdef _OPAQUE_SKIA_
-        _setBackground(handle, (unsigned char *)target.getPixels(), size, rowBytes, target.info().width(), target.info().height(), TColor::getColor(sr[0].cf));
+        _setBackground(handle, image, target.info().width(), target.info().height(), TColor::getColor(sr[0].cf));
 #else
-        _setBackground(handle, (unsigned char *)target.getPixels(), size, rowBytes, target.info().width(), target.info().height(), TColor::getColor(sr[0].cf), sr[0].oo);
+        _setBackground(handle, image, target.info().width(), target.info().height(), TColor::getColor(sr[0].cf), sr[0].oo);
 #endif
     }
     else if (sr.size() > 0 && !haveImage)
     {
         MSG_DEBUG("Calling \"setBackground\" with no image ...");
 #ifdef _OPAQUE_SKIA_
-        _setBackground(handle, nullptr, 0, 0, 0, 0, TColor::getColor(sr[0].cf));
+        _setBackground(handle, TBitmap(), 0, 0, TColor::getColor(sr[0].cf));
 #else
-        _setBackground(handle, nullptr, 0, 0, 0, 0, TColor::getColor(sr[0].cf), sr[0].oo);
+        _setBackground(handle, TBitmap(), 0, 0, TColor::getColor(sr[0].cf), sr[0].oo);
 #endif
     }
 
@@ -655,6 +651,9 @@ void TPage::show()
 
     // Mark page as visible
     mVisible = true;
+
+    if (gPageManager && gPageManager->getPageFinished())
+        gPageManager->getPageFinished()(handle);
 }
 
 PAGECHAIN_T *TPage::addSubPage(TSubPage* pg)
@@ -852,7 +851,7 @@ TSubPage *TPage::getNextSubPage()
 
         while (p)
         {
-            if (p->subpage->getNumber() == mLastSubPage)
+            if (p->subpage && p->subpage->getNumber() == mLastSubPage)
             {
                 if (p->next && p->next->subpage)
                 {
@@ -943,9 +942,16 @@ void TPage::drop()
 
     while (bt)
     {
-        MSG_DEBUG("Dropping button " << TObject::handleToString(bt->button->getHandle()));
-        bt->button->hide(true);
+        MSG_DEBUG("Dropping button " << handleToString(bt->button->getHandle()));
+//        bt->button->hide(true);
+        bt->button->invalidate();
         bt = bt->next;
+    }
+
+    if (gPageManager && gPageManager->getCallDropPage())
+    {
+        ulong handle = (mPage.pageID << 16) & 0xffff0000;
+        gPageManager->getCallDropPage()(handle);
     }
 
     mZOrder = ZORDER_INVALID;

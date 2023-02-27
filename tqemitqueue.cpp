@@ -35,12 +35,12 @@ TQManageQueue::~TQManageQueue()
 }
 
 #ifdef _OPAQUE_SKIA_
-void TQManageQueue::addBackground(ulong handle, unsigned char* image, size_t size, size_t rowBytes, int width, int height, ulong color)
+void TQManageQueue::addBackground(ulong handle, TBitmap& image, int width, int height, ulong color)
 #else
-void TQManageQueue::addBackground(ulong handle, unsigned char* image, size_t size, size_t rowBytes, int width, int height, ulong color, int opacity)
+void TQManageQueue::addBackground(ulong handle, TBitmap& image, int width, int height, ulong color, int opacity)
 #endif
 {
-    DECL_TRACER("TQManageQueue::addBackground(ulong handle, unsigned char* image, size_t size, size_t rowBytes, int width, int height, ulong color)");
+    DECL_TRACER("TQManageQueue::addBackground(ulong handle, TBitmap& image, int width, int height, ulong color [, int opacity])");
 
     TQEmitQueue *eq = addEntity(ET_BACKGROUND);
 
@@ -48,9 +48,7 @@ void TQManageQueue::addBackground(ulong handle, unsigned char* image, size_t siz
         return;
 
     eq->handle = handle;
-    eq->image = image;
-    eq->size = size;
-    eq->rowBytes = rowBytes;
+    eq->bitmap = image;
     eq->width = width;
     eq->height = height;
     eq->color = color;
@@ -61,12 +59,12 @@ void TQManageQueue::addBackground(ulong handle, unsigned char* image, size_t siz
 }
 
 #ifdef _OPAQUE_SKIA_
-bool TQManageQueue::getBackground(ulong* handle, unsigned char **image, size_t* size, size_t* rowBytes, int* width, int* height, ulong* color)
+bool TQManageQueue::getBackground(ulong* handle, TBitmap *image, int* width, int* height, ulong* color)
 #else
-bool TQManageQueue::getBackground(ulong* handle, unsigned char **image, size_t* size, size_t* rowBytes, int* width, int* height, ulong* color, int *opacity)
+bool TQManageQueue::getBackground(ulong* handle, TBitmap **image, int* width, int* height, ulong* color, int *opacity)
 #endif
 {
-    DECL_TRACER("TQManageQueue::getBackground(ulong* handle, unsigned char ** image, size_t* size, size_t* rowBytes, int* width, int* height, ulong* color)");
+    DECL_TRACER("TQManageQueue::getBackground(ulong* handle, TBitmap **image, int* width, int* height, ulong* color [, int *opacity])");
 
     TQEmitQueue *eq = mEmitQueue;
 
@@ -75,9 +73,7 @@ bool TQManageQueue::getBackground(ulong* handle, unsigned char **image, size_t* 
         if (eq->etype == ET_BACKGROUND)
         {
             *handle = eq->handle;
-            *image = eq->image;
-            *size = eq->size;
-            *rowBytes = eq->rowBytes;
+            *image = eq->bitmap;
             *width = eq->width;
             *height = eq->height;
             *color = eq->color;
@@ -94,9 +90,9 @@ bool TQManageQueue::getBackground(ulong* handle, unsigned char **image, size_t* 
     return false;
 }
 
-void TQManageQueue::addButton(ulong handle, ulong parent, unsigned char* buffer, int pixline, int left, int top, int width, int height)
+void TQManageQueue::addButton(ulong handle, ulong parent, TBitmap& buffer, int left, int top, int width, int height)
 {
-    DECL_TRACER("TQManageQueue::addButton(ulong handle, ulong parent, unsigned char* buffer, int pixline, int left, int top, int width, int height)");
+    DECL_TRACER("TQManageQueue::addButton(ulong handle, ulong parent, TBitmap& buffer, int left, int top, int width, int height)");
 
     TQEmitQueue *eq = addEntity(ET_BUTTON);
 
@@ -105,8 +101,7 @@ void TQManageQueue::addButton(ulong handle, ulong parent, unsigned char* buffer,
 
     eq->handle = handle;
     eq->parent = parent;
-    eq->buffer = buffer;
-    eq->pixline = pixline;
+    eq->bitmap = buffer;
     eq->left = left;
     eq->top = top;
     eq->width = width;
@@ -114,9 +109,32 @@ void TQManageQueue::addButton(ulong handle, ulong parent, unsigned char* buffer,
     removeDuplicates();
 }
 
-bool TQManageQueue::getButton(ulong* handle, ulong* parent, unsigned char ** buffer, int* pixline, int* left, int* top, int* width, int* height)
+void TQManageQueue::addViewButton(ulong handle, ulong parent, bool vertical, TBitmap& buffer, int left, int top, int width, int height, int space, TColor::COLOR_T fillColor)
 {
-    DECL_TRACER("TQManageQueue::getButton(ulong* handle, ulong* parent, unsigned char ** buffer, int* pixline, int* left, int* top, int* width, int* height)");
+    DECL_TRACER("TQManageQueue::addViewButton(ulong handle, ulong parent, TBitmap& buffer, int left, int top, int width, int height, int space, TColor::COLOR_T fillColor)");
+
+    TQEmitQueue *eq = addEntity(ET_BUTTON);
+
+    if (!eq)
+        return;
+
+    eq->handle = handle;
+    eq->parent = parent;
+    eq->bitmap = buffer;
+    eq->left = left;
+    eq->top = top;
+    eq->width = width;
+    eq->height = height;
+    eq->view = true;
+    eq->vertical = vertical;
+    eq->amxColor = fillColor;
+    eq->space = space;
+    removeDuplicates();
+}
+
+bool TQManageQueue::getButton(ulong* handle, ulong* parent, TBitmap *buffer, int* left, int* top, int* width, int* height)
+{
+    DECL_TRACER("TQManageQueue::getButton(ulong* handle, ulong* parent, TBitmap **buffer, int* left, int* top, int* width, int* height)");
 
     TQEmitQueue *eq = mEmitQueue;
 
@@ -126,12 +144,40 @@ bool TQManageQueue::getButton(ulong* handle, ulong* parent, unsigned char ** buf
         {
             *handle = eq->handle;
             *parent = eq->parent;
-            *buffer = eq->buffer;
-            *pixline = eq->pixline;
+            *buffer = eq->bitmap;
             *left = eq->left;
             *top = eq->top;
             *width = eq->width;
             *height = eq->height;
+            return true;
+        }
+
+        eq = eq->next;
+    }
+
+    return false;
+}
+
+bool TQManageQueue::getViewButton(ulong *handle, ulong *parent, bool *vertical, TBitmap *buffer, int *left, int *top, int *width, int *height, int *space, TColor::COLOR_T *fillColor)
+{
+    DECL_TRACER("TQManageQueue::getViewButton(ulong *handle, ulong *parent, bool *vertical, TBitmap *buffer, int *left, int *top, int *width, int *height, TColor::COLOR_T *fillColor)");
+
+    TQEmitQueue *eq = mEmitQueue;
+
+    while(eq)
+    {
+        if (eq->etype == ET_BUTTON)
+        {
+            *handle = eq->handle;
+            *parent = eq->parent;
+            *buffer = eq->bitmap;
+            *left = eq->left;
+            *top = eq->top;
+            *width = eq->width;
+            *height = eq->height;
+            *vertical = eq->vertical;
+            *fillColor = eq->amxColor;
+            *space = eq->space;
             return true;
         }
 

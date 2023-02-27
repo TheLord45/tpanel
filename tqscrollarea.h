@@ -1,0 +1,106 @@
+/*
+ * Copyright (C) 2023 by Andreas Theofilu <andreas@theosys.at>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
+ */
+
+#ifndef __TQSCROLLAREA_H__
+#define __TQSCROLLAREA_H__
+
+#include <QScrollArea>
+
+#include <vector>
+
+#include "tpagemanager.h"
+
+QT_BEGIN_NAMESPACE
+class QWidget;
+class QSize;
+class QPixmap;
+class QColor;
+class QVBoxLayout;
+class QHBoxLayout;
+class QPoint;
+QT_END_NAMESPACE
+
+class TQScrollArea : public QScrollArea
+{
+    Q_OBJECT
+
+    public:
+        TQScrollArea();
+        TQScrollArea(QWidget *parent);
+        TQScrollArea(QWidget *parent, int w, int h, bool vertical = false);
+        TQScrollArea(QWidget *parent, const QSize& size, bool vertical = false);
+        ~TQScrollArea();
+
+        void setObjectName(const QString& name);
+        void setSize(int w, int h);
+        void setSize(QSize size);
+        QSize getSize();
+        void setBackgroundImage(const QPixmap& pix);
+        void setBackGroundColor(QColor color);
+        void setSpace(int s);
+        int getSpace() { return mSpace; }
+        void addItem(PGSUBVIEWITEM_T& item);
+        void addItems(std::vector<PGSUBVIEWITEM_T>& items);
+
+        int getWidth() { return mWidth; }
+        int getHeight() { return mHeight; }
+        void setTotalWidth(int w);
+        int getTotalWidth() { return mTotalWidth; }
+        void setTotalHeight(int h);
+        int getTotalHeight() { return mTotalHeight; }
+        void setTotalSize(int w, int h);
+        void setTotalSize(QSize& size);
+        void setScaleFactor(const double& factor);
+
+    signals:
+        void objectClicked(ulong handle, bool pressed);
+
+    protected:
+        bool event(QEvent *event) override;
+        void mousePressEvent(QMouseEvent* event) override;
+        void mouseReleaseEvent(QMouseEvent* event) override;
+        void scrollContentsBy(int dx, int dy) override;
+
+    private:
+        void init();
+        int scale(int value);
+        void mouseTimerEvent();
+
+        QWidget *mParent{nullptr};              //>! The parent of this object. This is set to QScrollArea.
+        QWidget *mMain{nullptr};                //>! The widget containing the items. This is the whole scroll area
+        QHBoxLayout *mHLayout{nullptr};         //>! If mVertical == FALSE then this layout is used
+        QVBoxLayout *mVLayout{nullptr};         //>! If mVertical == TRUE then this layout is used
+        int mWidth{0};                          //>! Width of visible part of scroll area (QScrollArea)
+        int mHeight{0};                         //>! Height of visible part of scroll area (QScrollArea)
+        int mTotalWidth{0};                     //>! Total width of scroll area (mMain)
+        int mTotalHeight{0};                    //>! Total height of of scroll area (mMain)
+        bool mVertical{false};                  //>! Direction
+        int mSpace{0};                          //>! Optional: The space between the items in percent
+        bool mMousePress{false};                //>! Internal: TRUE when the mouse was pressed
+        bool mClick{false};                     //>! TRUE on mouse press, FALSE on mouse release
+        bool mMouseScroll{false};               //>! Internal: TRUE if scrolling was detected. This prevents a button press from beeing one.
+        QPointF mOldPoint;                      //>! Internal: The last point where the mouse was pressed
+        double mScaleFactor{1.0};               //>! If != 1.0 and > 0.0 then mTotalHeight and mTotalWidth are scaled as well as the size of each item
+        std::vector<PGSUBVIEWITEM_T> mItems;    //>! The list of items
+        std::vector<QWidget *> mMainWidgets;    //>! The QWidget for each item.
+        int mActPosition{0};                    //>! The absolute top/left (depends on mVertical) position in the scrolling area.
+        QTimer *mMousePressTimer{nullptr};      //>! Internal: Used to distinguish between a real mouse click and a mouse move.
+        QPoint mLastMousePress;                 //>! Internal: The absolute point of the last mouse press.
+};
+
+#endif

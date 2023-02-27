@@ -39,6 +39,7 @@
 #include "tsystemdraw.h"
 #include "tsipclient.h"
 #include "tvector.h"
+#include "tbitmap.h"
 
 #define REG_CMD(func, name)     registerCommand(bind(&TPageManager::func, this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),name)
 
@@ -54,6 +55,58 @@ extern TPageManager *gPageManager;
 #define NETSTATE_WIFI   1
 #define NETSTATE_CELL   2
 #endif
+
+/**
+ * @brief PGSUBVIEWATOM_T
+ * This struct contains the elements of an item inside a subview list.
+ */
+typedef struct PGSUBVIEWATOM_T
+{
+    ulong handle{0};
+    ulong parent{0};
+    int top{0};
+    int left{0};
+    int width{0};
+    int height{0};
+    int instance{0};
+    TColor::COLOR_T bgcolor{0};
+    TBitmap image;
+
+    void clear()
+    {
+        handle = parent = 0;
+        top = left = width = height = instance = 0;
+        bgcolor.alpha = bgcolor.blue = bgcolor.green = bgcolor.red = 0;
+        image.clear();
+    }
+}PGSUBVIEWATOM_T;
+
+/**
+ * @brief PGSUBVIEWITEM_T
+ * This struct contains the overall dimensions and definition of an item of a
+ * subview list. Each item may consist of one or more buttons. Each item is a
+ * subpage of it's own.
+ * All subpage together are the subview list.
+ */
+typedef struct PGSUBVIEWITEM_T
+{
+    ulong handle{0};
+    ulong parent{0};
+    int width{0};
+    int height{0};
+    TColor::COLOR_T bgcolor;
+    TBitmap image;
+    std::vector<PGSUBVIEWATOM_T> atoms;
+
+    void clear()
+    {
+        handle = parent = 0;
+        width = height = 0;
+        bgcolor.alpha = bgcolor.blue = bgcolor.green = bgcolor.red = 0;
+        image.clear();
+        atoms.clear();
+    }
+}PGSUBVIEWITEM_T;
 
 class TPageManager : public TAmxCommands
 {
@@ -81,14 +134,16 @@ class TPageManager : public TAmxCommands
         TPageManager();
         ~TPageManager();
 
-        bool readPages();                               //!< Read all pages and subpages
-        bool readPage(const std::string& name);         //!< Read the page with name \p name
-        bool readPage(int ID);                          //!< Read the page with id \p ID
-        bool readSubPage(const std::string& name);      //!< Read the subpage with name \p name
-        bool readSubPage(int ID);                       //!< Read the subpage with ID \p ID
-        void updateActualPage();                        //!< Updates all elements of the actual page
-        void updateSubpage(int ID);                     //!< Updates all elements of a subpage
-        void updateSubpage(const std::string& name);    //!< Updates all elements of a subpage
+        bool readPages();                                   //!< Read all pages and subpages
+        bool readPage(const std::string& name);             //!< Read the page with name \p name
+        bool readPage(int ID);                              //!< Read the page with id \p ID
+        bool readSubPage(const std::string& name);          //!< Read the subpage with name \p name
+        bool readSubPage(int ID);                           //!< Read the subpage with ID \p ID
+        void updateActualPage();                            //!< Updates all elements of the actual page
+        void updateSubpage(int ID);                         //!< Updates all elements of a subpage
+        void updateSubpage(const std::string& name);        //!< Updates all elements of a subpage
+        std::vector<TSubPage *> createSubViewList(int id);  //!< Create a list of subview pages
+        void showSubViewList(int id, Button::TButton *bt);  //!< Creates and displays a subview list
 
         TPageList *getPageList() { return mPageList; }      //!< Get the list of all pages
         TSettings *getSettings() { return mTSettings; }     //!< Get the (system) settings of the panel
@@ -125,15 +180,15 @@ class TPageManager : public TAmxCommands
         double getDPI() { return mDPI; }
         void setDPI(const double dpi) { mDPI = dpi; }
 
-        void registerCallbackDB(std::function<void(ulong handle, ulong parent, unsigned char *buffer, int width, int height, int pixline, int left, int top)> displayButton) { _displayButton = displayButton; }
+        void registerCallbackDB(std::function<void(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top)> displayButton) { _displayButton = displayButton; }
         void registerDropButton(std::function<void(ulong hanlde)> dropButton) { _dropButton = dropButton; }
         void registerCBsetVisible(std::function<void(ulong handle, bool state)> setVisible) { _setVisible = setVisible; }
         void registerCallbackSP(std::function<void (ulong handle, int width, int height)> setPage) { _setPage = setPage; }
         void registerCallbackSSP(std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate)> setSubPage) { _setSubPage = setSubPage; }
 #ifdef _OPAQUE_SKIA_
-        void registerCallbackSB(std::function<void (ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color)> setBackground) {_setBackground = setBackground; }
+        void registerCallbackSB(std::function<void (ulong handle, TBitmap image, int width, int height, ulong color)> setBackground) {_setBackground = setBackground; }
 #else
-        void registerCallbackSB(std::function<void (ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color, int opacity)> setBackground) {_setBackground = setBackground; }
+        void registerCallbackSB(std::function<void (ulong handle, TBitmap image, int width, int height, ulong color, int opacity)> setBackground) {_setBackground = setBackground; }
 #endif
         void deployCallbacks();
 #ifdef __ANDROID__
@@ -155,8 +210,8 @@ class TPageManager : public TAmxCommands
         void regCallDropPage(std::function<void (ulong handle)> callDropPage) { _callDropPage = callDropPage; }
         void regCallDropSubPage(std::function<void (ulong handle)> callDropSubPage) { _callDropSubPage = callDropSubPage; }
         void regCallPlayVideo(std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw)> callPlayVideo) { _callPlayVideo = callPlayVideo; };
-        void regCallInputText(std::function<void (Button::TButton *button, Button::BITMAP_t& bm, int frame)> callInputText) { _callInputText = callInputText; }
-        void regCallListBox(std::function<void (Button::TButton *button, Button::BITMAP_t& bm, int frame)> callListBox) { _callListBox = callListBox; }
+        void regCallInputText(std::function<void (Button::TButton& button, Button::BITMAP_t& bm, int frame)> callInputText) { _callInputText = callInputText; }
+        void regCallListBox(std::function<void (Button::TButton& button, Button::BITMAP_t& bm, int frame)> callListBox) { _callListBox = callListBox; }
         void regCallbackKeyboard(std::function<void (const std::string& init, const std::string& prompt, bool priv)> callKeyboard) { _callKeyboard = callKeyboard; }
         void regCallbackKeypad(std::function<void (const std::string& init, const std::string& prompt, bool priv)> callKeypad) { _callKeypad = callKeypad; }
         void regCallResetKeyboard(std::function<void ()> callResetKeyboard) { _callResetKeyboard = callResetKeyboard; }
@@ -194,6 +249,10 @@ class TPageManager : public TAmxCommands
         void regDownloadSurface(std::function<void (const std::string& file, size_t size)> dl) { _downloadSurface = dl; }
         void regStartWait(std::function<void (const std::string& text)> sw) { _startWait = sw; }
         void regStopWait(std::function<void ()> sw) { _stopWait = sw; }
+        void regPageFinished(std::function<void (uint handle)> pf) { _pageFinished = pf; }
+        void regDisplayViewButton(std::function<void (ulong handle, ulong parent, bool vertical, TBitmap buffer, int width, int height, int left, int top, int space, TColor::COLOR_T)> dvb) { _displayViewButton = dvb; }
+        void regAddViewButtonItem(std::function<void (Button::TButton& button, unsigned char *buffer, int pixline)> avbi) { _addViewButtonItem = avbi; }
+        void regAddViewButtonItems(std::function<void (ulong parent, std::vector<PGSUBVIEWITEM_T> items)> abvi) { _addViewButtonItems = abvi; }
 
         /**
          * The following function must be called to start non graphics part
@@ -237,6 +296,16 @@ class TPageManager : public TAmxCommands
          * pressed TRUE = button was pressed; FALSE = button was released
          */
         void mouseEvent(int x, int y, bool pressed);
+        /**
+         * @brief mouseEvent
+         * This function can be called from a GUI if the coordinates of the
+         * mouse click are not available but the handle of an object who
+         * received a mouse click.
+         *
+         * @param handle    The handle of an object
+         * @param pressed   TRUE=The mouse button is pressed.
+         */
+        void mouseEvent(ulong handle, bool pressed);
         /**
          * Searches for a button with the handle \p handle and determines all
          * buttons with the same port and channel. Then it sets \p txt to all
@@ -412,18 +481,18 @@ class TPageManager : public TAmxCommands
         void setSetupScaleFactor(double scale, double sw, double sh);
 #endif
         // Callbacks who will be registered by the graphical surface.
-        std::function<void (ulong handle, ulong parent, unsigned char *buffer, int width, int height, int pixline, int left, int top)> getCallbackDB() { return _displayButton; }
+        std::function<void (ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top)> getCallbackDB() { return _displayButton; }
         std::function<void (ulong handle)> getCallDropButton() { return _dropButton; }
         std::function<void (ulong handle, bool state)> getVisible() { return _setVisible; };
 #ifdef _OPAQUE_SKIA_
-        std::function<void (ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color)> getCallbackBG() { return _setBackground; }
+        std::function<void (ulong handle, TBitmap image, int width, int height, ulong color)> getCallbackBG() { return _setBackground; }
 #else
-        std::function<void (ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color, int opacity)> getCallbackBG() { return _setBackground; }
+        std::function<void (ulong handle, TBitmap image, int width, int height, ulong color, int opacity)> getCallbackBG() { return _setBackground; }
 #endif
         std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw)> getCallbackPV() { return _callPlayVideo; }
         std::function<void (ulong handle, int width, int height)> getCallbackSetPage() { return _setPage; }
-        std::function<void (Button::TButton *button, Button::BITMAP_t& bm, int frame)> getCallbackInputText() { return _callInputText; }
-        std::function<void (Button::TButton *button, Button::BITMAP_t& bm, int frame)> getCallbackListBox() { return _callListBox; }
+        std::function<void (Button::TButton& button, Button::BITMAP_t& bm, int frame)> getCallbackInputText() { return _callInputText; }
+        std::function<void (Button::TButton& button, Button::BITMAP_t& bm, int frame)> getCallbackListBox() { return _callListBox; }
         std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate)> getCallbackSetSubPage() { return _setSubPage; }
         std::function<void (ulong handle)> getCallDropPage() { return _callDropPage; }
         std::function<void (ulong handle)> getCallDropSubPage() { return _callDropSubPage; }
@@ -442,6 +511,10 @@ class TPageManager : public TAmxCommands
         std::function<void (ulong handle, const std::string& path, const std::string& extension, const std::string& suffix)> getFileDialogFunction() { return _fileDialog; }
         std::function<void (const std::string& text)> getStartWait() { return _startWait; }
         std::function<void ()> getStopWait() { return _stopWait; }
+        std::function<void (uint handle)> getPageFinished() { return _pageFinished; }
+        std::function<void (ulong handle, ulong parent, bool vertical, TBitmap buffer, int width, int height, int left, int top, int space, TColor::COLOR_T fillColor)> getDisplayViewButton() { return _displayViewButton; }
+        std::function<void (Button::TButton& button, unsigned char *buffer, int pixline)> getAddViewButtonItem() { return _addViewButtonItem; }
+        std::function<void (ulong parent, std::vector<PGSUBVIEWITEM_T> items)> getAddViewButtonItems() { return _addViewButtonItems; }
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         std::function<void (int orientation)> onOrientationChange() { return _onOrientationChange; }
         std::function<void (const std::string& oldNetlinx, int oldPort, int oldChannelID, const std::string& oldSurface, bool oldToolbarSuppress, bool oldToolbarForce)> onSettingsChanged() { return _onSettingsChanged; }
@@ -501,22 +574,22 @@ class TPageManager : public TAmxCommands
         bool startComm();
 
     private:
-        std::function<void (ulong handle, ulong parent, unsigned char *buffer, int width, int height, int pixline, int left, int top)> _displayButton{nullptr};
+        std::function<void (ulong handle, ulong parent, TBitmap image, int width, int height, int left, int top)> _displayButton{nullptr};
         std::function<void (ulong handle)> _dropButton{nullptr};
         std::function<void (ulong handle, bool state)> _setVisible{nullptr};
         std::function<void (ulong handle, int width, int height)> _setPage{nullptr};
         std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate)> _setSubPage{nullptr};
 #ifdef _OPAQUE_SKIA_
-        std::function<void (ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color)> _setBackground{nullptr};
+        std::function<void (ulong handle, TBitmap image, int width, int height, ulong color)> _setBackground{nullptr};
 #else
-        std::function<void (ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color, int opacity)> _setBackground{nullptr};
+        std::function<void (ulong handle, TBitmap image, int width, int height, ulong color, int opacity)> _setBackground{nullptr};
 #endif
         std::function<void (ulong handle, const std::string& text, const std::string& font, const std::string& family, int size, int x, int y, ulong color, ulong effectColor, FONT_STYLE style, Button::TEXT_ORIENTATION ori, Button::TEXT_EFFECT effect, bool ww)> _setText{nullptr};
         std::function<void (ulong handle)> _callDropPage{nullptr};
         std::function<void (ulong handle)> _callDropSubPage{nullptr};
         std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw)> _callPlayVideo{nullptr};
-        std::function<void (Button::TButton *button, Button::BITMAP_t& bm, int frame)> _callInputText{nullptr};
-        std::function<void (Button::TButton *button, Button::BITMAP_t& bm, int frame)> _callListBox{nullptr};
+        std::function<void (Button::TButton& button, Button::BITMAP_t& bm, int frame)> _callInputText{nullptr};
+        std::function<void (Button::TButton& button, Button::BITMAP_t& bm, int frame)> _callListBox{nullptr};
         std::function<void (const std::string& init, const std::string& prompt, bool priv)> _callKeyboard{nullptr};
         std::function<void (const std::string& init, const std::string& prompt, bool priv)> _callKeypad{nullptr};
         std::function<void ()> _callResetKeyboard{nullptr};
@@ -539,6 +612,10 @@ class TPageManager : public TAmxCommands
         std::function<void (ulong handle, const std::string& path, const std::string& extension, const std::string& suffix)> _fileDialog{nullptr};
         std::function<void (const std::string& text)> _startWait{nullptr};
         std::function<void ()> _stopWait{nullptr};
+        std::function<void (uint handle)> _pageFinished{nullptr};
+        std::function<void (ulong handle, ulong parent, bool vertical, TBitmap buffer, int width, int height, int left, int top, int space, TColor::COLOR_T fillColor)> _displayViewButton{nullptr};
+        std::function<void (Button::TButton& button, unsigned char *buffer, int pixline)> _addViewButtonItem{nullptr};
+        std::function<void (ulong parent, std::vector<PGSUBVIEWITEM_T> items)> _addViewButtonItems{nullptr};
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         std::function<void (int orientation)> _onOrientationChange{nullptr};
         std::function<void (const std::string& oldNetlinx, int oldPort, int oldChannelID, const std::string& oldSurface, bool oldToolbarSuppress, bool oldToolbarForce)> _onSettingsChanged{nullptr};
@@ -601,8 +678,9 @@ class TPageManager : public TAmxCommands
         void doLEVEL(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doBLINK(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doVER(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+#ifndef _NOSIP_
         void doWCN(int port, std::vector<int>& channels, std::vector<std::string>& pars);
-
+#endif
         void doAFP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doAPG(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doCPG(int port, std::vector<int>& channels, std::vector<std::string>& pars);
@@ -722,8 +800,9 @@ class TPageManager : public TAmxCommands
         // Commands inherited from TPControl (Touch Panel Control)
         void doTPCCMD(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doTPCACC(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+#ifndef _NOSIP_
         void doTPCSIP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
-
+#endif
         int mActualPage{0};                             // The number of the actual visible page
         int mPreviousPage{0};                           // The number of the previous page
         int mSavedPage{0};                              // The number of the last normal page. This is set immediately before a setup page is shown

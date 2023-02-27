@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,8 +24,9 @@
 #include "tbutton.h"
 #include "tvalidatefile.h"
 #include "tpalette.h"
-#include "tfont.h"
 #include "tpageinterface.h"
+
+class TBitmap;
 
 typedef struct RECT_T
 {
@@ -44,6 +45,7 @@ class TSubPage : public TValidateFile, public TPageInterface
         void setPalette(TPalette *pal) { mPalette = pal; }
 
         int getNumber() { return mSubpage.pageID; }
+        std::string& getPopupType() { return mSubpage.popupType; }
         std::string& getName() { return mSubpage.name; }
         PAGE_T& getSubPage() { return mSubpage; }
         std::string& getGroupName() { return mSubpage.group; }
@@ -75,17 +77,21 @@ class TSubPage : public TValidateFile, public TPageInterface
         void setTimeout(int t) { mSubpage.timeout = t; }
         bool isVisible() { return mVisible; }
         ulong getHandle() { return ((mSubpage.pageID << 16) & 0xffff0000); }
+        std::string getFillColor() { return mSubpage.sr[0].cf; }
+        std::string getTextColor() { return mSubpage.sr[0].ct; }
+        SkBitmap& getBgImage();
+
         void show();
         void drop();
         void doClick(int x, int y, bool pressed);
         void startTimer();
         void stopTimer() { mTimerRunning = false; }
 #ifdef _OPAQUE_SKIA_
-        void registerCallback(std::function<void (ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color)> setBackground) { _setBackground = setBackground; }
+        void registerCallback(std::function<void (ulong handle, TBitmap image, int width, int height, ulong color)> setBackground) { _setBackground = setBackground; }
 #else
-        void registerCallback(std::function<void (ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color, int opacity)> setBackground) { _setBackground = setBackground; }
+        void registerCallback(std::function<void (ulong handle, TBitmap image, int width, int height, ulong color, int opacity)> setBackground) { _setBackground = setBackground; }
 #endif
-        void registerCallbackDB(std::function<void(ulong handle, ulong parent, unsigned char *buffer, int width, int height, int pixline, int left, int top)> displayButton) { _displayButton = displayButton; }
+        void registerCallbackDB(std::function<void(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top)> displayButton) { _displayButton = displayButton; }
         void regCallDropSubPage(std::function<void (ulong handle)> callDropSubPage) { _callDropSubPage = callDropSubPage; }
         void regCallPlayVideo(std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw)> playVideo) { _playVideo = playVideo; };
 
@@ -99,11 +105,11 @@ class TSubPage : public TValidateFile, public TPageInterface
 #endif
     private:
 #ifdef _OPAQUE_SKIA_
-        std::function<void (ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color)> _setBackground{nullptr};
+        std::function<void (ulong handle, TBitmap image, int width, int height, ulong color)> _setBackground{nullptr};
 #else
-        std::function<void (ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color, int opacity)> _setBackground{nullptr};
+        std::function<void (ulong handle, TBitmap image, int width, int height, ulong color, int opacity)> _setBackground{nullptr};
 #endif
-        std::function<void (ulong handle, ulong parent, unsigned char *buffer, int width, int height, int pixline, int left, int top)> _displayButton{nullptr};
+        std::function<void (ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top)> _displayButton{nullptr};
         std::function<void (ulong handle)> _callDropSubPage{nullptr};
         std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw)> _playVideo{nullptr};
 
@@ -113,6 +119,7 @@ class TSubPage : public TValidateFile, public TPageInterface
         TPalette *mPalette{nullptr};            // The color palette
         PAGE_T mSubpage;                        // Parameters of the subpage
         int mZOrder{-1};                        // The Z-Order of the subpage if it is visible
+        SkBitmap mBgImage;                      // The background image (cache).
         std::atomic<bool>mTimerRunning{false};  // TRUE= timer is running
         std::thread mThreadTimer;               // The thread started if a timeout is defined.
         std::vector<LIST_t> mLists;             // Lists of subpage

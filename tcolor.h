@@ -55,6 +55,7 @@ class TColor
         static ulong getColor(const std::string& color);
         static std::string colorToString(ulong color);
         static std::string colorToString(SkColor color);
+        static std::string colorToString(COLOR_T color);
         static std::vector<SkColor> colorRange(SkColor col, int width, int bandwidth, DIRECTION_t dir);
         static bool isValidAMXcolor(const std::string& color);
 

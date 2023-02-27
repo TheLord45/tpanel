@@ -102,6 +102,30 @@ void TIOSRotate::automaticRotation(bool allow)
 
 }
 
+int TIOSRotate::getCurrentOrientation()
+{
+    DECL_TRACER("TIOSRotate::getCurrentOrientation()");
+
+    UIDevice *device = [UIDevice currentDevice];
+
+    if (!device)
+        return O_UNDEFINED;
+
+    int value = 0;
+    value = [device orientation];
+    MSG_DEBUG("getCurrentOrientation: " << value)
+
+    switch(value)
+    {
+        case UIDeviceOrientationLandscapeLeft:       return O_LANDSCAPE;
+        case UIDeviceOrientationLandscapeRight:      return O_REVERSE_LANDSCAPE;
+        case UIDeviceOrientationPortrait:            return O_PORTRAIT;
+        case UIDeviceOrientationPortraitUpsideDown:  return O_REVERSE_PORTRAIT;
+    }
+
+    return O_UNDEFINED;
+}
+
 bool TIOSRotate::isAutomaticRotation()
 {
     DECL_TRACER("TIOSRotate::isAutomaticRotation()");

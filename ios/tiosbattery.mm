@@ -20,7 +20,7 @@
 #include "UIKit/UIKit.h"
 #include <Foundation/Foundation.h>
 #include "terror.h"
-
+#include "tpagemanager.h"
 
 @interface BatteryController : NSObject
 
@@ -72,11 +72,15 @@ BatteryController *battery = nil;
 // ---- C++ part starts here
 // -----------------------------------------------------------------------------
 
+int TIOSBattery::mLeft{0};
+TIOSBattery::BSTATE TIOSBattery::mState{BS_UNKNOWN};
+
 TIOSBattery::TIOSBattery()
 {
     DECL_TRACER("TIOSBattery::TIOSBattery()");
 
     battery = [[BatteryController alloc] init];
+    update();
 }
 
 TIOSBattery::~TIOSBattery()
@@ -92,6 +96,9 @@ TIOSBattery::~TIOSBattery()
 void TIOSBattery::update()
 {
     DECL_TRACER("TIOSBattery::update()");
+
+    if ((mState != BS_UNKNOWN || mLeft != 0) && battery != nullptr)
+        return;
 
     UIDevice *myDevice = [UIDevice currentDevice];
     [myDevice setBatteryMonitoringEnabled:YES];
@@ -111,4 +118,13 @@ void TIOSBattery::update()
         default:
             mState = BS_UNKNOWN;
     }
+}
+
+void TIOSBattery::informStatus(int left, int state)
+{
+    mLeft = left;
+    mState = (BSTATE)state;
+
+    if (gPageManager)
+        gPageManager->informBatteryStatus(left, state);
 }

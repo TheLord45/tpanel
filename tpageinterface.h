@@ -23,6 +23,7 @@
 
 #include "tfont.h"
 #include "tbutton.h"
+#include "tsystembutton.h"
 
 #define REGULAR_PAGE_START              0
 #define REGULAR_SUBPAGE_START           500
@@ -132,6 +133,8 @@
 #define SYSTEM_ITEM_VIEWTOOLBAR         2073
 #define SYSTEM_ITEM_VIEWROTATE          2074
 
+class TSubPage;
+
 enum SHOWEFFECT
 {
     SE_NONE,
@@ -184,7 +187,7 @@ typedef struct PAGE_T
  * TPage and TSubpage have a lot of identical functions. This functions are
  * in this class.
  */
-class TPageInterface
+class TPageInterface : public TSystemButton
 {
     public:
         virtual ~TPageInterface() {}
@@ -215,7 +218,7 @@ class TPageInterface
         void setSR(std::vector<Button::SR_T>& s) { sr = s; }
         std::vector<Button::SR_T>& getSR() { return sr; }
 
-        void setFonts(TFont *f) { mFonts = f; }
+        void setFonts(TFont *f);
         TFont *getFonts() { return mFonts; }
 
         void setSelectedRow(ulong handle, int row);
@@ -266,11 +269,11 @@ class TPageInterface
         bool stretchImageWidth(SkBitmap *bm, int width);
         bool stretchImageHeight(SkBitmap *bm, int height);
 
-        Button::BUTTONS_T *mButtons{nullptr};    // Chain of buttons
-        int mLastButton{0};             // Internal counter for iterating through button chain.
-        std::vector<Button::SR_T> sr;
-        TFont *mFonts{nullptr};         // Holds the class with the font list
-        std::vector<LIST_t> mLists;     // Lists of page
+        Button::BUTTONS_T *mButtons{nullptr};   // Chain of buttons
+        int mLastButton{0};                     // Internal counter for iterating through button chain.
+        std::vector<Button::SR_T> sr;           // Button instances
+        TFont *mFonts{nullptr};                 // Holds the class with the font list
+        std::vector<LIST_t> mLists;             // Lists of page
 };
 
 #endif

@@ -29,7 +29,7 @@
 #include <QFile>
 #include <QDir>
 #ifdef Q_OS_ANDROID
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 #include <QtAndroidExtras/QtAndroid>
 #else
 #include <QtCore>
@@ -46,8 +46,10 @@
 #include "tconfig.h"
 #include "tfsfreader.h"
 #include "tdirectory.h"
-#include "tpagemanager.h"
 #include "tresources.h"
+#ifdef Q_OS_IOS
+#include "ios/QASettings.h"
+#endif
 
 #if __cplusplus < 201402L
 #   error "This module requires at least C++14 standard!"
@@ -2249,6 +2251,9 @@ string TTPInit::getTmpFileName()
 
     size_t stringLength = alphanum.length() - 1;
     std::string Str;
+#ifdef Q_OS_IOS
+    Str = QASettings::getLibraryPath().toStdString();
+#else
     char *tmp = getenv("TMP");
 
     if (!tmp)
@@ -2260,6 +2265,7 @@ string TTPInit::getTmpFileName()
         tmp = (char *)"/tmp";
 
     Str.assign(tmp);
+#endif
     Str.append("/");
 
     for(size_t i = 0; i < MAX_TMP_LEN; ++i)
@@ -2306,15 +2312,7 @@ bool TTPInit::loadSurfaceFromController(bool force)
 
     TFsfReader reader;
     reader.regCallbackProgress(bind(&TTPInit::progressCallback, this, std::placeholders::_1));
-/*    bool temp = TConfig::getTemporary();
-
-    if (gPageManager && gPageManager->isSetupActive())
-        TConfig::setTemporary(true);
-    else
-        TConfig::setTemporary(false);
-*/
     string surface = TConfig::getFtpSurface();
-//    TConfig::setTemporary(temp);
     string target = mPath + "/" + surface;
     size_t pos = 0;
 
@@ -2418,7 +2416,7 @@ vector<TTPInit::FILELIST_t>& TTPInit::getFileList(const string& filter)
 
     string sUser = TConfig::getFtpUser();
     string sPass = TConfig::getFtpPassword();
-    MSG_DEBUG("Trying to login <" << sUser << ", " << sPass << ">");
+    MSG_DEBUG("Trying to login <" << sUser << ", ********>");
 
     if (!ftp->Login(sUser.c_str(), sPass.c_str()))
     {
@@ -2678,7 +2676,7 @@ bool TTPInit::askPermissions()
     DECL_TRACER("TTPInit::askPermissions()");
 
     QStringList permissions = { "android.permission.READ_EXTERNAL_STORAGE", "android.permission.WRITE_EXTERNAL_STORAGE" };
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QtAndroid::PermissionResultMap perms = QtAndroid::requestPermissionsSync(permissions);
 
     for (auto iter = perms.begin(); iter != perms.end(); ++iter)

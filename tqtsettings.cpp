@@ -18,9 +18,9 @@
 #include <QFileDialog>
 #include <QComboBox>
 #include <QMessageBox>
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 #include <QAudioOutput>
-#elif defined(QT6_LINUX) && defined(__ANDROID__)
+#elif QT_VERSION >= QT_VERSION_CHECK(6, 0, 0) && defined(Q_OS_ANDROID)
 #include <QtCore/private/qandroidextras_p.h>
 #endif
 #include <QScreen>
@@ -36,8 +36,8 @@
 #include "terror.h"
 #include "ui_tqtsettings.h"
 
-#ifdef __ANDROID__
-#   ifdef QT5_LINUX
+#ifdef Q_OS_ANDROID
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 #       include <QtAndroidExtras/QAndroidJniObject>
 #       include <QtAndroidExtras/QtAndroid>
 #   endif
@@ -350,7 +350,7 @@ void TQtSettings::on_kiconbutton_logFile_clicked()
 
     if (fileName.contains("content://"))
     {
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
         QAndroidJniObject uri = QAndroidJniObject::callStaticObjectMethod(
               "android/net/Uri", "parse", "(Ljava/lang/String;)Landroid/net/Uri;",
               QAndroidJniObject::fromString(fileName).object<jstring>());

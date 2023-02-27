@@ -20,6 +20,7 @@
 
 #include "tsubpage.h"
 #include "tbutton.h"
+#include "tbitmap.h"
 
 typedef enum _EMIT_TYPE_t
 {
@@ -27,6 +28,7 @@ typedef enum _EMIT_TYPE_t
     ET_BUTTON,
     ET_PAGE,
     ET_SUBPAGE,
+    ET_SUBVIEW,
     ET_BACKGROUND,
     ET_DROPPAGE,
     ET_DROPSUBPAGE,
@@ -46,12 +48,15 @@ class TQEmitQueue
         ulong handle{0};
         ulong parent{0};
         unsigned char *buffer{nullptr};
+        TBitmap bitmap;
+        TColor::COLOR_T amxColor;
         int pixline{0};
         int left{0};
         int top{0};
         int width{0};
         int height{0};
         int frame{0};
+        int space{0};
         unsigned char *image{nullptr};
         size_t size{0};
         size_t rowBytes{0};
@@ -63,6 +68,8 @@ class TQEmitQueue
         std::string pw;
         Button::TButton *button{nullptr};
         Button::BITMAP_t bm;
+        bool view{false};
+        bool vertical{false};
 
         TQEmitQueue *next{nullptr};
 
@@ -76,27 +83,29 @@ class TQManageQueue
         TQManageQueue() {}
         ~TQManageQueue();
 
-        void addButton(ulong handle, ulong parent, unsigned char *buffer, int pixline, int left, int top, int width, int height);
+        void addButton(ulong handle, ulong parent, TBitmap& buffer, int left, int top, int width, int height);
+        void addViewButton(ulong handle, ulong parent, bool vertical, TBitmap& buffer, int left, int top, int width, int height, int space, TColor::COLOR_T fillColor);
         void addPage(ulong handle, int width, int height);
 #ifdef _OPAQUE_SKIA_
         void addSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t anim);
-        void addBackground(ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color);
+        void addBackground(ulong handle, TBitmap& image, int width, int height, ulong color);
 #else
         void addSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t anim, int opacity=255);
-        void addBackground(ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color, int opacity=255);
+        void addBackground(ulong handle, TBitmap& image, size_t size, int width, int height, ulong color, int opacity=255);
 #endif
         void addVideo(ulong handle, ulong parent, ulong left, ulong top, ulong width, ulong height, std::string url, std::string user, std::string pw);
         void addInText(ulong handle, Button::TButton *button, Button::BITMAP_t bm, int frame);
         void addListBox(Button::TButton *button, Button::BITMAP_t bm, int frame);
 
-        bool getButton(ulong *handle, ulong *parent, unsigned char **buffer, int *pixline, int *left, int *top, int *width, int *height);
+        bool getButton(ulong *handle, ulong *parent, TBitmap *buffer, int *left, int *top, int *width, int *height);
+        bool getViewButton(ulong *handle, ulong *parent, bool *vertical, TBitmap *buffer, int *left, int *top, int *width, int *height, int *space, TColor::COLOR_T *fillColor);
         bool getPage(ulong *handle, int *width, int *height);
 #ifdef _OPAQUE_SKIA_
         bool getSubPage(ulong *handle, ulong *parent, int *left, int *top, int *width, int *height, ANIMATION_t *anim);
-        bool getBackground(ulong *handle, unsigned char **image, size_t *size, size_t *rowBytes, int *width, int *height, ulong *color);
+        bool getBackground(ulong *handle, TBitmap *image, int *width, int *height, ulong *color);
 #else
         bool getSubPage(ulong *handle, ulong *parent, int *left, int *top, int *width, int *height, ANIMATION_t *anim, int *opacity=nullptr);
-        bool getBackground(ulong *handle, unsigned char **image, size_t *size, size_t *rowBytes, int *width, int *height, ulong *color, int *opacity=nullptr);
+        bool getBackground(ulong *handle, TBitmap **image, int *width, int *height, ulong *color, int *opacity=nullptr);
 #endif
         bool getVideo(ulong *handle, ulong *parent, int *left, int *top, int *width, int *height, std::string *url, std::string *user, std::string *pw);
         bool getInText(ulong *handle, Button::TButton **button, Button::BITMAP_t *bm, int *frame);

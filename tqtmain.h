@@ -20,12 +20,13 @@
 
 #include <QMainWindow>
 #include <QMetaType>
-#ifdef QT6_LINUX
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 #include <QGeoPositionInfoSource>
 #endif
 #include "tpagemanager.h"
 #include "tobject.h"
 #include "tqemitqueue.h"
+#include "tpagelist.h"
 
 extern bool prg_stopped;
 extern std::atomic<bool> killed;
@@ -44,10 +45,12 @@ class QEvent;
 class QSound;
 class QMediaPlayer;
 class QOrientationSensor;
+class QStackedWidget;
+class QListWidgetItem;
 #ifdef Q_OS_IOS
 class QGeoPositionInfo;
 #endif
-#ifdef QT6_LINUX
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 class QAudioOutput;
 #endif
 class TQtSettings;
@@ -56,7 +59,7 @@ class TQKeypad;
 class TQBusy;
 class TqDownload;
 class TQtPhone;
-class QListWidgetItem;
+class TBitmap;
 QT_END_NAMESPACE
 #ifdef Q_OS_IOS
 class TIOSBattery;
@@ -68,7 +71,7 @@ Q_DECLARE_METATYPE(size_t)
 
 int qtmain(int argc, char **argv, TPageManager *pmanager);
 
-class MainWindow : public QMainWindow, TQManageQueue
+class MainWindow : public QMainWindow, TQManageQueue, public TObject
 {
     Q_OBJECT
 
@@ -91,23 +94,29 @@ class MainWindow : public QMainWindow, TQManageQueue
         void setScaleFactor(double scale) { mScaleFactor = scale; }
         void setSetupScaleFactor(double scale) { mSetupScaleFactor = scale; }
         double getScaleFactor() { return mScaleFactor; }
+        void setOrientation(Qt::ScreenOrientation ori) { mOrientation = ori; }
+#if defined(QT_DEBUG) && (defined(Q_OS_IOS) || defined(Q_OS_ANDROID))
+        static std::string orientationToString(Qt::ScreenOrientation ori);
+#endif
 
     signals:
-        void sigDisplayButton(ulong handle, ulong parent, QByteArray buffer, int width, int height, int pixline, int left, int top);
+        void sigDisplayButton(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top);
+        void sigDisplayViewButton(ulong handle, ulong parent, bool vertical, TBitmap buffer, int width, int height, int left, int top, int space, TColor::COLOR_T fillColor);
+        void sigAddViewButtonItems(ulong parent, std::vector<PGSUBVIEWITEM_T> items);
         void sigSetVisible(ulong handle, bool state);
         void sigSetPage(ulong handle, int width, int height);
         void sigSetSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate);
-#ifdef _OPAQUE_SKIA_
-        void sigSetBackground(ulong handle, QByteArray image, size_t rowBytes, int width, int height, ulong color);
+#ifndef _OPAQUE_SKIA_
+        void sigSetBackground(ulong handle, TBitmap image, int width, int height, ulong color, int opacity=255);
 #else
-        void sigSetBackground(ulong handle, QByteArray image, size_t rowBytes, int width, int height, ulong color, int opacity);
+        void sigSetBackground(ulong handle, TBitmap image, int width, int height, ulong color);
 #endif
         void sigDropPage(ulong handle);
         void sigDropSubPage(ulong handle);
         void sigDropButton(ulong handle);
         void sigPlayVideo(ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw);
-        void sigInputText(Button::TButton *button, QByteArray buffer, int width, int height, int frame, size_t pixline);
-        void sigListBox(Button::TButton *button, QByteArray buffer, int width, int height, int frame, size_t pixline);
+        void sigInputText(Button::TButton& button, QByteArray buffer, int width, int height, int frame, size_t pixline);
+        void sigListBox(Button::TButton& button, QByteArray buffer, int width, int height, int frame, size_t pixline);
         void sigKeyboard(const std::string& init, const std::string& prompt, bool priv);
         void sigKeypad(const std::string& init, const std::string& prompt, bool priv);
         void sigResetKeyboard();
@@ -129,12 +138,9 @@ class MainWindow : public QMainWindow, TQManageQueue
         void sigSetSizeMainWindow(int width, int height);
         void sigStartWait(const std::string& text);
         void sigStopWait();
-        // We've to do this twice because of the limited preprocessor
-        // capabilities of the Qt moc.
-#ifdef Q_OS_ANDROID
-        void sigActivateSettings(const std::string& oldNetlinx, int oldPort, int oldChannelID, const std::string& oldSurface, bool oldToolbarSuppress, bool oldToolbarForce);
-#endif
-#ifdef Q_OS_IOS
+        void sigPageFinished(uint handle);
+        void sigListViewArea(ulong handle, ulong parent, Button::TButton& button, SUBVIEWLIST_T& list);
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         void sigActivateSettings(const std::string& oldNetlinx, int oldPort, int oldChannelID, const std::string& oldSurface, bool oldToolbarSuppress, bool oldToolbarForce);
 #endif
     protected:
@@ -150,21 +156,23 @@ class MainWindow : public QMainWindow, TQManageQueue
 #ifndef QT_NO_SESSIONMANAGER
         void commitData(QSessionManager &);
 #endif
-        void displayButton(ulong handle, ulong parent, QByteArray buffer, int width, int height, int pixline, int left, int top);
+        void displayButton(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top);
+        void displayViewButton(ulong handle, ulong parent, bool vertical, TBitmap buffer, int width, int height, int left, int top, int space, TColor::COLOR_T fillColor);
+        void addViewButtonItems(ulong parent, std::vector<PGSUBVIEWITEM_T> items);
         void SetVisible(ulong handle, bool state);
         void setPage(ulong handle, int width, int height);
         void setSubPage(ulong hanlde, ulong parent, int left, int top, int width, int height, ANIMATION_t animate);
 #ifdef _OPAQUE_SKIA_
-        void setBackground(ulong handle, QByteArray image, size_t rowBytes, int width, int height, ulong color);
+        void setBackground(ulong handle, TBitmap image, int width, int height, ulong color);
 #else
-        void setBackground(ulong handle, QByteArray image, size_t rowBytes, int width, int height, ulong color, int opacity=255);
-#endif
+        void setBackground(ulong handle, TBitnap image, int width, int height, ulong color, int opacity=255);
+#endif  // _OPAQUE_SKIA_
         void dropPage(ulong handle);
         void dropSubPage(ulong handle);
         void dropButton(ulong handle);
         void playVideo(ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw);
-        void inputText(Button::TButton *button, QByteArray buffer, int width, int height, int frame, size_t pixline);
-        void listBox(Button::TButton *button, QByteArray buffer, int width, int height, int frame, size_t pixline);
+        void inputText(Button::TButton& button, QByteArray buffer, int width, int height, int frame, size_t pixline);
+        void listBox(Button::TButton& button, QByteArray buffer, int width, int height, int frame, size_t pixline);
         void showKeyboard(const std::string& init, const std::string& prompt, bool priv);
         void showKeypad(const std::string& init, const std::string& prompt, bool priv);
         void sendVirtualKeys(const std::string& str);
@@ -176,14 +184,13 @@ class MainWindow : public QMainWindow, TQManageQueue
         void onAppStateChanged(Qt::ApplicationState state);
         void onScreenOrientationChanged(Qt::ScreenOrientation ori);
         void onCurrentOrientationChanged(int currentOrientation);
-#ifdef Q_OS_ANDROID
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         void activateSettings(const std::string& oldNetlinx, int oldPort, int oldChannelID, const std::string& oldSurface, bool oldToolbarSuppress, bool oldToolbarForce);
-#endif
 #ifdef Q_OS_IOS
         void onPositionUpdated(const QGeoPositionInfo &update);
         void onErrorOccurred(QGeoPositionInfoSource::Error positioningError);
-        void activateSettings(const std::string& oldNetlinx, int oldPort, int oldChannelID, const std::string& oldSurface, bool oldToolbarSuppress, bool oldToolbarForce);
-#endif
+#endif  // Q_OS_IOS
+#endif  // defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         void onTListCallbackCurrentItemChanged(QListWidgetItem *current, QListWidgetItem *previous);
         void setSizeMainWindow(int width, int height);
         // Slots for the phone dialog
@@ -213,6 +220,8 @@ class MainWindow : public QMainWindow, TQManageQueue
         void onProgressChanged(int percent);
         void startWait(const std::string& text);
         void stopWait();
+        void pageFinished(ulong handle);
+        void listViewArea(ulong handle, ulong parent, Button::TButton& button, SUBVIEWLIST_T& list);
 
     private:
         bool gestureEvent(QGestureEvent *event);
@@ -226,22 +235,27 @@ class MainWindow : public QMainWindow, TQManageQueue
         void startAnimation(TObject::OBJECT_t *obj, ANIMATION_t& ani, bool in = true);
         void downloadBar(const std::string& msg, QWidget *parent);
         void runEvents();
+        void onSubViewItemClicked(ulong handle, bool pressed);
+        QPixmap scaleImage(QPixmap& pix);
+        QPixmap scaleImage(unsigned char *buffer, int width, int height, int pixline);
 
-        void _displayButton(ulong handle, ulong parent, unsigned char* buffer, int width, int height, int pixline, int left, int top);
+        void _displayButton(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top);
+        void _displayViewButton(ulong handle, ulong parent, bool vertical, TBitmap buffer, int width, int height, int left, int top, int space, TColor::COLOR_T fillColor);
+        void _addViewButtonItems(ulong parent, std::vector<PGSUBVIEWITEM_T> items);
         void _setVisible(ulong handle, bool state);
         void _setPage(ulong handle, int width, int height);
         void _setSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate);
 #ifdef _OPAQUE_SKIA_
-        void _setBackground(ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color);
+        void _setBackground(ulong handle, TBitmap image, int width, int height, ulong color);
 #else
-        void _setBackground(ulong handle, unsigned char *image, size_t size, size_t rowBytes, int width, int height, ulong color, int opacity=255);
-#endif
+        void _setBackground(ulong handle, TBitmap image, int width, int height, ulong color, int opacity=255);
+#endif  // _OPAQUE_SKIA_
         void _dropPage(ulong handle);
         void _dropSubPage(ulong handle);
         void _dropButton(ulong handle);
         void _playVideo(ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw);
-        void _inputText(Button::TButton *button, Button::BITMAP_t& bm, int frame);
-        void _listBox(Button::TButton *button, Button::BITMAP_t& bm, int frame);
+        void _inputText(Button::TButton& button, Button::BITMAP_t& bm, int frame);
+        void _listBox(Button::TButton& button, Button::BITMAP_t& bm, int frame);
         void _showKeyboard(const std::string& init, const std::string& prompt, bool priv=false);
         void _showKeypad(const std::string& init, const std::string& prompt, bool priv=false);
         void _resetKeyboard();
@@ -265,23 +279,29 @@ class MainWindow : public QMainWindow, TQManageQueue
         void _signalState(Qt::ApplicationState state);
         void _orientationChanged(int orientation);
         void _activateSettings(const std::string& oldNetlinx, int oldPort, int oldChannelID, const std::string& oldSurface, bool oldToolbarSuppress, bool oldToolbarForce);
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
         void _freezeWorkaround();
-#endif  // QT5_LINUX
-#endif  // __ANDROID__
+#endif  // QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+#endif  // defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         void _repaintWindows();
         void _toFront(ulong handle);
         void _downloadSurface(const std::string& file, size_t size);
         void _startWait(const std::string& text);
         void _stopWait();
+        void _pageFinished(uint handle);
+        void _listViewArea(ulong handle, ulong parent, Button::TButton& button, SUBVIEWLIST_T& list);
         void doReleaseButton();
         void repaintObjects();
         int calcVolume(int value);
         std::string convertMask(const std::string& mask);
+#ifdef Q_OS_ANDROID
+        void hideAndroidBars();
+#endif  // Q_OS_ANDROID
 #ifdef Q_OS_IOS
         void setNotch();
         void initGeoLocation();
-#endif
+        Qt::ScreenOrientation getRealOrientation();
+#endif  // Q_OS_IOS
 
         bool mWasInactive{false};           // If the application was inactive this is set to true until everything was repainted.
         bool mDoRepaint{false};             // This is set to TRUE whenever a reconnection to the controller happened.
@@ -289,8 +309,8 @@ class MainWindow : public QMainWindow, TQManageQueue
         bool settingsChanged{false};        // true = settings have changed
 
         QToolBar *mToolbar{nullptr};        // The toolbar, if there is any
-        QPixmap mBackground;                // The background pixmap
-        QColor mBackgroundColor;            // The base background color
+        QStackedWidget *mCentralWidget{nullptr};        // A stacked widget where all pages are stored
+        bool mCentralInitialized{false};    // True = The central widget and all dependencies are initialized
         std::string mVideoURL;              // If the button is a video, this is the URL where it plays from.
         std::string mFileConfig;            // Path and file name of the config file
         bool mHasFocus{true};               // If this is FALSE, no output to sceen is allowed.
@@ -302,18 +322,17 @@ class MainWindow : public QMainWindow, TQManageQueue
         TqDownload *mDownloadBar{nullptr};  // Pointer to a dialog showing a progress bar
         TQKeyboard *mQKeyboard{nullptr};    // Pointer to an active virtual keyboard
         TQKeypad *mQKeypad{nullptr};        // Pointer to an active virtual keypad
-//        std::thread mThreadBusy;            // The thread of the busy indicator.
         bool mKeyboard{false};              // TRUE = keyboard is visible
         bool mKeypad{false};                // TRUE = keypad is visible
         TQtPhone *mPhoneDialog{nullptr};    // Points to the internal phone dialog
         // Mouse
         int mLastPressX{-1};                // Remember the last mouse press X coordinate
         int mLastPressY{-1};                // Remember the last mouse press Y coordinate
-        Qt::ScreenOrientations mOrientation{Qt::PrimaryOrientation};
+        Qt::ScreenOrientation mOrientation{Qt::PrimaryOrientation};
         QOrientationSensor *mSensor{nullptr};   // Basic sensor for orientation
         QMediaPlayer *mMediaPlayer{nullptr};// Class to play sound files.
         TQtWait *mWaitBox{nullptr};         // This is a wait dialog.
-#ifdef QT6_LINUX
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
         QGeoPositionInfoSource *mSource{nullptr};   // The geo location is used on IOS to keep app running in background
         QAudioOutput *mAudioOutput{nullptr};
 #endif
@@ -321,6 +340,10 @@ class MainWindow : public QMainWindow, TQManageQueue
         TIOSBattery *mIosBattery{nullptr};  // Class to retrive the battery status on an iPhone or iPad
         TIOSRotate *mIosRotate{nullptr};    // Class to control rotation
         bool mIOSSettingsActive{false};     // TRUE: IOS settings are active.
+        QMargins mNotchPortrait;            // The margins (notch, if any) for portrait orientation
+        QMargins mNotchLandscape;           // The margins (notch, if any) for landscape orientation
+        bool mHaveNotchPortrait{false};     // TRUE = Notch was already fetched for portrait orientation
+        bool mHaveNotchLandscape{false};    // TRUE = Notch was already fetched for landscape orientation
 #endif
         std::chrono::steady_clock::time_point mTouchStart;  // Time in micro seconds of the start of a touch event
         int mTouchX{0};                        // The X coordinate of the mouse pointer

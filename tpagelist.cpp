@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,7 +18,6 @@
 
 #include <string>
 #include "tpagelist.h"
-#include "texpat++.h"
 #include "tconfig.h"
 #include "terror.h"
 
@@ -115,7 +114,7 @@ void TPageList::initialize(bool system)
     int depth = 0;
     size_t index = 0;
 
-    if ((index = xml.getElementIndex("pageList", &depth)) == TExpat::npos)
+    if (xml.getElementIndex("pageList", &depth) == TExpat::npos)
     {
         MSG_ERROR("Couldn't find the section \"pageList\" in file!");
         TError::setError();
@@ -198,7 +197,98 @@ void TPageList::initialize(bool system)
         attribute.clear();
         attrs.clear();
     }
-    while ((index = xml.getNextElementIndex("pageList", depth)) != TExpat::npos);
+    while (xml.getNextElementIndex("pageList", depth) != TExpat::npos);
+
+    loadSubPageSets(&xml);
+}
+
+void TPageList::loadSubPageSets(TExpat *xml)
+{
+    DECL_TRACER("TPageList::loadSubPageSets(TExpat *xml)");
+
+    int depth = 0;
+    size_t index = 0;
+    size_t oldIndex = 0;
+
+    if (xml->getElementIndex("subPageSets", &depth) == TExpat::npos)
+    {
+        MSG_WARNING("Couldn't find the section \"subPageSets\" in file!");
+        return;
+    }
+
+    do
+    {
+        while ((index = xml->getNextElementIndex("subPageSetEntry", depth+1)) != TExpat::npos)
+        {
+            SUBVIEWLIST_T svl;
+            SUBVIEWITEM_T svi;
+            string e, content;
+
+            vector<ATTRIBUTE_t> attrs = xml->getAttributes();
+            svl.id = xml->getAttributeInt("id", attrs);
+
+            while ((index = xml->getNextElementFromIndex(index, &e, &content, nullptr)) != TExpat::npos)
+            {
+                if (e.compare("name") == 0)
+                    svl.name = content;
+                else if (e.compare("pgWidth") == 0)
+                    svl.pgWidth = xml->convertElementToInt(content);
+                else if (e.compare("pgHeight") == 0)
+                    svl.pgHeight = xml->convertElementToInt(content);
+                else if (e.compare("items") == 0)
+                {
+                    string et;
+
+                    while ((index = xml->getNextElementFromIndex(index, &et, &content, &attrs)) != TExpat::npos)
+                    {
+                        if (et.compare("item") == 0)
+                        {
+                            svi.index = xml->getAttributeInt("index", attrs);
+                            string it;
+
+                            while ((index = xml->getNextElementFromIndex(index, &it, &content, nullptr)) != TExpat::npos)
+                            {
+                                if (it.compare("pageID") == 0)
+                                    svi.pageID = xml->convertElementToInt(content);
+
+                                oldIndex = index;
+                            }
+
+                            svl.items.push_back(svi);
+                            svi.index = svi.pageID = 0;
+
+                            if (index == TExpat::npos)
+                                index = oldIndex + 1;
+                        }
+                    }
+                }
+            }
+
+            mSubViewList.push_back(svl);
+            svl.id = svl.pgWidth = svl.pgHeight = 0;
+            svl.items.clear();
+            svl.name.clear();
+        }
+    }
+    while (xml->getNextElementIndex("subPageSets", depth) != TExpat::npos);
+
+    if (TStreamError::checkFilter(HLOG_DEBUG))
+    {
+        vector<SUBVIEWLIST_T>::iterator iterList;
+        vector<SUBVIEWITEM_T>::iterator iterItem;
+
+        for (iterList = mSubViewList.begin(); iterList != mSubViewList.end(); ++iterList)
+        {
+            MSG_DEBUG("Subview container " << iterList->id << ": " << iterList->name);
+            MSG_DEBUG("        pgWidth:  " << iterList->pgWidth);
+            MSG_DEBUG("        pgHeight: " << iterList->pgHeight);
+
+            for (iterItem = iterList->items.begin(); iterItem != iterList->items.end(); ++iterItem)
+            {
+                MSG_DEBUG("        Item:     " << iterItem->index << ", pageID: " << iterItem->pageID);
+            }
+        }
+    }
 }
 
 PAGELIST_T TPageList::findPage(const std::string& name, bool system)
@@ -339,4 +429,122 @@ SUBPAGELIST_T TPageList::findSubPage(int pageID)
     TError::setErrorMsg("Subpage " + std::to_string(pageID) + " not found!");
     TError::setError();
     return page;
+}
+
+/*******************************************************************************
+ * SubViewList
+ *
+ * A subview list is a container which defines one or more subpages. All the
+ * subpages in the container are displayed inside a scroll area. This area can
+ * be defined to scroll vertical or horizontal. On typing on one of the
+ * subpages in the scroll area the defined action is made. It behaves like a
+ * normal button and sends the push notification to the NetLinx. If there are
+ * some actions defined they will be executed, just like a normal button.
+ *
+ * Only Modero X panels are supporting this subviews! And TPanel of course :-)
+ ******************************************************************************/
+
+/**
+ * @brief TPageList::findSubViewList
+ * Searches the list of subviews for an entry with the ID \a id. On success
+ * the type \a SUBVIEWLIST_T is returned.
+ *
+ * @param id    The ID of the wanted subview list.
+ * @return On success returns the SUBVIEWLIST_T with all data found. Otherwise
+ * an empty structure is returned.
+ */
+SUBVIEWLIST_T TPageList::findSubViewList(int id)
+{
+    DECL_TRACER("TPageList::findSubViewList(int id)");
+
+    if (mSubViewList.empty())
+        return SUBVIEWLIST_T();
+
+    vector<SUBVIEWLIST_T>::iterator iter;
+
+    for (iter = mSubViewList.begin(); iter != mSubViewList.end(); ++iter)
+    {
+        if (iter->id == id)
+            return *iter;
+    }
+
+    return SUBVIEWLIST_T();
+}
+
+/**
+ * @brief TPageList::findSubViewListPageID
+ * Find the page ID inside of a subview list. The ID of the subview as well as
+ * the index number of the item must be known to get the page ID.
+ *
+ * @param id        ID of subview.
+ * @param index     Index number of item in the subview list.
+ *
+ * @return On success returns the page ID. If the page ID couldn't be found
+ * either because there are no subviews or the subview ID doesn't exist or the
+ * index number inside the subview doesn't exist, it returns -1.
+ */
+int TPageList::findSubViewListPageID(int id, int index)
+{
+    DECL_TRACER("TPageList::findSubViewListPageID(int id, int index)");
+
+    if (mSubViewList.empty())
+        return -1;
+
+    SUBVIEWLIST_T slist = findSubViewList(id);
+
+    if (slist.id == 0 || slist.items.empty())
+        return -1;
+
+
+    vector<SUBVIEWITEM_T>::iterator iter;
+
+    for (iter = slist.items.begin(); iter != slist.items.end(); ++iter)
+    {
+        if (iter->index == index)
+            return iter->pageID;
+    }
+
+    return -1;
+}
+
+/**
+ * @brief TPageList::findSubViewListNextPageID
+ * Searches for the first or the next page ID inside a subview list.
+ * If the parameter \a *index is less then 0, the first index is returned.
+ * otherwise the next index grater then \a *index is returned, if there is one.
+ * If no more indexes are found it returns -1.
+ *
+ * @param id        The ID of the subview list.
+ * @param index     The index number.
+ *
+ * @return On success the next page ID where the index is higher then \a index
+ * is returned. If there is no more page ID with a higher index it returns -1.
+ */
+int TPageList::findSubViewListNextPageID(int id, int *index)
+{
+    DECL_TRACER("TPageList::findSubViewListNextPageID(int id, int *index)");
+
+    if (mSubViewList.empty() || !index)
+        return -1;
+
+    SUBVIEWLIST_T slist = findSubViewList(id);
+
+    if (slist.id == 0 || slist.items.empty())
+        return -1;
+
+    if (*index < 0)
+    {
+        *index = slist.items[0].index;
+        return slist.items[0].pageID;
+    }
+
+    vector<SUBVIEWITEM_T>::iterator iter;
+
+    for (iter = slist.items.begin(); iter != slist.items.end(); ++iter)
+    {
+        if (iter->index > *index)
+            return iter->pageID;
+    }
+
+    return -1;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -53,7 +53,6 @@
 #include "tresources.h"
 #include "ticons.h"
 #include "tamxnet.h"
-#include "tobject.h"
 #include "tpagemanager.h"
 #include "tsystemsound.h"
 #include "timgcache.h"
@@ -405,6 +404,18 @@ size_t TButton::initialize(TExpat *xml, size_t index)
             of = xml->convertElementToInt(content);
         else if (ename.compare("tg") == 0)          // Listbox managed: 0=no/1=yes
             tg = xml->convertElementToInt(content);
+        else if (ename.compare("st") == 0)          // SubPageView index
+            st = xml->convertElementToInt(content);
+        else if (ename.compare("ws") == 0)          // SubPageView: Wrap subpages; 1 = YES
+            ws = xml->convertElementToInt(content);
+        else if (ename.compare("sa") == 0)          // SubPageView: Percent of space between items in list
+            sa = xml->convertElementToInt(content);
+        else if (ename.compare("dy") == 0)          // SubPageView: Allow dynamic reordering; 1 = YES
+            dy = xml->convertElementToInt(content);
+        else if (ename.compare("rs") == 0)          // SubPageView: Reset view on show; 1 = YES
+            rs = xml->convertElementToInt(content);
+        else if (ename.compare("on") == 0)          // SubPageView direction
+            on = content;
         else if (ename.compare("hd") == 0)          // 1 = Hidden, 0 = Normal visible
             hd = xml->convertElementToInt(content);
         else if (ename.compare("da") == 0)          // 1 = Disabled, 0 = Normal active
@@ -573,12 +584,31 @@ BITMAP_t TButton::getLastImage()
 {
     DECL_TRACER("TButton::getLastImage()");
 
+    if (mLastImage.empty())
+    {
+        makeElement(mActInstance);
+
+        if (mLastImage.empty())
+            return BITMAP_t();
+    }
+
     BITMAP_t image;
     image.buffer = (unsigned char *)mLastImage.getPixels();
     image.rowBytes = mLastImage.info().minRowBytes();
     image.width = mLastImage.info().width();
     image.height = mLastImage.info().height();
     return image;
+}
+
+TBitmap TButton::getLastBitmap()
+{
+    DECL_TRACER("TButton::getLastBitmap()");
+
+    if (mLastImage.empty())
+        makeElement(mActInstance);
+
+    TBitmap bitmap((unsigned char *)mLastImage.getPixels(), mLastImage.info().width(), mLastImage.info().height());
+    return bitmap;
 }
 
 FONT_T TButton::getFont()
@@ -613,6 +643,68 @@ FONT_STYLE TButton::getFontStyle()
     return mFonts->getStyle(sr[mActInstance].fi);
 }
 
+void TButton::setBargraphLevel(int level)
+{
+    DECL_TRACER("TButton::setBargraphLevel(int level)");
+
+    if (type != BARGRAPH && type != MULTISTATE_BARGRAPH && type != MULTISTATE_GENERAL)
+        return;
+
+    if (((type == BARGRAPH || type == MULTISTATE_BARGRAPH) && (level < rl || level > rh)) ||
+        (type == MULTISTATE_GENERAL && (level < 0 || (size_t)level >= sr.size())))
+    {
+        MSG_WARNING("Level for bargraph " << na << " is out of range! (" << rl << " to " << rh << " or size " << sr.size() << ")");
+        return;
+    }
+
+    if (((type == BARGRAPH || type == MULTISTATE_BARGRAPH) && mLastLevel != level) ||
+        (type == MULTISTATE_BARGRAPH && mActInstance != level))
+        mChanged = true;
+
+    if (!mChanged)
+        return;
+
+    if (type == BARGRAPH)
+    {
+        mLastLevel = level;
+        drawBargraph(mActInstance, level);
+    }
+    else if (type == MULTISTATE_BARGRAPH)
+    {
+        mLastLevel = level;
+        mActInstance = level;
+        drawMultistateBargraph(level);
+    }
+    else
+        setActive(level);
+}
+
+bool TButton::invalidate()
+{
+    DECL_TRACER("TButton::invalidate()");
+
+    if (prg_stopped)
+        return true;
+
+    ulong parent = mHandle & 0xffff0000;
+    THR_REFRESH_t *tr = _findResource(mHandle, parent, bi);
+
+    if (tr && tr->mImageRefresh)
+    {
+        if (tr->mImageRefresh->isRunning())
+            tr->mImageRefresh->stop();
+    }
+
+    if (type == TEXT_INPUT)
+    {
+        if (gPageManager && gPageManager->getCallDropButton())
+            gPageManager->getCallDropButton()(mHandle);
+    }
+
+    visible = false;
+    return true;
+}
+
 BUTTONTYPE TButton::getButtonType(const string& bt)
 {
     DECL_TRACER("TButton::getButtonType(const string& bt)");
@@ -633,12 +725,32 @@ BUTTONTYPE TButton::getButtonType(const string& bt)
         return COMPUTER_CONTROL;
     else if (bt.compare("take note") == 0)
         return TAKE_NOTE;
-    else if (bt.compare("sub-page view") == 0)
+    else if (bt.compare("sub-page view") == 0 || bt.compare("subPageView") == 0)
         return SUBPAGE_VIEW;
     else if (bt.compare("listBox") == 0)
         return LISTBOX;
 
     return NONE;
+}
+
+string TButton::buttonTypeToString()
+{
+    switch(type)
+    {
+        case NONE:                  return "NONE";
+        case GENERAL:               return "GENERAL";
+        case MULTISTATE_GENERAL:    return "MULTISTAE GENERAL";
+        case BARGRAPH:              return "BARGRAPH";
+        case MULTISTATE_BARGRAPH:   return "MULTISTATE BARGRAPH";
+        case JOISTICK:              return "JOISTICK";
+        case TEXT_INPUT:            return "TEXT INPUT";
+        case COMPUTER_CONTROL:      return "COMPUTER CONTROL";
+        case TAKE_NOTE:             return "TAKE NOTE";
+        case SUBPAGE_VIEW:          return "SUBPAGE VIEW";
+        case LISTBOX:               return "LISTBOX";
+    }
+
+    return "";
 }
 
 FEEDBACK TButton::getButtonFeedback(const string& fb)
@@ -674,7 +786,6 @@ bool TButton::createButtons(bool force)
 
     // Get the images, if there any
     vector<SR_T>::iterator srIter;
-    int i = 0;
 
     for (srIter = sr.begin(); srIter != sr.end(); ++srIter)
     {
@@ -754,8 +865,6 @@ bool TButton::createButtons(bool force)
             srIter->bm_height = bm.info().height();
             mChanged = true;
         }
-
-        i++;
     }
 
     return true;
@@ -814,7 +923,6 @@ bool TButton::makeElement(int instance)
         if (isSystem)
             mSystemReg = true;
 
-        // FIXME: Enter code do draw the background box
         drawList();
     }
     else if (isSystem && type == GENERAL)
@@ -2737,7 +2845,6 @@ void TButton::_imageRefresh(const string& url)
 
     mLastImage = imgButton;
     mChanged = false;
-    size_t rowBytes = imgButton.info().minRowBytes();
 
     if (!prg_stopped && visible && _displayButton)
     {
@@ -2771,7 +2878,8 @@ void TButton::_imageRefresh(const string& url)
             mLastImage = imgButton;
         }
 #endif
-        _displayButton(mHandle, parent, (unsigned char *)imgButton.getPixels(), rwidth, rheight, rowBytes, rleft, rtop);
+        TBitmap image((unsigned char *)imgButton.getPixels(), imgButton.info().width(), imgButton.info().height());
+        _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop);
     }
 }
 
@@ -2940,7 +3048,7 @@ void TButton::getDrawOrder(const std::string& sdo, DRAW_ORDER *order)
         return;
     }
 
-    int elems = sdo.length() / 2;
+    int elems = (int)(sdo.length() / 2);
 
     for (int i = 0; i < elems; i++)
     {
@@ -2991,7 +3099,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
     if (inst < 0)
         instance = 0;
     else if ((size_t)inst >= sr.size())
-        instance = sr.size() - 1;
+        instance = (int)(sr.size() - 1);
 
     /*
      * Here we test if we have a cameleon image. If there is a mask (sr[].mi)
@@ -3296,11 +3404,11 @@ bool TButton::buttonDynamic(SkBitmap* bm, int instance, bool show, bool *state)
 
     if (!visible)
     {
-        MSG_DEBUG("Dynamic button " << TObject::handleToString(mHandle) << " is invisible. Will not draw it.");
+        MSG_DEBUG("Dynamic button " << handleToString(mHandle) << " is invisible. Will not draw it.");
         return true;
     }
 
-    MSG_DEBUG("Dynamic button " << TObject::handleToString(mHandle) << " will be drawn ...");
+    MSG_DEBUG("Dynamic button " << handleToString(mHandle) << " will be drawn ...");
     size_t idx = 0;
 
     if ((idx = gPrjResources->getResourceIndex("image")) == TPrjResources::npos)
@@ -3309,7 +3417,7 @@ bool TButton::buttonDynamic(SkBitmap* bm, int instance, bool show, bool *state)
         return false;
     }
 
-    RESOURCE_T resource = gPrjResources->findResource(idx, sr[instance].bm);
+    RESOURCE_T resource = gPrjResources->findResource((int)idx, sr[instance].bm);
 
     if (resource.protocol.empty())
     {
@@ -3578,7 +3686,7 @@ void TButton::funcResource(const RESOURCE_T* resource, const std::string& url, B
 
             if (bmCache.handle == 0)
             {
-                MSG_ERROR("Couldn't find the handle " << TObject::handleToString(bc.handle) << " in bitmap cache!");
+                MSG_ERROR("Couldn't find the handle " << handleToString(bc.handle) << " in bitmap cache!");
                 return;
             }
 
@@ -3667,7 +3775,8 @@ void TButton::funcResource(const RESOURCE_T* resource, const std::string& url, B
 
             if (bc.show && _displayButton)
             {
-                _displayButton(bc.handle, bc.parent, (unsigned char *)bmCache.bitmap.getPixels(), bc.width, bc.height, bmCache.bitmap.info().minRowBytes(), bc.left, bc.top);
+                TBitmap image((unsigned char *)bmCache.bitmap.getPixels(), bmCache.bitmap.info().width(), bmCache.bitmap.info().height());
+                _displayButton(bc.handle, bc.parent, image, bc.width, bc.height, bc.left, bc.top);
                 mChanged = false;
             }
         }
@@ -4407,13 +4516,19 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
     int instance = inst;
 
     if ((size_t)instance >= sr.size())
-        instance = sr.size() - 1;
+        instance = (int)(sr.size() - 1);
     else if (instance < 0)
         instance = 0;
 
-    if (sr[instance].te.empty() || !mFonts)     // Is there a text and fonts?
-    {                                           // No, then return
+    if (sr[instance].te.empty())            // Is there a text?
+    {                                       // No, then return
         MSG_DEBUG("Empty text string.");
+        return true;
+    }
+
+    if (!mFonts)                            // Do we have any fonts?
+    {                                       // No, warn and return
+        MSG_WARNING("No fonts available to write a text!");
         return true;
     }
 
@@ -4470,7 +4585,7 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
         else
         {
             textLines = splitLine(sr[instance].te, wt, ht, skFont, paint);
-            lines = textLines.size();
+            lines = (int)textLines.size();
         }
 
         MSG_DEBUG("Calculated number of lines: " << lines);
@@ -4610,13 +4725,13 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
                 {
                     glyphs = new uint16_t[num];
                     size_t glyphSize = sizeof(uint16_t) * num;
-                    count = skFont.textToGlyphs(uni, num, SkTextEncoding::kUTF16, glyphs, glyphSize);
+                    count = skFont.textToGlyphs(uni, num, SkTextEncoding::kUTF16, glyphs, (int)glyphSize);
 
                     if (count <= 0)
                     {
                         delete[] glyphs;
                         glyphs = TFont::textToGlyphs(text, typeFace, &num);
-                        count = num;
+                        count = (int)num;
                     }
                 }
                 else
@@ -4634,7 +4749,7 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
             {
                 glyphs = new uint16_t[text.size()];
                 size_t glyphSize = sizeof(uint16_t) * text.size();
-                count = skFont.textToGlyphs(text.data(), text.size(), SkTextEncoding::kUTF8, glyphs, glyphSize);
+                count = skFont.textToGlyphs(text.data(), text.size(), SkTextEncoding::kUTF8, glyphs, (int)glyphSize);
             }
 
             if (glyphs)
@@ -4647,7 +4762,7 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
                 MSG_WARNING("Got no glyphs! Try to print: " << text);
                 glyphs = new uint16_t[text.size()];
                 size_t glyphSize = sizeof(uint16_t) * text.size();
-                count = skFont.textToGlyphs(text.data(), text.size(), SkTextEncoding::kUTF8, glyphs, glyphSize);
+                count = skFont.textToGlyphs(text.data(), text.size(), SkTextEncoding::kUTF8, glyphs, (int)glyphSize);
                 canvas.drawSimpleText(glyphs, sizeof(uint16_t) * count, SkTextEncoding::kGlyphID, startX, startY, skFont, paint);
             }
 
@@ -5348,7 +5463,9 @@ bool TButton::drawButton(int instance, bool show)
 
     if (!mChanged && !mLastImage.empty())
     {
-        showLastButton();
+        if (show)
+            showLastButton();
+
         mutex_button.unlock();
         return true;
     }
@@ -5462,7 +5579,6 @@ bool TButton::drawButton(int instance, bool show)
 
     mLastImage = imgButton;
     mChanged = false;
-    size_t rowBytes = imgButton.info().minRowBytes();
 
     if (!prg_stopped && !dynState)
     {
@@ -5498,11 +5614,24 @@ bool TButton::drawButton(int instance, bool show)
 #endif
         if (show)
         {
-            _displayButton(mHandle, parent, (unsigned char *)imgButton.getPixels(), rwidth, rheight, rowBytes, rleft, rtop);
+            MSG_DEBUG("Button type: " << buttonTypeToString());
+            TBitmap image((unsigned char *)imgButton.getPixels(), imgButton.info().width(), imgButton.info().height());
+
+            if (type == SUBPAGE_VIEW && gPageManager && gPageManager->getDisplayViewButton())
+                gPageManager->getDisplayViewButton()(mHandle, parent, isSubViewVertical(), image, rwidth, rheight, rleft, rtop, sa, TColor::getAMXColor(sr[0].cf));
+            else
+                _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop);
         }
     }
 
     mutex_button.unlock();
+
+    if (type == SUBPAGE_VIEW && show)
+    {
+        if (gPageManager)
+            gPageManager->showSubViewList(st, this);
+    }
+
     return true;
 }
 
@@ -5653,7 +5782,7 @@ bool TButton::drawTextArea(int instance)
             bm.top = rtop;
             bm.width = rwidth;
             bm.height = rheight;
-            gPageManager->getCallbackInputText()(this, bm, mBorderWidth);
+            gPageManager->getCallbackInputText()(*this, bm, mBorderWidth);
         }
     }
 
@@ -5685,12 +5814,12 @@ bool TButton::drawMultistateBargraph(int level, bool show)
 
     int maxLevel = level;
 
-    if (maxLevel >= rh)
-        maxLevel = rh - 1 ;
-    else if (maxLevel <= rl && rl > 0)
-        maxLevel = rl - 1;
+    if (maxLevel > rh)
+        maxLevel = rh;
+    else if (maxLevel < rl)
+        maxLevel = rl;
     else if (maxLevel < 0)
-        maxLevel = 0;
+        maxLevel = rl;
 
     MSG_DEBUG("Display instance " << maxLevel);
     ulong parent = mHandle & 0xffff0000;
@@ -5795,7 +5924,6 @@ bool TButton::drawMultistateBargraph(int level, bool show)
 
     mLastImage = imgButton;
     mChanged = false;
-    size_t rowBytes = imgButton.info().minRowBytes();
 
     if (!prg_stopped)
     {
@@ -5833,7 +5961,10 @@ bool TButton::drawMultistateBargraph(int level, bool show)
         }
 #endif
         if (show)
-            _displayButton(mHandle, parent, (unsigned char *)imgButton.getPixels(), rwidth, rheight, rowBytes, rleft, rtop);
+        {
+            TBitmap image((unsigned char *)imgButton.getPixels(), imgButton.info().width(), imgButton.info().height());
+            _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop);
+        }
     }
 
     mutex_button.unlock();
@@ -5974,7 +6105,7 @@ bool TButton::drawList(bool show)
             bm.top = rtop;
             bm.width = rwidth;
             bm.height = rheight;
-            gPageManager->getCallbackListBox()(this, bm, mBorderWidth);
+            gPageManager->getCallbackListBox()(*this, bm, mBorderWidth);
         }
     }
 
@@ -6136,7 +6267,6 @@ bool TButton::drawBargraph(int instance, int level, bool show)
 
     mLastImage = imgButton;
     mChanged = false;
-    size_t rowBytes = imgButton.info().minRowBytes();
 
     if (!prg_stopped && show && visible && instance == mActInstance && _displayButton)
     {
@@ -6166,11 +6296,11 @@ bool TButton::drawBargraph(int instance, int level, bool show)
             SkCanvas can(imgButton, SkSurfaceProps());
             SkRect rect = SkRect::MakeXYWH(0, 0, width, height);
             can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
-            rowBytes = imgButton.info().minRowBytes();
             mLastImage = imgButton;
         }
 #endif
-        _displayButton(mHandle, parent, (unsigned char *)imgButton.getPixels(), rwidth, rheight, rowBytes, rleft, rtop);
+        TBitmap image((unsigned char *)imgButton.getPixels(), imgButton.info().width(), imgButton.info().height());
+        _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop);
     }
 
     mutex_bargraph.unlock();
@@ -6831,7 +6961,7 @@ void TButton::showLastButton()
                 bm.top = rtop;
                 bm.width = rwidth;
                 bm.height = rheight;
-                gPageManager->getCallbackInputText()(this, bm, mBorderWidth);
+                gPageManager->getCallbackInputText()(*this, bm, mBorderWidth);
             }
         }
         else if (type == LISTBOX)
@@ -6845,11 +6975,14 @@ void TButton::showLastButton()
                 bm.top = rtop;
                 bm.width = rwidth;
                 bm.height = rheight;
-                gPageManager->getCallbackListBox()(this, bm, mBorderWidth);
+                gPageManager->getCallbackListBox()(*this, bm, mBorderWidth);
             }
         }
         else if (_displayButton)
-            _displayButton(mHandle, parent, (unsigned char *)mLastImage.getPixels(), rwidth, rheight, rowBytes, rleft, rtop);
+        {
+            TBitmap image((unsigned char *)mLastImage.getPixels(), mLastImage.info().width(), mLastImage.info().height());
+            _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop);
+        }
 
         mChanged = false;
     }
@@ -6896,7 +7029,6 @@ void TButton::hide(bool total)
         }
 
         SkBitmap imgButton;
-        size_t rowBytes = 0;
 
         if (rwidth < 0 || rheight < 0)
         {
@@ -6910,7 +7042,6 @@ void TButton::hide(bool total)
                 return;
 
             imgButton.eraseColor(SK_ColorTRANSPARENT);
-            rowBytes = imgButton.info().minRowBytes();
         }
         catch (std::exception& e)
         {
@@ -6924,7 +7055,8 @@ void TButton::hide(bool total)
 
         if (_displayButton)
         {
-            _displayButton(mHandle, parent, (unsigned char *)imgButton.getPixels(), rwidth, rheight, rowBytes, rleft, rtop);
+            TBitmap image((unsigned char *)imgButton.getPixels(), imgButton.info().width(), imgButton.info().height());
+            _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop);
             mChanged = false;
         }
     }
@@ -7311,11 +7443,11 @@ bool TButton::doClick(int x, int y, bool pressed)
     int sx = x, sy = y;
     bool isSystem = isSystemButton();
 
-    if (gPageManager && !checkForSound() && (ch > 0 || lv > 0 || !pushFunc.empty() || isSystem))
+    if (pressed && gPageManager && !checkForSound() && (ch > 0 || lv > 0 || !pushFunc.empty() || isSystem))
     {
         TSystemSound sysSound(TConfig::getSystemPath(TConfig::SOUNDS));
 
-        if (pressed && gPageManager->havePlaySound() && sysSound.getSystemSoundState())
+        if (gPageManager->havePlaySound() && sysSound.getSystemSoundState())
             gPageManager->getCallPlaySound()(sysSound.getTouchFeedbackSound());
     }
 
@@ -7330,6 +7462,9 @@ bool TButton::doClick(int x, int y, bool pressed)
         sy = (int)((double)y * scaleFactor);
     }
 #endif
+    if (_buttonPress && mActInstance >= 0 && (size_t)mActInstance < sr.size() && cp == 0 && ch > 0)
+        _buttonPress(ch, mHandle, pressed);
+
     if (type == GENERAL)
     {
         MSG_DEBUG("Button type: GENERAL; System button: " << (isSystem ? "YES" : "NO") << "; CH: " << cp << ":" << ch << "; AD: " << ap << ":" << ad);
@@ -7661,7 +7796,7 @@ bool TButton::doClick(int x, int y, bool pressed)
                 ulong handle = (SYSTEM_PAGE_LOGGING << 16) | SYSTEM_PAGE_LOG_TXLOGFILE;
                 TConfig::setTemporary(true);
                 TConfig::saveLogFile(logFile);
-                MSG_DEBUG("Setting text \"" << logFile << "\" to button " << TObject::handleToString(handle));
+                MSG_DEBUG("Setting text \"" << logFile << "\" to button " << handleToString(handle));
 
                 if (gPageManager)
                     gPageManager->setTextToButton(handle, logFile, true);
@@ -8001,7 +8136,7 @@ bool TButton::doClick(int x, int y, bool pressed)
                 scmd.msg = op;
             }
 
-            MSG_DEBUG("Button " << bi << ", " << na << " with handle " << TObject::handleToString(mHandle));
+            MSG_DEBUG("Button " << bi << ", " << na << " with handle " << handleToString(mHandle));
             MSG_DEBUG("Sending to device <" << scmd.device << ":" << scmd.port << ":0> channel " << scmd.channel << " value 0x" << std::setw(2) << std::setfill('0') << std::hex << scmd.MC << " (" << (pressed?"PUSH":"RELEASE") << ")");
 
             if (gAmxNet)
@@ -8038,7 +8173,7 @@ bool TButton::doClick(int x, int y, bool pressed)
                 scmd.msg = op;
             }
 
-            MSG_DEBUG("Button " << bi << ", " << na << " with handle " << TObject::handleToString(mHandle));
+            MSG_DEBUG("Button " << bi << ", " << na << " with handle " << handleToString(mHandle));
             MSG_DEBUG("Sending to device <" << scmd.device << ":" << scmd.port << ":0> channel " << scmd.channel << " value 0x" << std::setw(2) << std::setfill('0') << std::hex << scmd.MC << " (" << (pressed?"PUSH":"RELEASE") << ")");
 
             if (gAmxNet)
@@ -8158,6 +8293,11 @@ bool TButton::doClick(int x, int y, bool pressed)
             {
                 if (gPageManager)
                     gPageManager->closeGroup(iter->pfName);
+            }
+            else if (strCaseCompare(iter->pfType, "SCPAGE") == 0)      // flip to page
+            {
+                if (gPageManager && !iter->pfName.empty())
+                    gPageManager->setPage(iter->pfName);
             }
             else if (strCaseCompare(iter->pfType, "STAN") == 0)        // Flip to standard page
             {
@@ -8730,7 +8870,8 @@ void TButton::showBitmapCache()
             {
                 if (_displayButton)
                 {
-                    _displayButton(iter->handle, iter->parent, (unsigned char *)iter->bitmap.getPixels(), iter->width, iter->height, iter->bitmap.info().minRowBytes(), iter->left, iter->top);
+                    TBitmap image((unsigned char *)iter->bitmap.getPixels(), iter->bitmap.info().width(), iter->bitmap.info().height());
+                    _displayButton(iter->handle, iter->parent, image, iter->width, iter->height, iter->left, iter->top);
                     mChanged = false;
                 }
 
@@ -9002,3 +9143,4 @@ void TButton::listViewSortData(const vector<string> &columns, LIST_SORT order, c
 
     // TODO: Insert code to sort the data in the list
 }
+

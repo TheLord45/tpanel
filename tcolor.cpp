@@ -162,6 +162,17 @@ std::string TColor::colorToString(SkColor color)
     return ret;
 }
 
+std::string TColor::colorToString(COLOR_T color)
+{
+    std::stringstream s;
+    s << std::setw(2) << std::setfill('0') << std::hex << color.red << ":";
+    s << std::setw(2) << std::setfill('0') << std::hex << color.green << ":";
+    s << std::setw(2) << std::setfill('0') << std::hex << color.red << ":";
+    s << std::setw(2) << std::setfill('0') << std::hex << color.alpha;
+    std::string ret = s.str();
+    return ret;
+}
+
 std::vector<SkColor> TColor::colorRange(SkColor col, int width, int bandwidth, DIRECTION_t dir)
 {
     DECL_TRACER("TColor::colorRange(SkColor col, int width, int bandwidth)");

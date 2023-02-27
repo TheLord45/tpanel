@@ -24,6 +24,7 @@
 #include <sstream>
 #include <string>
 #include <chrono>
+#include <mutex>
 
 #define LPATH_FILE          1   //!< Creates a log file and protocolls there
 #define LPATH_SYSLOG        2   //!< Writes to the syslog.
@@ -58,6 +59,8 @@ typedef enum terrtype_t
 }terrtype_t;
 
 std::ostream& indent(std::ostream& os);
+void lockMutex();
+void unlockMutex();
 
 class TStreamError
 {
@@ -172,9 +175,16 @@ class TError : public std::ostream
 #define IS_LOG_PROTOCOL()   TStreamError::checkFilter(HLOG_PROTOCOL)
 #define IS_LOG_ALL()        TStreamError::checkFilter(HLOG_ALL)
 
+#if defined(QT_DEBUG) || defined(DEBUG)
 #define START_TEMPORARY_TRACE()     TStreamError::startTemporaryLogLevel(HLOG_TRACE)
 #define START_TEMPORARY_DEBUG()     TStreamError::startTemporaryLogLevel(HLOG_DEBUG)
 #define START_TEMPORARY_LOG(level)  TStreamError::startTemporaryLogLevel(level)
 #define END_TEMPORARY_LOG()         TStreamError::endTemporaryLogLevel()
+#else
+#define START_TEMPORARY_TRACE()
+#define START_TEMPORARY_DEBUG()
+#define START_TEMPORARY_LOG(level)
+#define END_TEMPORARY_LOG()
+#endif
 
 #endif

@@ -27,7 +27,6 @@
 
 #include "tpageinterface.h"
 #include "tsystemsound.h"
-#include "tobject.h"
 #include "ttpinit.h"
 #include "tconfig.h"
 #include "tresources.h"
@@ -543,6 +542,10 @@ Button::BUTTONS_T *TPageInterface::addButton(Button::TButton* button)
         return nullptr;
     }
 
+    // We try to add this button to the list of system buttons which will
+    // succeed only if it is one of the supported system buttons.
+    addSysButton(button);
+
     try
     {
         Button::BUTTONS_T *chain = new Button::BUTTONS_T;
@@ -772,6 +775,24 @@ bool TPageInterface::sortButtons()
     }
 
     return true;
+}
+
+void TPageInterface::setFonts(TFont *font)
+{
+    DECL_TRACER("TPageInterface::setFonts(TFont *font)");
+
+    if (!font)
+        return;
+
+    mFonts = font;
+
+    Button::BUTTONS_T *button = mButtons;
+
+    while (button)
+    {
+        button->button->setFonts(font);
+        button = button->next;
+    }
 }
 
 vector<string> TPageInterface::getListContent(ulong handle, int ap, int ta, int ti, int rows, int columns)
@@ -1018,7 +1039,7 @@ void TPageInterface::setSelectedRow(ulong handle, int row)
             if ((size_t)row <= iter->list.size())
                 iter->selected = row;
 
-            MSG_DEBUG("Row was set to " << row << " for item " << TObject::handleToString(handle));
+            MSG_DEBUG("Row was set to " << row << " for item " << handleToString(handle));
             return;
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,7 +35,6 @@
 #include "tamxnet.h"
 #include "ttimer.h"
 #include "timagerefresh.h"
-#include "tsystemdraw.h"
 #include "tsystem.h"
 
 #define ORD_ELEM_COUNT  5
@@ -45,11 +44,27 @@ extern bool _restart_;
 
 class SkFont;
 class SkTextBlob;
+class TBitmap;
 
 struct RESOURCE_T;
 
 namespace Button
 {
+#   define STATE_BASE   0
+#   define STATE_OFF    0
+#   define STATE_ON     1
+#   define STATE_1      0
+#   define STATE_2      1
+#   define STATE_3      2
+#   define STATE_4      3
+#   define STATE_5      4
+#   define STATE_6      5
+#   define STATE_7      6
+#   define STATE_8      7
+#   define STATE_ALL    -1
+
+#   define HANDLE_UNDEF 0
+
     typedef struct SYSBORDER_t
     {
         int id{0};                  // Internal unique ID number
@@ -380,6 +395,7 @@ namespace Button
              */
             bool setFontFileName(const std::string& name, int size, int inst);
 
+            std::string& getName() { return na; }
             int getRangeLow() { return rl; }
             int getRangeHigh() { return rh; }
             int getStateCount() { return stateCount; }
@@ -429,6 +445,7 @@ namespace Button
             void setGlobalOpacity(int oo) { if (oo >= 0 && oo <= 255) mGlobalOO = oo; }
             void setVisible(bool v) { visible = v; hd = (v ? 0 : 1); }
             bool isVisible() { return visible; }
+            bool isSubViewVertical() { return on == "vert"; }
             bool haveListContent() { return _getListContent != nullptr; }
             bool haveListRow() { return _getListRow != nullptr; }
             std::function<std::vector<std::string>(ulong handle, int ap, int ta, int ti, int rows, int columns)> getCallbackListContent() { return _getListContent; }
@@ -475,6 +492,7 @@ namespace Button
             int getListTi() { return ti; }
             int getListNumRows() { return tr; }
             int getListNumCols() { return tc; }
+            int getSubViewSpace() { return sa; }
             bool setFont(int id, int instance);
             bool setFontOnly(int id, int instance);
             void setTop(int top);
@@ -737,7 +755,7 @@ namespace Button
              * function is used for nearly every kind of button or bargraph.
              * It is up to the surface to bring the buttons to screen.
              */
-            void registerCallback(std::function<void (ulong handle, ulong parent, unsigned char *buffer, int width, int height, int pixline, int left, int top)> displayButton)
+            void registerCallback(std::function<void (ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top)> displayButton)
             {
                 _displayButton = displayButton;
             }
@@ -766,6 +784,14 @@ namespace Button
              * columns are separated by a "|" symbol.
              */
             void regCallListRow(std::function<std::string(int ti, int row)> getListRow) { _getListRow = getListRow; }
+            /**
+             * @brief Registers a callback which will be called on every button
+             * press.
+             * This is used for system buttons to catch the keyboard keys.
+             *
+             * @param buttonPress The function pointer.
+             */
+            void regCallButtonPress(std::function<void(int channel, uint handle, bool pressed)> buttonPress) { _buttonPress = buttonPress; }
             /**
              * Make a pixel array and call the callback function to display the
              * image. If there is no callback function registered, nothing
@@ -914,6 +940,13 @@ namespace Button
              */
             BITMAP_t getLastImage();
             /**
+             * Returns the image in mLastImage as a TBitmap with the defined
+             * dimensions.
+             *
+             * @return TBitmap class
+             */
+            TBitmap getLastBitmap();
+            /**
              * Returns the fint the button uses.
              * @return A structure containing the informations for the font
              * to load.
@@ -936,6 +969,22 @@ namespace Button
              * is no password character 0 is returned.
              */
             uint getPasswordChar() { return (pc.empty() ? 0 : pc[0]); }
+            /**
+             * Set the level of a bargraph or a multistate bargraph.
+             * The method checks the level whether it is inside the defined
+             * range or not.
+             *
+             * @param level     The new level value
+             */
+            void setBargraphLevel(int level);
+            /**
+             * @brief invalidate - Mark a button internal as hidden.
+             * This method does not call any surface methods and marks the
+             * the button only internal hidden. The graphic remains.
+             *
+             * @return TRUE on success.
+             */
+            bool invalidate();
             /**
              * Returns the rows of the list in case this button is a list.
              * Otherwise an empty list is returned.
@@ -1036,12 +1085,14 @@ namespace Button
             void funcNetworkState(int level);
 
         private:
-            std::function<void (ulong handle, ulong parent, unsigned char *buffer, int width, int height, int pixline, int left, int top)> _displayButton{nullptr};
+            std::function<void (ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top)> _displayButton{nullptr};
             std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw)> _playVideo{nullptr};
             std::function<std::vector<std::string>(ulong handle, int ap, int ta, int ti, int rows, int columns)> _getListContent{nullptr};
             std::function<std::string(int ti, int row)> _getListRow{nullptr};
             std::function<void (TButton *button)> _getGlobalSettings{nullptr};
+            std::function<void (int channel, uint handle, bool pressed)> _buttonPress{nullptr};
 
+            std::string buttonTypeToString();
             POSITION_t calcImagePosition(int width, int height, CENTER_CODE cc, int number, int line = 0);
             IMAGE_SIZE_t calcImageSize(int imWidth, int imHeight, int instance, bool aspect=false);
             int getBorderSize(const std::string& name);
@@ -1145,6 +1196,12 @@ namespace Button
             int mt{0};              // Length of text area (0 = 2000)
             std::string dt;         // "multiple" textarea has multiple lines, else single line
             std::string im;         // Input mask of a text area
+            int st{0};              // SubPageView: ID of subview list
+            int ws{0};              // SubPageView: Wrap subpages; 1 = YES
+            std::string on;         // SubPageView: direction: vert = vertical, if empty: horizontal which is default
+            int sa{0};              // SubPageView: Percent of space between items in list
+            int dy{0};              // SubPageView: Allow dynamic reordering; 1 = YES
+            int rs{0};              // SubPageView: Reset view on show; 1 = YES
             std::string pc;         // Password character for text area
             std::string op;         // String the button send
             bool visible{true};     // TRUE=Button is visible

@@ -18,8 +18,6 @@
 #ifndef TIOSBATTERY_H
 #define TIOSBATTERY_H
 
-#include "tpagemanager.h"
-
 class TIOSBattery
 {
     public:
@@ -35,18 +33,16 @@ class TIOSBattery
         ~TIOSBattery();
 
         void update();
-        int getBatteryLeft() { return mLeft; }
-        int getBatteryState() { return mState; }
+        static int getBatteryLeft() { return mLeft; }
+        static void setBatteryLeft(int l) { mLeft = l; }
+        static int getBatteryState() { return mState; }
+        static void setBatteryState(BSTATE st) { mState = st; }
 
-        static void informStatus(int left, int state)
-        {
-            if (gPageManager)
-                gPageManager->informBatteryStatus(left, state);
-        }
+        static void informStatus(int left, int state);
 
     private:
-        int mLeft{0};               // The left battery %
-        BSTATE mState{BS_UNKNOWN};  // The state (plugged, charging, ...)
+        static int mLeft;               // The left battery %
+        static BSTATE mState;  // The state (plugged, charging, ...)
 };
 
 #endif // TIOSBATTERY_H

@@ -571,6 +571,13 @@ string UTF8ToCp1250(const string& str)
 #endif
 }
 
+std::string intToString(int num)
+{
+    std::stringstream ss;
+    ss << num;
+    return ss.str();
+}
+
 void *renew(char **mem, size_t old_size, size_t new_size)
 {
     if (old_size == new_size)
@@ -1036,6 +1043,20 @@ bool StrContains(const std::string& str, const std::string& part)
     return str.find(part) != string::npos;
 }
 
+std::string ReplaceString(const std::string subject, const std::string& search, const std::string& replace)
+{
+    size_t pos = 0;
+    string sub = subject;
+
+    while ((pos = sub.find(search, pos)) != std::string::npos)
+    {
+        sub.replace(pos, search.length(), replace);
+        pos += replace.length();
+    }
+
+    return sub;
+}
+
 string getCommand(const string& fullCmd)
 {
     DECL_TRACER("getCommand(const string& fullCmd)");
@@ -1112,4 +1133,11 @@ bool isBigEndian()
     } bint = {0x01020304};
 
     return bint.c[0] == 1;
+}
+
+std::string handleToString(ulong handle)
+{
+    ulong part1 = (handle >> 16) & 0x0000ffff;
+    ulong part2 = handle & 0x0000ffff;
+    return std::to_string(part1)+":"+std::to_string(part2);
 }

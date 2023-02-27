@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2022 to 2023 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,10 +39,8 @@
 #include <arpa/inet.h>
 
 #include "tfsfreader.h"
-#include "tsocket.h"
 #include "tconfig.h"
 #include "terror.h"
-#include "tresources.h"
 #include "readtp4.h"
 
 #if __cplusplus < 201402L
@@ -131,7 +129,7 @@ bool TFsfReader::copyOverFTP(const string& fname, const string& target)
     mFtpLib->SetCallbackLogFunction(&TFsfReader::callbackLog);      // Print some debugging messages
     mFtpLib->SetCallbackErrorFunction(&TFsfReader::callbackError);  // Print errors or info's
     mFtpLib->SetCallbackXferFunction(&TFsfReader::callbackXfer);    // This is the progress
-    mFtpLib->SetCallbackBytes(10000L);                              // This tells the progress to be called every 10KiB
+    mFtpLib->SetCallbackBytes(10000L);                              // This tells the progress to be called every 10Kb
     string scon = TConfig::getController() + ":21";
     MSG_DEBUG("Trying to connect to " << scon);
 

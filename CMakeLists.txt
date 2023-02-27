@@ -6,8 +6,8 @@ find_package(PkgConfig)
 if (APPLE)
 	# ATTENTION!!
 	# Correct this paths to your needs!
-    set(QTDIR $ENV{HOME}/Qt/6.4.1/macos)
-    set(CMAKE_PREFIX_PATH $ENV{HOME}/Qt/6.4.1/macos/lib/cmake)
+    set(QTDIR $ENV{HOME}/Qt/6.4.2/macos)
+    set(CMAKE_PREFIX_PATH $ENV{HOME}/Qt/6.4.2/macos/lib/cmake)
 endif(APPLE)
 
 find_package(Qt6Core)
@@ -106,6 +106,7 @@ set(SOURCES tmain.cpp
 			tsubpage.cpp
 			tpageinterface.cpp
 			tbutton.cpp
+			tsystembutton.cpp
 			tvalidatefile.cpp
 			tresources.cpp
 			tcolor.cpp
@@ -145,14 +146,15 @@ set(SOURCES tmain.cpp
 			texpat++.cpp
 			tqdownload.cpp
 			tqeditline.cpp
-            tqtwait.cpp
+			tqtwait.cpp
+			tqscrollarea.cpp
+			tbitmap.cpp
 			tpanel.qrc)
 
 add_executable(tpanel ${SOURCES})
 
 add_definitions(-D_REENTRANT)
 add_definitions(-D_GNU_SOURCE)
-add_definitions(-DQT6_LINUX)
 add_definitions(-DPJ_AUTOCONF)
 add_definitions(-D_OPAQUE_SKIA_)
 add_definitions(${Qt6Widgets_DEFINITIONS})

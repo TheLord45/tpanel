@@ -17,7 +17,7 @@
  */
 
 #include <QPushButton>
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 #include <QSound>
 #else
 #include <QMediaPlayer>
@@ -246,7 +246,7 @@ void TQKeyboard::setKey(Ui::KEYS_t key)
     {
         std::string snd = getTouchFeedbackSound();
         MSG_DEBUG("Playing sound: " << snd);
-#ifdef QT6_LINUX
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
         QMediaPlayer *player = new QMediaPlayer;
         QAudioOutput *audioOutput = new QAudioOutput;
         player->setAudioOutput(audioOutput);

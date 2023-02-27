@@ -21,7 +21,8 @@
 #include <QImage>
 #include <QWidget>
 #include <QPropertyAnimation>
-#ifdef QT5_LINUX
+#include <QListWidget>
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 #include <QtMultimedia/QMediaPlayer>
 #include <QtMultimediaWidgets/QVideoWidget>
 #else
@@ -29,6 +30,7 @@
 #endif
 #include "tobject.h"
 #include "terror.h"
+#include "tqscrollarea.h"
 
 using std::string;
 
@@ -86,42 +88,67 @@ void TObject::dropContent(OBJECT_t* obj, bool lock)
                 }
 
                 obj->wid = 0;
+                obj->invalid = true;
             break;
 
             case OBJ_BUTTON:
                 if (obj->object.label)
                     obj->object.label = nullptr;
+
+                obj->invalid = true;
             break;
 
             // This are the parent widgets (windows) and must be deleted.
             // If this widgets are deleted, Qt deletes their children.
             case OBJ_PAGE:
             case OBJ_SUBPAGE:
+                obj->invalid = true;
+
                 if (obj->object.widget)
                 {
-                    obj->object.widget->close();        // This deletes all childs and the widget itself
-                    obj->object.widget = nullptr;
+                    if (obj->type == OBJ_SUBPAGE)
+                    {
+                        obj->object.widget->close();        // This deletes all childs and the widget itself
+                        obj->object.widget = nullptr;
+                    }
+                    else
+                        obj->object.widget->hide();         // Don't delete a page because it is still stored in the stacked widget.
+                }
+            break;
+
+            case OBJ_SUBVIEW:
+                obj->invalid = true;
+
+                if (obj->object.area)
+                {
+                    delete obj->object.area;
+                    obj->object.area = nullptr;
                 }
             break;
 
             case OBJ_VIDEO:
                 if (obj->object.vwidget)
                 {
-#ifdef QT5_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
                     if (obj->player)
                         delete obj->player;
 #endif
                     obj->object.vwidget = nullptr;
                     obj->player = nullptr;
                 }
+
+                obj->invalid = true;
             break;
 
             case OBJ_LIST:
                 if (obj->object.list)
                     obj->object.list = nullptr;
+
+                obj->invalid = true;
             break;
 
             default:
+                obj->invalid = true;
                 break;
         }
     }
@@ -454,6 +481,7 @@ void TObject::invalidateAllObjects()
         obj->object.vwidget = nullptr;      // Because it's a union all types will be NULL
         obj->remove = true;
         obj->animation = nullptr;
+        obj->invalid = true;
 
         obj = obj->next;
     }
@@ -475,6 +503,7 @@ void TObject::invalidateAllSubObjects(ulong handle)
             obj->object.vwidget = nullptr;  // Because it's a union all types will be NULL
             obj->remove = true;
             obj->animation = nullptr;
+            obj->invalid = true;
         }
 
         obj = obj->next;
@@ -495,6 +524,7 @@ string TObject::objectToString(TObject::OBJECT_TYPE o)
         case OBJ_TEXT:    return "TEXT"; break;
         case OBJ_VIDEO:   return "VIDEO"; break;
         case OBJ_LIST:    return "LIST"; break;
+        case OBJ_SUBVIEW: return "SUBVIEW"; break;
     }
 
     return string();   // Should not happen but is needed to satisfy the compiler.

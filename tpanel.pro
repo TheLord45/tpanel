@@ -17,11 +17,8 @@
 TARGET = tpanel
 
 ios: {
-versionAtMost(QT_VERSION, 5.15.2) {
-QT = core gui widgets multimedia multimediawidgets sensors
-} else {
 QT = core gui widgets multimedia multimediawidgets sensors positioning
-}}
+}
 android: {
 versionAtMost(QT_VERSION, 5.15.2) {
 QT = core gui widgets multimedia multimediawidgets sensors androidextras
@@ -53,6 +50,7 @@ HEADERS = \
    $$PWD/tpagelist.h \
    $$PWD/tpagemanager.h \
    $$PWD/tpageinterface.h \
+   $$PWD/tsystembutton.h \
    $$PWD/tpalette.h \
    $$PWD/tprjresources.h \
    $$PWD/tqtmain.h \
@@ -85,6 +83,8 @@ HEADERS = \
    $$PWD/turl.h \
    $$PWD/tqnetworkinfo.h \
    $$PWD/tqtwait.h \
+   $$PWD/tqscrollarea.h \
+   $$PWD/tbitmap.h \
    $$PWD/ftplib/ftplib.h
 
 SOURCES = \
@@ -110,6 +110,7 @@ SOURCES = \
    $$PWD/tpagelist.cpp \
    $$PWD/tpagemanager.cpp \
    $$PWD/tpageinterface.cpp \
+   $$PWD/tsystembutton.cpp \
    $$PWD/tpalette.cpp \
    $$PWD/tprjresources.cpp \
    $$PWD/tqtmain.cpp \
@@ -141,6 +142,8 @@ SOURCES = \
    $$PWD/turl.cpp \
    $$PWD/tqnetworkinfo.cpp \
    $$PWD/tqtwait.cpp \
+   $$PWD/tqscrollarea.cpp \
+   $$PWD/tbitmap.cpp \
    $$PWD/ftplib/ftplib.cpp
 
 android: {
@@ -173,7 +176,7 @@ ios: {
 }
 
 CONFIG += c++17
-QMAKE_CXXFLAGS += -std=c++17 -DPJ_AUTOCONF -D_OPAQUE_SKIA_
+QMAKE_CXXFLAGS += -std=c++17 -DPJ_AUTOCONF
 QMAKE_LFLAGS += -std=c++17
 
 equals(ANDROID_TARGET_ARCH,arm64-v8a) {
@@ -306,30 +309,27 @@ equals(OS,iossim) {
     QMAKE_BUNDLE_DATA += app_launch_files ios_icon app_launch_images
 }
 
-# Define with the QT5_LINUX and QT6_LINUX definitions for which of the two
-# Qt major versions you want to compile.
-#
-#  * QT5_LINUX     If defined the code for QT5.15 will be used
-#  * QT6_LINUX     If defined the code for QT6.x will be used
-#
-# Never define both identifiers!
-#
+
 # Additional definitions possible:
 #  * _SCALE_SKIA_   If this is defined the scaling is done by the Skia
 #                   library. While the result is the same, it is known to be
 #                   slower. Beside this, this feature is not well tested.
+#
+#  * _OPAQUE_SKIA_  If set (default) the calculation for the opaque value is
+#                   done by Skia. This works well but leaves a gray tinge.
+#                   The Qt calculation is currently not working!
 #
 #  * QTSETTINGS     If this is set a Qt dialog is used for the settings. This
 #                   dialog is scaled depending on the size of the screen. It
 #                   is possible that the text is not readable or the fonts are
 #                   not well sized. Beside this on Android the ComboBoxes may
 #                   have wrong colors like black text on black background!
+#                   NOTE: On Android as well as on IOS (iPhone and iPad) exists
+#                   a platform specific setup. For all other platforms the
+#                   Qt dialog settings are used and it is not necessary to set
+#                   this variable!
 #
-versionAtMost(QT_VERSION, 5.15.2) {
-DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x050F00 QT5_LINUX=1
-} else {
-DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x050F00 QT6_LINUX=1
-}
+DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x050F00 _OPAQUE_SKIA_
 
 RESOURCES += \
     tpanel.qrc
