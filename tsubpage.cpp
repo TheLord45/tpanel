@@ -117,7 +117,11 @@ TSubPage::~TSubPage()
         next = b->next;
 
         if (b->button)
+        {
+            // If this is a system button, we must remove it first from the list
+            dropButton(b->button);
             delete b->button;
+        }
 
         delete b;
         b = next;
@@ -680,8 +684,11 @@ SkBitmap& TSubPage::getBgImage()
     // Check for a frame and draw it if there is one.
     if (!mSubpage.sr[0].bs.empty())
     {
-        if (drawFrame(mSubpage, &target))
-            haveImage = true;
+        if (!drawBorder(&target, mSubpage.sr[0].bs, mSubpage.width, mSubpage.height, mSubpage.sr[0].cb))
+        {
+            if (drawFrame(mSubpage, &target))
+                haveImage = true;
+        }
     }
 
     if (haveImage)
@@ -699,10 +706,11 @@ void TSubPage::drop()
 {
     DECL_TRACER("TSubPage::drop()");
 
+    stopTimer();
+
     if (mVisible && _callDropSubPage)
         _callDropSubPage((mSubpage.pageID << 16) & 0xffff0000);
 
-    stopTimer();
     // Set all elements of subpage invisible
     BUTTONS_T *bt = TPageInterface::getButtons();
 

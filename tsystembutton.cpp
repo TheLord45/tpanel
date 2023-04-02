@@ -29,7 +29,8 @@
 #define DISPLAY_LINE    0
 
 // Key definitions
-#define KB_DISPLAY_INPUT    5
+#define KB_DISPLAY_INPUT_S  4
+#define KB_DISPLAY_INPUT_M  5
 #define KB_DISPLAY_INFO     6
 
 #define KB_KEYBOARD_KEY     201
@@ -175,7 +176,8 @@ void TSystemButton::addSysButton(TButton *bt)
     }
 
     if (!(bt->getAddressPort() == 0 && bt->getAddressChannel() > 0) &&
-        !(bt->getChannelPort() == 0 && bt->getChannelNumber() > 0))
+        !(bt->getChannelPort() == 0 && bt->getChannelNumber() > 0) &&
+        bt->getButtonType() != TEXT_INPUT)
     {
         MSG_DEBUG("No system keyboard button: channel number=" << bt->getChannelNumber() << ", channel port=" << bt->getChannelPort());
         return;
@@ -200,6 +202,13 @@ void TSystemButton::addSysButton(TButton *bt)
                 return;
             }
         }
+    }
+
+    // If the button is an input text field then we add it in any case.
+    if (bt->getButtonType() == TEXT_INPUT)
+    {
+        mButtons.push_back(bt);
+        return;
     }
 
     // Is the button a recognized system button
@@ -253,6 +262,27 @@ TButton *TSystemButton::getSysButton(int channel, int port)
     return nullptr;
 }
 
+void TSystemButton::dropButton(Button::TButton* bt)
+{
+    DECL_TRACER("TSystemButton::dropButton(Button::TButton* bt)");
+
+    if (mButtons.empty())
+        return;
+
+    vector<TButton *>::iterator iter;
+
+    for (iter = mButtons.begin(); iter != mButtons.end(); ++iter)
+    {
+        TButton *button = *iter;
+
+        if (button == bt)
+        {
+            mButtons.erase(iter);
+            return;
+        }
+    }
+}
+
 void TSystemButton::setBank(int bank)
 {
     DECL_TRACER("TSystemButton::setBank(int bank)");
@@ -302,20 +332,114 @@ TButton *TSystemButton::getSystemInputLine()
 {
     DECL_TRACER("TSystemButton::getSystemInputLine()");
 
+    if (mButtons.empty())
+        return nullptr;
+
+    vector<TButton *> buffer;
+    vector<TButton *>::iterator iter;
+    // The first loop looks for a system input line. If there is one (or more)
+    // The first one is taken. All other input lines are stored into a temporary
+    // buffer.
+    for (iter = mButtons.begin(); iter != mButtons.end(); ++iter)
+    {
+        TButton *button = *iter;
+        int chan = button->getAddressChannel();
+
+        if (button->getButtonType() == TEXT_INPUT)
+        {
+            if (chan == KB_DISPLAY_INPUT_S || chan == KB_DISPLAY_INPUT_M)
+                return *iter;
+
+            buffer.push_back(button);
+        }
+    }
+    // The second loop is executed only if there was one or more normal input
+    // lines.
+    if (!buffer.empty())
+    {
+        for (iter = buffer.begin(); iter != buffer.end(); ++iter)
+        {
+            TButton *button = *iter;
+            // If there is a line which has the focus, it is selected.
+            if (button->isFocused())
+                return *iter;
+        }
+        // We're here because there were no system input line nor one with
+        // the focus. Because of this we take the first line in the buffer.
+        return buffer[0];
+    }
+
+    return nullptr;
+}
+
+void TSystemButton::setDistinctFocus(ulong handle)
+{
+    DECL_TRACER("TSystemButton::setDistinctFocus(ulong handle)");
+
+    if (mButtons.empty())
+        return;
+
     vector<TButton *>::iterator iter;
 
     for (iter = mButtons.begin(); iter != mButtons.end(); ++iter)
     {
         TButton *button = *iter;
 
-        if (button->getAddressChannel() == KB_DISPLAY_INPUT)
+        if (button->getButtonType() == TEXT_INPUT)
         {
-            MSG_DEBUG("Found input line " << button->getName() << ".");
-            return *iter;
+            if (button->getHandle() == handle && !button->isFocused())
+                button->setTextFocus(true);
+            else if (button->isFocused())
+                button->setTextFocus(false);
         }
     }
+}
 
-    return nullptr;
+void TSystemButton::setCursorPosition(ulong handle, int oldPos, int newPos)
+{
+    DECL_TRACER("TSystemButton::setCursorPosition(ulong handle, int pos)");
+
+    vector<TButton *>::iterator iter;
+
+    for (iter = mButtons.begin(); iter != mButtons.end(); ++iter)
+    {
+        TButton *button = *iter;
+
+        if (button->getHandle() == handle)
+        {
+            button->setTextCursorPosition(oldPos, newPos);
+
+            if (mLineHandle == handle || button->isFocused())
+                mCursorPosition = newPos;
+
+            return;
+        }
+    }
+}
+
+void TSystemButton::setInputFocus(ulong handle, bool in)
+{
+    DECL_TRACER("TSystemButton::setInputFocus(ulong handle, bool in)");
+
+    if (mLineHandle == handle)
+        return;
+
+    vector<TButton *>::iterator iter;
+
+    for (iter = mButtons.begin(); iter != mButtons.end(); ++iter)
+    {
+        TButton *button = *iter;
+
+        if (button->getHandle() == handle && button->getButtonType() == TEXT_INPUT)
+        {
+            mLineHandle = handle;
+            mCursorPosition = button->getTextCursorPosition();
+            mInputText = button->getText();
+            button->setTextFocus(in);
+        }
+        else if (button->getButtonType() == TEXT_INPUT)
+            button->setTextFocus(false);
+    }
 }
 
 TButton *TSystemButton::getSystemKey(int channel, uint handle)
@@ -429,6 +553,9 @@ void TSystemButton::buttonPress(int channel, uint handle, bool pressed)
     TButton *input = getSystemInputLine();
     MSG_DEBUG("Input line was " << (input ? "found" : "not found"));
 
+    if (input && !input->isFocused())
+        setDistinctFocus(input->getHandle());
+
     if (pressed)
     {
         if (btShift)
@@ -477,10 +604,29 @@ void TSystemButton::buttonPress(int channel, uint handle, bool pressed)
     if (pressed && type == KEY_KEY)
     {
         string letter = button->getText(mStateKeyActive);
-        mInputText.append(letter);
+
+        if ((size_t)mCursorPosition < mInputText.length())
+        {
+            string left, right;
+
+            if (mCursorPosition > 0)
+                left = mInputText.substr(0, mCursorPosition);
+
+            right = mInputText.substr(mCursorPosition);
+            mInputText = left + letter + right;
+            mCursorPosition++;
+        }
+        else
+        {
+            mInputText.append(letter);
+            mCursorPosition++;
+        }
 
         if (input)
+        {
             input->setText(mInputText, 0);
+            input->setTextCursorPosition(0, mCursorPosition);
+        }
 
         if (gPageManager)
             gPageManager->sendKeyStroke(letter[0]);
@@ -500,12 +646,29 @@ void TSystemButton::buttonPress(int channel, uint handle, bool pressed)
         {
             case KB_BACKSPACE:
                 if (gPageManager)
-                    gPageManager->sendKeyboard(kbtype +"BACKSPACE");
+                    gPageManager->sendKeyboard(kbtype + "BACKSPACE");
 
-                mInputText = mInputText.substr(0, mInputText.length() - 2);
+                if (mCursorPosition > 0)
+                {
+                    if ((size_t)mCursorPosition < mInputText.length())
+                    {
+                        string old = mInputText;
+                        mInputText = mInputText.substr(0, mCursorPosition - 1);
 
-                if (input)
-                    input->setText(mInputText, 0);
+                        if (old.length() > (size_t)mCursorPosition)
+                            mInputText = old.substr(mCursorPosition);
+                    }
+                    else
+                        mInputText = mInputText.substr(0, mInputText.length() - 1);
+
+                    mCursorPosition--;
+
+                    if (input)
+                    {
+                        input->setText(mInputText, 0);
+                        input->setTextCursorPosition(0, mCursorPosition);
+                    }
+                }
 
                 mShift = mBank3 = false;
                 mBank = (mCapsLock ? BANK_2 : BANK_1);
@@ -516,9 +679,13 @@ void TSystemButton::buttonPress(int channel, uint handle, bool pressed)
                     gPageManager->sendKeyboard(kbtype + "ABORT");
 
                 mInputText.clear();
+                mCursorPosition = 0;
 
                 if (input)
+                {
                     input->setText("", 0);
+                    input->setTextCursorPosition(0, mCursorPosition);
+                }
 
                 mShift = mBank3 = mCapsLock = false;
                 mBank = BANK_1;
@@ -529,9 +696,13 @@ void TSystemButton::buttonPress(int channel, uint handle, bool pressed)
                     gPageManager->sendKeyboard(kbtype + "CLEAR");
 
                 mInputText.clear();
+                mCursorPosition = 0;
 
                 if (input)
+                {
                     input->setText(mInputText, 0);
+                    input->setTextCursorPosition(0, mCursorPosition);
+                }
 
                 mShift = mBank3 = false;
                 mBank = (mCapsLock ? BANK_2 : BANK_1);
@@ -541,20 +712,56 @@ void TSystemButton::buttonPress(int channel, uint handle, bool pressed)
                 if (gPageManager)
                     gPageManager->sendKeyboard(kbtype + "ENTER");
 
-                mInputText.append("\n");
+                if ((size_t)mCursorPosition < mInputText.length())
+                {
+                    string left, right;
+
+                    if (mCursorPosition > 0)
+                        left = mInputText.substr(0, mCursorPosition);
+
+                    right = mInputText.substr(mCursorPosition);
+                    mInputText = left + "\n" + right;
+                    mCursorPosition++;
+                }
+                else
+                {
+                    mInputText.append("\n");
+                    mCursorPosition++;
+                }
 
                 if (input)
+                {
                     input->setText(mInputText, 0);
+                    input->setTextCursorPosition(0, mCursorPosition);
+                }
             break;
 
             case KB_SPACE:
                 if (gPageManager)
                     gPageManager->sendKeyboard(kbtype + "SPACE");
 
-                mInputText.append(" ");
+                if ((size_t)mCursorPosition < mInputText.length())
+                {
+                    string left, right;
+
+                    if (mCursorPosition > 0)
+                        left = mInputText.substr(0, mCursorPosition);
+
+                    right = mInputText.substr(mCursorPosition);
+                    mInputText = left + " " + right;
+                    mCursorPosition++;
+                }
+                else
+                {
+                    mInputText.append(" ");
+                    mCursorPosition++;
+                }
 
                 if (input)
+                {
                     input->setText(mInputText, 0);
+                    input->setTextCursorPosition(0, mCursorPosition);
+                }
 
                 mShift = mBank3 = false;
                 mBank = (mCapsLock ? BANK_2 : BANK_1);

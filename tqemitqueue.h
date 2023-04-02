@@ -83,7 +83,7 @@ class TQManageQueue
         TQManageQueue() {}
         ~TQManageQueue();
 
-        void addButton(ulong handle, ulong parent, TBitmap& buffer, int left, int top, int width, int height);
+        void addButton(ulong handle, ulong parent, TBitmap& buffer, int left, int top, int width, int height, bool passthrough);
         void addViewButton(ulong handle, ulong parent, bool vertical, TBitmap& buffer, int left, int top, int width, int height, int space, TColor::COLOR_T fillColor);
         void addPage(ulong handle, int width, int height);
 #ifdef _OPAQUE_SKIA_
@@ -93,11 +93,11 @@ class TQManageQueue
         void addSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t anim, int opacity=255);
         void addBackground(ulong handle, TBitmap& image, size_t size, int width, int height, ulong color, int opacity=255);
 #endif
-        void addVideo(ulong handle, ulong parent, ulong left, ulong top, ulong width, ulong height, std::string url, std::string user, std::string pw);
+        void addVideo(ulong handle, ulong parent, int left, int top, int width, int height, std::string url, std::string user, std::string pw);
         void addInText(ulong handle, Button::TButton *button, Button::BITMAP_t bm, int frame);
         void addListBox(Button::TButton *button, Button::BITMAP_t bm, int frame);
 
-        bool getButton(ulong *handle, ulong *parent, TBitmap *buffer, int *left, int *top, int *width, int *height);
+        bool getButton(ulong *handle, ulong *parent, TBitmap *buffer, int *left, int *top, int *width, int *height, bool *passthrough);
         bool getViewButton(ulong *handle, ulong *parent, bool *vertical, TBitmap *buffer, int *left, int *top, int *width, int *height, int *space, TColor::COLOR_T *fillColor);
         bool getPage(ulong *handle, int *width, int *height);
 #ifdef _OPAQUE_SKIA_

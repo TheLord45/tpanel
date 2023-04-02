@@ -201,6 +201,8 @@ class TPageInterface : public TSystemButton
         virtual std::string& getName() = 0;
         virtual void show() = 0;
         virtual void drop() = 0;
+        virtual SkBitmap& getBgImage() = 0;
+        virtual std::string getFillColor() = 0;
 
         void setButtons(Button::BUTTONS_T *bt) { mButtons = bt; }
         Button::BUTTONS_T *getButtons() { return mButtons; }

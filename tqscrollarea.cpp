@@ -117,6 +117,7 @@ TQScrollArea::~TQScrollArea()
         if (mMousePressTimer->isActive())
             mMousePressTimer->stop();
 
+        disconnect(mMousePressTimer, &QTimer::timeout, this, &TQScrollArea::mouseTimerEvent);
         delete mMousePressTimer;
         mMousePressTimer = nullptr;
     }
@@ -127,8 +128,11 @@ void TQScrollArea::init()
     DECL_TRACER("TQScrollArea::init()");
 
     QScrollArea::setParent(mParent);
-    QScrollArea::setAlignment(Qt::AlignLeft | Qt::AlignTop);
-    QScrollArea::move(0, 0);
+    QScrollArea::setViewportMargins(0, 0, 0, 0);
+
+    if (mWidth > 0 || mHeight > 0)
+        QScrollArea::setFixedSize(mWidth, mHeight);
+
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     // Set a transparent background
@@ -140,6 +144,7 @@ void TQScrollArea::init()
         mMain = new QWidget(this);
 
     mMain->move(0, 0);
+    mMain->setContentsMargins(0, 0, 0, 0);
 
     if (mWidth && mHeight)
         setFixedSize(mWidth, mHeight);
@@ -147,9 +152,18 @@ void TQScrollArea::init()
     setWidget(mMain);
 
     if (mVertical && !mVLayout)
+    {
         mVLayout = new QVBoxLayout(mMain);
+        mVLayout->setSpacing(0);
+        mVLayout->setContentsMargins(0, 0, 0, 0);
+    }
     else if (!mVertical && !mHLayout)
+    {
         mHLayout = new QHBoxLayout(mMain);
+        mHLayout->setSpacing(0);
+        mHLayout->setContentsMargins(0, 0, 0, 0);
+    }
+
 
     if (!mTotalWidth)
         mTotalWidth = mWidth;
@@ -217,6 +231,108 @@ QSize TQScrollArea::getSize()
     DECL_TRACER("TQScrollArea::getSize()");
 
     return QSize(mWidth, mHeight);
+}
+
+void TQScrollArea::setScrollbar(bool sb)
+{
+    DECL_TRACER("TQScrollArea::setScrollbar(bool sb)");
+
+    if (sb == mScrollbar)
+        return;
+
+    mScrollbar = sb;
+
+    if (sb)
+    {
+        if (mVertical)
+            setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+        else
+            setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+    }
+    else
+    {
+        if (mVertical)
+            setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        else
+            setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    }
+}
+
+void TQScrollArea::setScrollbarOffset(int offset)
+{
+    DECL_TRACER("TQScrollArea::setScrollbarOffset(int offset)");
+
+    if (!mScrollbar)
+        return;
+
+    if (offset == 0)
+    {
+        mScrollbarOffset = 0;
+        return;
+    }
+
+    mScrollbarOffset = scale(offset);
+    QScrollBar *sbar = nullptr;
+
+    if (mVertical)
+        sbar = verticalScrollBar();
+    else
+        sbar = horizontalScrollBar();
+
+    if (sbar)
+        sbar->setSliderPosition(mScrollbarOffset);
+}
+
+void TQScrollArea::setAnchor(Button::SUBVIEW_POSITION_t position)
+{
+    DECL_TRACER("TQScrollArea::setAnchor(Button::SUBVIEW_POSITION_t position)");
+
+    mPosition = position;
+}
+
+void TQScrollArea::show()
+{
+    DECL_TRACER("TQScrollArea::show()");
+
+    if (!QScrollArea::isEnabled())
+        QScrollArea::setEnabled(true);
+
+    QScrollArea::show();
+
+    if (mMain)
+    {
+        if (!mMain->isEnabled())
+            mMain->setEnabled(true);
+
+        if (!mMain->isVisible())
+            mMain->show();
+    }
+
+    if (mWrapItems && !mMainWidgets.empty())
+    {
+        QWidget *anchor = nullptr;
+        size_t pos = 0;
+
+        switch (mPosition)
+        {
+            case Button::SVP_LEFT_TOP:
+                anchor = mMainWidgets[0];
+                break;
+
+            case Button::SVP_CENTER:
+                pos = mMainWidgets.size() / 2;
+                anchor = mMainWidgets[pos];
+                break;
+
+            case Button::SVP_RIGHT_BOTTOM:
+                pos = mMainWidgets.size() - 1;
+                anchor = mMainWidgets[pos];
+                break;
+        }
+
+        if (anchor)
+            ensureWidgetVisible(anchor);
+    }
 }
 
 /**
@@ -367,6 +483,8 @@ void TQScrollArea::addItems(std::vector<PGSUBVIEWITEM_T>& items)
 
     if (items.empty())
         return;
+
+    mWrapItems = items[0].wrap;
 
     if (mMainWidgets.size() > 0)
     {
@@ -527,47 +645,7 @@ void TQScrollArea::addItems(std::vector<PGSUBVIEWITEM_T>& items)
             label->move(scale(itAtom->left), scale(itAtom->top));
             label->setFixedSize(scaWidth, scaHeight);
             label->setObjectName(QString("Label_%1").arg(handleToString(itAtom->handle).c_str()));
-            QColor bg(qRgba(itAtom->bgcolor.red, itAtom->bgcolor.green, itAtom->bgcolor.blue, itAtom->bgcolor.alpha));
-
-            if (itAtom->image.isValid())
-            {
-                QPixmap pix(scaWidth, scaHeight);
-
-                if (itAtom->bgcolor.alpha == 0)
-                    pix.fill(Qt::transparent);
-                else
-                    pix.fill(bg);
-
-                QImage img(itAtom->image.getBitmap(), itAtom->image.getWidth(), itAtom->image.getHeight(), itAtom->image.getPixline(), QImage::Format_ARGB32);
-                bool ret = false;
-
-                if (mScaleFactor != 1.0)
-                {
-                    QSize size(scaWidth, scaHeight);
-                    ret = pix.convertFromImage(img.scaled(size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation)); // Scaled size
-                }
-                else
-                    ret = pix.convertFromImage(img);
-
-                if (!ret || pix.isNull())
-                {
-                    MSG_ERROR("Unable to create a pixmap out of an image!");
-                    return;
-                }
-
-                label->setPixmap(pix);
-            }
-            else
-            {
-                QPalette palette(label->palette());
-
-                if (itAtom->bgcolor.alpha == 0)
-                    palette.setColor(QPalette::Window, Qt::transparent);
-                else
-                    palette.setColor(QPalette::Window, bg);
-
-                label->setPalette(palette);
-            }
+            setAtom(*itAtom, label);
         }
 
         mMainWidgets.push_back(item);
@@ -579,6 +657,166 @@ void TQScrollArea::addItems(std::vector<PGSUBVIEWITEM_T>& items)
         else
         {
             MSG_ERROR("Layout not initialized!");
+        }
+    }
+}
+
+void TQScrollArea::updateItem(PGSUBVIEWITEM_T& item)
+{
+    DECL_TRACER("TQScrollArea::updateItem(PGSUBVIEWITEM_T& item)");
+
+    if (mItems.empty())
+        return;
+
+    vector<PGSUBVIEWITEM_T>::iterator iter;
+
+    for (iter = mItems.begin(); iter != mItems.end(); ++iter)
+    {
+        if (iter->handle == item.handle)
+        {
+            iter->bgcolor = item.bgcolor;
+            iter->bounding = item.bounding;
+            iter->image = item.image;
+
+            if (!item.atoms.empty())
+                iter->atoms = item.atoms;
+            // Find the item and change it in the scroll area
+            vector<QWidget *>::iterator wit;
+
+            for (wit = mMainWidgets.begin(); wit != mMainWidgets.end(); ++wit)
+            {
+                QWidget *w = *wit;
+                ulong handle = extractHandle(w->objectName().toStdString());
+
+                // If we have new "atoms" we search for it and update it
+                if (iter->handle == handle && !iter->atoms.empty())
+                {
+                    QObjectList list = w->children();
+                    QList<QObject *>::Iterator obit;
+                    vector<PGSUBVIEWATOM_T>::iterator atit;
+
+                    for (atit = iter->atoms.begin(); atit != iter->atoms.end(); ++atit)
+                    {
+                        for (obit = list.begin(); obit != list.end(); ++obit)
+                        {
+                            QObject *o = *obit;
+                            QString obname = o->objectName();
+                            ulong atHandle = extractHandle(obname.toStdString());
+
+                            if (atit->handle == atHandle && obname.startsWith("Label_"))
+                            {
+                                QLabel *lbl = dynamic_cast<QLabel *>(o);
+                                setAtom(*atit, lbl);
+                                break;
+                            }
+                        }
+                    }
+
+                    break;
+                }
+            }
+
+            break;
+        }
+    }
+}
+
+void TQScrollArea::showItem(ulong handle, int position)
+{
+    DECL_TRACER("TQScrollArea::showItem(ulong handle, int position)");
+
+    if (mMainWidgets.empty())
+        return;
+
+    vector<QWidget *>::iterator iter;
+
+    for (iter = mMainWidgets.begin(); iter != mMainWidgets.end(); ++iter)
+    {
+        QWidget *w = *iter;
+        ulong h = extractHandle(w->objectName().toStdString());
+        MSG_DEBUG("Evaluating item " << handleToString(h));
+
+        if (h == handle)
+        {
+            int defPosX = 50;
+            int defPosY = 50;
+
+            if (position > 0 && position < 65535)
+            {
+                if (mVertical)
+                {
+                    defPosY = position;
+                    defPosX = 0;
+                }
+                else
+                {
+                    defPosY = position;
+                    defPosX = 0;
+                }
+
+                ensureWidgetVisible(w, defPosX, defPosY);
+            }
+            else if (mPosition == Button::SVP_LEFT_TOP)
+            {
+                if (mVertical)
+                {
+                    int top = w->geometry().y();
+                    QScrollBar *bar = verticalScrollBar();
+
+                    if (bar)
+                        bar->setSliderPosition(top);
+                }
+                else
+                {
+                    int left = w->geometry().x();
+                    QScrollBar *bar = horizontalScrollBar();
+
+                    if (bar)
+                        bar->setSliderPosition(left);
+                }
+            }
+            else if (mPosition == Button::SVP_CENTER)
+            {
+                if (mVertical)
+                {
+                    int topMargin = (mHeight - w->geometry().height()) / 2;
+                    int top = w->geometry().y() - topMargin;
+                    QScrollBar *bar = verticalScrollBar();
+
+                    if (bar)
+                        bar->setSliderPosition(top);
+                }
+                else
+                {
+                    int leftMargin = (mWidth - w->geometry().width()) / 2;
+                    int left = w->geometry().x() - leftMargin;
+                    QScrollBar *bar = horizontalScrollBar();
+
+                    if (bar)
+                        bar->setSliderPosition(left);
+                }
+            }
+            else if (mPosition == Button::SVP_RIGHT_BOTTOM)
+            {
+                if (mVertical)
+                {
+                    int bottom = w->geometry().y() + w->geometry().height();
+                    QScrollBar *bar = verticalScrollBar();
+
+                    if (bar)
+                        bar->setSliderPosition(bottom);
+                }
+                else
+                {
+                    int right = w->geometry().x() + w->geometry().width();
+                    QScrollBar *bar = horizontalScrollBar();
+
+                    if (bar)
+                        bar->setSliderPosition(right);
+                }
+            }
+
+            break;
         }
     }
 }
@@ -601,10 +839,63 @@ void TQScrollArea::setScaleFactor(const double& factor)
         mScaleFactor = factor;
 }
 
+void TQScrollArea::setAtom(PGSUBVIEWATOM_T& atom, QLabel *label)
+{
+    DECL_TRACER("TQScrollArea::setAtom(PGSUBVIEWATOM_T& atom, QLabel *label)");
+
+    if (!label)
+        return;
+
+    int scaWidth = scale(atom.width);
+    int scaHeight = scale(atom.height);
+    QColor bg(qRgba(atom.bgcolor.red, atom.bgcolor.green, atom.bgcolor.blue, atom.bgcolor.alpha));
+
+    if (atom.image.isValid())
+    {
+        QPixmap pix(scaWidth, scaHeight);
+
+        if (atom.bgcolor.alpha == 0)
+            pix.fill(Qt::transparent);
+        else
+            pix.fill(bg);
+
+        QImage img(atom.image.getBitmap(), atom.image.getWidth(), atom.image.getHeight(), atom.image.getPixline(), QImage::Format_ARGB32);
+        bool ret = false;
+
+        if (mScaleFactor != 1.0)
+        {
+            QSize size(scaWidth, scaHeight);
+            ret = pix.convertFromImage(img.scaled(size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation)); // Scaled size
+        }
+        else
+            ret = pix.convertFromImage(img);
+
+        if (!ret || pix.isNull())
+        {
+            MSG_ERROR("Unable to create a pixmap out of an image!");
+            return;
+        }
+
+        label->setPixmap(pix);
+    }
+    else
+    {
+        QPalette palette(label->palette());
+
+        if (atom.bgcolor.alpha == 0)
+            palette.setColor(QPalette::Window, Qt::transparent);
+        else
+            palette.setColor(QPalette::Window, bg);
+
+        label->setPalette(palette);
+    }
+
+}
+
 /*****************************************************************************
  * Signals and overwritten functions start here
  *****************************************************************************/
-
+/*
 bool TQScrollArea::event(QEvent* event)
 {
     if (event->type() == QEvent::MouseMove && mMousePress)
@@ -667,25 +958,90 @@ bool TQScrollArea::event(QEvent* event)
 
     return QScrollArea::event(event);
 }
+*/
+void TQScrollArea::mouseMoveEvent(QMouseEvent* event)
+{
+    DECL_TRACER("TQScrollArea::mouseMoveEvent(QMouseEvent* event)");
+
+    mMousePress = false;
+    mMouseScroll = true;
+
+    if (mMousePressTimer && mMousePressTimer->isActive())
+        mMousePressTimer->stop();
+
+    int move = 0;
+
+    MSG_DEBUG("Scroll event at " << event->position().x() << "x" << event->position().y() << ", old point at " << mOldPoint.x() << "x" << mOldPoint.y());
+    if (mVertical)
+    {
+        if (mOldPoint.y() != 0)
+        {
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+            move = me->pos().y() - mOldPoint.y();
+#else
+            move = event->position().y() - mOldPoint.y();
+#endif
+            QScrollBar *bar = verticalScrollBar();
+
+            if (bar)
+            {
+                int value = bar->value();
+                value += (move * -1);
+                bar->setValue(value);
+            }
+        }
+    }
+    else
+    {
+        if (mOldPoint.x() != 0)
+        {
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+            move = me->pos().x() - mOldPoint.x();
+#else
+            move = event->position().x() - mOldPoint.x();
+#endif
+            QScrollBar *bar = horizontalScrollBar();
+
+            if (bar)
+            {
+                int value = bar->value();
+                int newValue = value + (move * -1);
+
+                if (newValue >= 0 && newValue != value)
+                    bar->setValue(newValue);
+
+                MSG_DEBUG("Moving mouse to value " << newValue << " (old: " << value << "). Step is " << move);
+            }
+        }
+    }
+
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    mOldPoint = me->pos();
+#else
+    mOldPoint = event->position();
+#endif
+}
 
 void TQScrollArea::mousePressEvent(QMouseEvent* event)
 {
-    if (!event)
+    DECL_TRACER("TQScrollArea::mousePressEvent(QMouseEvent* event)");
+
+    if (!event || mMouseScroll)
         return;
 
-    if(event->button() == Qt::LeftButton)
+    if (event->button() == Qt::LeftButton)
     {
         mMousePress = true;
-        mOldPoint.setX(0);
-        mOldPoint.setY(0);
+        mOldPoint.setX(0.0);
+        mOldPoint.setY(0.0);
 
         int x = 0, y = 0;
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-            x = event->pos().x();
-            y = event->pos().y();
+        x = event->pos().x();
+        y = event->pos().y();
 #else
-            x = event->position().x();
-            y = event->position().y();
+        x = event->position().x();
+        y = event->position().y();
 #endif
         mLastMousePress.setX(x);
         mLastMousePress.setY(y);
@@ -704,42 +1060,50 @@ void TQScrollArea::mousePressEvent(QMouseEvent* event)
         {
             mMousePressTimer = new QTimer(this);
             connect(mMousePressTimer, &QTimer::timeout, this, &TQScrollArea::mouseTimerEvent);
-            mMousePressTimer->start(200);
         }
-        else
-            mMousePressTimer->start();
+
+        mMousePressTimer->start(200);
     }
 }
 
 void TQScrollArea::mouseReleaseEvent(QMouseEvent* event)
 {
+    DECL_TRACER("TQScrollArea::mouseReleaseEvent(QMouseEvent* event)");
+
     if (!event)
         return;
 
     if(event->button() == Qt::LeftButton)
     {
-        mMouseScroll = false;
-
         if (mMousePressTimer && mMousePressTimer->isActive())
         {
             mMousePressTimer->stop();
-            mClick = true;
-            mouseTimerEvent();
-            mClick = false;
-            mouseTimerEvent();
+
+            if (!mMouseScroll)
+            {
+                mClick = true;
+                mouseTimerEvent();
+                mClick = false;
+                mouseTimerEvent();
+            }
         }
-        else if (mMousePressTimer && mClick)
+        else if (!mMouseScroll && mClick)
         {
             mClick = false;
             mouseTimerEvent();
         }
 
         mMousePress = false;
+        mMouseScroll = false;
+        mOldPoint.setX(0.0);
+        mOldPoint.setY(0.0);
     }
 }
 
 void TQScrollArea::scrollContentsBy(int dx, int dy)
 {
+    DECL_TRACER("TQScrollArea::scrollContentsBy(int dx, int dy)");
+
     QScrollArea::scrollContentsBy(dx, dy);      // First let the original class do it's job.
 
     QScrollBar *sbar = nullptr;
@@ -750,12 +1114,22 @@ void TQScrollArea::scrollContentsBy(int dx, int dy)
         sbar = horizontalScrollBar();
 
     if (sbar)
+    {
         mActPosition = sbar->value();
+
+        if (mScrollbar && mScrollbarOffset > 0 && mActPosition < mScrollbarOffset)
+        {
+            sbar->setSliderPosition(mScrollbarOffset);
+            mActPosition = sbar->value();
+        }
+    }
 }
 
 void TQScrollArea::mouseTimerEvent()
 {
-    if (mMousePressTimer)
+    DECL_TRACER("TQScrollArea::mouseTimerEvent()");
+
+    if (mMousePressTimer && mMousePressTimer->isActive())
         mMousePressTimer->stop();
 
     if (!mMousePress || mMouseScroll)
@@ -773,23 +1147,68 @@ void TQScrollArea::mouseTimerEvent()
         if (w)
         {
             QString obname = w->objectName();
-            // Extract the handle out of the object name
-            int pos = obname.indexOf("_");
+            ulong handle = extractHandle(obname.toStdString());
 
-            if (pos < 0)
+            if (!handle)
                 return;
 
-            QString qshandle = obname.mid(pos + 1);
-            pos = qshandle.indexOf(":");
+            // We must make sure the found object is not marked as pass through.
+            // Because of this we'll scan the items for the handle and if we
+            // find that it is marked as pass through we must look for another
+            // one on the same position. If there is none, the click is ignored.
+            //
+            // Find the object in our list
+            vector<PGSUBVIEWITEM_T>::iterator iter;
+            QRect rect;
+            bool call = true;
 
-            if (pos < 0)
-                return;
+            for (iter = mItems.begin(); iter != mItems.end(); ++iter)
+            {
+                if (iter->handle == handle)     // Handle found?
+                {                               // Yes, then ...
+                    if (iter->bounding == "passThru")   // Item marked as pass through?
+                    {                                   // Yes, then start to search for another item
+                        rect = w->rect();
+                        call = false;
+                        // Walk through the childs to find another one on the
+                        // clicked position.
+                        QObjectList ol = mMain->children(); // Get list of all objects
+                        QList<QObject *>::iterator obiter;  // Define an iterator
+                        // Loop through all objects
+                        for (obiter = ol.begin(); obiter != ol.end(); ++obiter)
+                        {
+                            QObject *object = *obiter;
 
-            int high = qshandle.mid(0, pos).toInt();
-            int low = qshandle.mid(pos + 1).toInt();
-            ulong handle = (ulong)(((high << 16) & 0xffff0000) | low);
-            MSG_DEBUG("Calling signal with handle " << high << ":" << low << ": STATE=" << (mClick ? "PRESSED" : "RELEASED"));
-            emit objectClicked(handle, mClick);
+                            if (object->objectName() != obname && object->objectName().startsWith("Label_"))    // Have we found a QLabel object?
+                            {                                                                                   // Yes, then test it's position
+                                QLabel *lb = dynamic_cast<QLabel *>(object);    // Cast the object to a QLabel
+
+                                if (lb->rect().contains(mLastMousePress))       // Is the QLabel under the mouse coordinates?
+                                {                                               // Yes, then select it.
+                                    ulong h = extractHandle(lb->objectName().toStdString());  // Get the handle
+
+                                    if (!h)
+                                        break;
+
+                                    handle = h;
+                                    // Reset the main loop
+                                    iter = mItems.begin();
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    else
+                        call = true;
+                }
+            }
+
+            if (call)
+            {
+                MSG_DEBUG("Calling signal with handle " << (handle >> 16 & 0x0000ffff) << ":" << (handle & 0x0000ffff) << ": STATE=" << (mClick ? "PRESSED" : "RELEASED"));
+                emit objectClicked(handle, mClick);
+            }
         }
     }
 }
+

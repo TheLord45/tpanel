@@ -17,6 +17,7 @@
  */
 
 #include <string>
+#include "tpageinterface.h"
 #include "tpagelist.h"
 #include "tconfig.h"
 #include "terror.h"
@@ -333,7 +334,7 @@ PAGELIST_T TPageList::findPage(int pageID)
     vector<PAGELIST_T>::iterator iter;
     PAGELIST_T page;
 
-    if (pageID < 5000)
+    if (pageID < SYSTEM_PAGE_START)
     {
         for (iter = mPageList.begin(); iter != mPageList.end(); ++iter)
         {
@@ -403,7 +404,7 @@ SUBPAGELIST_T TPageList::findSubPage(int pageID)
     vector<SUBPAGELIST_T>::iterator iter;
     SUBPAGELIST_T page;
 
-    if (pageID < 5000)
+    if (pageID < SYSTEM_PAGE_START)
     {
         for (iter = mSubPageList.begin(); iter != mSubPageList.end(); ++iter)
         {
@@ -548,3 +549,32 @@ int TPageList::findSubViewListNextPageID(int id, int *index)
 
     return -1;
 }
+
+int TPageList::findSubViewListID(int pageID, int *index)
+{
+    DECL_TRACER("TPageList::findSubViewListID(int pageID, int *index)");
+
+    if (mSubViewList.empty() || pageID <= 0)
+        return -1;
+
+    vector<SUBVIEWLIST_T>::iterator iter;
+
+    for (iter = mSubViewList.begin(); iter != mSubViewList.end(); ++iter)
+    {
+        vector<SUBVIEWITEM_T>::iterator itItem;
+
+        for (itItem = iter->items.begin(); itItem != iter->items.end(); ++itItem)
+        {
+            if (itItem->pageID == pageID)
+            {
+                if (index)
+                    *index = itItem->index;
+
+                return iter->id;
+            }
+        }
+    }
+
+    return -1;
+}
+

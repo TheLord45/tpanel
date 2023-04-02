@@ -199,7 +199,6 @@ bool ReadTP4::doRead()
                     MSG_WARNING("File " << ofile << " was not decompressed!");
             }
 
-            compressed = false;
             act = act->next;
         }
 

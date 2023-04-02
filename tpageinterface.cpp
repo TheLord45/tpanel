@@ -84,7 +84,7 @@ bool TPageInterface::drawText(PAGE_T& pinfo, SkBitmap *img)
         else
         {
             textLines = splitLine(pinfo.sr[0].te, pinfo.width, pinfo.height, skFont, paint);
-            lines = textLines.size();
+            lines = (int)textLines.size();
         }
 
         MSG_DEBUG("Calculated number of lines: " << textLines.size());

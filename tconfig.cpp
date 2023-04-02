@@ -34,6 +34,7 @@
 #include "tconfig.h"
 #include "terror.h"
 #include "tresources.h"
+#include "tlock.h"
 #ifdef __APPLE__
 #include <TargetConditionals.h>
 #if TARGET_OS_SIMULATOR || TARGET_OS_IOS
@@ -55,6 +56,7 @@ int TConfig::mChannel{0};
 bool TConfig::mMute{false};
 bool TConfig::mTemporary{false};
 bool TConfig::mLogFileEnabled{false};
+std::mutex config_mutex;
 
 /**
  * @struct SETTINGS
@@ -1069,6 +1071,8 @@ bool TConfig::saveSettings()
 {
     DECL_TRACER("TConfig::saveSettings()");
 
+    TLock<std::mutex> guard(config_mutex);
+
     try
     {
         string fname = localSettings.path + "/" + localSettings.name;
@@ -1559,6 +1563,8 @@ string TConfig::makeConfigDefault(const std::string& log, const std::string& pro
  */
 bool TConfig::findConfig()
 {
+    TLock<std::mutex> guard(config_mutex);
+
     char *HOME = nullptr;
     string sFileName;
 

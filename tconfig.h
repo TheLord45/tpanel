@@ -21,15 +21,14 @@
 #include <string>
 #include <vector>
 #include <algorithm>
-#include "terror.h"
 
 #define V_MAJOR     1
-#define V_MINOR     3
-#define V_PATCH     3
+#define V_MINOR     4
+#define V_PATCH     0
 #define V_ADD       "b1"
 
 #ifndef V_SERIAL
-#define V_SERIAL    "20220601TP133B"
+#define V_SERIAL    "20230323TP140B"
 #endif
 
 /**
@@ -42,6 +41,11 @@
 #define _GET_X_VERSION(a, b, c) _GET_VERSION(a, b, c)
 //#define _GET_VERSION(a, b, c) ( #a "." #b "." #c )          // Release version
 #define _GET_VERSION(a, b, c) ( #a "." #b "." #c V_ADD)     // Beta version
+
+#if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
+typedef unsigned short          ushort;         /* Sys V compatibility */
+typedef unsigned int            uint;           /* Sys V compatibility */
+#endif
 
 /**
  * @brief The TConfig class manages the configurations.

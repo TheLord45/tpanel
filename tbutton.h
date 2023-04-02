@@ -36,6 +36,7 @@
 #include "ttimer.h"
 #include "timagerefresh.h"
 #include "tsystem.h"
+#include "tintborder.h"
 
 #define ORD_ELEM_COUNT  5
 
@@ -64,17 +65,6 @@ namespace Button
 #   define STATE_ALL    -1
 
 #   define HANDLE_UNDEF 0
-
-    typedef struct SYSBORDER_t
-    {
-        int id{0};                  // Internal unique ID number
-        char *name{nullptr};        // Name of the border
-        int number{0};              // AMX number
-        char *style{nullptr};       // Style to use if dynamicaly calculated
-        int width{0};               // The width of the border
-        int radius{0};              // Radius for rounded corners
-        bool calc{false};           // TRUE = Calculated inside, FALSE = Read from images
-    }SYSBORDER_t;
 
     typedef struct SYSTEF_t         // Text effect names
     {
@@ -189,6 +179,13 @@ namespace Button
         PMIX_DSTTOP,
         PMIX_PLUS
     }PMIX;
+
+    typedef enum SUBVIEW_POSITION_t
+    {
+        SVP_CENTER,
+        SVP_LEFT_TOP,
+        SVP_RIGHT_BOTTOM
+    }SUBVIEW_POSITION_t;
 
     typedef struct SR_T
     {
@@ -326,7 +323,7 @@ namespace Button
         LIST_SORT_OVERRIDE
     }LIST_SORT;
 
-    class TButton : public TSystem
+    class TButton : public TSystem, public Border::TIntBorder
     {
         public:
             TButton();
@@ -448,6 +445,13 @@ namespace Button
             bool isSubViewVertical() { return on == "vert"; }
             bool haveListContent() { return _getListContent != nullptr; }
             bool haveListRow() { return _getListRow != nullptr; }
+            int getSubViewID() { return st; }
+            bool getSubViewScrollbar() { return (ba == 1 ? true : false); }
+            int getSubViewScrollbarOffset() { return (ba > 0 ? bo : 0); }
+            bool getWrapSubViewPages() { return (ws != 0 ? true : false); }
+            bool isFocused() { return mHasFocus; }
+            int getTextCursorPosition() { return mCursorPosition; }
+            SUBVIEW_POSITION_t getSubViewAnchor();
             std::function<std::vector<std::string>(ulong handle, int ap, int ta, int ti, int rows, int columns)> getCallbackListContent() { return _getListContent; }
             std::function<std::string(int ti, int row)> getCallbackListRow() { return _getListRow; }
             std::function<void (TButton *button)> getCallbackGlobalSettings() { return _getGlobalSettings; };
@@ -493,6 +497,7 @@ namespace Button
             int getListNumRows() { return tr; }
             int getListNumCols() { return tc; }
             int getSubViewSpace() { return sa; }
+            std::string getBounding() { return hs; }
             bool setFont(int id, int instance);
             bool setFontOnly(int id, int instance);
             void setTop(int top);
@@ -607,6 +612,35 @@ namespace Button
              * On error returns FALSE.
              */
             bool appendText(const std::string& txt, int instance);
+            /**
+             * @brief setTextCursorPosition - Set curso position
+             * If the button element is of type TEXT_INPUT, this method sets
+             * the cursor position. This position comes usually from an input
+             * line managed by the graphical surface.
+             * If the \b newPos is less then 0 the curser is set in front of the
+             * first character. If the value \b newPos is grater then the number
+             * of characters then the curser is set after the last character.
+             *
+             * @param oldPos    The old position of the cursor
+             * @param newPos    The new position of the cursor
+             */
+            void setTextCursorPosition(int oldPos, int newPos);
+            /**
+             * @brief setTextFocus - Focus of input line changed
+             * If the button element is of type TEXT_INPUT, this signals the
+             * state of the focus. If \b in is TRUE then the input line got
+             * the focus. The ON state of the button is send. If there is
+             * a keyboard present the line is then related to this keyboard.
+             * If \b in is FALSE the input line lost the focus. The off state
+             * is displayed and no more characters are received from a
+             * keyboard.
+             * If this input line is a system input line, the focus is ignored.
+             * It then receives always the keystrokes from a keyboard.
+             *
+             * @param in    TRUE: Input line got focus, FALSE: input line
+             *              lost focus.
+             */
+            void setTextFocus(bool in);
             /**
              * @brief setBorderColor Set the border color.
              * Set the border color to the specified color. Only if the
@@ -755,7 +789,7 @@ namespace Button
              * function is used for nearly every kind of button or bargraph.
              * It is up to the surface to bring the buttons to screen.
              */
-            void registerCallback(std::function<void (ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top)> displayButton)
+            void registerCallback(std::function<void (ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough)> displayButton)
             {
                 _displayButton = displayButton;
             }
@@ -808,10 +842,15 @@ namespace Button
              * not send to GUI. The image is available in the variable
              * "mLastImage" immediately after ending the method.
              *
+             * @param subview
+             * Optional. If this is set to true, an internal marker is set to
+             * mark the button as part of a subview. If it is pressed, it calls
+             * another function to show the changed state.
+             *
              * @return
              * On error returns FALSE.
              */
-            bool drawButton(int instance=0, bool show=true);
+            bool drawButton(int instance=0, bool show=true, bool subview=false);
             /**
              * Creates a pixel array and holds it for access through a callback
              * function which receives this class as a whole. The callback
@@ -926,7 +965,7 @@ namespace Button
              * Creates a button but uses the informations in the structure
              * instead of reading it from a file.
              *
-             * @param bt    A structure containing all informations to create a button.
+             * @param bt    A structure containing all information to create a button.
              * @return On success returns TRUE, else FALSE.
              */
             bool createSoftButton(const EXTBUTTON_t& bt);
@@ -1085,12 +1124,26 @@ namespace Button
             void funcNetworkState(int level);
 
         private:
-            std::function<void (ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top)> _displayButton{nullptr};
+            std::function<void (ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough)> _displayButton{nullptr};
             std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw)> _playVideo{nullptr};
             std::function<std::vector<std::string>(ulong handle, int ap, int ta, int ti, int rows, int columns)> _getListContent{nullptr};
             std::function<std::string(int ti, int row)> _getListRow{nullptr};
             std::function<void (TButton *button)> _getGlobalSettings{nullptr};
             std::function<void (int channel, uint handle, bool pressed)> _buttonPress{nullptr};
+
+            // Mutexes used in class
+            std::mutex mutex_button;
+            std::mutex mutex_click;
+            std::mutex mutex_text;
+            std::mutex mutex_bargraph;
+            std::mutex mutex_sysdraw;
+            std::mutex mutex_bmCache;
+
+            typedef struct _DRAW_BLOCK_t
+            {
+                int instance{0};
+                bool show{false};
+            }_DRAW_BLOCK_t;
 
             std::string buttonTypeToString();
             POSITION_t calcImagePosition(int width, int height, CENTER_CODE cc, int number, int line = 0);
@@ -1142,6 +1195,8 @@ namespace Button
             void setBCBitmap(ulong handle, SkBitmap& bm);
             void showBitmapCache();
             uint32_t pixelMix(uint32_t s, uint32_t d, uint32_t a, PMIX mix);
+            void runDrawQueue();
+            bool isPassThrough();
 
             BUTTONTYPE type;
             int bi{0};              // button ID
@@ -1169,7 +1224,8 @@ namespace Button
             int tk{0};              // Listbox preferred row height
             int of{0};              // Listbox list offset: 0=disabled/1=enabled
             int tg{0};              // Listbox managed: 0=no/1=yes
-            int co{0};              // Command port
+            int so{1};              // String output port
+            int co{1};              // Command port
             std::vector<std::string> cm;         // Commands to send on each button hit
             std::string dr;         // Level "horizontal" or "vertical"
             int va{0};
@@ -1202,6 +1258,9 @@ namespace Button
             int sa{0};              // SubPageView: Percent of space between items in list
             int dy{0};              // SubPageView: Allow dynamic reordering; 1 = YES
             int rs{0};              // SubPageView: Reset view on show; 1 = YES
+            int ba{0};              // SubPageView: 1 = Scrollbar is visible, 0 = No scrollbar visible
+            int bo{0};              // SubPageView: Scrollbar offset in pixels; Only valid if "ba" > 0
+            std::string we;         // SubPageView: Anchor position: Empty = Center, "l/t" = left/top, "r/b" = right/bottom
             std::string pc;         // Password character for text area
             std::string op;         // String the button send
             bool visible{true};     // TRUE=Button is visible
@@ -1251,6 +1310,12 @@ namespace Button
             bool mChanged{true};    // TRUE=Something changed --> button must be redrawn
             int mBorderWidth{0};    // If there is a border this is set to the pixels the border is using
             std::vector<std::string> mListContent;  // The content of a list, if this button is one
+            bool mDrawBlock{false};    // TRUE = the method drawButton() is busy.
+            std::vector<_DRAW_BLOCK_t> mDrawQueue;
+            bool mDrawQueueBusy{false};
+            bool mSubViewPart{false};   // TRUE = The button is part of a subview item.
+            int mCursorPosition{0}; // The cursor position if this is of type TEXT_INPUT
+            bool mHasFocus{false};  // If this is of type TEXT_INPUT this holds the focus state
     };
 
     typedef struct BUTTONS_T

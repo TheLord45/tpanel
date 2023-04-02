@@ -69,7 +69,8 @@ string cmdList[] =
     "@SOU-", "@TKP-", "TPAGEON", "TPAGEOFF", "@VKB", "WAKE", "^CAL", "^KPS-",
     "^VKS-", "@PWD-", "^PWD-", "^BBR-", "^RAF-", "^RFR-", "^RMF-", "^RSR-",
     "^MODEL?", "^ICS-", "^ICE-", "^ICM-", "^PHN-", "?PHN-", "LEVON", "RXON",
-    "BLINK", "TPCCMD", "TPCACC",
+    "BLINK", "TPCCMD", "TPCACC", "^EPR", "^SCE", "^SDR", "^SHD", "^SSH",
+    "^STG",
     // G5 commands
     "^ABP-", "^ADB", "^SOU-", "^STP", "^TKP-", "^PGE-", "^PPA-", "^PPF-",
     "^PPG-", "^PPK-", "^PPM-", "^PPN-", "^PPT-", "^PPX", "^UTF-", "^LVC-",

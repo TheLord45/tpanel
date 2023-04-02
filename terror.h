@@ -25,6 +25,7 @@
 #include <string>
 #include <chrono>
 #include <mutex>
+#include <thread>
 
 #define LPATH_FILE          1   //!< Creates a log file and protocolls there
 #define LPATH_SYSLOG        2   //!< Writes to the syslog.
@@ -58,9 +59,17 @@ typedef enum terrtype_t
     TERRDEBUG
 }terrtype_t;
 
+#ifdef __APPLE__
+typedef uint64_t threadID_t;
+#else
+typedef std::thread::id threadID_t;
+#endif
+
+threadID_t _getThreadID();
 std::ostream& indent(std::ostream& os);
-void lockMutex();
-void unlockMutex();
+void _msg(int lv, std::ostream& os);
+void _lock();
+void _unlock();
 
 class TStreamError
 {
@@ -111,7 +120,7 @@ class TStreamError
 class TTracer
 {
     public:
-        TTracer(const std::string msg, int line, char *file);
+        TTracer(const std::string msg, int line, char *file, threadID_t tid);
         ~TTracer();
 
     private:
@@ -119,6 +128,7 @@ class TTracer
         int mLine{0};
         std::string mFile;
         std::chrono::steady_clock::time_point mTimePoint;
+        threadID_t mThreadID{0};
 };
 
 class TError : public std::ostream
@@ -135,11 +145,10 @@ class TError : public std::ostream
         static std::ostream& append(int lv, std::ostream& os);
         static std::string append(int lv);
         static TStreamError* Current();
+        static TStreamError* Current(threadID_t tid);
         static void clear() { mHaveError = false; msError.clear(); mErrType = TERRNONE; }
         static void logHex(char *str, size_t size);
         const TError& operator=(const TError& ref);
-//        static void lock();
-//        static void unlock();
         static void displayMessage(const std::string& msg);
 
     protected:
@@ -154,18 +163,18 @@ class TError : public std::ostream
         static bool mHaveError;
         static terrtype_t mErrType;
         static TStreamError *mCurrent;
+        static threadID_t mThreadID;
         std::string mHeadMsg;
 };
 
-#define MSG_INFO(msg)       { if (TStreamError::checkFilter(HLOG_INFO)) { *TError::Current()->getStream() << TError::append(HLOG_INFO) << msg << std::endl; TStreamError::resetFlags(); }}
-#define MSG_WARNING(msg)    { if (TStreamError::checkFilter(HLOG_WARNING)) { *TError::Current()->getStream() << TError::append(HLOG_WARNING) << msg << std::endl; TStreamError::resetFlags(); }}
-#define MSG_ERROR(msg)      { if (TStreamError::checkFilter(HLOG_ERROR)) { *TError::Current()->getStream() << TError::append(HLOG_ERROR) << msg << std::endl; TStreamError::resetFlags(); }}
-#define MSG_TRACE(msg)      { if (TStreamError::checkFilter(HLOG_TRACE)) { *TError::Current()->getStream() << TError::append(HLOG_TRACE) << msg << std::endl; TStreamError::resetFlags(); }}
-#define MSG_DEBUG(msg)      { if (TStreamError::checkFilter(HLOG_DEBUG)) { *TError::Current()->getStream() << TError::append(HLOG_DEBUG) << msg << std::endl; TStreamError::resetFlags(); }}
+#define MSG_INFO(msg)       { if (TStreamError::checkFilter(HLOG_INFO)) { _lock(); *TError::Current(_getThreadID())->getStream() << TError::append(HLOG_INFO) << msg << std::endl; TStreamError::resetFlags(); _unlock(); }}
+#define MSG_WARNING(msg)    { if (TStreamError::checkFilter(HLOG_WARNING)) { _lock(); *TError::Current(_getThreadID())->getStream() << TError::append(HLOG_WARNING) << msg << std::endl; TStreamError::resetFlags(); _unlock(); }}
+#define MSG_ERROR(msg)      { if (TStreamError::checkFilter(HLOG_ERROR)) { _lock(); *TError::Current(_getThreadID())->getStream() << TError::append(HLOG_ERROR) << msg << std::endl; TStreamError::resetFlags(); _unlock(); }}
+#define MSG_TRACE(msg)      { if (TStreamError::checkFilter(HLOG_TRACE)) { _lock(); *TError::Current(_getThreadID())->getStream() << TError::append(HLOG_TRACE) << msg << std::endl; TStreamError::resetFlags(); _unlock(); }}
+#define MSG_DEBUG(msg)      { if (TStreamError::checkFilter(HLOG_DEBUG)) { _lock(); *TError::Current(_getThreadID())->getStream() << TError::append(HLOG_DEBUG) << msg << std::endl; TStreamError::resetFlags(); _unlock(); }}
+#define MSG_PROTOCOL(msg)   { if (TStreamError::checkFilter(HLOG_PROTOCOL)) { _lock(); *TError::Current(_getThreadID())->getStream() << TError::append(HLOG_PROTOCOL) << msg << std::endl; TStreamError::resetFlags(); _unlock(); }}
 
-#define MSG_PROTOCOL(msg)   {if (TStreamError::checkFilter(HLOG_PROTOCOL)) { *TError::Current()->getStream() << TError::append(HLOG_PROTOCOL) << msg << std::endl; TStreamError::resetFlags(); }}
-
-#define DECL_TRACER(msg)    TTracer _hidden_tracer(msg, __LINE__, (char *)__FILE__);
+#define DECL_TRACER(msg)    TTracer _hidden_tracer(msg, __LINE__, (char *)__FILE__, _getThreadID());
 
 #define IS_LOG_INFO()       TStreamError::checkFilter(HLOG_INFO)
 #define IS_LOG_WARNING()    TStreamError::checkFilter(HLOG_WARNING)

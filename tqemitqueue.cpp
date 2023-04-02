@@ -90,9 +90,9 @@ bool TQManageQueue::getBackground(ulong* handle, TBitmap **image, int* width, in
     return false;
 }
 
-void TQManageQueue::addButton(ulong handle, ulong parent, TBitmap& buffer, int left, int top, int width, int height)
+void TQManageQueue::addButton(ulong handle, ulong parent, TBitmap& buffer, int left, int top, int width, int height, bool passthrough)
 {
-    DECL_TRACER("TQManageQueue::addButton(ulong handle, ulong parent, TBitmap& buffer, int left, int top, int width, int height)");
+    DECL_TRACER("TQManageQueue::addButton(ulong handle, ulong parent, TBitmap& buffer, int left, int top, int width, int height, bool passthrough)");
 
     TQEmitQueue *eq = addEntity(ET_BUTTON);
 
@@ -106,6 +106,7 @@ void TQManageQueue::addButton(ulong handle, ulong parent, TBitmap& buffer, int l
     eq->top = top;
     eq->width = width;
     eq->height = height;
+    eq->view = passthrough;
     removeDuplicates();
 }
 
@@ -132,9 +133,9 @@ void TQManageQueue::addViewButton(ulong handle, ulong parent, bool vertical, TBi
     removeDuplicates();
 }
 
-bool TQManageQueue::getButton(ulong* handle, ulong* parent, TBitmap *buffer, int* left, int* top, int* width, int* height)
+bool TQManageQueue::getButton(ulong* handle, ulong* parent, TBitmap *buffer, int* left, int* top, int* width, int* height, bool *passthrough)
 {
-    DECL_TRACER("TQManageQueue::getButton(ulong* handle, ulong* parent, TBitmap **buffer, int* left, int* top, int* width, int* height)");
+    DECL_TRACER("TQManageQueue::getButton(ulong* handle, ulong* parent, TBitmap **buffer, int* left, int* top, int* width, int* height, bool *passthrough)");
 
     TQEmitQueue *eq = mEmitQueue;
 
@@ -149,6 +150,7 @@ bool TQManageQueue::getButton(ulong* handle, ulong* parent, TBitmap *buffer, int
             *top = eq->top;
             *width = eq->width;
             *height = eq->height;
+            *passthrough = eq->view;
             return true;
         }
 
@@ -335,9 +337,9 @@ bool TQManageQueue::getSubPage(ulong* handle, ulong *parent, int* left, int* top
     return false;
 }
 
-void TQManageQueue::addVideo(ulong handle, ulong parent, ulong left, ulong top, ulong width, ulong height, std::string url, std::string user, std::string pw)
+void TQManageQueue::addVideo(ulong handle, ulong parent, int left, int top, int width, int height, std::string url, std::string user, std::string pw)
 {
-    DECL_TRACER("TQManageQueue::addVideo(ulong handle, ulong parent, ulong left, ulong top, ulong width, ulong height, std::string url, std::string user, std::string pw)");
+    DECL_TRACER("TQManageQueue::addVideo(ulong handle, ulong parent, int left, int top, int width, int height, std::string url, std::string user, std::string pw)");
 
     TQEmitQueue *eq = addEntity(ET_VIDEO);
 

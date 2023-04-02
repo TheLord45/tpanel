@@ -641,9 +641,9 @@ string TSystemDraw::getDirEntry(dir::TDirectory* dir, const string& part, bool a
     return dirEntry;
 }
 
-bool TSystemDraw::getBorder(const string &family, LINE_TYPE_t lt, BORDER_t *border, const string& family2)
+bool TSystemDraw::getBorder(const string &family, LINE_TYPE_t lt, BORDER_t *border, const string& family2, bool info)
 {
-    DECL_TRACER("TSystemDraw::getBorder(const string &family, LINE_TYPE_t lt, BORDER_t *border, const string& family2)");
+    DECL_TRACER("TSystemDraw::getBorder(const string &family, LINE_TYPE_t lt, BORDER_t *border, const string& family2, bool info)");
 
     if (!border || family.empty() || mDraw.borders.size() == 0)
         return false;
@@ -718,6 +718,7 @@ bool TSystemDraw::getBorder(const string &family, LINE_TYPE_t lt, BORDER_t *bord
         return false;
     }
 
+    MSG_DEBUG("External system border " << family << " found.");
     dir::TDirectory dir(mPath + "/borders");
     dir.setStripPath(true);
     vector<BORDER_DATA_t>::iterator brdIter;
@@ -727,33 +728,46 @@ bool TSystemDraw::getBorder(const string &family, LINE_TYPE_t lt, BORDER_t *bord
     {
         if (brdIter->name.compare(dataName) == 0)
         {
-            int num = dir.scanFiles(brdIter->baseFile + "_");
+            if (!info)
+            {
+                int num = dir.scanFiles(brdIter->baseFile + "_");
 
-            if (num < 8)
-                continue;
+                if (num < 8)
+                    continue;
 
-            border->b = mPath + "/borders/" + getDirEntry(&dir, "_b", (lt == LT_ON) ? true : false);
-            border->bl = mPath + "/borders/" + getDirEntry(&dir, "_bl", (lt == LT_ON) ? true : false);
-            border->br = mPath + "/borders/" + getDirEntry(&dir, "_br", (lt == LT_ON) ? true : false);
-            border->l = mPath + "/borders/" + getDirEntry(&dir, "_l", (lt == LT_ON) ? true : false);
-            border->r = mPath + "/borders/" + getDirEntry(&dir, "_r", (lt == LT_ON) ? true : false);
-            border->t = mPath + "/borders/" + getDirEntry(&dir, "_t", (lt == LT_ON) ? true : false);
-            border->tl = mPath + "/borders/" + getDirEntry(&dir, "_tl", (lt == LT_ON) ? true : false);
-            border->tr = mPath + "/borders/" + getDirEntry(&dir, "_tr", (lt == LT_ON) ? true : false);
-            border->border = *brdIter;
-            MSG_DEBUG("Bottom      : " << border->b);
-            MSG_DEBUG("Top         : " << border->t);
-            MSG_DEBUG("Left        : " << border->l);
-            MSG_DEBUG("Right       : " << border->r);
-            MSG_DEBUG("Top left    : " << border->tl);
-            MSG_DEBUG("Top right   : " << border->tr);
-            MSG_DEBUG("Bottom left : " << border->bl);
-            MSG_DEBUG("Bottom right: " << border->br);
+                border->b = mPath + "/borders/" + getDirEntry(&dir, "_b", (lt == LT_ON) ? true : false);
+                border->bl = mPath + "/borders/" + getDirEntry(&dir, "_bl", (lt == LT_ON) ? true : false);
+                border->br = mPath + "/borders/" + getDirEntry(&dir, "_br", (lt == LT_ON) ? true : false);
+                border->l = mPath + "/borders/" + getDirEntry(&dir, "_l", (lt == LT_ON) ? true : false);
+                border->r = mPath + "/borders/" + getDirEntry(&dir, "_r", (lt == LT_ON) ? true : false);
+                border->t = mPath + "/borders/" + getDirEntry(&dir, "_t", (lt == LT_ON) ? true : false);
+                border->tl = mPath + "/borders/" + getDirEntry(&dir, "_tl", (lt == LT_ON) ? true : false);
+                border->tr = mPath + "/borders/" + getDirEntry(&dir, "_tr", (lt == LT_ON) ? true : false);
+                border->border = *brdIter;
+                MSG_DEBUG("Bottom      : " << border->b);
+                MSG_DEBUG("Top         : " << border->t);
+                MSG_DEBUG("Left        : " << border->l);
+                MSG_DEBUG("Right       : " << border->r);
+                MSG_DEBUG("Top left    : " << border->tl);
+                MSG_DEBUG("Top right   : " << border->tr);
+                MSG_DEBUG("Bottom left : " << border->bl);
+                MSG_DEBUG("Bottom right: " << border->br);
+            }
+            else
+                border->border = *brdIter;
+
             return true;
         }
     }
 
     return false;
+}
+
+bool TSystemDraw::getBorderInfo(const std::string& family, LINE_TYPE_t lt, BORDER_t *border, const std::string& family2)
+{
+    DECL_TRACER("TSystemDraw::getBorderInfo(const std::string& family, LINE_TYPE_t lt, BORDER_t *border, const std::string& family2)");
+
+    return getBorder(family, lt, border, family2, true);
 }
 
 bool TSystemDraw::existBorder(const string &family)
@@ -800,7 +814,7 @@ int TSystemDraw::getBorderWidth(const string &family, LINE_TYPE_t lt)
 
     BORDER_t bd;
 
-    if (!getBorder(family, lt, &bd))
+    if (!getBorderInfo(family, lt, &bd))
         return 0;
 
     MSG_DEBUG("Border width of \"" << family << "\" [" << lt << "]: " << bd.border.textLeft);
@@ -816,7 +830,7 @@ int TSystemDraw::getBorderHeight(const string &family, LINE_TYPE_t lt)
 
     BORDER_t bd;
 
-    if (!getBorder(family, lt, &bd))
+    if (!getBorderInfo(family, lt, &bd))
         return 0;
 
     return bd.border.textTop;
@@ -951,16 +965,10 @@ bool TSystemDraw::evaluateName(const std::vector<std::string>& parts, const std:
         return false;
 
     size_t found = 0;
-//    string dbg;
-    if (parts.empty())
-        return false;
-
     vector<string>::const_iterator iter;
 
     for (iter = parts.begin(); iter != parts.end(); ++iter)
     {
-//        dbg += "|" + *iter;
-
         if (StrContains(name, *iter))
             found++;
     }

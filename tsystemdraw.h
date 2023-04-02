@@ -218,7 +218,8 @@ class TSystemDraw : public TValidateFile
 
         bool loadConfig();
 
-        bool getBorder(const std::string& family, LINE_TYPE_t lt, BORDER_t *border, const std::string& family2="");
+        bool getBorder(const std::string& family, LINE_TYPE_t lt, BORDER_t *border, const std::string& family2="", bool info=false);
+        bool getBorderInfo(const std::string& family, LINE_TYPE_t lt, BORDER_t *border, const std::string& family2="");
         bool existBorder(const std::string& family);
         int getBorderWidth(const std::string& family, LINE_TYPE_t lt = LT_OFF);
         int getBorderHeight(const std::string& family, LINE_TYPE_t lt = LT_OFF);

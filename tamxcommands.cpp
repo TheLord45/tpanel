@@ -243,6 +243,12 @@ CMD_DEFINATIONS cmdDefinations[] = {
     { "TPCCMD", false, true, ',' },
     { "TPCACC", false, true, ',' },
     { "TPCSIP", false, true, ',' },
+    { "^EPR", true, true, ',' },
+    { "^SCE", true, true, ',' },
+    { "^SDR", true, true, ',' },
+    { "^SHD", true, true, ',' },
+    { "^SSH", true, true, ',' },
+    { "^STG", true, true, ',' },
     { "", false, false, '\0' }
 };
 

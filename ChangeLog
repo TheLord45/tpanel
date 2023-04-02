@@ -1,8 +1,33 @@
 ChangeLog
 =========
 
+Release: 1.4.0
+===============================================================================
+2023-03-31 Completed the system keyboard. If such a keayboard is displayed, the
+           input lines, if there are any, are ordered to the keyboard.
+
+2023-03-27 Fixed the system frames. This are the ones stored as graphics in
+           the system section of each surface project.
+
+2023-03-26 Added thread IDs to the logs.
+
+
 Release: 1.3.3
 ===============================================================================
+2023-03-16 Serialized mouse clicks and removed primitive queues for mouse
+           clicks.
+
+2023-03-12 Changed the object handling of class MainWindow to use a std::map.
+           All created objects are kept now until the class MainWindow is
+           destroyed.
+
+2023-03-04 Fixed the scrolling areas to not have an invisible frame any more.
+
+2023-03-02 Added a new locking mechanism which can detect deadlocks and print
+           an aproppriate message into the logfile.
+           Fixed the button fill step to make sure that previous drawn elements
+           are not destroyed.
+
 2023-02-27 Added click accepts to subviw lists.
 
 2013-02-12 Added subview lists. The list is displayed but doesn't accept

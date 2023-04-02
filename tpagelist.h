@@ -91,6 +91,7 @@ class TPageList : public TValidateFile
         SUBVIEWLIST_T findSubViewList(int id);
         int findSubViewListPageID(int id, int index);
         int findSubViewListNextPageID(int id, int *index);
+        int findSubViewListID(int pageID, int *index);
 
         std::vector<PAGELIST_T>& getPagelist() { return mPageList; }
         std::vector<SUBPAGELIST_T>& getSupPageList() { return mSubPageList; }

@@ -19,8 +19,7 @@
 #include <unistd.h>
 #include "tsettings.h"
 #include "texpat++.h"
-#include "tconfig.h"
-#include "ttpinit.h"
+#include "terror.h"
 
 #if __cplusplus < 201402L
 #   error "This module requires at least C++14 standard!"
@@ -80,7 +79,7 @@ bool TSettings::loadSettings(bool initial)
     int depth = 0;
     size_t index = 0;
 
-    if ((index = xml.getElementIndex("projectInfo", &depth)) == TExpat::npos)
+    if (xml.getElementIndex("projectInfo", &depth) == TExpat::npos)
     {
         MSG_ERROR("Couldn't find the project information! Broken surface?");
         TError::setError();

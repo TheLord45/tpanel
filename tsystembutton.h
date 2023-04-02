@@ -51,9 +51,13 @@ class TSystemButton
 
         void addSysButton(Button::TButton *bt);
         Button::TButton *getSysButton(int channel, int port);
+        void dropButton(Button::TButton *bt);
         void setBank(int bank);     // The bank (instance) of keyboard buttons
         int getActualBank() { return mBank; }
-    
+        void setCursorPosition(ulong handle, int oldPos, int newPos);
+        int getCursorPosition() { return mCursorPosition; }
+        void setInputFocus(ulong handle, bool in);
+
     protected:
         SYS_BUTTON_TYPE getSystemButtonType(int channel, int port);
         Button::TButton *getSystemInputLine();
@@ -65,6 +69,7 @@ class TSystemButton
         void handleDedicatedKeys(int channel, bool pressed);
         void sendDedicatedKey(int channel, const std::string str, bool pressed);
         std::string typeToString(SYS_BUUTON_TYPE type);
+        void setDistinctFocus(ulong handle);
 
         int mBank{1};                       // The activated bank (1 - 3)
         int mStateKeyActive{0};             // If the system button is a key button, it can have a state between 0 and 5
@@ -74,6 +79,8 @@ class TSystemButton
         bool mBank3{false};                 // TRUE = 3rd bank was activated for one key press
         bool mShift{false};                 // TRUE = Key shift was pressed for one key press
         bool isKeyboard{false};             // TRUE = A keyboard was detected, FALSE = A keypad was detected
+        int mCursorPosition{0};             // The cursor position of the focused input line, if there is one
+        ulong mLineHandle{0};               // The handle of the actual input line, if there is one.
 };
 
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2023 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,10 +16,6 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
-#include "tqeditline.h"
-#include "tpagemanager.h"
-#include "terror.h"
-
 #include <QLineEdit>
 #include <QTextEdit>
 #include <QLabel>
@@ -30,6 +26,12 @@
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 #include <QAnyStringView>
 #endif
+
+#include "tqeditline.h"
+#include "tqsingleline.h"
+#include "tqmultiline.h"
+#include "terror.h"
+
 using std::string;
 
 TQEditLine::TQEditLine(QWidget *widget, bool multiline)
@@ -56,36 +58,42 @@ TQEditLine::~TQEditLine()
 {
     DECL_TRACER("TQEditLine::~TQEditLine()");
 
-//    if (mEdit || mTextArea)
-//        QWidget::close();
+    if (mMultiline && mTextArea)
+    {
+        disconnect(mTextArea, &TQMultiLine::textChanged, this, &TQEditLine::onTextAreaChanged);
+        disconnect(mTextArea, &TQMultiLine::focusChanged, this, &TQEditLine::onFocusChanged);
+        disconnect(mTextArea, &TQMultiLine::keyPressed, this, &TQEditLine::onKeyPressed);
+    }
+    else if (!mMultiline && mEdit)
+    {
+        disconnect(mEdit, &TQSingleLine::textChanged, this, &TQEditLine::onTextChanged);
+        disconnect(mEdit, &TQSingleLine::cursorPositionChanged, this, &TQEditLine::onCursorPositionChangedS);
+        disconnect(mEdit, &TQSingleLine::editingFinished, this, &TQEditLine::onEditingFinished);
+        disconnect(mEdit, &TQSingleLine::focusChanged, this, &TQEditLine::onFocusChanged);
+        disconnect(mEdit, &TQSingleLine::keyPressed, this, &TQEditLine::onKeyPressed);
+    }
 }
 
 void TQEditLine::init()
 {
     DECL_TRACER("TQEditLine::init()");
 
-//    QWidget::setAttribute(Qt::WA_DeleteOnClose);
-//    QWidget::setAttribute(Qt::WA_LayoutOnEntireRect);
-//    QWidget::setAttribute(Qt::WA_LayoutUsesWidgetRect);
-
     if (!mLayout)
     {
         mLayout = new QHBoxLayout(this);
+        mLayout->setSpacing(0);
         mLayout->setContentsMargins(0, 0, 0, 0);
 
         if (mMultiline)
-        {
-            mTextArea = new QTextEdit;
-        }
+            mTextArea = new TQMultiLine;
         else
-        {
-            mEdit = new QLineEdit;
-        }
+            mEdit = new TQSingleLine;
 
-        QPalette pal;
+        QPalette pal(palette());
 
-        pal.setColor(QPalette::Window, QColorConstants::Transparent);
-        pal.setColor(QPalette::WindowText, QColorConstants::Black);
+        pal.setColor(QPalette::Window, Qt::transparent);
+        pal.setColor(QPalette::WindowText, Qt::black);
+        pal.setColor(QPalette::Text, Qt::black);
 
         if (!mText.empty())
         {
@@ -97,16 +105,22 @@ void TQEditLine::init()
 
         if (mMultiline)
         {
-            QWidget::setPalette(pal);
+            mTextArea->setPalette(pal);
 
-            QWidget::connect(mTextArea, &QTextEdit::textChanged, this, &TQEditLine::onTextAreaChanged);
+            QWidget::connect(mTextArea, &TQMultiLine::textChanged, this, &TQEditLine::onTextAreaChanged);
+            QWidget::connect(mTextArea, &TQMultiLine::focusChanged, this, &TQEditLine::onFocusChanged);
+            QWidget::connect(mTextArea, &TQMultiLine::keyPressed, this, &TQEditLine::onKeyPressed);
             mLayout->addWidget(mTextArea);
         }
         else
         {
-            QWidget::setPalette(pal);
+            mEdit->setPalette(pal);
 
-            QWidget::connect(mEdit, &QLineEdit::textChanged, this, &TQEditLine::onTextChanged);
+            QWidget::connect(mEdit, &TQSingleLine::textChanged, this, &TQEditLine::onTextChanged);
+            QWidget::connect(mEdit, &TQSingleLine::cursorPositionChanged, this, &TQEditLine::onCursorPositionChangedS);
+            QWidget::connect(mEdit, &TQSingleLine::editingFinished, this, &TQEditLine::onEditingFinished);
+            QWidget::connect(mEdit, &TQSingleLine::focusChanged, this, &TQEditLine::onFocusChanged);
+            QWidget::connect(mEdit, &TQSingleLine::keyPressed, this, &TQEditLine::onKeyPressed);
             mLayout->addWidget(mEdit);
         }
 
@@ -124,6 +138,8 @@ void TQEditLine::setText(string &text)
         mTextArea->setText(text.c_str());
     else if (!mMultiline && mEdit)
         mEdit->setText(text.c_str());
+
+    mChanged = false;
 }
 
 void TQEditLine::setObjectName(const string& name)
@@ -133,18 +149,22 @@ void TQEditLine::setObjectName(const string& name)
     if (name.empty())
         return;
 
+    QWidget::setObjectName(name.c_str());
+    QString editName("Edit#");
+    editName.append(name.c_str());
+
     if (mMultiline && mTextArea)
-        mTextArea->setObjectName(name.c_str());
+        mTextArea->setObjectName(editName);
     else if (!mMultiline && mEdit)
-        mEdit->setObjectName(name.c_str());
+        mEdit->setObjectName(editName);
 
     if (mLayout)
-        mLayout->setObjectName(QString("Layout:%1").arg(name.c_str()));
+        mLayout->setObjectName(QString("Layout#%1").arg(name.c_str()));
 }
 
 void TQEditLine::setPasswordChar(uint c)
 {
-    DECL_TRACER("TQEditLine::setPasswordString(const string &str)");
+    DECL_TRACER("TQEditLine::setPasswordChar(uint c)");
 
     if (!mMultiline && mEdit && c)
     {
@@ -173,33 +193,14 @@ void TQEditLine::setFixedSize(int w, int h)
     }
 }
 
-void TQEditLine::move(QPoint &p)
-{
-    DECL_TRACER("TQEditLine::move(QPoint &p)");
-
-    mPosX = p.x();
-    mPosY = p.y();
-    QWidget::move(p);
-}
-
-void TQEditLine::move(int x, int y)
-{
-    DECL_TRACER("TQEditLine::move(int x, int y)");
-
-    if (mLayout && x >= 0 && x >= 0)
-    {
-        QWidget::move(x, y);
-        mPosX = x;
-        mPosY = y;
-    }
-}
-
 void TQEditLine::setFont(QFont &font)
 {
     DECL_TRACER("TQEditLine::setFont(QFont &font)");
 
-    if (mEdit)
+    if (!mMultiline && mEdit)
         mEdit->setFont(font);
+    else if (mMultiline && mTextArea)
+        mTextArea->setFont(font);
 }
 
 void TQEditLine::setPalette(QPalette &pal)
@@ -207,6 +208,33 @@ void TQEditLine::setPalette(QPalette &pal)
     DECL_TRACER("TQEditLine::setPalette(QPalette &pal)");
 
     QWidget::setPalette(pal);
+/*
+    if (mMultiline && mTextArea)
+        mTextArea->setPalette(pal);
+    else if (!mMultiline && mEdit)
+        mEdit->setPalette(pal); */
+}
+
+void TQEditLine::setTextColor(QColor col)
+{
+    DECL_TRACER("TQEditLine::setTextColor(QColor col)");
+
+    QPalette pal;
+
+    if (!mMultiline && mEdit)
+        pal = mEdit->palette();
+    else if (mMultiline && mTextArea)
+        pal = mTextArea->palette();
+    else
+        return;
+
+    pal.setColor(QPalette::WindowText, col);
+    pal.setColor(QPalette::Text, col);
+
+    if (!mMultiline)
+        mEdit->setPalette(pal);
+    else
+        mTextArea->setPalette(pal);
 }
 
 void TQEditLine::grabGesture(Qt::GestureType type, Qt::GestureFlags flags)
@@ -243,20 +271,6 @@ void TQEditLine::setFrameSize(int s)
     setPadding(s + mPadLeft, s + mPadTop, s + mPadRight, s + mPadBottom);
 }
 
-void TQEditLine::setAutoFillBackground(bool f)
-{
-    DECL_TRACER("TQEditLine::setAutoFillBackground(bool f)");
-
-    QWidget::setAutoFillBackground(f);
-}
-
-void TQEditLine::installEventFilter(QObject *filter)
-{
-    DECL_TRACER("TQEditLine::installEventFilter(QObject *filter)");
-
-    QWidget::installEventFilter(filter);
-}
-
 void TQEditLine::setWordWrapMode(bool mode)
 {
     DECL_TRACER("TQEditLine::setWordWrapMode(bool mode)");
@@ -265,29 +279,6 @@ void TQEditLine::setWordWrapMode(bool mode)
         return;
 
     mTextArea->setWordWrapMode((mode ? QTextOption::WordWrap : QTextOption::NoWrap));
-}
-
-WId TQEditLine::winId()
-{
-    DECL_TRACER("TQEditLine::winId()");
-
-    return QWidget::winId();
-}
-
-void TQEditLine::show()
-{
-    DECL_TRACER("TQEditLine::show()");
-
-    QWidget::show();
-}
-
-void TQEditLine::close()
-{
-    DECL_TRACER("TQEditLine::close()");
-
-    QWidget::close();
-    mLayout = nullptr;
-    mEdit = nullptr;
 }
 
 void TQEditLine::clear()
@@ -341,58 +332,76 @@ void TQEditLine::setCursor(const QCursor& qc)
 /*
  * Here the signal and callback functions follow.
  */
-
-bool TQEditLine::event(QEvent* event)
+void TQEditLine::onKeyPressed(int key)
 {
-    if (event->type() == QEvent::KeyPress)
+    DECL_TRACER("TQEditLine::onKeyPressed(int key)");
+
+    if (key == Qt::Key_Enter || key == Qt::Key_Return)
     {
-        QKeyEvent *sKey = static_cast<QKeyEvent*>(event);
+        string txt;
 
-        if (sKey && (sKey->key() == Qt::Key_Enter || sKey->key() == Qt::Key_Return))
-        {
-            if (mMultiline && mTextArea)
-                mText = mTextArea->toPlainText().toStdString();
-            else if (!mMultiline && mEdit)
-                mText = mEdit->text().toStdString();
-            else
-            {
-                if (mMultiline && mTextArea)
-                    mTextArea->repaint(mTextArea->visibleRegion());
-                else if (!mMultiline && mEdit)
-                    mEdit->repaint(visibleRegion());
-
-                return true;
-            }
-
-            if (mChanged && gPageManager)
-                gPageManager->inputButtonFinished(mHandle, mText);
-
-            if (mMultiline && mTextArea)
-                mTextArea->repaint(mTextArea->visibleRegion());
-            else if (!mMultiline && mEdit)
-                mEdit->repaint(visibleRegion());
-
-            return true;
-        }
-    }
-    else if (event->type() == QEvent::Close ||
-             event->type() == QEvent::Leave ||
-             event->type() == QEvent::FocusOut ||
-             event->type() == QEvent::Hide ||
-             event->type() == QEvent::WindowDeactivate)
-    {
         if (mMultiline && mTextArea)
-            mText = mTextArea->toPlainText().toStdString();
+            txt = mTextArea->toPlainText().toStdString();
         else if (!mMultiline && mEdit)
-            mText = mEdit->text().toStdString();
-        else
-            return QWidget::event(event);
+            txt = mEdit->text().toStdString();
 
-        if (mChanged && gPageManager)
-            gPageManager->inputButtonFinished(mHandle, mText);
+        if (mChanged || txt != mText)
+        {
+            emit inputChanged(mHandle, mText);
+            mChanged = false;
+        }
+
+        return;
     }
+}
 
-    return QWidget::event(event);
+void TQEditLine::hideEvent(QHideEvent *event)
+{
+    DECL_TRACER("TQEditLine::hideEvent(QHideEvent *event)");
+
+    Q_UNUSED(event);
+    _end();
+}
+
+void TQEditLine::leaveEvent(QEvent *event)
+{
+    DECL_TRACER("TQEditLine::leaveEvent(QEvent *event)");
+
+    Q_UNUSED(event);
+    _end();
+}
+
+void TQEditLine::closeEvent(QCloseEvent *event)
+{
+    DECL_TRACER("TQEditLine::closeEvent(QCloseEvent *event)");
+
+    Q_UNUSED(event);
+    _end();
+}
+
+void TQEditLine::onFocusChanged(bool in)
+{
+    DECL_TRACER("TQEditLine::onFocusChanged(bool in)");
+
+    emit focusChanged(mHandle, in);
+}
+
+void TQEditLine::_end()
+{
+    DECL_TRACER("TQEditLine::_end()");
+
+    string text;
+
+    if (mMultiline && mTextArea)
+        text = mTextArea->toPlainText().toStdString();
+    else if (!mMultiline && mEdit)
+        text = mEdit->text().toStdString();
+
+    if (mChanged || text != mText)
+    {
+        emit inputChanged(mHandle, mText);
+        mChanged = false;
+    }
 }
 
 void TQEditLine::onTextChanged(const QString &text)
@@ -401,7 +410,6 @@ void TQEditLine::onTextChanged(const QString &text)
 
     mText = text.toStdString();
     mChanged = true;
-
 }
 
 void TQEditLine::onTextAreaChanged()
@@ -410,4 +418,18 @@ void TQEditLine::onTextAreaChanged()
 
     mText = mTextArea->toPlainText().toStdString();
     mChanged = true;
+}
+
+void TQEditLine::onCursorPositionChangedS(int oldPos, int newPos)
+{
+    DECL_TRACER("TQEditLine::onCursorPositionChangedS(int oldPos, int newPos)");
+
+    emit cursorPositionChanged(mHandle, oldPos, newPos);
+}
+
+void TQEditLine::onEditingFinished()
+{
+    DECL_TRACER("TQEditLine::onEditingFinished()");
+
+    _end();
 }

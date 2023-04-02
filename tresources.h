@@ -122,6 +122,7 @@ bool isFalse(const std::string& value);
 bool isNumeric(const std::string& str, bool blank=false);
 bool isBigEndian();
 std::string handleToString(ulong handle);
+ulong extractHandle(const std::string& obname);
 
 static inline std::string &ltrim(std::string &s)
 {

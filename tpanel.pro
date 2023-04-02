@@ -85,7 +85,11 @@ HEADERS = \
    $$PWD/tqtwait.h \
    $$PWD/tqscrollarea.h \
    $$PWD/tbitmap.h \
-   $$PWD/ftplib/ftplib.h
+   $$PWD/tintborder.h \
+   $$PWD/tlock.h \
+   $$PWD/ftplib/ftplib.h \
+   $$PWD/tqsingleline.h \
+   tqmultiline.h
 
 SOURCES = \
    $$PWD/base64.cpp \
@@ -144,7 +148,10 @@ SOURCES = \
    $$PWD/tqtwait.cpp \
    $$PWD/tqscrollarea.cpp \
    $$PWD/tbitmap.cpp \
-   $$PWD/ftplib/ftplib.cpp
+   $$PWD/tintborder.cpp \
+   $$PWD/ftplib/ftplib.cpp \
+   $$PWD/tqsingleline.cpp \
+   tqmultiline.cpp
 
 android: {
 OTHER_FILES += \

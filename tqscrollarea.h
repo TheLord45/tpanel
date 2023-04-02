@@ -27,6 +27,7 @@
 
 QT_BEGIN_NAMESPACE
 class QWidget;
+class QLabel;
 class QSize;
 class QPixmap;
 class QColor;
@@ -50,12 +51,18 @@ class TQScrollArea : public QScrollArea
         void setSize(int w, int h);
         void setSize(QSize size);
         QSize getSize();
+        void setScrollbar(bool sb);
+        void setScrollbarOffset(int offset);
+        void setAnchor(Button::SUBVIEW_POSITION_t position);
+        void show();
         void setBackgroundImage(const QPixmap& pix);
         void setBackGroundColor(QColor color);
         void setSpace(int s);
         int getSpace() { return mSpace; }
         void addItem(PGSUBVIEWITEM_T& item);
         void addItems(std::vector<PGSUBVIEWITEM_T>& items);
+        void updateItem(PGSUBVIEWITEM_T& item);
+        void showItem(ulong handle, int position);
 
         int getWidth() { return mWidth; }
         int getHeight() { return mHeight; }
@@ -66,12 +73,13 @@ class TQScrollArea : public QScrollArea
         void setTotalSize(int w, int h);
         void setTotalSize(QSize& size);
         void setScaleFactor(const double& factor);
+        void setWrapItems(bool wrap) { mWrapItems = wrap; }
 
     signals:
         void objectClicked(ulong handle, bool pressed);
 
     protected:
-        bool event(QEvent *event) override;
+        void mouseMoveEvent(QMouseEvent* event) override;
         void mousePressEvent(QMouseEvent* event) override;
         void mouseReleaseEvent(QMouseEvent* event) override;
         void scrollContentsBy(int dx, int dy) override;
@@ -79,6 +87,7 @@ class TQScrollArea : public QScrollArea
     private:
         void init();
         int scale(int value);
+        void setAtom(PGSUBVIEWATOM_T& atom, QLabel *label);
         void mouseTimerEvent();
 
         QWidget *mParent{nullptr};              //>! The parent of this object. This is set to QScrollArea.
@@ -101,6 +110,10 @@ class TQScrollArea : public QScrollArea
         int mActPosition{0};                    //>! The absolute top/left (depends on mVertical) position in the scrolling area.
         QTimer *mMousePressTimer{nullptr};      //>! Internal: Used to distinguish between a real mouse click and a mouse move.
         QPoint mLastMousePress;                 //>! Internal: The absolute point of the last mouse press.
+        Button::SUBVIEW_POSITION_t mPosition{Button::SVP_CENTER};   //>! Defines where the anchor should snap in
+        bool mScrollbar{false};                 //>! TRUE = scrollbar is visible
+        int mScrollbarOffset{0};                //>! Defines the offset of the scrollbar. Only valid if \b mScrollbar is TRUE.
+        bool mWrapItems{false};                 //>! TRUE = The scroll area behaves like a wheel (not supported) and the item according to the anchor position is displayed.
 };
 
 #endif

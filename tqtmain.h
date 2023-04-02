@@ -60,6 +60,7 @@ class TQBusy;
 class TqDownload;
 class TQtPhone;
 class TBitmap;
+class TQScrollArea;
 QT_END_NAMESPACE
 #ifdef Q_OS_IOS
 class TIOSBattery;
@@ -95,14 +96,21 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
         void setSetupScaleFactor(double scale) { mSetupScaleFactor = scale; }
         double getScaleFactor() { return mScaleFactor; }
         void setOrientation(Qt::ScreenOrientation ori) { mOrientation = ori; }
+        void disconnectArea(TQScrollArea *area);
+        void disconnectList(QListWidget *list);
+        void reconnectArea(TQScrollArea *area);
+        void reconnectList(QListWidget *list);
 #if defined(QT_DEBUG) && (defined(Q_OS_IOS) || defined(Q_OS_ANDROID))
         static std::string orientationToString(Qt::ScreenOrientation ori);
 #endif
 
     signals:
-        void sigDisplayButton(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top);
+        void sigDisplayButton(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough);
         void sigDisplayViewButton(ulong handle, ulong parent, bool vertical, TBitmap buffer, int width, int height, int left, int top, int space, TColor::COLOR_T fillColor);
         void sigAddViewButtonItems(ulong parent, std::vector<PGSUBVIEWITEM_T> items);
+        void sigUpdateViewButton(ulong handle, ulong parent, TBitmap buffer, TColor::COLOR_T fillColor);
+        void sigUpdateViewButtonItem(PGSUBVIEWITEM_T& item, ulong parent);
+        void sigShowViewButtonItem(ulong handle, ulong parent, int position, int timer);
         void sigSetVisible(ulong handle, bool state);
         void sigSetPage(ulong handle, int width, int height);
         void sigSetSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate);
@@ -115,8 +123,8 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
         void sigDropSubPage(ulong handle);
         void sigDropButton(ulong handle);
         void sigPlayVideo(ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw);
-        void sigInputText(Button::TButton& button, QByteArray buffer, int width, int height, int frame, size_t pixline);
-        void sigListBox(Button::TButton& button, QByteArray buffer, int width, int height, int frame, size_t pixline);
+        void sigInputText(Button::TButton *button, QByteArray buffer, int width, int height, int frame, size_t pixline);
+        void sigListBox(Button::TButton *button, QByteArray buffer, int width, int height, int frame, size_t pixline);
         void sigKeyboard(const std::string& init, const std::string& prompt, bool priv);
         void sigKeypad(const std::string& init, const std::string& prompt, bool priv);
         void sigResetKeyboard();
@@ -156,9 +164,12 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
 #ifndef QT_NO_SESSIONMANAGER
         void commitData(QSessionManager &);
 #endif
-        void displayButton(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top);
+        void displayButton(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough);
         void displayViewButton(ulong handle, ulong parent, bool vertical, TBitmap buffer, int width, int height, int left, int top, int space, TColor::COLOR_T fillColor);
         void addViewButtonItems(ulong parent, std::vector<PGSUBVIEWITEM_T> items);
+        void updateViewButton(ulong handle, ulong parent, TBitmap buffer, TColor::COLOR_T fillColor);
+        void updateViewButtonItem(PGSUBVIEWITEM_T& item, ulong parent);
+        void showViewButtonItem(ulong handle, ulong parent, int position, int timer);
         void SetVisible(ulong handle, bool state);
         void setPage(ulong handle, int width, int height);
         void setSubPage(ulong hanlde, ulong parent, int left, int top, int width, int height, ANIMATION_t animate);
@@ -171,8 +182,8 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
         void dropSubPage(ulong handle);
         void dropButton(ulong handle);
         void playVideo(ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw);
-        void inputText(Button::TButton& button, QByteArray buffer, int width, int height, int frame, size_t pixline);
-        void listBox(Button::TButton& button, QByteArray buffer, int width, int height, int frame, size_t pixline);
+        void inputText(Button::TButton *button, QByteArray buffer, int width, int height, int frame, size_t pixline);
+        void listBox(Button::TButton *button, QByteArray buffer, int width, int height, int frame, size_t pixline);
         void showKeyboard(const std::string& init, const std::string& prompt, bool priv);
         void showKeypad(const std::string& init, const std::string& prompt, bool priv);
         void sendVirtualKeys(const std::string& str);
@@ -211,6 +222,7 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
 //        void volumeMute();
         // Slots for widget actions and button element actions
         void animationFinished();
+        void animationInFinished();
         void repaintWindows();
         void toFront(ulong handle);
         void downloadSurface(const std::string& file, size_t size);
@@ -221,7 +233,6 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
         void startWait(const std::string& text);
         void stopWait();
         void pageFinished(ulong handle);
-        void listViewArea(ulong handle, ulong parent, Button::TButton& button, SUBVIEWLIST_T& list);
 
     private:
         bool gestureEvent(QGestureEvent *event);
@@ -232,16 +243,22 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
         int scaleSetup(int value);
         bool isScaled();
         bool isSetupScaled();
-        void startAnimation(TObject::OBJECT_t *obj, ANIMATION_t& ani, bool in = true);
+        bool startAnimation(TObject::OBJECT_t *obj, ANIMATION_t& ani, bool in = true);
         void downloadBar(const std::string& msg, QWidget *parent);
         void runEvents();
         void onSubViewItemClicked(ulong handle, bool pressed);
+        void onInputChanged(ulong handle, std::string& text);
+        void onFocusChanged(ulong handle, bool in);
+        void onCursorChanged(ulong handle, int oldPos, int newPos);
         QPixmap scaleImage(QPixmap& pix);
         QPixmap scaleImage(unsigned char *buffer, int width, int height, int pixline);
 
-        void _displayButton(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top);
+        void _displayButton(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough);
         void _displayViewButton(ulong handle, ulong parent, bool vertical, TBitmap buffer, int width, int height, int left, int top, int space, TColor::COLOR_T fillColor);
         void _addViewButtonItems(ulong parent, std::vector<PGSUBVIEWITEM_T> items);
+        void _updateViewButton(ulong handle, ulong parent, TBitmap buffer, TColor::COLOR_T fillColor);
+        void _updateViewButtonItem(PGSUBVIEWITEM_T& item, ulong parent);
+        void _showViewButtonItem(ulong handle, ulong parent, int position, int timer);
         void _setVisible(ulong handle, bool state);
         void _setPage(ulong handle, int width, int height);
         void _setSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate);
@@ -254,8 +271,8 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
         void _dropSubPage(ulong handle);
         void _dropButton(ulong handle);
         void _playVideo(ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw);
-        void _inputText(Button::TButton& button, Button::BITMAP_t& bm, int frame);
-        void _listBox(Button::TButton& button, Button::BITMAP_t& bm, int frame);
+        void _inputText(Button::TButton *button, Button::BITMAP_t& bm, int frame);
+        void _listBox(Button::TButton *button, Button::BITMAP_t& bm, int frame);
         void _showKeyboard(const std::string& init, const std::string& prompt, bool priv=false);
         void _showKeypad(const std::string& init, const std::string& prompt, bool priv=false);
         void _resetKeyboard();
@@ -292,6 +309,7 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
         void _listViewArea(ulong handle, ulong parent, Button::TButton& button, SUBVIEWLIST_T& list);
         void doReleaseButton();
         void repaintObjects();
+        void refresh(ulong handle);
         int calcVolume(int value);
         std::string convertMask(const std::string& mask);
 #ifdef Q_OS_ANDROID
@@ -302,6 +320,10 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
         void initGeoLocation();
         Qt::ScreenOrientation getRealOrientation();
 #endif  // Q_OS_IOS
+
+        std::mutex draw_mutex;              // We're using threads and need to block execution sometimes
+        std::mutex click_mutex;
+        std::mutex anim_mutex;
 
         bool mWasInactive{false};           // If the application was inactive this is set to true until everything was repainted.
         bool mDoRepaint{false};             // This is set to TRUE whenever a reconnection to the controller happened.
@@ -316,7 +338,8 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
         bool mHasFocus{true};               // If this is FALSE, no output to sceen is allowed.
         std::atomic<double> mScaleFactor{1.0}; // The actual scale factor
         std::atomic<double> mSetupScaleFactor{1.0};     // The scale factor for the setup pages
-        std::atomic<TObject::OBJECT_t *> mLastObject{nullptr};     // This is for the hide effect of widgets.
+        OBJECT_t *mLastObject{nullptr};     // This is for the hide effect of widgets.
+        std::map<ulong, OBJECT_t *> mAnimObjects;   // List of started animations
         ulong mActualPageHandle{0};         // Holds the handle of the active page.
         std::atomic<bool> mBusy{false};     // If TRUE the busy indicator is active
         TqDownload *mDownloadBar{nullptr};  // Pointer to a dialog showing a progress bar

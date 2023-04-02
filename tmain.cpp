@@ -23,10 +23,10 @@
 
 #include "tconfig.h"
 #include "terror.h"
-#include "tsettings.h"
-#include "tpagelist.h"
-#include "tpage.h"
-#include "tsubpage.h"
+//#include "tsettings.h"
+//#include "tpagelist.h"
+//#include "tpage.h"
+//#include "tsubpage.h"
 #include "tpagemanager.h"
 #include "tqtmain.h"
 

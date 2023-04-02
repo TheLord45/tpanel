@@ -146,9 +146,12 @@ set(SOURCES tmain.cpp
 			texpat++.cpp
 			tqdownload.cpp
 			tqeditline.cpp
+            tqsingleline.cpp
+            tqmultiline.cpp
 			tqtwait.cpp
 			tqscrollarea.cpp
 			tbitmap.cpp
+			tintborder.cpp
 			tpanel.qrc)
 
 add_executable(tpanel ${SOURCES})
@@ -181,11 +184,7 @@ if (APPLE)
     set(APPS "\${CMAKE_INSTALL_PREFIX}/${APP_NAME}.app")
     set(CPACK_BUNDLE_NAME "tpanel-\${VERSION}")
     set(CPACK_BUNDLE_ICON "images/icon.png")
-#    set(CPACK_BUNDLE_PLIST "")
     set(CPACK_GENERATOR "DragNDrop")
-#    add_executable(${APP_NAME} MACOSX_BUNDLE ${SOURCES})
-#    install(CODE "include(BundleUtilities)
-#   fixup_bundle(\"${APPS}\" \"\" \"${DIRS}\")")
 endif(APPLE)
 
 install(TARGETS tpanel RUNTIME DESTINATION bin)

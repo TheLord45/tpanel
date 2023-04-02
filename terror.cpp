@@ -22,6 +22,10 @@
 #include <time.h>
 #include <mutex>
 #include <thread>
+//#ifdef __APPLE__
+//#include <unistd.h>
+//#include <sys/syscall.h>
+//#endif
 
 #include "terror.h"
 #include "tconfig.h"
@@ -40,14 +44,16 @@
 #define LOGBUFFER_SIZE      4096
 
 using std::string;
+using std::mutex;
+
 std::mutex message_mutex;
-std::mutex mulock;
-static bool _isLocked{false};
+std::mutex _macro_mutex;
 
 bool TError::mHaveError{false};
 terrtype_t TError::mErrType{TERRNONE};
 TStreamError *TError::mCurrent{nullptr};
 std::string TError::msError;
+threadID_t TError::mThreadID{0};
 
 int TStreamError::mIndent{1};
 std::ostream *TStreamError::mStream{nullptr};
@@ -59,32 +65,33 @@ unsigned int TStreamError::mLogLevel{HLOG_PROTOCOL};
 unsigned int TStreamError::mLogLevelOld{HLOG_NONE};
 bool TStreamError::haveTemporaryLogLevel{false};
 
-bool lockMutexIf()
+string _threadIDtoStr(threadID_t tid)
 {
-    if (!_isLocked)
-    {
-        lockMutex();
-        return true;
-    }
-
-    return false;
+    std::stringstream s;
+    s << std::hex << std::setw(8) << std::setfill('0') << tid;
+    return s.str();
 }
 
-void lockMutex()
+threadID_t _getThreadID()
 {
-    while (!message_mutex.try_lock())
-        std::this_thread::sleep_for(std::chrono::microseconds(10));
-
-    _isLocked = true;
+#ifdef __APPLE__
+//    threadID_t tid;
+//    return pthread_threadid_np(NULL, &tid);
+    return pthread_mach_thread_np(pthread_self());
+//    return syscall(SYS_thread_selfid);
+#else
+    return std::this_thread::get_id();
+#endif
 }
 
-void unlockMutex()
+void _lock()
 {
-    if (!_isLocked)
-        return;
+    _macro_mutex.lock();
+}
 
-    message_mutex.unlock();
-    _isLocked = false;
+void _unlock()
+{
+    _macro_mutex.unlock();
 }
 
 #if LOGPATH == LPATH_SYSLOG || defined(__ANDROID__)
@@ -112,7 +119,6 @@ class androidbuf : public std::streambuf
 
             if (this->pbase() != this->pptr())
             {
-                bool _l = lockMutexIf();
                 char writebuf[bufsize+1];
                 memcpy(writebuf, this->pbase(), this->pptr() - this->pbase());
                 writebuf[this->pptr() - this->pbase()] = '\0';
@@ -144,9 +150,6 @@ class androidbuf : public std::streambuf
                 rc = 1;
 #endif
                 this->setp(buffer, buffer + bufsize - 1);
-
-                if (_l)
-                    unlockMutex();
             }
 
             return rc;
@@ -228,7 +231,6 @@ void TStreamError::setLogLevel(const std::string& slv)
     }
 
     mLogLevel |= _getLevel(slv.substr(start));
-    bool l = lockMutexIf();
 #ifdef __ANDROID__
     __android_log_print(ANDROID_LOG_INFO, "tpanel", "TStreamError::setLogLevel: New loglevel: %s", slv.c_str());
 #else
@@ -237,9 +239,6 @@ void TStreamError::setLogLevel(const std::string& slv)
     else
         std::cout << TError::append(HLOG_INFO) << "New loglevel: " << slv << std::endl;
 #endif
-
-    if (l)
-        unlockMutex();
 }
 
 bool TStreamError::checkFilter(terrtype_t err)
@@ -393,10 +392,12 @@ void TStreamError::_init(bool reinit)
         std::cout.rdbuf(new androidbuf);
 #endif  // __ANDROID__
         mStream = &std::cout;
+#if defined(QT_DEBUG) || defined(DEBUG)
 #ifdef __ANDROID__
         __android_log_print(ANDROID_LOG_DEBUG, "tpanel", "TStreamError::_init: Stream wurde auf std::cout gesetzt.");
 #else
         std::cout << "DEBUG: Stream wurde auf std::cout gesetzt." << std::endl;
+#endif  // __ANDROID__
 #endif
     }
 #else  // LOGPATH == LPATH_FILE
@@ -421,7 +422,7 @@ void TStreamError::_init(bool reinit)
     if (mLogLevel > 0)
     {
         if (TConfig::isLongFormat())
-            *mStream << "Timestamp           Type LNr., File name           , Message" << std::endl;
+            *mStream << "Timestamp           Type LNr., File name           , ThreadID Message" << std::endl;
         else
             *mStream << "Type LNr., Message" << std::endl;
 
@@ -457,11 +458,8 @@ std::ostream *TStreamError::resetFlags(std::ostream *os)
 
 void TStreamError::resetFlags()
 {
-    bool l = lockMutexIf();
+    std::lock_guard<mutex> guard(message_mutex);
     resetFlags(TError::Current()->getStream());
-
-    if (l)
-        unlockMutex();
 }
 
 void TStreamError::decIndent()
@@ -597,12 +595,13 @@ void TStreamError::endTemporaryLogLevel()
 
 std::mutex tracer_mutex;
 
-TTracer::TTracer(const std::string msg, int line, char *file)
+TTracer::TTracer(const std::string msg, int line, char *file, threadID_t tid)
+    : mThreadID(tid)
 {
     if (!TConfig::isInitialized() || !TStreamError::checkFilter(HLOG_TRACE))
         return;
 
-    tracer_mutex.lock();
+    std::lock_guard<mutex> guard(tracer_mutex);
 
     mFile = file;
     size_t pos = mFile.find_last_of("/");
@@ -611,33 +610,29 @@ TTracer::TTracer(const std::string msg, int line, char *file)
         mFile = mFile.substr(pos + 1);
 
     TError::setErrorType(TERRTRACE);
+    std::lock_guard<mutex> guardm(message_mutex);
 
 #if LOGPATH == LPATH_FILE
-    lockMutex();
-
     if (!TConfig::isLongFormat())
         *TError::Current()->getStream() << "TRC " << std::setw(5) << std::right << line << ", " << indent << "{entry " << msg << std::endl;
     else
-        *TError::Current()->getStream() << TStreamError::getTime() <<  " TRC " << std::setw(5) << std::right << line << ", " << std::setw(20) << std::left << mFile << ", " << indent << "{entry " << msg << std::endl;
+        *TError::Current()->getStream() << TStreamError::getTime() <<  " TRC " << std::setw(5) << std::right << line << ", " << std::setw(20) << std::left << mFile << ", " << _threadIDtoStr(mThreadID) << " " << indent << "{entry " << msg << std::endl;
 #else
     std::stringstream s;
 
     if (!TConfig::isLongFormat())
         s  << "TRC " << std::setw(5) << std::right << line << ", " << &indents << "{entry " << msg << std::endl;
     else
-        s << TStreamError::getTime() <<  " TRC " << std::setw(5) << std::right << line << ", " << std::setw(20) << std::left << mFile << ", " << &indents << "{entry " << msg << std::endl;
+        s << TStreamError::getTime() <<  " TRC " << std::setw(5) << std::right << line << ", " << std::setw(20) << std::left << mFile << ", " << _threadIDtoStr(mThreadID) << &indents << "{entry " << msg << std::endl;
 
     TError::Current()->logMsg(s);
 #endif
     TError::Current()->incIndent();
-    unlockMutex();
     mHeadMsg = msg;
     mLine = line;
 
     if (TConfig::getProfiling())
         mTimePoint = std::chrono::steady_clock::now();
-
-    tracer_mutex.unlock();
 }
 
 TTracer::~TTracer()
@@ -645,7 +640,7 @@ TTracer::~TTracer()
     if (!TConfig::isInitialized() || !TStreamError::checkFilter(HLOG_TRACE))
         return;
 
-    tracer_mutex.lock();
+    std::lock_guard<mutex> guard(tracer_mutex);
     TError::setErrorType(TERRTRACE);
     TError::Current()->decIndent();
     string nanosecs;
@@ -661,32 +656,29 @@ TTracer::~TTracer()
         nanosecs = s.str();
     }
 
+    std::lock_guard<mutex> guardm(message_mutex);
 #if LOGPATH == LPATH_FILE
-    lockMutex();
-
     if (TConfig::getProfiling())
     {
         if (!TConfig::isLongFormat())
             *TError::Current()->getStream() << "TRC      , " << indent << "}exit " << mHeadMsg << " Elapsed time: " << nanosecs << std::endl;
         else
-            *TError::Current()->getStream() << TStreamError::getTime() << " TRC      , " << std::setw(20) << std::left << mFile << ", " << indent << "}exit " << mHeadMsg << " Elapsed time: " << nanosecs << std::endl;
+            *TError::Current()->getStream() << TStreamError::getTime() << " TRC      , " << std::setw(20) << std::left << mFile << ", " << _threadIDtoStr(mThreadID) << " " << indent << "}exit " << mHeadMsg << " Elapsed time: " << nanosecs << std::endl;
     }
     else
     {
         if (!TConfig::isLongFormat())
             *TError::Current()->getStream() << "TRC      , " << indent << "}exit " << mHeadMsg << std::endl;
         else
-            *TError::Current()->getStream() << TStreamError::getTime() << " TRC      , " << std::setw(20) << std::left << mFile << ", " << indent << "}exit " << mHeadMsg << std::endl;
+            *TError::Current()->getStream() << TStreamError::getTime() << " TRC      , " << std::setw(20) << std::left << mFile << ", " << _threadIDtoStr(mThreadID) << " " << indent << "}exit " << mHeadMsg << std::endl;
     }
-
-    unlockMutex();
 #else
     std::stringstream s;
 
     if (!TConfig::isLongFormat())
         s << "TRC      , " << &indents << "}exit " << mHeadMsg;
     else
-        s << TStreamError::getTime() << " TRC      , " << std::setw(20) << std::left << mFile << ", " << &indents << "}exit " << mHeadMsg;
+        s << TStreamError::getTime() << " TRC      , " << std::setw(20) << std::left << mFile << ", " << _threadIDtoStr(mThreadID) << " " << &indents << "}exit " << mHeadMsg;
 
     if (TConfig::getProfiling())
         s  << " Elapsed time: " << nanosecs << std::endl;
@@ -696,7 +688,6 @@ TTracer::~TTracer()
     TError::Current()->logMsg(s);
 #endif
     mHeadMsg.clear();
-    tracer_mutex.unlock();
 }
 
 /********************************************************************/
@@ -718,27 +709,24 @@ TStreamError* TError::Current()
     return mCurrent;
 }
 
+TStreamError *TError::Current(threadID_t tid)
+{
+    mThreadID = tid;
+    return Current();
+}
+
 void TError::logHex(char* str, size_t size)
 {
     if (!str || !size)
         return;
 
-    bool l = lockMutexIf();
-
     if (!Current())
-    {
-        if (l)
-            unlockMutex();
-
         return;
-    }
+
     // Print out the message
     std::ostream *stream = mCurrent->getStream();
     *stream << strToHex(str, size, 16, true, 12) << std::endl;
     *stream << mCurrent->resetFlags(stream);
-
-    if (l)
-        unlockMutex();
 }
 
 string TError::toHex(int num, int width)
@@ -845,6 +833,7 @@ std::ostream & TError::append(int lv, std::ostream& os)
 
 std::string TError::append(int lv)
 {
+    std::lock_guard<mutex> guard(message_mutex);
     std::string prefix, out;
 
     switch (lv)
@@ -866,7 +855,7 @@ std::string TError::append(int lv)
     else
     {
         std::stringstream s;
-        s << TStreamError::getTime() << " " << prefix << std::setw(20) << " " << ", ";
+        s << TStreamError::getTime() << " " << prefix << std::setw(20) << " " << ", " << _threadIDtoStr(mThreadID) << " ";
         out = s.str();
     }
 

@@ -57,6 +57,7 @@
 #include "tsystemsound.h"
 #include "timgcache.h"
 #include "turl.h"
+#include "tlock.h"
 
 using std::exception;
 using std::string;
@@ -87,62 +88,6 @@ extern TPageManager *gPageManager;
 
 THR_REFRESH_t *TButton::mThrRefresh = nullptr;
 vector<BITMAP_CACHE> nBitmapCache;     // Holds the images who are delayed because they are external
-
-mutex mutex_button;
-mutex mutex_text;
-mutex mutex_bargraph;
-mutex mutex_sysdraw;
-mutex mutex_bmCache;
-
-/**
- * The following table defines some of the system borders. It is mostly a
- * fallback table but defines whether a border should be calculated internaly
- * or constructed out of the images in the system border folder. The later is
- * only possible if this folder exist and contains the system images from AMX.
- * This images could be retrieved by sending a full surface with the system
- * files included from TPDesign4.
- * All borders not listed in this table are constructed out of the system
- * border images, if they exist.
- */
-SYSBORDER_t sysBorders[] = {
-//   ID   Name                  AMX number  Style          width radius calc
-    {  1, (char *)"Single Line",         0, (char *)"solid",   1,   0, true },
-    {  2, (char *)"Double Line",         0, (char *)"solid",   2,   0, true },
-    {  3, (char *)"Quad Line",           0, (char *)"solid",   4,   0, true },
-    {  4, (char *)"Picture Frame",       0, (char *)"double",  0,   0, false },
-    {  5, (char *)"Circle 15",           8, (char *)"solid",   2,   7, true },
-    {  6, (char *)"Circle 25",           9, (char *)"solid",   2,  14, true },
-    {  7, (char *)"Circle 35",          10, (char *)"solid",   2,  21, true },
-    {  8, (char *)"Circle 45",          11, (char *)"solid",   2,  28, true },
-    {  9, (char *)"Circle 55",          12, (char *)"solid",   2,  35, true },
-    { 10, (char *)"Circle 65",          13, (char *)"solid",   2,  42, true },
-    { 11, (char *)"Circle 75",          14, (char *)"solid",   2,  49, true },
-    { 12, (char *)"Circle 85",          15, (char *)"solid",   2,  56, true },
-    { 13, (char *)"Circle 95",          16, (char *)"solid",   2,  63, true },
-    { 14, (char *)"Circle 105",         17, (char *)"solid",   2,  70, true },
-    { 15, (char *)"Circle 115",         18, (char *)"solid",   2,  77, true },
-    { 16, (char *)"Circle 125",         19, (char *)"solid",   2,  84, true },
-    { 17, (char *)"Circle 135",         20, (char *)"solid",   2,  91, true },
-    { 18, (char *)"Circle 145",         21, (char *)"solid",   2,  98, true },
-    { 19, (char *)"Circle 155",         22, (char *)"solid",   2, 105, true },
-    { 20, (char *)"Circle 165",         23, (char *)"solid",   2, 112, true },
-    { 21, (char *)"Circle 175",         24, (char *)"solid",   2, 119, true },
-    { 22, (char *)"Circle 185",         25, (char *)"solid",   2, 126, true },
-    { 23, (char *)"Circle 195",         26, (char *)"solid",   2, 133, true },
-    { 24, (char *)"AMX Elite Inset -L",  0, (char *)"groove", 20,   0, false },
-    { 25, (char *)"AMX Elite Raised -L", 0, (char *)"ridge",  20,   0, false },
-    { 26, (char *)"AMX Elite Inset -M",  0, (char *)"groove", 10,   0, false },
-    { 27, (char *)"AMX Elite Raised -M", 0, (char *)"ridge",  10,   0, false },
-    { 28, (char *)"AMX Elite Inset -S",  0, (char *)"groove",  4,   0, false },
-    { 29, (char *)"AMX Elite Raised -S", 0, (char *)"ridge",   4,   0, false },
-    { 30, (char *)"Bevel Inset -L",      0, (char *)"inset",  20,   0, false },
-    { 31, (char *)"Bevel Raised -L",     0, (char *)"outset", 20,   0, false },
-    { 32, (char *)"Bevel Inset -M",      0, (char *)"inset",  10,   0, false },
-    { 33, (char *)"Bevel Raised -M",     0, (char *)"outset", 10,   0, false },
-    { 34, (char *)"Bevel Inset -S",      0, (char *)"inset",   4,   0, false },
-    { 35, (char *)"Bevel Raised -S",     0, (char *)"outset",  4,   0, false },
-    {  0, nullptr, 0, nullptr, 0, 0 }
-};
 
 SYSTEF_t sysTefs[] = {
     {  1, "Outline-S" },
@@ -384,6 +329,8 @@ size_t TButton::initialize(TExpat *xml, size_t index)
             dt = content;
         else if (ename.compare("im") == 0)          // Input mask of a text area
             im = content;
+        else if (ename.compare("so") == 0)          // String output port
+            so = xml->convertElementToInt(content);
         else if (ename.compare("op") == 0)          // String the button send
             op = content;
         else if (ename.compare("pc") == 0)          // Password character for text area (single line)
@@ -416,6 +363,12 @@ size_t TButton::initialize(TExpat *xml, size_t index)
             rs = xml->convertElementToInt(content);
         else if (ename.compare("on") == 0)          // SubPageView direction
             on = content;
+        else if (ename.compare("ba") == 0)          // SubPageView scrollbar
+            ba = xml->convertElementToInt(content);
+        else if (ename.compare("bo") == 0)          // SubPageView scrollbar offset
+            bo = xml->convertElementToInt(content);
+        else if (ename.compare("we") == 0)          // SubViewPage Anchor position
+            we = content;
         else if (ename.compare("hd") == 0)          // 1 = Hidden, 0 = Normal visible
             hd = xml->convertElementToInt(content);
         else if (ename.compare("da") == 0)          // 1 = Disabled, 0 = Normal active
@@ -709,25 +662,25 @@ BUTTONTYPE TButton::getButtonType(const string& bt)
 {
     DECL_TRACER("TButton::getButtonType(const string& bt)");
 
-    if (bt.compare("general") == 0)
+    if (strCaseCompare(bt, "general") == 0)
         return GENERAL;
-    else if (bt.compare("multi-state general") == 0 || bt.compare("multiGeneral") == 0)
+    else if (strCaseCompare(bt, "multi-state general") == 0 || strCaseCompare(bt, "multiGeneral") == 0)
         return MULTISTATE_GENERAL;
-    else if (bt.compare("bargraph") == 0)
+    else if (strCaseCompare(bt, "bargraph") == 0)
         return BARGRAPH;
-    else if (bt.compare("multi-state bargraph") == 0 || bt.compare("multiBargraph") == 0)
+    else if (strCaseCompare(bt, "multi-state bargraph") == 0 || strCaseCompare(bt, "multiBargraph") == 0)
         return MULTISTATE_BARGRAPH;
-    else if (bt.compare("joistick") == 0)
+    else if (strCaseCompare(bt, "joistick") == 0)
         return JOISTICK;
-    else if (bt.compare("text input") == 0 || bt.compare("textArea") == 0)
+    else if (strCaseCompare(bt, "text input") == 0 || strCaseCompare(bt, "textArea") == 0)
         return TEXT_INPUT;
-    else if (bt.compare("computer control") == 0)
+    else if (strCaseCompare(bt, "computer control") == 0)
         return COMPUTER_CONTROL;
-    else if (bt.compare("take note") == 0)
+    else if (strCaseCompare(bt, "take note") == 0)
         return TAKE_NOTE;
-    else if (bt.compare("sub-page view") == 0 || bt.compare("subPageView") == 0)
+    else if (strCaseCompare(bt, "sub-page view") == 0 || strCaseCompare(bt, "subPageView") == 0)
         return SUBPAGE_VIEW;
-    else if (bt.compare("listBox") == 0)
+    else if (strCaseCompare(bt, "listBox") == 0)
         return LISTBOX;
 
     return NONE;
@@ -910,7 +863,8 @@ bool TButton::makeElement(int instance)
         if (isSystem && !mSystemReg)
             registerSystemButton();
 
-        drawTextArea(mActInstance);
+        drawTextArea(inst);
+        mActInstance = inst;
     }
     else if (type == LISTBOX)
     {
@@ -937,19 +891,19 @@ bool TButton::makeElement(int instance)
             {
                 inst = mActInstance = in;
 #ifndef __ANDROID__
-                if (ch == 2070 && sr[0].oo < 0) // scale to fit disabled
+                if (ch == SYSTEM_ITEM_VIEWSCALEFIT && sr[0].oo < 0) // scale to fit disabled
                 {
                     sr[0].oo = 128;
                     mChanged = true;
                 }
 #else
-                if (ch == 2071 && sr[0].oo < 0) // show banner disabled
+                if (ch == SYSTEM_ITEM_VIEWBANNER && sr[0].oo < 0)   // show banner disabled
                 {
                     sr[0].oo = 128;
                     mChanged = true;
                 }
 #endif
-                if (ch == 2073)                 // Force toolbar is only available if toolbar is not suppressed
+                if (ch == SYSTEM_ITEM_VIEWTOOLBAR)  // Force toolbar is only available if toolbar is not suppressed
                 {
                     if (TConfig::getToolbarSuppress() && sr[0].oo < 0)
                     {
@@ -974,7 +928,10 @@ bool TButton::makeElement(int instance)
         return drawButton(inst);
     }
     else
+    {
+        mActInstance = inst;
         return drawButton(inst);
+    }
 
     return false;
 }
@@ -1151,7 +1108,7 @@ bool TButton::setTextOnly(const string& txt, int instance)
     int inst = instance;
     int loop = 1;
 
-    if (inst < 0)
+    if (inst < 0 || type == TEXT_INPUT)
     {
         loop = (int)sr.size();
         inst = 0;
@@ -1230,6 +1187,34 @@ bool TButton::appendText(const string &txt, int instance)
     }
 
     return makeElement(instance);
+}
+
+void TButton::setTextCursorPosition(int oldPos, int newPos)
+{
+    DECL_TRACER("TButton::setTextCursorPosition(int oldPos, int newPos)");
+
+    if (type != TEXT_INPUT)
+        return;
+
+    if (oldPos == newPos && newPos == mCursorPosition)
+        return;
+
+    mCursorPosition = newPos;
+}
+
+void TButton::setTextFocus(bool in)
+{
+    DECL_TRACER("TButton::setTextFocus(bool in)");
+
+    if (type != TEXT_INPUT)
+        return;
+
+    mHasFocus = in;
+
+    if (mHasFocus && mActInstance != STATE_ON)
+        makeElement(STATE_ON);
+    else if (!mHasFocus && mActInstance != STATE_OFF)
+        makeElement(STATE_OFF);
 }
 
 bool TButton::setBorderColor(const string &color, int instance)
@@ -1465,24 +1450,19 @@ bool TButton::setBorderStyle(const string& style, int instance)
 
     // Check whether it is a supported style or not. If the style is not
     // supported, it will be ignored.
-    int i = 0;
+    string corrName = getCorrectName(style);
 
-    while (sysBorders[i].id > 0)
+    if (!style.empty())
     {
-        if (strCaseCompare(sysBorders[i].name, style) == 0)
-        {
-            if (instance < 0)
-                bs = sysBorders[i].name;
-            else
-                sr[instance].bs = sysBorders[i].name;
+        if (instance < 0)
+            bs = corrName;
+        else
+            sr[instance].bs = corrName;
 
-            if (mEnabled && !hd)
-                makeElement(instance);
+        if (mEnabled && !hd)
+            makeElement(instance);
 
-            return true;
-        }
-
-        i++;
+        return true;
     }
 
     return false;
@@ -1747,6 +1727,20 @@ void TButton::setActiveInstance(int inst)
         mChanged = true;
 
     mActInstance = inst;
+}
+
+SUBVIEW_POSITION_t TButton::getSubViewAnchor()
+{
+    DECL_TRACER("TButton::getSubViewAnchor()");
+
+    if (we.empty())
+        return SVP_CENTER;
+    else if (strCaseCompare(we, "l/t") == 0)
+        return SVP_LEFT_TOP;
+    else if (strCaseCompare(we, "r/b") == 0)
+        return SVP_RIGHT_BOTTOM;
+
+    return SVP_CENTER;
 }
 
 bool TButton::getDynamic(int inst)
@@ -2879,7 +2873,7 @@ void TButton::_imageRefresh(const string& url)
         }
 #endif
         TBitmap image((unsigned char *)imgButton.getPixels(), imgButton.info().width(), imgButton.info().height());
-        _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop);
+        _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop, isPassThrough());
     }
 }
 
@@ -3082,8 +3076,26 @@ bool TButton::buttonFill(SkBitmap* bm, int instance)
     }
 
     SkColor color = TColor::getSkiaColor(sr[instance].cf);
-    MSG_DEBUG("Fill color[" << instance << "]: " << sr[instance].cf << " (#" << std::setw(8) << std::setfill('0') << std::hex << color << ")");
-    bm->eraseColor(color);
+    MSG_DEBUG("Fill color[" << instance << "]: " << sr[instance].cf << " (#" << std::setw(8) << std::setfill('0') << std::hex << color << ")" << std::dec << std::setfill(' ') << std::setw(1));
+    // We create a new bitmap and fill it with the given fill color. Then
+    // we put this image over the existing image "bm". In case this method is
+    // not the first in the draw order, it prevents the button from completely
+    // overwrite.
+    SkImageInfo info = bm->info();
+    SkBitmap bitmap;
+
+    if (!allocPixels(info.width(), info.height(), &bitmap))
+    {
+        MSG_ERROR("Error allocating a bitmap with size " << info.width() << " x " << info.height() << "!");
+        return false;
+    }
+
+    bitmap.eraseColor(color);                       // Fill the new bitmap with the fill color
+    SkCanvas ctx(*bm, SkSurfaceProps());            // Create a canvas
+    SkPaint paint;                                  // The paint "device"
+    paint.setBlendMode(SkBlendMode::kSrcOver);      // We're overwriting each pixel
+    sk_sp<SkImage> _image = SkImage::MakeFromBitmap(bitmap);    // Technically we need an image. So we convert our new bitmap into an image.
+    ctx.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);   // Now we put the new image over the existing one.
     return true;
 }
 
@@ -3776,7 +3788,7 @@ void TButton::funcResource(const RESOURCE_T* resource, const std::string& url, B
             if (bc.show && _displayButton)
             {
                 TBitmap image((unsigned char *)bmCache.bitmap.getPixels(), bmCache.bitmap.info().width(), bmCache.bitmap.info().height());
-                _displayButton(bc.handle, bc.parent, image, bc.width, bc.height, bc.left, bc.top);
+                _displayButton(bc.handle, bc.parent, image, bc.width, bc.height, bc.left, bc.top, isPassThrough());
                 mChanged = false;
             }
         }
@@ -4904,386 +4916,143 @@ bool TButton::buttonBorder(SkBitmap* bm, int inst)
     else if ((size_t)instance > sr.size())
         instance = (int)sr.size() - 1;
 
-    if (sr[instance].bs.empty())
+    if (sr[instance].bs.empty() && bs.empty())
     {
         MSG_DEBUG("No border defined.");
         return true;
     }
 
     // Try to find the border in the system table
-    BORDER_t bd, bda;
-    int borderIndex = -1;
-    int i = 0;
-
-    while (sysBorders[i].id)
-    {
-        string sysBrd = sysBorders[i].name;
-
-        if (sysBrd == sr[instance].bs)
-        {
-            borderIndex = i;
-            MSG_DEBUG("Found internal system border [" << i << "]: " << sysBrd);
-            break;
-        }
-
-        i++;
-    }
-
-    bool classExist = (gPageManager && gPageManager->getSystemDraw());
-
-    if ((classExist && borderIndex >= 0 && !sysBorders[borderIndex].calc) || (classExist && borderIndex < 0))
-    {
-        int numBorders = 0;
-        bool extBorder = false;
-
-        string borderName1 = (bs.empty() ? sr[instance].bs : bs);
-        string borderName2 = (!bs.empty() && !sr[instance].bs.empty() ? sr[instance].bs : bs);
-
-        if (bs.empty())
-        {
-            if (gPageManager->getSystemDraw()->getBorder(sr[instance].bs, TSystemDraw::LT_OFF, &bd))
-                numBorders++;
-
-            if (gPageManager->getSystemDraw()->getBorder(sr[instance].bs, TSystemDraw::LT_ON, &bda))
-                numBorders++;
-
-            if (numBorders == 2)
-                extBorder = true;
-        }
-        else if (!sr[instance].bs.empty())
-        {
-            if (gPageManager->getSystemDraw()->getBorder(bs, (instance == 0 ? TSystemDraw::LT_OFF : TSystemDraw::LT_ON), &bd, sr[instance].bs))
-            {
-                numBorders++;
-                extBorder = true;
-            }
-        }
-
-        if (extBorder)
-        {
-            MSG_DEBUG("System border \"" << borderName1 << "\" and \"" << borderName2 << "\" found.");
-            SkColor color = TColor::getSkiaColor(sr[instance].cb);      // border color
-            SkColor bgColor = TColor::getSkiaColor(sr[instance].cf);    // fill color
-            MSG_DEBUG("Button color: #" << std::setw(6) << std::setfill('0') << std::hex << color);
-            // Load images
-            SkBitmap imgB, imgBR, imgR, imgTR, imgT, imgTL, imgL, imgBL;
-
-            imgB = retrieveBorderImage(bd.b, bda.b, color, bgColor);
-
-            if (imgB.empty())
-                return false;
-
-            MSG_DEBUG("Got images " << bd.b << " and " << bda.b << " with size " << imgB.info().width() << " x " << imgB.info().height());
-            imgBR = retrieveBorderImage(bd.br, bda.br, color, bgColor);
-
-            if (imgBR.empty())
-                return false;
-
-            MSG_DEBUG("Got images " << bd.br << " and " << bda.br << " with size " << imgBR.info().width() << " x " << imgBR.info().height());
-            imgR = retrieveBorderImage(bd.r, bda.r, color, bgColor);
-
-            if (imgR.empty())
-                return false;
-
-            MSG_DEBUG("Got images " << bd.r << " and " << bda.r << " with size " << imgR.info().width() << " x " << imgR.info().height());
-            imgTR = retrieveBorderImage(bd.tr, bda.tr, color, bgColor);
-
-            if (imgTR.empty())
-                return false;
-
-            MSG_DEBUG("Got images " << bd.tr << " and " << bda.tr << " with size " << imgTR.info().width() << " x " << imgTR.info().height());
-            imgT = retrieveBorderImage(bd.t, bda.t, color, bgColor);
-
-            if (imgT.empty())
-                return false;
-
-            MSG_DEBUG("Got images " << bd.t << " and " << bda.t << " with size " << imgT.info().width() << " x " << imgT.info().height());
-            imgTL = retrieveBorderImage(bd.tl, bda.tl, color, bgColor);
-
-            if (imgTL.empty())
-                return false;
-
-            MSG_DEBUG("Got images " << bd.tl << " and " << bda.tl << " with size " << imgTL.info().width() << " x " << imgTL.info().height());
-            imgL = retrieveBorderImage(bd.l, bda.l, color, bgColor);
-
-            if (imgL.empty())
-                return false;
-
-            mBorderWidth = imgL.info().width();
-            MSG_DEBUG("Got images " << bd.l << " and " << bda.l << " with size " << imgL.info().width() << " x " << imgL.info().height());
-            imgBL = retrieveBorderImage(bd.bl, bda.bl, color, bgColor);
-
-            if (imgBL.empty())
-                return false;
-
-            MSG_DEBUG("Got images " << bd.bl << " and " << bda.bl << " with size " << imgBL.info().width() << " x " << imgBL.info().height());
-            MSG_DEBUG("Button image size: " << (imgTL.info().width() + imgT.info().width() + imgTR.info().width()) << " x " << (imgTL.info().height() + imgL.info().height() + imgBL.info().height()));
-            MSG_DEBUG("Total size: " << wt << " x " << ht);
-            stretchImageWidth(&imgB, wt - imgBL.info().width() - imgBR.info().width());
-            stretchImageWidth(&imgT, wt - imgTL.info().width() - imgTR.info().width());
-            stretchImageHeight(&imgL, ht - imgTL.info().height() - imgBL.info().height());
-            stretchImageHeight(&imgR, ht - imgTR.info().height() - imgBR.info().height());
-            MSG_DEBUG("Stretched button image size: " << (imgTL.info().width() + imgT.info().width() + imgTR.info().width()) << " x " << (imgTL.info().height() + imgL.info().height() + imgBL.info().height()));
-            // Draw the frame
-            SkCanvas canvas(*bm, SkSurfaceProps());
-            SkPaint paint;
-
-            paint.setBlendMode(SkBlendMode::kSrc);
-            sk_sp<SkImage> _image = SkImage::MakeFromBitmap(imgB);
-            canvas.drawImage(_image, imgBL.info().width(), ht - imgB.info().height(), SkSamplingOptions(), &paint);
-            _image = SkImage::MakeFromBitmap(imgBR);
-            canvas.drawImage(_image, wt - imgBR.info().width(), ht - imgBR.info().height(), SkSamplingOptions(), &paint);
-            _image = SkImage::MakeFromBitmap(imgR);
-            canvas.drawImage(_image, wt - imgR.info().width(), imgTR.info().height(), SkSamplingOptions(), &paint);
-            _image = SkImage::MakeFromBitmap(imgTR);
-            canvas.drawImage(_image, wt - imgTR.info().width(), 0, SkSamplingOptions(), &paint);
-            _image = SkImage::MakeFromBitmap(imgT);
-            canvas.drawImage(_image, imgTL.info().width(), 0, SkSamplingOptions(), &paint);
-            _image = SkImage::MakeFromBitmap(imgTL);
-            canvas.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
-            _image = SkImage::MakeFromBitmap(imgL);
-            canvas.drawImage(_image, 0, imgTL.info().height(), SkSamplingOptions(), &paint);
-            _image = SkImage::MakeFromBitmap(imgBL);
-            canvas.drawImage(_image, 0, ht - imgBL.info().height(), SkSamplingOptions(), &paint);
-            return true;
-        }
-    }
-
-    // Here we've not found the wanted border in the system table. Reasons may
-    // be a wrong name or the system images don't exist.
-    // We'll try to find it in our internal table. This is a fallback which
-    // provides only a limited number of system borders.
-
-    if (borderIndex < 0)
+    if (drawBorder(bm, sr[instance].bs, wt, ht, sr[instance].cb))
         return true;
 
-    bool systemBrdExist = false;
+    // The border was not found or defined to be not drawn. Therefor we look
+    // into the system directory (__system/graphics/borders). If the wanted
+    // border exists there, we're drawing it.
+    BORDER_t bd, bda;
+    int numBorders = 0;
+    bool extBorder = false;
 
-    if (classExist && gPageManager->getSystemDraw()->getBorder(sr[instance].bs, ((instance == 0) ? TSystemDraw::LT_OFF : TSystemDraw::LT_ON), &bd))
-        systemBrdExist = true;
+    string borderName1 = (bs.empty() ? sr[instance].bs : bs);
+    string borderName2 = (!bs.empty() && !sr[instance].bs.empty() ? sr[instance].bs : bs);
 
-    if (sr[instance].bs.compare(sysBorders[borderIndex].name) == 0)
+    if (bs.empty())
     {
-        MSG_DEBUG("Border " << sysBorders[borderIndex].name << " found.");
-        SkCanvas canvas(*bm, SkSurfaceProps());
-        SkPaint paint;
-        SkColor color = TColor::getSkiaColor(sr[instance].cb);
+        if (gPageManager->getSystemDraw()->getBorder(sr[instance].bs, TSystemDraw::LT_OFF, &bd))
+            numBorders++;
 
-        paint.setColor(color);
-        paint.setBlendMode(SkBlendMode::kSrc);
-        paint.setStyle(SkPaint::kStroke_Style);
-        SkRRect outher, inner;
-        SkScalar radius = (SkScalar)sysBorders[borderIndex].radius;
-        int red, green, blue;
-        SkColor borderColor, bcLight, bcDark;
-        int lineWidth = 0;
+        if (gPageManager->getSystemDraw()->getBorder(sr[instance].bs, TSystemDraw::LT_ON, &bda))
+            numBorders++;
 
-        switch (sysBorders[borderIndex].id)
+        if (numBorders == 2)
+            extBorder = true;
+    }
+    else
+    {
+        if (gPageManager->getSystemDraw()->getBorder(bs, (instance == 0 ? TSystemDraw::LT_OFF : TSystemDraw::LT_ON), &bd, sr[instance].bs))
         {
-            case 1: // Single Frame
-            case 2: // Double Frame
-            case 3: // Quad Frame
-                mBorderWidth = sysBorders[borderIndex].width;
-                paint.setStrokeWidth(sysBorders[borderIndex].width);
-                canvas.drawRect(calcRect(wt, ht, sysBorders[borderIndex].width), paint);
-            break;
-
-            case 4: // Picture Frame
-                {
-                    mBorderWidth = 2;
-                    paint.setStrokeWidth(2);
-                    SkRect rect = SkRect::MakeXYWH(0, 0, wt, ht);
-                    canvas.drawRect(rect, paint);
-                    rect = SkRect::MakeXYWH(4, 4, wt - 4, ht - 4);
-                    canvas.drawRect(rect, paint);
-                }
-            break;
-
-            case 5: // Circle 15
-            case 6: // Circle 25
-            case 7: // Circle 35
-            case 8: // Circle 45
-            case 9: // Circle 55
-            case 10: // Circle 65
-            case 11: // Circle 75
-            case 12: // Circle 85
-            case 13: // Circle 95
-            case 14: // Circle 105
-            case 15: // Circle 115
-            case 16: // Circle 125
-            case 17: // Circle 135
-            case 18: // Circle 145
-            case 19: // Circle 155
-            case 20: // Circle 165
-            case 21: // Circle 175
-            case 22: // Circle 185
-            case 23: // Circle 195
-                if (systemBrdExist)
-                {
-                    radius = (double)bd.border.idealWidth / 2.0;    // Take diameter and calculate radius
-                    lineWidth = bd.border.textLeft;
-                }
-                else
-                    lineWidth = sysBorders[borderIndex].width;
-
-                mBorderWidth = lineWidth;
-                paint.setStrokeWidth(1.0);
-                paint.setStyle(SkPaint::kFill_Style);
-                MSG_DEBUG("Line width: " << lineWidth << ", radius: " << radius);
-                // We draw a rounded rectangle to "clip" the corners. To do this
-                // in a way to not miss any pixel, we draw a rectangle followed
-                // by a rounded rectangle as an inner one. The space between
-                // them will be filled transparent.
-                outher = SkRRect::MakeRect({0, 0, (SkScalar)wt, (SkScalar)ht});
-                inner = SkRRect::MakeRectXY(calcRect(wt, ht, 1), radius, radius);
-                paint.setColor(SK_ColorTRANSPARENT);
-                canvas.drawDRRect(outher, inner, paint);
-                // Here we draw the rounded rectangle.
-                paint.setStyle(SkPaint::kStroke_Style);
-                paint.setStrokeWidth(lineWidth);
-                paint.setColor(color);
-                paint.setStrokeJoin(SkPaint::kRound_Join);
-                canvas.drawRoundRect(calcRect(wt, ht, lineWidth), radius, radius, paint);
-
-            break;
-
-            case 24:    // AMX Elite Inset -L
-            case 26:    // AMX Elite Inset -M
-            case 28:    // AMX Elite Inset -S
-                {
-                    mBorderWidth = sysBorders[borderIndex].width;
-                    borderColor = TColor::getSkiaColor(sr[instance].cb);
-                    vector<SkColor> cols = TColor::colorRange(borderColor, sysBorders[borderIndex].width, 40, TColor::DIR_LIGHT_DARK_LIGHT);
-                    vector<SkColor>::iterator iter;
-                    int i = 0;
-
-                    for (iter = cols.begin(); iter != cols.end(); ++iter)
-                    {
-                        paint.setStrokeWidth(1);
-                        paint.setColor(*iter);
-                        SkRect rect = SkRect::MakeXYWH(i, i, wt - i, ht - i);
-                        canvas.drawRect(rect, paint);
-                        i++;
-                    }
-                }
-            break;
-
-            case 25:    // AMX Elite Raised -L
-            case 27:    // AMX Elite Raised -M
-            case 29:    // AMX Elite Raised -S
-            {
-                mBorderWidth = sysBorders[borderIndex].width;
-                borderColor = TColor::getSkiaColor(sr[instance].cb);
-                vector<SkColor> cols = TColor::colorRange(borderColor, sysBorders[borderIndex].width, 40, TColor::DIR_DARK_LIGHT_DARK);
-                vector<SkColor>::iterator iter;
-                int i = 0;
-
-                for (iter = cols.begin(); iter != cols.end(); ++iter)
-                {
-                    paint.setStrokeWidth(1);
-                    paint.setColor(*iter);
-                    SkRect rect = SkRect::MakeXYWH(i, i, wt - i, ht - i);
-                    canvas.drawRect(rect, paint);
-                    i++;
-                }
-            }
-            break;
-
-            case 30:    // BevelInset -L
-            case 32:    // Bevel Inset -M
-            case 34:    // Bevel Inset -S
-                mBorderWidth = sysBorders[borderIndex].width;
-                borderColor = TColor::getSkiaColor(sr[instance].cb);
-                red = std::min((int)SkColorGetR(borderColor) + 20, 255);
-                green = std::min((int)SkColorGetG(borderColor) + 20, 255);
-                blue = std::min((int)SkColorGetB(borderColor) + 20, 255);
-                bcLight = SkColorSetARGB(SkColorGetA(borderColor), red, green, blue);
-                red = std::max((int)SkColorGetR(borderColor) - 20, 0);
-                green = std::max((int)SkColorGetG(borderColor) - 20, 0);
-                blue = std::max((int)SkColorGetB(borderColor) - 20, 0);
-                bcDark = SkColorSetARGB(SkColorGetA(borderColor), red, green, blue);
-                paint.setStrokeWidth(1);
-                paint.setColor(bcDark);
-                // Lines on the left
-                for (int i = 0; i < sysBorders[borderIndex].width; i++)
-                {
-                    int yt = i;
-                    int yb = ht - i;
-                    canvas.drawLine(i, yt, i, yb, paint);
-                }
-                // Lines on the top
-                for (int i = 0; i < sysBorders[borderIndex].width; i++)
-                {
-                    int xl = i;
-                    int xr = wt - i;
-                    canvas.drawLine(xl, i, xr, i, paint);
-                }
-                // Lines on right side
-                paint.setColor(bcLight);
-
-                for (int i = 0; i < sysBorders[borderIndex].width; i++)
-                {
-                    int yt = i;
-                    int yb = ht - i;
-                    canvas.drawLine(wt - i, yt, wt - i, yb, paint);
-                }
-                // Lines on bottom
-                for (int i = 0; i < sysBorders[borderIndex].width; i++)
-                {
-                    int xl = i;
-                    int xr = wt - i;
-                    canvas.drawLine(xl, ht - i, xr, ht - i, paint);
-                }
-            break;
-
-            case 31:    // Bevel Raised _L
-            case 33:    // Bevel Raised _M
-            case 35:    // Bevel Raised _S
-                mBorderWidth = sysBorders[borderIndex].width;
-                borderColor = TColor::getSkiaColor(sr[instance].cb);
-                red = std::min((int)SkColorGetR(borderColor) + 10, 255);
-                green = std::min((int)SkColorGetG(borderColor) + 10, 255);
-                blue = std::min((int)SkColorGetB(borderColor) + 10, 255);
-                bcLight = SkColorSetARGB(SkColorGetA(borderColor), red, green, blue);
-                red = std::max((int)SkColorGetR(borderColor) - 10, 0);
-                green = std::max((int)SkColorGetG(borderColor) - 10, 0);
-                blue = std::max((int)SkColorGetB(borderColor) - 10, 0);
-                bcDark = SkColorSetARGB(SkColorGetA(borderColor), red, green, blue);
-                paint.setStrokeWidth(1);
-                paint.setColor(bcLight);
-                // Lines on the left
-                for (int i = 0; i < sysBorders[borderIndex].width; i++)
-                {
-                    int yt = i;
-                    int yb = ht - i;
-                    canvas.drawLine(i, yt, i, yb, paint);
-                }
-                // Lines on the top
-                for (int i = 0; i < sysBorders[borderIndex].width; i++)
-                {
-                    int xl = i;
-                    int xr = wt - i;
-                    canvas.drawLine(xl, i, xr, i, paint);
-                }
-                // Lines on right side
-                paint.setColor(bcDark);
-
-                for (int i = 0; i < sysBorders[borderIndex].width; i++)
-                {
-                    int yt = i;
-                    int yb = ht - i;
-                    canvas.drawLine(wt - i, yt, wt - i, yb, paint);
-                }
-                // Lines on bottom
-                for (int i = 0; i < sysBorders[borderIndex].width; i++)
-                {
-                    int xl = i;
-                    int xr = wt - borderIndex;
-                    canvas.drawLine(xl, ht - i, xr, ht - i, paint);
-                }
-            break;
+            numBorders++;
+            extBorder = true;
         }
     }
+
+    if (extBorder)
+    {
+        MSG_DEBUG("System border \"" << borderName1 << "\" and \"" << borderName2 << "\" found.");
+        SkColor color = TColor::getSkiaColor(sr[instance].cb);      // border color
+        SkColor bgColor = TColor::getSkiaColor(sr[instance].cf);    // fill color
+        MSG_DEBUG("Button color: #" << std::setw(6) << std::setfill('0') << std::hex << color);
+        // Load images
+        SkBitmap imgB, imgBR, imgR, imgTR, imgT, imgTL, imgL, imgBL;
+
+        imgB = retrieveBorderImage(bd.b, bda.b, color, bgColor);
+
+        if (imgB.empty())
+            return false;
+
+        MSG_DEBUG("Got images " << bd.b << " and " << bda.b << " with size " << imgB.info().width() << " x " << imgB.info().height());
+        imgBR = retrieveBorderImage(bd.br, bda.br, color, bgColor);
+
+        if (imgBR.empty())
+            return false;
+
+        MSG_DEBUG("Got images " << bd.br << " and " << bda.br << " with size " << imgBR.info().width() << " x " << imgBR.info().height());
+        imgR = retrieveBorderImage(bd.r, bda.r, color, bgColor);
+
+        if (imgR.empty())
+            return false;
+
+        MSG_DEBUG("Got images " << bd.r << " and " << bda.r << " with size " << imgR.info().width() << " x " << imgR.info().height());
+        imgTR = retrieveBorderImage(bd.tr, bda.tr, color, bgColor);
+
+        if (imgTR.empty())
+            return false;
+
+        MSG_DEBUG("Got images " << bd.tr << " and " << bda.tr << " with size " << imgTR.info().width() << " x " << imgTR.info().height());
+        imgT = retrieveBorderImage(bd.t, bda.t, color, bgColor);
+
+        if (imgT.empty())
+            return false;
+
+        MSG_DEBUG("Got images " << bd.t << " and " << bda.t << " with size " << imgT.info().width() << " x " << imgT.info().height());
+        imgTL = retrieveBorderImage(bd.tl, bda.tl, color, bgColor);
+
+        if (imgTL.empty())
+            return false;
+
+        MSG_DEBUG("Got images " << bd.tl << " and " << bda.tl << " with size " << imgTL.info().width() << " x " << imgTL.info().height());
+        imgL = retrieveBorderImage(bd.l, bda.l, color, bgColor);
+
+        if (imgL.empty())
+            return false;
+
+        mBorderWidth = imgL.info().width();
+        MSG_DEBUG("Got images " << bd.l << " and " << bda.l << " with size " << imgL.info().width() << " x " << imgL.info().height());
+        imgBL = retrieveBorderImage(bd.bl, bda.bl, color, bgColor);
+
+        if (imgBL.empty())
+            return false;
+
+        MSG_DEBUG("Got images " << bd.bl << " and " << bda.bl << " with size " << imgBL.info().width() << " x " << imgBL.info().height());
+        MSG_DEBUG("Button image size: " << (imgTL.info().width() + imgT.info().width() + imgTR.info().width()) << " x " << (imgTL.info().height() + imgL.info().height() + imgBL.info().height()));
+        MSG_DEBUG("Total size: " << wt << " x " << ht);
+        stretchImageWidth(&imgB, wt - imgBL.info().width() - imgBR.info().width());
+        stretchImageWidth(&imgT, wt - imgTL.info().width() - imgTR.info().width());
+        stretchImageHeight(&imgL, ht - imgTL.info().height() - imgBL.info().height());
+        stretchImageHeight(&imgR, ht - imgTR.info().height() - imgBR.info().height());
+        MSG_DEBUG("Stretched button image size: " << (imgTL.info().width() + imgT.info().width() + imgTR.info().width()) << " x " << (imgTL.info().height() + imgL.info().height() + imgBL.info().height()));
+        // Draw the frame
+        SkBitmap frame;
+        allocPixels(bm->info().width(), bm->info().height(), &frame);
+        frame.eraseColor(SK_ColorTRANSPARENT);
+//        SkCanvas target(*bm, SkSurfaceProps());
+        SkCanvas canvas(frame, SkSurfaceProps());
+        SkPaint paint;
+
+        paint.setBlendMode(SkBlendMode::kSrcOver);
+        sk_sp<SkImage> _image = SkImage::MakeFromBitmap(imgB);
+        canvas.drawImage(_image, imgBL.info().width(), ht - imgB.info().height(), SkSamplingOptions(), &paint);
+        _image = SkImage::MakeFromBitmap(imgBR);
+        canvas.drawImage(_image, wt - imgBR.info().width(), ht - imgBR.info().height(), SkSamplingOptions(), &paint);
+        _image = SkImage::MakeFromBitmap(imgR);
+        canvas.drawImage(_image, wt - imgR.info().width(), imgTR.info().height(), SkSamplingOptions(), &paint);
+        _image = SkImage::MakeFromBitmap(imgTR);
+        canvas.drawImage(_image, wt - imgTR.info().width(), 0, SkSamplingOptions(), &paint);
+        _image = SkImage::MakeFromBitmap(imgT);
+        canvas.drawImage(_image, imgTL.info().width(), 0, SkSamplingOptions(), &paint);
+        _image = SkImage::MakeFromBitmap(imgTL);
+        canvas.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
+        _image = SkImage::MakeFromBitmap(imgL);
+        canvas.drawImage(_image, 0, imgTL.info().height(), SkSamplingOptions(), &paint);
+        _image = SkImage::MakeFromBitmap(imgBL);
+        canvas.drawImage(_image, 0, ht - imgBL.info().height(), SkSamplingOptions(), &paint);
+
+        erasePart(bm, frame, Border::ERASE_OUTSIDE);
+//        _image = SkImage::MakeFromBitmap(frame);
+//        target.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
+    }
+    else    // We try to draw a frame by forcing it to draw even the not to draw marked frames.
+        drawBorder(bm, sr[instance].bs, wt, ht, sr[instance].cb, true);
 
     return true;
 }
@@ -5428,22 +5197,32 @@ bool TButton::drawButtonMultistateAni()
     return true;
 }
 
-bool TButton::drawButton(int instance, bool show)
+bool TButton::drawButton(int instance, bool show, bool subview)
 {
-    mutex_button.lock();
-    DECL_TRACER("TButton::drawButton(int instance, bool show)");
+    DECL_TRACER("TButton::drawButton(int instance, bool show, bool subview)");
 
     if (prg_stopped)
-    {
-        mutex_button.unlock();
         return false;
+
+    if (subview)
+        mSubViewPart = subview;
+
+    if (mDrawBlock)
+    {
+        _DRAW_BLOCK_t db;
+        db.instance = instance;
+        db.show = show;
+        mDrawQueue.push_back(db);
+        return true;
     }
+
+    mDrawBlock = true;
 
     if ((size_t)instance >= sr.size() || instance < 0)
     {
         MSG_ERROR("Instance " << instance << " is out of bounds!");
         TError::setError();
-        mutex_button.unlock();
+        mDrawBlock = false;
         return false;
     }
 
@@ -5455,7 +5234,8 @@ bool TButton::drawButton(int instance, bool show)
         bool db = (_displayButton != nullptr);
         MSG_DEBUG("Button " << bi << ", \"" << na << "\" at instance " << instance << " is not to draw!");
         MSG_DEBUG("Visible: " << (visible ? "YES" : "NO") << ", Hidden: " << (hd ? "YES" : "NO") << ", Instance/actual instance: " << instance << "/" << mActInstance << ", callback: " << (db ? "PRESENT" : "N/A"));
-        mutex_button.unlock();
+        mDrawBlock = false;
+        runDrawQueue();
         return true;
     }
 
@@ -5464,9 +5244,18 @@ bool TButton::drawButton(int instance, bool show)
     if (!mChanged && !mLastImage.empty())
     {
         if (show)
+        {
             showLastButton();
 
-        mutex_button.unlock();
+            if (type == SUBPAGE_VIEW)
+            {
+                if (gPageManager)
+                    gPageManager->showSubViewList(st, this);
+            }
+        }
+
+        mDrawBlock = false;
+        runDrawQueue();
         return true;
     }
 
@@ -5475,15 +5264,25 @@ bool TButton::drawButton(int instance, bool show)
 
     if (TError::isError())
     {
-        mutex_button.unlock();
+        mDrawBlock = false;
+        runDrawQueue();
         return false;
     }
 
     SkBitmap imgButton;
 
     if (!allocPixels(wt, ht, &imgButton))
+    {
+        mDrawBlock = false;
+        runDrawQueue();
         return false;
+    }
 
+    // We create an empty (transparent) image here. Later it depends on the
+    // draw order of the elements. If, for example, the back ground fill is
+    // not the first thing, we must be sure to not destroy already drawn
+    // elemts of the button.
+    imgButton.eraseColor(SkColors::kTransparent);
     bool dynState = false;
 
     for (int i = 0; i < ORD_ELEM_COUNT; i++)
@@ -5492,7 +5291,8 @@ bool TButton::drawButton(int instance, bool show)
         {
             if (!buttonFill(&imgButton, instance))
             {
-                mutex_button.unlock();
+                mDrawBlock = false;
+                runDrawQueue();
                 return false;
             }
         }
@@ -5500,12 +5300,14 @@ bool TButton::drawButton(int instance, bool show)
         {
             if (!sr[instance].dynamic && !buttonBitmap(&imgButton, instance))
             {
-                mutex_button.unlock();
+                mDrawBlock = false;
+                runDrawQueue();
                 return false;
             }
             else if (sr[instance].dynamic && !buttonDynamic(&imgButton, instance, show, &dynState))
             {
-                mutex_button.unlock();
+                mDrawBlock = false;
+                runDrawQueue();
                 return false;
             }
         }
@@ -5513,7 +5315,8 @@ bool TButton::drawButton(int instance, bool show)
         {
             if (!buttonIcon(&imgButton, instance))
             {
-                mutex_button.unlock();
+                mDrawBlock = false;
+                runDrawQueue();
                 return false;
             }
         }
@@ -5521,7 +5324,8 @@ bool TButton::drawButton(int instance, bool show)
         {
             if (!buttonText(&imgButton, instance))
             {
-                mutex_button.unlock();
+                mDrawBlock = false;
+                runDrawQueue();
                 return false;
             }
         }
@@ -5529,7 +5333,7 @@ bool TButton::drawButton(int instance, bool show)
         {
             if (!buttonBorder(&imgButton, instance))
             {
-                mutex_button.unlock();
+                mDrawBlock = false;
                 return false;
             }
         }
@@ -5542,7 +5346,10 @@ bool TButton::drawButton(int instance, bool show)
         int h = imgButton.height();
 
         if (!allocPixels(w, h, &ooButton))
+        {
+            mDrawBlock = false;
             return false;
+        }
 
         SkCanvas canvas(ooButton);
         SkIRect irect = SkIRect::MakeXYWH(0, 0, w, h);
@@ -5615,24 +5422,53 @@ bool TButton::drawButton(int instance, bool show)
         if (show)
         {
             MSG_DEBUG("Button type: " << buttonTypeToString());
-            TBitmap image((unsigned char *)imgButton.getPixels(), imgButton.info().width(), imgButton.info().height());
 
-            if (type == SUBPAGE_VIEW && gPageManager && gPageManager->getDisplayViewButton())
-                gPageManager->getDisplayViewButton()(mHandle, parent, isSubViewVertical(), image, rwidth, rheight, rleft, rtop, sa, TColor::getAMXColor(sr[0].cf));
-            else
-                _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop);
+            if (type != SUBPAGE_VIEW && !mSubViewPart)
+            {
+                TBitmap image((unsigned char *)imgButton.getPixels(), imgButton.info().width(), imgButton.info().height());
+                _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop, isPassThrough());
+            }
+            else if (type != SUBPAGE_VIEW && mSubViewPart)
+            {
+                if (gPageManager)
+                    gPageManager->updateSubViewItem(this);
+            }
         }
     }
 
-    mutex_button.unlock();
-
-    if (type == SUBPAGE_VIEW && show)
+    if (!prg_stopped && type == SUBPAGE_VIEW && show)
     {
         if (gPageManager)
             gPageManager->showSubViewList(st, this);
     }
 
+    mDrawBlock = false;
+    runDrawQueue();
     return true;
+}
+
+void TButton::runDrawQueue()
+{
+    DECL_TRACER("TButton::runDrawQueue()");
+
+    if (mDrawQueueBusy)
+        return;
+
+    mDrawQueueBusy = true;
+
+    if (mDrawQueue.empty())
+    {
+        mDrawQueueBusy = false;
+        return;
+    }
+
+    while (mDrawQueue.size() > 0)
+    {
+        drawButton(mDrawQueue[0].instance, mDrawQueue[0].show);
+        mDrawQueue.erase(mDrawQueue.begin());
+    }
+
+    mDrawQueueBusy = false;
 }
 
 bool TButton::drawTextArea(int instance)
@@ -5782,7 +5618,7 @@ bool TButton::drawTextArea(int instance)
             bm.top = rtop;
             bm.width = rwidth;
             bm.height = rheight;
-            gPageManager->getCallbackInputText()(*this, bm, mBorderWidth);
+            gPageManager->getCallbackInputText()(this, bm, mBorderWidth);
         }
     }
 
@@ -5963,7 +5799,7 @@ bool TButton::drawMultistateBargraph(int level, bool show)
         if (show)
         {
             TBitmap image((unsigned char *)imgButton.getPixels(), imgButton.info().width(), imgButton.info().height());
-            _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop);
+            _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop, isPassThrough());
         }
     }
 
@@ -6105,7 +5941,7 @@ bool TButton::drawList(bool show)
             bm.top = rtop;
             bm.width = rwidth;
             bm.height = rheight;
-            gPageManager->getCallbackListBox()(*this, bm, mBorderWidth);
+            gPageManager->getCallbackListBox()(this, bm, mBorderWidth);
         }
     }
 
@@ -6300,7 +6136,7 @@ bool TButton::drawBargraph(int instance, int level, bool show)
         }
 #endif
         TBitmap image((unsigned char *)imgButton.getPixels(), imgButton.info().width(), imgButton.info().height());
-        _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop);
+        _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop, isPassThrough());
     }
 
     mutex_bargraph.unlock();
@@ -6570,22 +6406,17 @@ int TButton::getBorderSize(const std::string& name)
 {
     DECL_TRACER("TButton::getBorderSize(const std::string& name)");
 
+    int width = getBorderWidth(name);
+
+    if (width > 0)
+        return width;
+
     if (gPageManager && gPageManager->getSystemDraw())
     {
         if (gPageManager->getSystemDraw()->existBorder(name))
             return gPageManager->getSystemDraw()->getBorderWidth(name);
     }
 
-    for (int i = 0; sysBorders[i].name != nullptr; i++)
-    {
-        if (name.compare(sysBorders[i].name) == 0)
-        {
-            MSG_DEBUG("Border size: " << sysBorders[i].width);
-            return sysBorders[i].width;
-        }
-    }
-
-    MSG_DEBUG("Border size: 0");
     return 0;
 }
 
@@ -6761,6 +6592,27 @@ SkBitmap TButton::combineImages(SkBitmap& base, SkBitmap& alpha, SkColor col)
     return Bm;
 }
 
+/**
+ * @brief TButton::colorImage: Colorize frame element
+ * This method colorizes a frame element. If there is, beside the base picture,
+ * also a an alpha mask picture present, the elemnt is colorized by taking the
+ * mask to find the pixels to colorize.
+ * Otherwise the pixel is melted with the target color. This means a pseudo mask
+ * is used.
+ *
+ * @param base      This is the base image and must be present.
+ * @param alpha     This is optional alpha mask. If present it is used to
+ *                  define the alpha value of the pixels.
+ * @param col       This is the color to be used.
+ * @param bg        This is the background color to be used on the transparent
+ *                  pixels inside an element. On the transparent pixels on the
+ *                  outside of the element the pixel is set to transparent.
+ * @param useBG     If this is TRUE, all transparent pixels are set to the
+ *                  background color \b bg.
+ * @return
+ * On success a new image containing the colorized element is returned.
+ * Otherwise an empty image is returned.
+ */
 SkBitmap TButton::colorImage(SkBitmap& base, SkBitmap& alpha, SkColor col, SkColor bg, bool useBG)
 {
     DECL_TRACER("TButton::colorImage(SkBitmap *img, int width, int height, SkColor col, SkColor bg, bool useBG)");
@@ -6812,56 +6664,18 @@ SkBitmap TButton::colorImage(SkBitmap& base, SkBitmap& alpha, SkColor col, SkCol
             uint32_t ala = SkColorGetA(pixelAlpha);
 
             if (ala == 0 && !useBG)
-                pixelAlpha = col;
+                pixelAlpha = SK_ColorTRANSPARENT; //col;
             else if (ala == 0)
                 pixelAlpha = bg;
             else
             {
-                uint32_t blue, red;
-
-                if (isBigEndian())
-                {
-                    red = SkColorGetR(col);
-                    blue = SkColorGetB(col);
-                }
-                else
-                {
-                    blue = SkColorGetR(col);
-                    red = SkColorGetB(col);
-                }
-
+                uint32_t red   = SkColorGetR(col);
                 uint32_t green = SkColorGetG(col);
-
-                if (alpha.empty())
-                {
-                    uint32_t pred, pblue;
-
-                    if (isBigEndian())
-                    {
-                        pred = SkColorGetR(pixelAlpha);
-                        pblue = SkColorGetB(pixelAlpha);
-                    }
-                    else
-                    {
-                        pblue = SkColorGetR(pixelAlpha);
-                        pred = SkColorGetB(pixelAlpha);
-                    }
-
-                    uint32_t pgreen = SkColorGetG(pixelAlpha);
-                    uint32_t maxChan = SkColorGetG(SK_ColorWHITE);
-
-                    red   = ((pred == maxChan) ? pred : red);
-                    green = ((pgreen == maxChan) ? pgreen : green);
-                    blue  = ((pblue == maxChan) ? pblue : blue);
-                }
-                else if (ala == 0)
-                    red = green = blue = 0;
-
+                uint32_t blue  = SkColorGetB(col);
                 pixelAlpha = SkColorSetARGB(ala, red, green, blue);
             }
 
             *wpix = pixelAlpha;
-//            MSG_DEBUG("Pixel " << ix << ", " << iy << ": #" << std::setw(8) << std::setfill('0') << std::hex << pixelAlpha);
         }
     }
 
@@ -6961,7 +6775,7 @@ void TButton::showLastButton()
                 bm.top = rtop;
                 bm.width = rwidth;
                 bm.height = rheight;
-                gPageManager->getCallbackInputText()(*this, bm, mBorderWidth);
+                gPageManager->getCallbackInputText()(this, bm, mBorderWidth);
             }
         }
         else if (type == LISTBOX)
@@ -6975,13 +6789,22 @@ void TButton::showLastButton()
                 bm.top = rtop;
                 bm.width = rwidth;
                 bm.height = rheight;
-                gPageManager->getCallbackListBox()(*this, bm, mBorderWidth);
+                gPageManager->getCallbackListBox()(this, bm, mBorderWidth);
+            }
+        }
+        else if (type == SUBPAGE_VIEW)
+        {
+            if (gPageManager && gPageManager->getDisplayViewButton())
+            {
+                TBitmap image((unsigned char *)mLastImage.getPixels(), mLastImage.info().width(), mLastImage.info().height());
+                TColor::COLOR_T bgcolor = TColor::getAMXColor(sr[mActInstance].cf);
+                gPageManager->getDisplayViewButton()(mHandle, getParent(), (on.empty() ? false : true), image, wt, ht, lt, tp, sa, bgcolor);
             }
         }
         else if (_displayButton)
         {
             TBitmap image((unsigned char *)mLastImage.getPixels(), mLastImage.info().width(), mLastImage.info().height());
-            _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop);
+            _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop, isPassThrough());
         }
 
         mChanged = false;
@@ -7056,7 +6879,7 @@ void TButton::hide(bool total)
         if (_displayButton)
         {
             TBitmap image((unsigned char *)imgButton.getPixels(), imgButton.info().width(), imgButton.info().height());
-            _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop);
+            _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop, isPassThrough());
             mChanged = false;
         }
     }
@@ -7462,6 +7285,7 @@ bool TButton::doClick(int x, int y, bool pressed)
         sy = (int)((double)y * scaleFactor);
     }
 #endif
+
     if (_buttonPress && mActInstance >= 0 && (size_t)mActInstance < sr.size() && cp == 0 && ch > 0)
         _buttonPress(ch, mHandle, pressed);
 
@@ -8387,10 +8211,10 @@ bool TButton::doClick(int x, int y, bool pressed)
             amx::ANET_COMMAND cmd;
             cmd.MC = 0x000c;
             cmd.device1 = channel;
-            cmd.port1 = ap;
+            cmd.port1 = 1;
             cmd.system = system;
             cmd.data.message_string.device = channel;
-            cmd.data.message_string.port = ap;  // Must be the address port of button
+            cmd.data.message_string.port = 1;   // Must be 1
             cmd.data.message_string.system = system;
             cmd.data.message_string.type = 1;   // 8 bit char string
 
@@ -8871,7 +8695,7 @@ void TButton::showBitmapCache()
                 if (_displayButton)
                 {
                     TBitmap image((unsigned char *)iter->bitmap.getPixels(), iter->bitmap.info().width(), iter->bitmap.info().height());
-                    _displayButton(iter->handle, iter->parent, image, iter->width, iter->height, iter->left, iter->top);
+                    _displayButton(iter->handle, iter->parent, image, iter->width, iter->height, iter->left, iter->top, isPassThrough());
                     mChanged = false;
                 }
 
@@ -8908,6 +8732,19 @@ uint32_t TButton::pixelMix(uint32_t s, uint32_t d, uint32_t a, PMIX mix)
     }
 
     return r & 0x00ff;
+}
+
+bool TButton::isPassThrough()
+{
+    DECL_TRACER("TButton::isPassThrough()");
+
+    if (hs.empty())
+        return false;
+
+    if (strCaseCompare(hs, "passThru") == 0)
+        return true;
+
+    return false;
 }
 
 bool TButton::setListSource(const string &source, const vector<string>& configs)

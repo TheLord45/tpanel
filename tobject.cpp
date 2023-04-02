@@ -16,6 +16,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
+#include <functional>
+#include <map>
+
 #include <QTextObject>
 #include <QLabel>
 #include <QImage>
@@ -31,10 +34,13 @@
 #include "tobject.h"
 #include "terror.h"
 #include "tqscrollarea.h"
+#include "tlock.h"
+#include "tqtmain.h"
+#include "tresources.h"
 
 using std::string;
-
-std::mutex mutex_obj;
+using std::map;
+using std::pair;
 
 TObject::TObject()
 {
@@ -52,20 +58,18 @@ void TObject::clear(bool force)
 {
     DECL_TRACER("TObject::clear()");
 
-    OBJECT_t *obj = mObject;
+    if (mObjects.empty())
+        return;
 
-    while (obj)
+    std::map<ulong, OBJECT_t>::iterator iter;
+
+    for (iter = mObjects.begin(); iter != mObjects.end(); ++iter)
     {
-        OBJECT_t *next = obj->next;
-
         if (!force)
-            dropContent(obj);
-
-        delete obj;
-        obj = next;
+            dropContent(&iter->second);
     }
 
-    mObject = nullptr;
+    mObjects.clear();
 }
 
 void TObject::dropContent(OBJECT_t* obj, bool lock)
@@ -73,7 +77,7 @@ void TObject::dropContent(OBJECT_t* obj, bool lock)
     DECL_TRACER("TObject::dropContent(OBJECT_t* obj, bool lock)");
 
     if (lock)
-        mutex_obj.lock();
+        TLOCKER(mutex_obj);
 
     try
     {
@@ -121,6 +125,9 @@ void TObject::dropContent(OBJECT_t* obj, bool lock)
 
                 if (obj->object.area)
                 {
+                    if (mMainWindow)
+                        mMainWindow->disconnectArea(obj->object.area);
+
                     delete obj->object.area;
                     obj->object.area = nullptr;
                 }
@@ -142,7 +149,13 @@ void TObject::dropContent(OBJECT_t* obj, bool lock)
 
             case OBJ_LIST:
                 if (obj->object.list)
+                {
+                    if (mMainWindow)
+                        mMainWindow->disconnectList(obj->object.list);
+
+                    obj->object.list->close();
                     obj->object.list = nullptr;
+                }
 
                 obj->invalid = true;
             break;
@@ -156,54 +169,32 @@ void TObject::dropContent(OBJECT_t* obj, bool lock)
     {
         MSG_ERROR("Error freeing an object: " << e.what());
     }
-
-    if (lock)
-        mutex_obj.unlock();
 }
 
-TObject::OBJECT_t *TObject::addObject()
+bool TObject::addObject(OBJECT_t& obj)
 {
-    DECL_TRACER("TObject::addObject()");
+    DECL_TRACER("TObject::addObject(OBJECT_t& obj)");
 
-    mutex_obj.lock();
-    OBJECT_t *obj = new OBJECT_t;
-    obj->next = nullptr;
-    obj->object.vwidget = nullptr;
-    obj->player = nullptr;
-    obj->object.label = nullptr;
-    obj->object.plaintext = nullptr;
-    obj->object.widget = nullptr;
-    obj->object.list = nullptr;
+    TLOCKER(mutex_obj);
 
-    if (!mObject)
-        mObject = obj;
-    else
-    {
-        OBJECT_t *p = mObject;
+    if (obj.handle == 0 || obj.type == OBJ_NONE)
+        return false;
 
-        while (p->next)
-            p = p->next;
+    if (mObjects.find(obj.handle) != mObjects.end())
+        return false;
 
-        p->next = obj;
-    }
-
-    mutex_obj.unlock();
-    return obj;
+    const auto [o, success] = mObjects.insert(pair<ulong, OBJECT_t>(obj.handle, obj));
+    return success;
 }
 
 TObject::OBJECT_t *TObject::findObject(ulong handle)
 {
     DECL_TRACER("TObject::findObject(ulong handle)");
 
-    OBJECT_t *obj = mObject;
+    map<ulong, OBJECT_t>::iterator iter = mObjects.find(handle);
 
-    while (obj)
-    {
-        if (obj->handle == handle)
-            return obj;
-
-        obj = obj->next;
-    }
+    if (iter != mObjects.end())
+        return &iter->second;
 
     return nullptr;
 }
@@ -212,14 +203,15 @@ TObject::OBJECT_t * TObject::findObject(WId id)
 {
     DECL_TRACER("TObject::findObject(WId id)");
 
-    OBJECT_t *obj = mObject;
+    if (mObjects.empty())
+        return nullptr;
 
-    while (obj)
+    map<ulong, OBJECT_t>::iterator iter;
+
+    for (iter = mObjects.begin(); iter != mObjects.end(); ++iter)
     {
-        if (obj->wid == id)
-            return obj;
-
-        obj = obj->next;
+        if (iter->second.wid == id)
+            return &iter->second;
     }
 
     return nullptr;
@@ -229,14 +221,12 @@ TObject::OBJECT_t *TObject::findFirstChild(ulong handle)
 {
     DECL_TRACER("TObject::findFirstChild(ulong handle)");
 
-    OBJECT_t *obj = mObject;
+    map<ulong, OBJECT_t>::iterator iter;
 
-    while (obj)
+    for (iter = mObjects.begin(); iter != mObjects.end(); ++iter)
     {
-        if (obj->handle != (handle & 0xffff0000) && (obj->handle & 0xffff0000) == (handle & 0xffff0000))
-            return obj;
-
-        obj = obj->next;
+        if (iter->first != (handle & 0xffff0000) && (iter->first & 0xffff0000) == (handle & 0xffff0000))
+            return &iter->second;
     }
 
     return nullptr;
@@ -246,18 +236,19 @@ TObject::OBJECT_t *TObject::findNextChild(ulong handle)
 {
     DECL_TRACER("TObject::findNextChild(ulong handle)");
 
-    OBJECT_t *obj = mObject;
-    bool next = false;
+    map<ulong, OBJECT_t>::iterator iter;
+    bool next = true;
 
-    while (obj)
+    for (iter = mObjects.find(handle); iter != mObjects.end(); ++iter)
     {
-        if (next && (obj->handle & 0xffff0000) == (handle & 0xffff0000))
-            return obj;
+        if (next)
+        {
+            next = false;
+            continue;
+        }
 
-        if (obj->handle == handle)
-            next = true;
-
-        obj = obj->next;
+        if ((iter->first & 0xffff0000) == (handle & 0xffff0000))
+            return &iter->second;
     }
 
     return nullptr;
@@ -267,14 +258,12 @@ TObject::OBJECT_t * TObject::getMarkedRemove()
 {
     DECL_TRACER("TObject::getMarkedRemove()");
 
-    OBJECT_t *obj = mObject;
+    map<ulong, OBJECT_t>::iterator iter;
 
-    while (obj)
+    for (iter = mObjects.begin(); iter != mObjects.end(); ++iter)
     {
-        if (obj->remove)
-            return obj;
-
-        obj = obj->next;
+        if (iter->second.remove)
+            return &iter->second;
     }
 
     return nullptr;
@@ -284,19 +273,22 @@ TObject::OBJECT_t * TObject::getNextMarkedRemove(TObject::OBJECT_t* object)
 {
     DECL_TRACER("TObject::getNextMarkedRemove(TObject::OBJECT_t* obj)");
 
-    OBJECT_t *obj = nullptr;
-
-    if (!object || !object->next)
+    if (!object)
         return nullptr;
 
-    obj = object->next;
+    map<ulong, OBJECT_t>::iterator iter;
+    bool next = true;
 
-    while (obj)
+    for (iter = mObjects.find(object->handle); iter != mObjects.end(); ++iter)
     {
-        if (obj->remove)
-            return obj;
+        if (next)
+        {
+            next = false;
+            continue;
+        }
 
-        obj = obj->next;
+        if (iter->second.remove)
+            return &iter->second;
     }
 
     return nullptr;
@@ -306,14 +298,12 @@ TObject::OBJECT_t *TObject::findFirstWindow()
 {
     DECL_TRACER("TObject::getFirstWindow()");
 
-    OBJECT_t *obj = mObject;
+    map<ulong, OBJECT_t>::iterator iter;
 
-    while (obj)
+    for (iter = mObjects.begin(); iter != mObjects.end(); ++iter)
     {
-        if (obj->type == OBJ_SUBPAGE)
-            return obj;
-
-        obj = obj->next;
+        if (iter->second.type == OBJ_SUBPAGE)
+            return &iter->second;
     }
 
     return nullptr;
@@ -323,17 +313,22 @@ TObject::OBJECT_t *TObject::findNextWindow(TObject::OBJECT_t *obj)
 {
     DECL_TRACER("TObject::findNextWindow()");
 
-    if (!obj || !obj->next)
+    if (!obj)
         return nullptr;
 
-    OBJECT_t *o = obj->next;
+    map<ulong, OBJECT_t>::iterator iter;
+    bool next = true;
 
-    while (o)
+    for (iter = mObjects.find(obj->handle); iter != mObjects.end(); ++iter)
     {
-        if (o->type == OBJ_SUBPAGE)
-            return o;
+        if (next)
+        {
+            next = false;
+            continue;
+        }
 
-        o = o->next;
+        if (iter->second.type == OBJ_SUBPAGE)
+            return &iter->second;
     }
 
     return nullptr;
@@ -343,173 +338,207 @@ void TObject::removeObject(ulong handle, bool drop)
 {
     DECL_TRACER("TObject::removeObject(ulong handle, bool drop)");
 
-    if (!handle)
+    if (!handle || mObjects.empty())
         return;
 
-    mutex_obj.lock();
-    OBJECT_t *obj = mObject;
-    OBJECT_t *prev = nullptr;
+    TLOCKER(mutex_obj);
+    map<ulong, OBJECT_t>::iterator iter = mObjects.find(handle);
 
-    while (obj)
+    if (iter != mObjects.end())
     {
-        if (obj->handle == handle)
-        {
-            if (!prev)
-            {
-                mObject = obj->next;
+        if (drop)
+            dropContent(&iter->second, false);
 
-                if (drop)
-                    dropContent(obj, false);
-
-                delete obj;
-            }
-            else
-            {
-                prev->next = obj->next;
-
-                if (drop)
-                    dropContent(obj, false);
-
-                delete obj;
-            }
-
-            mutex_obj.unlock();
-            return;
-        }
-
-        prev = obj;
-        obj = obj->next;
+        mObjects.erase(iter);
     }
-
-    mutex_obj.unlock();
 }
 
 void TObject::removeAllChilds(ulong handle, bool drop)
 {
     DECL_TRACER("TObject::removeAllChilds(ulong handle, bool drop)");
 
-    if (!handle)
+    if (!handle || mObjects.empty())
         return;
 
-    mutex_obj.lock();
-    OBJECT_t *obj = mObject;
-    OBJECT_t *prev = nullptr;
+    TLOCKER(mutex_obj);
+    map<ulong, OBJECT_t>::iterator iter;
+    bool repeat = false;
 
-    while (obj)
+    do
     {
-        if ((obj->handle & 0xffff0000) == (handle & 0xffff0000) && obj->handle != (handle & 0xffff0000))
+        repeat = false;
+
+        for (iter = mObjects.begin(); iter != mObjects.end(); ++iter)
         {
-            if (!prev)
+            if ((iter->first & 0xffff0000) == (handle & 0xffff0000) && iter->first != (handle & 0xffff0000))
             {
-                mObject = obj->next;
-
                 if (drop)
-                    dropContent(obj, false);
+                    dropContent(&iter->second, false);
 
-                delete obj;
-                obj = mObject;
-                continue;
-            }
-            else
-            {
-                prev->next = obj->next;
-
-                if (drop)
-                    dropContent(obj, false);
-
-                delete obj;
-                obj = prev;
+                mObjects.erase(iter);
+                repeat = true;
+                break;
             }
         }
-
-        prev = obj;
-        obj = obj->next;
     }
-
-    mutex_obj.unlock();
+    while (repeat);
 }
 
 void TObject::cleanMarked()
 {
     DECL_TRACER("TObject::cleanMarked()");
 
-    mutex_obj.lock();
-    OBJECT_t *obj = mObject;
-    OBJECT_t *prev = nullptr;
+    TLOCKER(mutex_obj);
+    map<ulong, OBJECT_t>::iterator iter;
+    bool repeat = false;
 
-    while (obj)
+    do
     {
-        if (obj->remove && (!obj->animation || obj->animation->state() != QAbstractAnimation::Running))
-        {
-            if (obj->type == OBJ_SUBPAGE && obj->object.widget)
-            {
-                obj->object.widget->close();
-                obj->object.widget = nullptr;
-            }
+        repeat = false;
 
-            if (!prev)
+        for (iter = mObjects.begin(); iter != mObjects.end(); ++iter)
+        {
+            if (iter->second.remove && (!iter->second.animation || iter->second.animation->state() != QAbstractAnimation::Running))
             {
-                mObject = obj->next;
-                delete obj;
-                obj = mObject;
-                continue;
-            }
-            else
-            {
-                prev->next = obj->next;
-                delete obj;
-                obj = prev;
+                if (iter->second.type == OBJ_SUBPAGE && iter->second.object.widget)
+                {
+                    iter->second.object.widget->close();
+                    iter->second.object.widget = nullptr;
+                }
+
+                mObjects.erase(iter);
+                repeat = true;
+                break;
             }
         }
-
-        prev = obj;
-        obj = obj->next;
     }
-
-    mutex_obj.unlock();
+    while (repeat);
 }
 
 void TObject::invalidateAllObjects()
 {
     DECL_TRACER("TObject::invalidateAllObjects()");
 
-    mutex_obj.lock();
-    OBJECT_t *obj = mObject;
+    TLOCKER(mutex_obj);
+    map<ulong, OBJECT_t>::iterator iter;
 
-    while (obj)
+    for (iter = mObjects.begin(); iter != mObjects.end(); ++iter)
     {
-        obj->object.vwidget = nullptr;      // Because it's a union all types will be NULL
-        obj->remove = true;
-        obj->animation = nullptr;
-        obj->invalid = true;
-
-        obj = obj->next;
+        iter->second.remove = false;
+        iter->second.invalid = true;
     }
+}
 
-    mutex_obj.unlock();
+void TObject::invalidateObject(ulong handle)
+{
+    DECL_TRACER("TObject::invalidateObject(ulong handle)");
+
+    TLOCKER(mutex_obj);
+    map<ulong, OBJECT_t>::iterator iter = mObjects.find(handle);
+
+    if (iter != mObjects.end())
+    {
+        iter->second.remove = false;
+        iter->second.invalid = true;
+    }
 }
 
 void TObject::invalidateAllSubObjects(ulong handle)
 {
-    DECL_TRACER("::invalidateAllSubObjects(ulong handle)");
+    DECL_TRACER("TObject::invalidateAllSubObjects(ulong handle)");
 
-    mutex_obj.lock();
-    OBJECT_t *obj = mObject;
+    TLOCKER(mutex_obj);
 
-    while (obj)
+    if (mObjects.empty())
+        return;
+
+    map<ulong, OBJECT_t>::iterator iter;
+    bool first = true;
+
+    for (iter = mObjects.find(handle); iter != mObjects.end(); ++iter)
     {
-        if (obj->handle != handle && (obj->handle & 0xffff0000) == handle)
+        if (first)
         {
-            obj->object.vwidget = nullptr;  // Because it's a union all types will be NULL
-            obj->remove = true;
-            obj->animation = nullptr;
-            obj->invalid = true;
+            first = false;
+            continue;
         }
 
-        obj = obj->next;
+        if ((iter->first & 0xffff0000) == handle)
+        {
+            MSG_DEBUG("Invalidating object " << handleToString(iter->first) << " of type " << objectToString(iter->second.type));
+            iter->second.remove = false;
+            iter->second.invalid = true;
+
+            if (iter->second.type == OBJ_SUBVIEW && iter->second.object.area && mMainWindow)
+                mMainWindow->disconnectArea(iter->second.object.area);
+            else if (iter->second.type == OBJ_LIST && iter->second.object.list && mMainWindow)
+                mMainWindow->disconnectList(iter->second.object.list);
+        }
+    }
+}
+
+bool TObject::enableObject(ulong handle)
+{
+    DECL_TRACER("TObject::enableObject(ulong handle)");
+
+    TLOCKER(mutex_obj);
+    map<ulong, OBJECT_t>::iterator iter = mObjects.find(handle);
+
+    if (iter != mObjects.end())
+    {
+        if (!iter->second.object.widget)
+        {
+            iter->second.remove = true;
+            MSG_ERROR("Object " << handleToString(iter->first) << " of type " << objectToString(iter->second.type) << " has no QObject!");
+            return false;
+        }
+
+        iter->second.remove = false;
+        iter->second.invalid = false;
+
+        if (iter->second.type == OBJ_SUBVIEW && iter->second.object.area && mMainWindow)
+            mMainWindow->reconnectArea(iter->second.object.area);
+        else if (iter->second.type == OBJ_LIST && iter->second.object.list && mMainWindow)
+            mMainWindow->reconnectList(iter->second.object.list);
+
+        return true;                         // We can savely return here because a handle is unique
     }
 
-    mutex_obj.unlock();
+    return false;
+}
+
+bool TObject::enableAllSubObjects(ulong handle)
+{
+    DECL_TRACER("::enableAllSubObjects(ulong handle)");
+
+    TLOCKER(mutex_obj);
+    map<ulong, OBJECT_t>::iterator iter;
+    bool ret = true;
+
+    for (iter = mObjects.begin(); iter != mObjects.end(); ++iter)
+    {
+        if (iter->first != handle && (iter->first & 0xffff0000) == handle)
+        {
+            if (!iter->second.object.widget)
+            {
+                iter->second.remove = true;
+                MSG_ERROR("Object " << handleToString(iter->first) << " of type " << objectToString(iter->second.type) << " has no QObject!");
+                ret = false;
+            }
+            else
+            {
+                iter->second.remove = false;
+                iter->second.invalid = false;
+
+                if (iter->second.type == OBJ_SUBVIEW && iter->second.object.area && mMainWindow)
+                    mMainWindow->reconnectArea(iter->second.object.area);
+                else if (iter->second.type == OBJ_LIST && iter->second.object.list && mMainWindow)
+                    mMainWindow->reconnectList(iter->second.object.list);
+            }
+        }
+    }
+
+    return ret;
 }
 
 string TObject::objectToString(TObject::OBJECT_TYPE o)

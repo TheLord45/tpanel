@@ -77,6 +77,7 @@ namespace fs = std::filesystem;
 #include "tvalidatefile.h"
 #include "ttpinit.h"
 #include "tconfig.h"
+#include "tlock.h"
 #ifdef Q_OS_IOS
 #include "ios/tiosbattery.h"
 #endif
@@ -100,7 +101,6 @@ extern amx::TAmxNet *gAmxNet;
 extern std::atomic<bool> _netRunning;
 extern bool _restart_;                          //!< If this is set to true then the whole program will start over.
 
-mutex surface_mutex;
 bool prg_stopped = false;
 
 #ifdef __ANDROID__
@@ -698,7 +698,7 @@ JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setLogFile(JN
 
 TPageManager::TPageManager()
 {
-    surface_mutex.lock();
+    TLOCKER(surface_mutex);
     DECL_TRACER("TPageManager::TPageManager()");
 
     gPageManager = this;
@@ -737,7 +737,6 @@ TPageManager::TPageManager()
     if (TError::isError())
     {
         MSG_ERROR("Settings were not read successfull!");
-        surface_mutex.unlock();
         return;
     }
 
@@ -750,7 +749,6 @@ TPageManager::TPageManager()
             MSG_ERROR("System settings were not read successfull!");
             delete mTSettings;
             mTSettings = nullptr;
-            surface_mutex.unlock();
             return;
         }
     }
@@ -1005,6 +1003,14 @@ TPageManager::TPageManager()
     REG_CMD(doPHN, "^PHN");     // SIP commands
     REG_CMD(getPHN, "?PHN");    // SIP state commands
 #endif
+    // SubView commands
+//    REG_CMD(doEPR, "^EPR");     // Execute Push on Release.
+//    REG_CMD(doSCE, "^SCE");     // Configures subpage custom events.
+//    REG_CMD(doSDR, "^SDR");     // Enabling subpage dynamic reordering.
+//    REG_CMD(doSHD, "^SHD");     // Hides subpage
+    REG_CMD(doSSH, "^SSH");     // Subpage show command.
+//    REG_CMD(doSTG, "^STG");     // Subpage toggle command
+
     // ListView commands (G5)
     REG_CMD(doLVD, "^LVD");     // G5: Set Listview Data Source
     REG_CMD(doLVE, "^LVE");     // G5: Set ListView custom event number
@@ -1044,7 +1050,8 @@ TPageManager::TPageManager()
     }
 #endif
     TError::clear();
-    surface_mutex.unlock();
+    runClickQueue();
+    runUpdateSubViewItem();
 }
 
 TPageManager::~TPageManager()
@@ -1478,7 +1485,7 @@ int TPageManager::getSelectedRow(ulong handle)
 {
     DECL_TRACER("TPageManager::getSelectedRow(ulong handle)");
 
-    ulong nPage = (handle >> 16) & 0x0000ffff;
+    int nPage = (handle >> 16) & 0x0000ffff;
 
     if ((nPage && TPage::isRegularPage(nPage)) || TPage::isSystemPage(nPage)) // Do we have a page?
     {                                                   // Yes, then look on page
@@ -1507,7 +1514,7 @@ string TPageManager::getSelectedItem(ulong handle)
 {
     DECL_TRACER("TPageManager::getSelectedItem(ulong handle)");
 
-    ulong nPage = (handle >> 16) & 0x0000ffff;
+    int nPage = (handle >> 16) & 0x0000ffff;
 
     if ((nPage && TPage::isRegularPage(nPage)) || TPage::isSystemPage(nPage)) // Do we have a page?
     {                                                   // Yes, then look on page
@@ -1536,7 +1543,7 @@ void TPageManager::setSelectedRow(ulong handle, int row, const std::string& text
 {
     DECL_TRACER("TPageManager::setSelectedRow(ulong handle, int row)");
 
-    ulong nPage = (handle >> 16) & 0x0000ffff;
+    int nPage = (handle >> 16) & 0x0000ffff;
 
     if (TPage::isRegularPage(nPage) || TPage::isSystemPage(nPage)) // Do we have a page?
     {                                                   // Yes, then look on page
@@ -1861,7 +1868,7 @@ void TPageManager::unregCallbackNetState(ulong handle)
     if (mNetCalls.size() == 0)
         return;
 
-    std::map<int, std::function<void (int)> >::iterator iter = mNetCalls.find(handle);
+    std::map<int, std::function<void (int)> >::iterator iter = mNetCalls.find((int)handle);
 
     if (iter != mNetCalls.end())
         mNetCalls.erase(iter);
@@ -1906,7 +1913,7 @@ void TPageManager::unregCallbackBatteryState(ulong handle)
     std::map<int, std::function<void (int, bool, int)> >::iterator iter = mBatteryCalls.find(handle);
 #endif
 #ifdef Q_OS_IOS
-    std::map<int, std::function<void (int, int)> >::iterator iter = mBatteryCalls.find(handle);
+    std::map<int, std::function<void (int, int)> >::iterator iter = mBatteryCalls.find((int)handle);
 #endif
     if (iter != mBatteryCalls.end())
         mBatteryCalls.erase(iter);
@@ -2146,6 +2153,8 @@ bool TPageManager::setPage(int PageID, bool forget)
 {
     DECL_TRACER("TPageManager::setPage(int PageID, bool forget)");
 
+    return _setPageDo(PageID, "", forget);
+/*
     if (mActualPage == PageID)
         return true;
 
@@ -2177,12 +2186,15 @@ bool TPageManager::setPage(int PageID, bool forget)
 
     pg->show();
     return true;
+*/
 }
 
 bool TPageManager::setPage(const string& name, bool forget)
 {
     DECL_TRACER("TPageManager::setPage(const string& name, bool forget)");
 
+    return _setPageDo(0, name, forget);
+/*
     TPage *pg = getPage(mActualPage);
 
     if (pg && pg->getName().compare(name) == 0)
@@ -2212,7 +2224,64 @@ bool TPageManager::setPage(const string& name, bool forget)
 
     pg->show();
     return true;
+*/
 }
+
+bool TPageManager::_setPageDo(int pageID, const string& name, bool forget)
+{
+    DECL_TRACER("TPageManager::_setPageDo(int pageID, const string& name, bool forget)");
+
+    TPage *pg = nullptr;
+
+    if (pageID > 0 && mActualPage == pageID)
+        return true;
+    else if (!name.empty())
+    {
+        pg = getPage(mActualPage);
+
+        if (pg && pg->getName().compare(name) == 0)
+            return true;
+    }
+    else if (pageID > 0)
+        pg = getPage(mActualPage);
+    else
+        return false;
+
+    // FIXME: Make this a vector array to hold a larger history!
+    if (!forget)
+        mPreviousPage = mActualPage;    // Necessary to be able to jump back to at least the last previous page
+
+    if (pg)
+        pg->drop();
+
+    mActualPage = 0;
+    PAGELIST_T listPg;
+
+    if (pageID > 0)
+        listPg = findPage(pageID);
+    else
+        listPg = findPage(name);
+
+    bool refresh = false;
+
+    if ((pg = loadPage(listPg, &refresh)) == nullptr)
+        return false;
+
+    mActualPage = pg->getNumber();
+
+    if (mActualPage >= SYSTEM_PAGE_START && !refresh)
+        reloadSystemPage(pg);
+
+    int width = (mActualPage >= SYSTEM_PAGE_START ? mSystemSettings->getWidth() : mTSettings->getWidth());
+    int height = (mActualPage >= SYSTEM_PAGE_START ? mSystemSettings->getHeight() : mTSettings->getHeight());
+
+    if (_setPage)
+        _setPage((mActualPage << 16) & 0xffff0000, width, height);
+
+    pg->show();
+    return true;
+}
+
 
 TSubPage *TPageManager::getSubPage(int pageID)
 {
@@ -2570,7 +2639,7 @@ vector<TSubPage *> TPageManager::createSubViewList(int id)
         }
         else
         {
-            MSG_WARNING("Subview list " << id << " gas no items!");
+            MSG_WARNING("Subview list " << id << " has no items!");
         }
 
         return subviews;
@@ -2596,6 +2665,7 @@ vector<TSubPage *> TPageManager::createSubViewList(int id)
         }
     }
 
+    MSG_DEBUG("Found " << subviews.size() << " subview items.");
     return subviews;
 }
 
@@ -2605,17 +2675,17 @@ void TPageManager::showSubViewList(int id, Button::TButton *bt)
 
     vector<TSubPage *> subviews = createSubViewList(id);
 
-    if (subviews.empty() || !_addViewButtonItems || !_displayViewButton || !bt)
+    if (subviews.empty() || !_addViewButtonItems || !bt)
     {
         MSG_DEBUG("Number views: " << subviews.size() << (_addViewButtonItems ? ", addView" : ", NO addView") << (_displayViewButton ? " display" : " NO display"));
         return;
     }
 
-    MSG_DEBUG("Working on button " << handleToString(bt->getHandle()) << " (" << bt->getName() << ") with " << subviews.size() << " pages.");
+    ulong btHandle = bt->getHandle();
+    MSG_DEBUG("Working on button " << handleToString(btHandle) << " (" << bt->getName() << ") with " << subviews.size() << " pages.");
     TBitmap bm = bt->getLastBitmap();
     TColor::COLOR_T fillColor = TColor::getAMXColor(bt->getFillColor());
-    ulong btHandle = bt->getHandle();
-    _displayViewButton(btHandle, bt->getParent(), bt->isSubViewVertical(), bm, bt->getWidth(), bt->getHeight(), bt->getTopPosition(), bt->getLeftPosition(), bt->getSubViewSpace(), fillColor);
+    _displayViewButton(btHandle, bt->getParent(), bt->isSubViewVertical(), bm, bt->getWidth(), bt->getHeight(), bt->getLeftPosition(), bt->getTopPosition(), bt->getSubViewSpace(), fillColor);
 
     vector<PGSUBVIEWITEM_T> items;
     PGSUBVIEWITEM_T svItem;
@@ -2625,6 +2695,7 @@ void TPageManager::showSubViewList(int id, Button::TButton *bt)
     for (iter = subviews.begin(); iter != subviews.end(); ++iter)
     {
         TSubPage *sub = *iter;
+        sub->setParent(btHandle);
 
         svItem.clear();
         Button::TButton *button = sub->getFirstButton();
@@ -2635,13 +2706,17 @@ void TPageManager::showSubViewList(int id, Button::TButton *bt)
         svItem.width = sub->getWidth();
         svItem.height = sub->getHeight();
         svItem.bgcolor = TColor::getAMXColor(sub->getFillColor());
+        svItem.scrollbar = bt->getSubViewScrollbar();
+        svItem.scrollbarOffset = bt->getSubViewScrollbarOffset();
+        svItem.position = bt->getSubViewAnchor();
+        svItem.wrap = bt->getWrapSubViewPages();
 
         if (!bitmap.empty())
             svItem.image.setBitmap((unsigned char *)bitmap.getPixels(), bitmap.info().width(), bitmap.info().height(), bitmap.info().bytesPerPixel());
 
         while (button)
         {
-            button->drawButton(0, false);
+            button->drawButton(0, false, true);
             svAtom.clear();
             svAtom.handle = button->getHandle();
             svAtom.parent = sub->getHandle();
@@ -2649,11 +2724,12 @@ void TPageManager::showSubViewList(int id, Button::TButton *bt)
             svAtom.height = button->getHeight();
             svAtom.left = button->getLeftPosition();
             svAtom.top = button->getTopPosition();
-            svAtom.bgcolor = TColor::getAMXColor(button->getFillColor());
+            svAtom.bgcolor = TColor::getAMXColor(button->getFillColor(button->getActiveInstance()));
+            svAtom.bounding = button->getBounding();
             Button::BITMAP_t bmap = button->getLastImage();
 
             if (bmap.buffer)
-                svAtom.image.setBitmap(bmap.buffer, bmap.width, bmap.height, bmap.rowBytes / bmap.width);
+                svAtom.image.setBitmap(bmap.buffer, bmap.width, bmap.height, (int)(bmap.rowBytes / bmap.width));
 
             svItem.atoms.push_back(svAtom);
             button = sub->getNextButton();
@@ -2666,6 +2742,106 @@ void TPageManager::showSubViewList(int id, Button::TButton *bt)
 
     if (_pageFinished)
         _pageFinished(bt->getHandle());
+}
+
+void TPageManager::updateSubViewItem(Button::TButton *bt)
+{
+    DECL_TRACER("TPageManager::updateSubViewItem(Button::TButton *bt)");
+
+    if (!bt)
+        return;
+
+    updview_mutex.lock();
+    mUpdateViews.push_back(bt);
+    updview_mutex.unlock();
+}
+
+void TPageManager::_updateSubViewItem(Button::TButton *bt)
+{
+    DECL_TRACER("TPageManager::_updateSubViewItem(Button::TButton *bt)");
+
+    if (!mPageList || !_updateViewButtonItem)
+        return;
+
+    // The parent of this kind of button is always the button of type subview.
+    // If we take the parent handle and extract the page ID (upper 16 bits)
+    // we get the page ID of the subpage or page ID of the page the button is
+    // ordered to.
+    int pageID = (bt->getParent() >> 16) & 0x0000ffff;
+    ulong parent = 0;
+    Button::TButton *button = nullptr;
+    PGSUBVIEWITEM_T item;
+    PGSUBVIEWATOM_T atom;
+    SkBitmap bitmap;
+    TPage *pg = nullptr;
+    TSubPage *sub = nullptr;
+
+    if (pageID < REGULAR_SUBPAGE_START)     // Is it a page?
+    {
+        pg = getPage(pageID);
+
+        if (!pg)
+        {
+            MSG_WARNING("Invalid page " << pageID << "!");
+            return;
+        }
+
+        button = pg->getFirstButton();
+        bitmap = pg->getBgImage();
+
+        item.handle = pg->getHandle();
+        item.parent = bt->getParent();
+        item.width = pg->getWidth();
+        item.height = pg->getHeight();
+        item.bgcolor = TColor::getAMXColor(pg->getFillColor());
+    }
+    else
+    {
+        sub = getSubPage(pageID);
+
+        if (!sub)
+        {
+            MSG_WARNING("Couldn't find the subpage " << pageID << "!");
+            return;
+        }
+
+        parent = sub->getParent();
+        button = sub->getFirstButton();
+        bitmap = sub->getBgImage();
+
+        item.handle = sub->getHandle();
+        item.parent = bt->getParent();
+        item.width = sub->getWidth();
+        item.height = sub->getHeight();
+        item.position = bt->getSubViewAnchor();
+        item.bgcolor = TColor::getAMXColor(sub->getFillColor());
+    }
+
+
+    if (!bitmap.empty())
+        item.image.setBitmap((unsigned char *)bitmap.getPixels(), bitmap.info().width(), bitmap.info().height(), bitmap.info().bytesPerPixel());
+
+    while (button)
+    {
+        atom.clear();
+        atom.handle = button->getHandle();
+        atom.parent = item.handle;
+        atom.width = button->getWidth();
+        atom.height = button->getHeight();
+        atom.left = button->getLeftPosition();
+        atom.top = button->getTopPosition();
+        atom.bgcolor = TColor::getAMXColor(button->getFillColor(button->getActiveInstance()));
+        atom.bounding = button->getBounding();
+        Button::BITMAP_t bmap = button->getLastImage();
+
+        if (bmap.buffer)
+            atom.image.setBitmap(bmap.buffer, bmap.width, bmap.height, (int)(bmap.rowBytes / bmap.width));
+
+        item.atoms.push_back(atom);
+        button = (pg ? pg->getNextButton() : sub->getNextButton());
+    }
+
+    _updateViewButtonItem(item, parent);
 }
 
 void TPageManager::updateActualPage()
@@ -3582,7 +3758,7 @@ void TPageManager::showSubPage(const string& name)
 
         if (redraw && _toFront)
         {
-            _toFront(pg->getHandle());
+            _toFront((uint)pg->getHandle());
             pg->setZOrder(page->getNextZOrder());
             page->sortSubpages();
             MSG_DEBUG("Setting new Z-order " << page->getActZOrder() << " on subpage " << pg->getName());
@@ -3600,16 +3776,12 @@ void TPageManager::showSubPage(const string& name)
             if (!page)
             {
                 MSG_ERROR("No active page found! Internal error.");
-                END_TEMPORARY_LOG();
                 return;
             }
         }
 
         if (!haveSubPage(pg->getNumber()) && !page->addSubPage(pg))
-        {
-            END_TEMPORARY_LOG();
             return;
-        }
 
         pg->setZOrder(page->getNextZOrder());
 
@@ -3640,9 +3812,9 @@ void TPageManager::showSubPage(const string& name)
 
             _setSubPage(pg->getHandle(), page->getHandle(), left, top, width, height, ani);
         }
-    }
 
-    pg->show();
+        pg->show();
+    }
 }
 
 void TPageManager::showSubPage(int number, bool force)
@@ -3699,7 +3871,7 @@ void TPageManager::showSubPage(int number, bool force)
 
         if (redraw && _toFront)
         {
-            _toFront(pg->getHandle());
+            _toFront((uint)pg->getHandle());
             pg->setZOrder(page->getNextZOrder());
             page->sortSubpages();
             MSG_DEBUG("Setting new Z-order " << page->getActZOrder() << " on subpage " << pg->getName());
@@ -3778,6 +3950,106 @@ void TPageManager::hideSubPage(const string& name)
     }
 }
 
+/**
+ * @brief TPageManager::runClickQueue - Processing mouse clicks
+ * The following method is starting a thread which tests a queue containing
+ * the mouse clicks. To not drain the CPU, it sleeps for a short time if there
+ * are no more events in the queue.
+ * If there is an entry in the queue, it copies it to a local struct and
+ * deletes it from the queue. It take always the oldest antry (first entry)
+ * and removes this entry from the queue until the queue is empty. This makes
+ * it to a FIFO (first in, first out).
+ * Depending on the state of the variable "coords" the method for mouse
+ * coordinate click is executed or the method for a handle.
+ * The thread runs as long as the variable "mClickQueueRun" is TRUE and the
+ * variable "prg_stopped" is FALSE.
+ */
+void TPageManager::runClickQueue()
+{
+    DECL_TRACER("TPageManager::runClickQueue()");
+
+    if (mClickQueueRun)
+        return;
+
+    mClickQueueRun = true;
+
+    try
+    {
+        std::thread thr = std::thread([=] {
+            MSG_PROTOCOL("Thread \"TPageManager::runClickQueue()\" was started.");
+
+            while (mClickQueueRun && !prg_stopped)
+            {
+                while (!mClickQueue.empty())
+                {
+#ifdef QT_DEBUG
+                    if (mClickQueue[0].coords)
+                        MSG_TRACE("TPageManager::runClickQueue() -- executing: _mouseEvent(" << mClickQueue[0].x << ", " << mClickQueue[0].y << ", " << (mClickQueue[0].pressed ? "TRUE" : "FALSE") << ")")
+                    else
+                        MSG_TRACE("TPageManager::runClickQueue() -- executing: _mouseEvent(" << handleToString(mClickQueue[0].handle) << ", " << (mClickQueue[0].pressed ? "TRUE" : "FALSE") << ")")
+#endif
+                    if (mClickQueue[0].coords)
+                        _mouseEvent(mClickQueue[0].x, mClickQueue[0].y, mClickQueue[0].pressed);
+                    else
+                        _mouseEvent(mClickQueue[0].handle, mClickQueue[0].handle);
+
+                    mClickQueue.erase(mClickQueue.begin()); // Remove first entry
+                }
+
+                std::this_thread::sleep_for(std::chrono::microseconds(10));
+            }
+
+            mClickQueueRun = false;
+            return;
+        });
+
+        thr.detach();
+    }
+    catch (std::exception& e)
+    {
+        MSG_ERROR("Error starting a thread to handle the click queue: " << e.what());
+        mClickQueueRun = false;
+    }
+}
+
+void TPageManager::runUpdateSubViewItem()
+{
+    DECL_TRACER("TPageManager::runUpdateSubViewItem()");
+
+    if (mUpdateViewsRun)
+        return;
+
+    mUpdateViewsRun = true;
+
+    try
+    {
+        std::thread thr = std::thread([=] {
+            MSG_PROTOCOL("Thread \"TPageManager::runUpdateSubViewItem()\" was started.");
+
+            while (mUpdateViewsRun && !prg_stopped)
+            {
+                while (!mUpdateViews.empty())
+                {
+                    _updateSubViewItem(mUpdateViews[0]);
+                    mUpdateViews.erase(mUpdateViews.begin()); // Remove first entry
+                }
+
+                std::this_thread::sleep_for(std::chrono::microseconds(10));
+            }
+
+            mUpdateViewsRun = false;
+            return;
+        });
+
+        thr.detach();
+    }
+    catch (std::exception& e)
+    {
+        MSG_ERROR("Error starting a thread to handle the click queue: " << e.what());
+        mUpdateViewsRun = false;
+    }
+}
+
 /*
  * Catch the mouse presses and scan all pages and subpages for an element to
  * receive the klick.
@@ -3785,6 +4057,21 @@ void TPageManager::hideSubPage(const string& name)
 void TPageManager::mouseEvent(int x, int y, bool pressed)
 {
     DECL_TRACER("TPageManager::mouseEvent(int x, int y, bool pressed)");
+
+    TLOCKER(click_mutex);
+
+    _CLICK_QUEUE_t cq;
+    cq.x = x;
+    cq.y = y;
+    cq.pressed = pressed;
+    cq.coords = true;
+    mClickQueue.push_back(cq);
+    MSG_DEBUG("Queued click for coords " << x << "x" << y << ", state " << (cq.pressed ? "PRESSED" : "RELEASED"));
+}
+
+void TPageManager::_mouseEvent(int x, int y, bool pressed)
+{
+    DECL_TRACER("TPageManager::_mouseEvent(int x, int y, bool pressed)");
 
     TError::clear();
     int realX = x - mFirstLeftPixel;
@@ -3816,15 +4103,6 @@ void TPageManager::mouseEvent(int x, int y, bool pressed)
         if (bt)
         {
             MSG_DEBUG("Button on page " << bt->getButtonIndex() << ": size: left=" << bt->getLeftPosition() << ", top=" << bt->getTopPosition() << ", width=" << bt->getWidth() << ", height=" << bt->getHeight());
-/*
-            if (pressed && TConfig::getSystemSoundState())
-            {
-                TSystemSound sysSound(TConfig::getSystemPath(TConfig::SOUNDS));
-
-                if (_playSound && sysSound.getSystemSoundState())
-                    _playSound(sysSound.getTouchFeedbackSound());
-            }
-*/
             bt->doClick(x - bt->getLeftPosition(), y - bt->getTopPosition(), pressed);
         }
 
@@ -3844,6 +4122,21 @@ void TPageManager::mouseEvent(int x, int y, bool pressed)
 void TPageManager::mouseEvent(ulong handle, bool pressed)
 {
     DECL_TRACER("TPageManager::mouseEvent(ulong handle, bool pressed)");
+
+    TLOCKER(click_mutex);
+
+    _CLICK_QUEUE_t cq;
+    cq.handle = handle;
+    cq.pressed = pressed;
+    mClickQueue.push_back(cq);
+    MSG_DEBUG("Queued click for handle " << handleToString(cq.handle) << " state " << (cq.pressed ? "PRESSED" : "RELEASED"));
+}
+
+void TPageManager::_mouseEvent(ulong handle, bool pressed)
+{
+    DECL_TRACER("TPageManager::_mouseEvent(ulong handle, bool pressed)");
+
+    MSG_DEBUG("Doing click for handle " << handleToString(handle) << " state " << (pressed ? "PRESSED" : "RELEASED"));
 
     if (!handle)
         return;
@@ -3881,6 +4174,75 @@ void TPageManager::inputButtonFinished(ulong handle, const std::string &content)
     }
 
     bt->setTextOnly(content, -1);
+}
+
+void TPageManager::inputCursorPositionChanged(ulong handle, int oldPos, int newPos)
+{
+    DECL_TRACER("TPageManager::inputCursorPositionChanged(ulong handle, int oldPos, int newPos)");
+
+    Button::TButton *bt = findButton(handle);
+
+    if (!bt)
+    {
+        MSG_WARNING("Invalid button handle " << handleToString(handle));
+        return;
+    }
+
+    ulong pageID = (bt->getHandle() >> 16) & 0x0000ffff;
+
+    if (pageID < REGULAR_SUBPAGE_START)
+    {
+        TPage *pg = getPage(pageID);
+
+        if (!pg)
+            return;
+
+        pg->setCursorPosition(handle, oldPos, newPos);
+    }
+    else
+    {
+        TSubPage *pg = getSubPage(pageID);
+
+        if (!pg)
+            return;
+
+        pg->setCursorPosition(handle, oldPos, newPos);
+    }
+}
+
+void TPageManager::inputFocusChanged(ulong handle, bool in)
+{
+    DECL_TRACER("TPageManager::inputFocusChanged(ulong handle, bool in)");
+
+    Button::TButton *bt = findButton(handle);
+
+    if (!bt)
+    {
+        MSG_WARNING("Invalid button handle " << handleToString(handle));
+        return;
+    }
+
+    ulong pageID = (bt->getHandle() >> 16) & 0x0000ffff;
+    MSG_DEBUG("Searching for page " << pageID);
+
+    if (pageID < REGULAR_SUBPAGE_START)
+    {
+        TPage *pg = getPage(pageID);
+
+        if (!pg)
+            return;
+
+        pg->setInputFocus(handle, in);
+    }
+    else
+    {
+        TSubPage *pg = getSubPage(pageID);
+
+        if (!pg)
+            return;
+
+        pg->setInputFocus(handle, in);
+    }
 }
 
 void TPageManager::setTextToButton(ulong handle, const string& txt, bool redraw)
@@ -5810,7 +6172,7 @@ void TPageManager::getBCB(int port, vector<int> &channels, vector<string> &pars)
                 if (color.empty())
                     continue;
 
-                sendCustomEvent(i + 1, color.length(), 0, color, 1011, bt->getChannelPort(), bt->getChannelNumber());
+                sendCustomEvent(i + 1, (int)color.length(), 0, color, 1011, bt->getChannelPort(), bt->getChannelNumber());
             }
         }
         else
@@ -5820,7 +6182,7 @@ void TPageManager::getBCB(int port, vector<int> &channels, vector<string> &pars)
             if (color.empty())
                 return;
 
-            sendCustomEvent(btState, color.length(), 0, color, 1011, bt->getChannelPort(), bt->getChannelNumber());
+            sendCustomEvent(btState, (int)color.length(), 0, color, 1011, bt->getChannelPort(), bt->getChannelNumber());
         }
     }
 }
@@ -5912,13 +6274,13 @@ void TPageManager::getBCF(int port, vector<int> &channels, vector<string> &pars)
                 if (color.empty())
                     continue;
 
-                sendCustomEvent(i + 1, color.length(), 0, color, 1012, bt->getChannelPort(), bt->getChannelNumber());
+                sendCustomEvent(i + 1, (int)color.length(), 0, color, 1012, bt->getChannelPort(), bt->getChannelNumber());
             }
         }
         else
         {
             color = bt->getFillColor(btState-1);
-            sendCustomEvent(btState, color.length(), 0, color, 1012, bt->getChannelPort(), bt->getChannelNumber());
+            sendCustomEvent(btState, (int)color.length(), 0, color, 1012, bt->getChannelPort(), bt->getChannelNumber());
         }
     }
 }
@@ -6010,13 +6372,13 @@ void TPageManager::getBCT(int port, vector<int> &channels, vector<string> &pars)
                 if (color.empty())
                     continue;
 
-                sendCustomEvent(i + 1, color.length(), 0, color, 1013, bt->getChannelPort(), bt->getChannelNumber());
+                sendCustomEvent(i + 1, (int)color.length(), 0, color, 1013, bt->getChannelPort(), bt->getChannelNumber());
             }
         }
         else
         {
             color = bt->getTextColor(btState - 1);
-            sendCustomEvent(btState, color.length(), 0, color, 1013, bt->getChannelPort(), bt->getChannelNumber());
+            sendCustomEvent(btState, (int)color.length(), 0, color, 1013, bt->getChannelPort(), bt->getChannelNumber());
         }
     }
 }
@@ -6916,13 +7278,13 @@ void TPageManager::getBMP(int port, vector<int> &channels, vector<string> &pars)
                 if (bmp.empty())
                     continue;
 
-                sendCustomEvent(i + 1, bmp.length(), 0, bmp, 1002, bt->getChannelPort(), bt->getChannelNumber());
+                sendCustomEvent(i + 1, (int)bmp.length(), 0, bmp, 1002, bt->getChannelPort(), bt->getChannelNumber());
             }
         }
         else
         {
             bmp = bt->getTextColor(btState-1);
-            sendCustomEvent(btState, bmp.length(), 0, bmp, 1002, bt->getChannelPort(), bt->getChannelNumber());
+            sendCustomEvent(btState, (int)bmp.length(), 0, bmp, 1002, bt->getChannelPort(), bt->getChannelNumber());
         }
     }
 }
@@ -7238,13 +7600,13 @@ void TPageManager::getBRD(int port, vector<int>& channels, vector<string>& pars)
             for (int i = 0; i < bst; i++)
             {
                 string bname = bt->getBorderStyle(i);
-                sendCustomEvent(i + 1, bname.length(), 0, bname, 1014, bt->getChannelPort(), bt->getChannelNumber());
+                sendCustomEvent(i + 1, (int)bname.length(), 0, bname, 1014, bt->getChannelPort(), bt->getChannelNumber());
             }
         }
         else
         {
             string bname = bt->getBorderStyle(btState-1);
-            sendCustomEvent(btState, bname.length(), 0, bname, 1014, bt->getChannelPort(), bt->getChannelNumber());
+            sendCustomEvent(btState, (int)bname.length(), 0, bname, 1014, bt->getChannelPort(), bt->getChannelNumber());
         }
     }
 }
@@ -8404,13 +8766,13 @@ void TPageManager::getTEC(int port, vector<int>& channels, vector<string>& pars)
             for (int i = 0; i < bst; i++)
             {
                 string c = bt->getTextEffectColor(i);
-                sendCustomEvent(i + 1, c.length(), 0, c, 1009, bt->getChannelPort(), bt->getChannelNumber());
+                sendCustomEvent(i + 1, (int)c.length(), 0, c, 1009, bt->getChannelPort(), bt->getChannelNumber());
             }
         }
         else
         {
             string c = bt->getTextEffectColor(btState-1);
-            sendCustomEvent(btState, c.length(), 0, c, 1009, bt->getChannelPort(), bt->getChannelNumber());
+            sendCustomEvent(btState, (int)c.length(), 0, c, 1009, bt->getChannelPort(), bt->getChannelNumber());
         }
     }
 }
@@ -8483,13 +8845,13 @@ void TPageManager::getTEF(int port, vector<int>& channels, vector<string>& pars)
             for (int i = 0; i < bst; i++)
             {
                 string c = bt->getTextEffectName(i);
-                sendCustomEvent(i + 1, c.length(), 0, c, 1008, bt->getChannelPort(), bt->getChannelNumber());
+                sendCustomEvent(i + 1, (int)c.length(), 0, c, 1008, bt->getChannelPort(), bt->getChannelNumber());
             }
         }
         else
         {
             string c = bt->getTextEffectName(btState-1);
-            sendCustomEvent(btState, c.length(), 0, c, 1008, bt->getChannelPort(), bt->getChannelNumber());
+            sendCustomEvent(btState, (int)c.length(), 0, c, 1008, bt->getChannelPort(), bt->getChannelNumber());
         }
     }
 }
@@ -8588,13 +8950,13 @@ void TPageManager::getTXT(int port, vector<int>& channels, vector<string>& pars)
             for (int i = 0; i < bst; i++)
             {
                 string c = bt->getText(i);
-                sendCustomEvent(i + 1, c.length(), 0, c, 1001, bt->getChannelPort(), bt->getChannelNumber());
+                sendCustomEvent(i + 1, (int)c.length(), 0, c, 1001, bt->getChannelPort(), bt->getChannelNumber());
             }
         }
         else
         {
             string c = bt->getText(btState-1);
-            sendCustomEvent(btState, c.length(), 0, c, 1001, bt->getChannelPort(), bt->getChannelNumber());
+            sendCustomEvent(btState, (int)c.length(), 0, c, 1001, bt->getChannelPort(), bt->getChannelNumber());
         }
     }
 }
@@ -9635,6 +9997,73 @@ void TPageManager::getPHN(int, vector<int>&, vector<string>& pars)
     }
 }
 #endif  // _NOSIP_
+
+/*
+ * This command will perform one of three different operations based on the following conditions:
+ * 1. If the named subpage is hidden in the set associated with the viewer button it will be shown in the anchor position.
+ * 2. If the named subpage is not present in the set it will be added to the set and shown in the anchor position.
+ * 3. If the named subpage is already present in the set and is not hidden then the viewer button will move it to the anchor
+ * position. The anchor position is the location on the subpage viewer button specified by its weighting. This will either be
+ * left, center or right for horizontal subpage viewer buttons or top, center or bottom for vertical subpage viewer buttons.
+ * Surrounding subpages are relocated on the viewer button as needed to accommodate the described operations
+ */
+void TPageManager::doSSH(int port, vector<int> &channels, vector<string> &pars)
+{
+    DECL_TRACER("TPageManager::doSSH(int port, vector<int> &channels, vector<string> &pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Expecting 1 parameter but got none! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    string name = pars[0];
+    int position = 0;   // optional
+    int time = 0;       // optional
+
+    if (pars.size() > 1)
+        position = atoi(pars[1].c_str());
+
+    if (pars.size() > 2)
+        time = atoi(pars[2].c_str());
+
+    vector<TMap::MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (!buttons.empty())
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+            vector<TSubPage *> subviews = createSubViewList(bt->getSubViewID());
+
+            if (subviews.empty() || !bt)
+                continue;
+
+            vector<TSubPage *>::iterator itSub;
+
+            for (itSub = subviews.begin(); itSub != subviews.end(); ++itSub)
+            {
+                TSubPage *sub = *itSub;
+
+                if (sub && sub->getName() == name)
+                {
+                    if (_showSubViewItem)
+                        _showSubViewItem(sub->getHandle(), bt->getHandle(), position, time);
+
+                    break;
+                }
+            }
+        }
+    }
+}
 
 void TPageManager::doLVD(int port, vector<int> &channels, vector<string> &pars)
 {

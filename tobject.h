@@ -34,6 +34,7 @@ class QVideoWidget;
 class QPropertyAnimation;
 class QListWidget;
 class TQScrollArea;
+class MainWindow;
 QT_END_NAMESPACE
 
 class TObject
@@ -79,15 +80,15 @@ class TObject
             ANIMATION_t animate;
             bool aniDirection{false};
             WId wid{0};                     // Used to identify a QTextEdit or QLineEdit
-            std::atomic<bool> remove{false};// Object is marked for remove. Used with animation.
-            OBJECT_t *next{nullptr};
+            bool remove{false};             // Object is marked for remove. Used with animation.
         }OBJECT_t;
 
         TObject();
         ~TObject();
 
+        void setParent(MainWindow *mw) { mMainWindow = mw; }
         void clear(bool force=false);
-        OBJECT_t *addObject();
+        bool addObject(OBJECT_t& obj);
         OBJECT_t *findObject(ulong handle);
         OBJECT_t *findObject(WId id);
         OBJECT_t *findFirstChild(ulong handle);
@@ -100,13 +101,19 @@ class TObject
         void removeAllChilds(ulong handle, bool drop=true);
         void removeObject(ulong handle, bool drop=true);
         void invalidateAllObjects();
+        void invalidateObject(ulong handle);
         void invalidateAllSubObjects(ulong handle);
+        bool enableObject(ulong handle);
+        bool enableAllSubObjects(ulong handle);
 
         static std::string objectToString(OBJECT_TYPE o);
         void dropContent(OBJECT_t *obj, bool lock=true);
 
     private:
-        OBJECT_t *mObject{nullptr};
+        std::mutex mutex_obj;
+
+        std::map<ulong, OBJECT_t> mObjects;
+        MainWindow *mMainWindow;
 };
 
 #endif

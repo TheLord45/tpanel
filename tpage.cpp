@@ -30,6 +30,7 @@
 #include "tdrawimage.h"
 #include "texpat++.h"
 #include "tconfig.h"
+#include "terror.h"
 
 #if __cplusplus < 201402L
 #   error "This module requires at least C++14 standard!"
@@ -443,6 +444,164 @@ void TPage::addProgress()
     button->setHandle(((mPage.pageID << 16) & 0xffff0000) | bt.bi);
     button->createButtons();
     addButton(button);
+}
+
+SkBitmap& TPage::getBgImage()
+{
+    DECL_TRACER("TPage::getBgImage()");
+
+    if (!mBgImage.empty())
+        return mBgImage;
+
+    bool haveImage = false;
+    MSG_DEBUG("Creating image for page " << mPage.pageID << ": " << mPage.name);
+    SkBitmap target;
+
+    if (!allocPixels(mPage.width, mPage.height, &target))
+        return mBgImage;
+
+    target.eraseColor(TColor::getSkiaColor(mPage.sr[0].cf));
+    // Draw the background, if any
+    if (mPage.sr.size() > 0 && (!mPage.sr[0].bm.empty() || !mPage.sr[0].mi.empty()))
+    {
+        TDrawImage dImage;
+        dImage.setWidth(mPage.width);
+        dImage.setHeight(mPage.height);
+
+        if (!mPage.sr[0].bm.empty())
+        {
+            MSG_DEBUG("Loading image " << mPage.sr[0].bm);
+            sk_sp<SkData> rawImage = readImage(mPage.sr[0].bm);
+            SkBitmap bm;
+
+            if (rawImage)
+            {
+                MSG_DEBUG("Decoding image BM ...");
+
+                if (!DecodeDataToBitmap(rawImage, &bm))
+                {
+                    MSG_WARNING("Problem while decoding image " << mPage.sr[0].bm);
+                }
+                else if (!bm.empty())
+                {
+                    dImage.setImageBm(bm);
+                    SkImageInfo info = bm.info();
+                    mPage.sr[0].bm_width = info.width();
+                    mPage.sr[0].bm_height = info.height();
+                    haveImage = true;
+                }
+                else
+                {
+                    MSG_WARNING("BM image " << mPage.sr[0].bm << " seems to be empty!");
+                }
+            }
+        }
+
+        if (!mPage.sr[0].mi.empty())
+        {
+            MSG_DEBUG("Loading image " << mPage.sr[0].mi);
+            sk_sp<SkData> rawImage = readImage(mPage.sr[0].mi);
+            SkBitmap mi;
+
+            if (rawImage)
+            {
+                MSG_DEBUG("Decoding image MI ...");
+
+                if (!DecodeDataToBitmap(rawImage, &mi))
+                {
+                    MSG_WARNING("Problem while decoding image " << mPage.sr[0].mi);
+                }
+                else if (!mi.empty())
+                {
+                    dImage.setImageMi(mi);
+                    SkImageInfo info = mi.info();
+                    mPage.sr[0].mi_width = info.width();
+                    mPage.sr[0].mi_height = info.height();
+                    haveImage = true;
+                }
+                else
+                {
+                    MSG_WARNING("MI image " << mPage.sr[0].mi << " seems to be empty!");
+                }
+            }
+        }
+
+        if (haveImage)
+        {
+            dImage.setSr(mPage.sr);
+
+            if (!dImage.drawImage(&target))
+                return mBgImage;
+
+            if (!mPage.sr[0].te.empty())
+            {
+                if (!drawText(mPage, &target))
+                    return mBgImage;
+            }
+
+            if (mPage.sr[0].oo < 255 && mPage.sr[0].te.empty() && mPage.sr[0].bs.empty())
+                setOpacity(&target, mPage.sr[0].oo);
+
+#ifdef _SCALE_SKIA_
+            size_t rowBytes = info.minRowBytes();
+            size_t size = info.computeByteSize(rowBytes);
+            SkImageInfo info = target.info();
+
+            if (gPageManager && gPageManager->getScaleFactor() != 1.0)
+            {
+                SkPaint paint;
+                int left, top;
+
+                paint.setBlendMode(SkBlendMode::kSrc);
+                paint.setFilterQuality(kHigh_SkFilterQuality);
+                // Calculate new dimension
+                double scaleFactor = gPageManager->getScaleFactor();
+                MSG_DEBUG("Using scale factor " << scaleFactor);
+                int lwidth = (int)((double)info.width() * scaleFactor);
+                int lheight = (int)((double)info.height() * scaleFactor);
+                int twidth = (int)((double)mPage.width * scaleFactor);
+                int theight = (int)((double)mPage.height * scaleFactor);
+                calcPosition(lwidth, lheight, &left, &top);
+                // Create a canvas and draw new image
+                sk_sp<SkImage> im = SkImage::MakeFromBitmap(target);
+
+                if (!allocPixels(twidth, theight, &target))
+                    return;
+
+                target.eraseColor(TColor::getSkiaColor(mPage.sr[0].cf));
+                SkCanvas can(target, SkSurfaceProps());
+                SkRect rect = SkRect::MakeXYWH(left, top, lwidth, lheight);
+                can.drawImageRect(im, rect, &paint);
+                MSG_DEBUG("Scaled size of background image: " << left << ", " << top << ", " << lwidth << ", " << lheight);
+            }
+#endif
+        }
+    }
+
+    if (mPage.sr.size() > 0 && !mPage.sr[0].te.empty())
+    {
+        MSG_DEBUG("Drawing a text only on background image ...");
+
+        if (drawText(mPage, &target))
+            haveImage = true;
+    }
+
+    // Check for a frame and draw it if there is one.
+    if (!mPage.sr[0].bs.empty())
+    {
+        if (drawFrame(mPage, &target))
+            haveImage = true;
+    }
+
+    if (haveImage)
+    {
+        if (mPage.sr[0].oo < 255)
+            setOpacity(&target, mPage.sr[0].oo);
+
+        mBgImage = target;
+    }
+
+    return mBgImage;
 }
 
 void TPage::show()
@@ -932,8 +1091,12 @@ void TPage::drop()
     // remove all subpages, if there are any
     while (pc)
     {
-        MSG_DEBUG("Dropping popup " << pc->subpage->getNumber() << ": " << pc->subpage->getName());
-        pc->subpage->drop();
+        if (pc->subpage)
+        {
+            MSG_DEBUG("Dropping popup " << pc->subpage->getNumber() << ": " << pc->subpage->getName());
+            pc->subpage->drop();
+        }
+
         pc = pc->next;
     }
 

@@ -27,10 +27,14 @@ class QLineEdit;
 class QTextEdit;
 class QLabel;
 class QHBoxLayout;
+class TQSingleLine;
+class TQMultiLine;
 QT_END_NAMESPACE
 
 class TQEditLine : public QWidget
 {
+    Q_OBJECT
+
     public:
         TQEditLine(QWidget *widget = nullptr, bool multiline=false);
         TQEditLine(std::string &text, QWidget *widget = nullptr, bool multiline=false);
@@ -41,19 +45,13 @@ class TQEditLine : public QWidget
         void setPasswordChar(uint c);
         std::string& getText() { return mText; }
         void setFixedSize(int w, int h);
-        void move(int x, int y);
-        void move(QPoint &p);
         void setFont(QFont &font);
+        void setTextColor(QColor col);
         void setPalette(QPalette &pal);
         void grabGesture(Qt::GestureType type, Qt::GestureFlags flags = Qt::GestureFlags());
         void setPadding(int left, int top, int right, int bottom);
         void setFrameSize(int s);
-        void setAutoFillBackground(bool f);
-        void installEventFilter(QObject *filter);
         void setWordWrapMode(bool mode = false);
-        WId winId();
-        void show();
-        void close();
         void clear();
         void setInputMask(const std::string& mask);
         void setNumericInput();
@@ -67,18 +65,29 @@ class TQEditLine : public QWidget
         void setHandle(ulong handle) { mHandle = handle; }
 
     signals:
-        void onTextChanged(const QString &text);
-        void onTextAreaChanged();
+        void inputChanged(ulong handle, std::string& text);
+        void cursorPositionChanged(ulong handle, int oldPos, int newPos);
+        void focusChanged(ulong handle, bool in);
 
     protected:
-        bool event(QEvent *event) override;
+        void hideEvent(QHideEvent *event) override;
+        void leaveEvent(QEvent *event) override;
+        void closeEvent(QCloseEvent *event) override;
+
+        void onTextChanged(const QString &text);
+        void onTextAreaChanged();
+        void onCursorPositionChangedS(int oldPos, int newPos);
+        void onEditingFinished();
+        void onFocusChanged(bool in);
+        void onKeyPressed(int);
 
     private:
         void init();
+        void _end();
 
         QHBoxLayout *mLayout{nullptr};
-        QLineEdit *mEdit{nullptr};
-        QTextEdit *mTextArea{nullptr};
+        TQSingleLine *mEdit{nullptr};
+        TQMultiLine *mTextArea{nullptr};
 
         std::string mText;
         ulong mHandle{0};

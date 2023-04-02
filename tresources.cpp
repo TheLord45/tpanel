@@ -1141,3 +1141,25 @@ std::string handleToString(ulong handle)
     ulong part2 = handle & 0x0000ffff;
     return std::to_string(part1)+":"+std::to_string(part2);
 }
+
+ulong extractHandle(const std::string& obname)
+{
+    size_t pos = obname.rfind("_");
+
+    if (pos == std::string::npos)
+        return 0;
+
+    std::string part = obname.substr(pos + 1);
+    ulong handle = 0;
+
+    if ((pos = part.find(":")) != std::string::npos)
+    {
+        std::string slt = part.substr(0, pos);
+        std::string srt = part.substr(pos + 1);
+        ulong lt = atoi(slt.c_str());
+        ulong rt = atoi(srt.c_str());
+        handle = ((lt << 16) & 0xffff0000) | (rt & 0x0000ffff);
+    }
+
+    return handle;
+}
