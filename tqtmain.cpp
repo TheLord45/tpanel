@@ -1164,7 +1164,35 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
     }
 
     if (event->type() == QEvent::MouseMove)
+    {
+        QMouseEvent *mev = dynamic_cast<QMouseEvent *>(event);
+        QWidget *w = childAt(mev->x(), mev->y());
+
+        if (w)
+        {
+            MSG_DEBUG("Object " << w->objectName().toStdString() << " is under mouse cursor.");
+            QObject *par = w->parent();
+
+            if (par)
+            {
+                MSG_DEBUG("The parent is " << par->objectName().toStdString());
+
+                if (par->objectName().startsWith("Item_"))
+                {
+                    QObject *ppar = par->parent();
+
+                    if (ppar)
+                    {
+                        MSG_DEBUG("The pparent is " << ppar->objectName().toStdString());
+
+                        if (ppar->objectName().startsWith("View_"))
+                            return false;
+                    }
+                }
+            }
+        }
         return true;    // Filter event out, i.e. stop it being handled further.
+    }
 
 //    if (event->type() == QEvent::Gesture)
 //        return gestureEvent(static_cast<QGestureEvent*>(event));
@@ -1629,7 +1657,7 @@ void MainWindow::mousePressEvent(QMouseEvent* event)
         mLastPressX = x;
         mLastPressY = y;
 
-        QWidget *w = childAt(x, y);
+        QWidget *w = childAt(event->x(), event->y());
 
         if (w)
         {
@@ -1639,6 +1667,23 @@ void MainWindow::mousePressEvent(QMouseEvent* event)
             if (par)
             {
                 MSG_DEBUG("The parent is " << par->objectName().toStdString());
+
+                if (par->objectName().startsWith("Item_"))
+                {
+                    QObject *ppar = par->parent();
+
+                    if (ppar)
+                    {
+                        MSG_DEBUG("The pparent is " << ppar->objectName().toStdString());
+
+                        if (ppar->objectName().startsWith("View_"))
+                        {
+                            QMouseEvent *mev = new QMouseEvent(event->type(), event->localPos(), event->globalPos(), event->button(), event->buttons(), event->modifiers());
+                            QApplication::postEvent(ppar, mev);
+                            return;
+                        }
+                    }
+                }
             }
         }
 
@@ -1698,6 +1743,36 @@ void MainWindow::mouseReleaseEvent(QMouseEvent* event)
         MSG_DEBUG("Mouse press coordinates: x: " << event->x() << ", y: " << event->y());
         mLastPressX = mLastPressY = -1;
 
+        QWidget *w = childAt(event->x(), event->y());
+
+        if (w)
+        {
+            MSG_DEBUG("Object " << w->objectName().toStdString() << " is under mouse cursor.");
+            QObject *par = w->parent();
+
+            if (par)
+            {
+                MSG_DEBUG("The parent is " << par->objectName().toStdString());
+
+                if (par->objectName().startsWith("Item_"))
+                {
+                    QObject *ppar = par->parent();
+
+                    if (ppar)
+                    {
+                        MSG_DEBUG("The pparent is " << ppar->objectName().toStdString());
+
+                        if (ppar->objectName().startsWith("View_"))
+                        {
+                            QMouseEvent *mev = new QMouseEvent(event->type(), event->localPos(), event->globalPos(), event->button(), event->buttons(), event->modifiers());
+                            QApplication::postEvent(ppar, mev);
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
         if (gPageManager->isSetupActive() && isSetupScaled())
         {
             x = (int)((double)x / mSetupScaleFactor);
@@ -1735,6 +1810,41 @@ void MainWindow::mouseReleaseEvent(QMouseEvent* event)
             gPageManager->onSwipeEvent(TPageManager::SW_DOWN);
         else if (y < mTouchY && (mTouchY - y) > (height / 3))
             gPageManager->onSwipeEvent(TPageManager::SW_UP);
+    }
+}
+
+void MainWindow::mouseMoveEvent(QMouseEvent* event)
+{
+    DECL_TRACER("MainWindow::mouseMoveEvent(QMouseEvent* event)");
+
+    QWidget *w = childAt(event->x(), event->y());
+
+    if (w)
+    {
+        MSG_DEBUG("Object " << w->objectName().toStdString() << " is under mouse cursor.");
+        QObject *par = w->parent();
+
+        if (par)
+        {
+            MSG_DEBUG("The parent is " << par->objectName().toStdString());
+
+            if (par->objectName().startsWith("Item_"))
+            {
+                QObject *ppar = par->parent();
+
+                if (ppar)
+                {
+                    MSG_DEBUG("The pparent is " << ppar->objectName().toStdString());
+
+                    if (ppar->objectName().startsWith("View_"))
+                    {
+                        QMouseEvent *mev = new QMouseEvent(event->type(), event->localPos(), event->globalPos(), event->button(), event->buttons(), event->modifiers());
+                        QApplication::postEvent(ppar, mev);
+                        return;
+                    }
+                }
+            }
+        }
     }
 }
 

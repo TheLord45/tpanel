@@ -156,6 +156,7 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
         void closeEvent(QCloseEvent *event) override;
         void mousePressEvent(QMouseEvent* event) override;
         void mouseReleaseEvent(QMouseEvent* event) override;
+        void mouseMoveEvent(QMouseEvent* event) override;
         bool eventFilter(QObject *, QEvent *ev) override;
 
     private slots:
