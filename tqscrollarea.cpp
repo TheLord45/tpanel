@@ -970,14 +970,17 @@ void TQScrollArea::mouseMoveEvent(QMouseEvent* event)
         mMousePressTimer->stop();
 
     int move = 0;
-
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    MSG_DEBUG("Scroll event at " << event->pos().x() << "x" << event->pos().y() << ", old point at " << mOldPoint.x() << "x" << mOldPoint.y());
+#else
     MSG_DEBUG("Scroll event at " << event->position().x() << "x" << event->position().y() << ", old point at " << mOldPoint.x() << "x" << mOldPoint.y());
+#endif
     if (mVertical)
     {
         if (mOldPoint.y() != 0)
         {
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-            move = me->pos().y() - mOldPoint.y();
+            move = event->pos().y() - mOldPoint.y();
 #else
             move = event->position().y() - mOldPoint.y();
 #endif
@@ -996,7 +999,7 @@ void TQScrollArea::mouseMoveEvent(QMouseEvent* event)
         if (mOldPoint.x() != 0)
         {
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-            move = me->pos().x() - mOldPoint.x();
+            move = event->pos().x() - mOldPoint.x();
 #else
             move = event->position().x() - mOldPoint.x();
 #endif
@@ -1016,7 +1019,7 @@ void TQScrollArea::mouseMoveEvent(QMouseEvent* event)
     }
 
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    mOldPoint = me->pos();
+    mOldPoint = event->pos();
 #else
     mOldPoint = event->position();
 #endif

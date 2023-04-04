@@ -1651,8 +1651,10 @@ void MainWindow::mousePressEvent(QMouseEvent* event)
         int x = event->x() - nx;
         int y = event->y() - ny;
         MSG_DEBUG("Mouse press coordinates: x: " << event->x() << ", y: " << event->y() << " [new x: " << x << ", y: " << y << " -- \"notch\" nx: " << nx << ", ny: " << ny << "]");
-#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+#ifdef Q_OS_IOS
         MSG_DEBUG("Mouse press coords alt.: pos.x: " << event->position().x() << ", pos.y: " << event->position().y() << ", local.x: " << event->localPos().x() << ", local.y: " << event->localPos().y());
+#elif defined Q_OS_ANDROID
+        MSG_DEBUG("Mouse press coords alt.: pos.x: " << event->pos().x() << ", pos.y: " << event->pos().y() << ", local.x: " << event->localPos().x() << ", local.y: " << event->localPos().y());
 #endif
         mLastPressX = x;
         mLastPressY = y;

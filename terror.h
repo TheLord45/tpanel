@@ -128,7 +128,11 @@ class TTracer
         int mLine{0};
         std::string mFile;
         std::chrono::steady_clock::time_point mTimePoint;
+#ifdef __ANDROID__
+        threadID_t mThreadID;
+#else
         threadID_t mThreadID{0};
+#endif
 };
 
 class TError : public std::ostream

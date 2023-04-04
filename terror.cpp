@@ -53,7 +53,11 @@ bool TError::mHaveError{false};
 terrtype_t TError::mErrType{TERRNONE};
 TStreamError *TError::mCurrent{nullptr};
 std::string TError::msError;
+#ifdef __ANDROID__
+threadID_t TError::mThreadID;
+#else
 threadID_t TError::mThreadID{0};
+#endif
 
 int TStreamError::mIndent{1};
 std::ostream *TStreamError::mStream{nullptr};

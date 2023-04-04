@@ -21,7 +21,7 @@
 #include <string>
 
 class SkBitmap;
-class SkRect;
+struct SkRect;
 
 namespace Border
 {
