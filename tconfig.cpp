@@ -166,11 +166,23 @@ bool TConfig::reReadConfig()
     return readConfig();
 }
 
-void TConfig::setTemporary(bool tmp)
+/**
+ * @brief TConfig::setTemporary - Activate/deactivate temporary config
+ * Activates or deactivates the state of the temporary configuration. The
+ * temporary configuration is a shadow configuration which holds all changes
+ * to the configuration without saving it.
+ *
+ * @param tmp   State of the active configuration.
+ * @return
+ * Returns the previous state of the configuration setting.
+ */
+bool TConfig::setTemporary(bool tmp)
 {
     DECL_TRACER("TConfig::setTemporary(bool tmp)");
 
+    bool old = mTemporary;
     mTemporary = tmp;
+    return old;
 }
 
 void TConfig::reset()

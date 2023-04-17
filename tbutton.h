@@ -1139,12 +1139,6 @@ namespace Button
             std::mutex mutex_sysdraw;
             std::mutex mutex_bmCache;
 
-            typedef struct _DRAW_BLOCK_t
-            {
-                int instance{0};
-                bool show{false};
-            }_DRAW_BLOCK_t;
-
             std::string buttonTypeToString();
             POSITION_t calcImagePosition(int width, int height, CENTER_CODE cc, int number, int line = 0);
             IMAGE_SIZE_t calcImageSize(int imWidth, int imHeight, int instance, bool aspect=false);
@@ -1195,7 +1189,6 @@ namespace Button
             void setBCBitmap(ulong handle, SkBitmap& bm);
             void showBitmapCache();
             uint32_t pixelMix(uint32_t s, uint32_t d, uint32_t a, PMIX mix);
-            void runDrawQueue();
             bool isPassThrough();
 
             BUTTONTYPE type;
@@ -1310,9 +1303,6 @@ namespace Button
             bool mChanged{true};    // TRUE=Something changed --> button must be redrawn
             int mBorderWidth{0};    // If there is a border this is set to the pixels the border is using
             std::vector<std::string> mListContent;  // The content of a list, if this button is one
-            bool mDrawBlock{false};    // TRUE = the method drawButton() is busy.
-            std::vector<_DRAW_BLOCK_t> mDrawQueue;
-            bool mDrawQueueBusy{false};
             bool mSubViewPart{false};   // TRUE = The button is part of a subview item.
             int mCursorPosition{0}; // The cursor position if this is of type TEXT_INPUT
             bool mHasFocus{false};  // If this is of type TEXT_INPUT this holds the focus state

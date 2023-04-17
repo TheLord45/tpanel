@@ -78,7 +78,7 @@ class TConfig
             SIP_UPNP
         }SIP_FIREWALL_t;
 
-        static void setTemporary(bool tmp);
+        static bool setTemporary(bool tmp);
         static bool getTemporary() { return mTemporary; }
         static void reset();
         static void setProgName(const std::string& pname);

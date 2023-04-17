@@ -949,7 +949,7 @@ bool TButton::setActive(int instance)
         return false;
     }
 
-    if (instance == mActInstance)
+    if (instance == mActInstance && !mLastImage.empty())
         return true;
 
     mActInstance = instance;
@@ -1036,8 +1036,10 @@ bool TButton::setIcon(const string& icon, int instance)
             continue;
         }
 
+        if (sr[inst].ii != id)
+            mChanged = true;
+
         sr[inst].ii = id;
-        mChanged = true;
         inst++;
     }
 
@@ -1071,9 +1073,11 @@ bool TButton::revokeIcon(int instance)
             continue;
         }
 
+        if (sr[inst].ii != 0)
+            mChanged = true;
+
         sr[inst].ii = 0;
         inst++;
-        mChanged = true;
     }
 
     return makeElement(instance);
@@ -1125,7 +1129,7 @@ bool TButton::setTextOnly(const string& txt, int instance)
 
     if (isSystemButton())
     {
-        TConfig::setTemporary(true);
+        bool temp = TConfig::setTemporary(true);
         // If we've an input line or the text line of a "combobox" then we'll
         // save the changed value here.
         switch(ad)
@@ -1152,6 +1156,8 @@ bool TButton::setTextOnly(const string& txt, int instance)
             case SYSTEM_ITEM_FTPPASSWORD:       TConfig::saveFtpPassword(txt); break;
             case SYSTEM_ITEM_FTPSURFACE:        TConfig::saveFtpSurface(txt); break;
         }
+
+        TConfig::setTemporary(temp);
     }
 
     return true;
@@ -2574,17 +2580,17 @@ void TButton::setSound(const string& sound, int inst)
     }
 }
 
-bool TButton::startAnimation(int start, int end, int time)
+bool TButton::startAnimation(int st, int end, int time)
 {
     DECL_TRACER("TButton::startAnimation(int start, int end, int time)");
 
-    if (start > end || start < 0 || (size_t)end > sr.size() || time < 0)
+    if (st > end || st < 0 || (size_t)end > sr.size() || time < 0)
     {
-        MSG_ERROR("Invalid parameter: start=" << start << ", end=" << end << ", time=" << time);
+        MSG_ERROR("Invalid parameter: start=" << st << ", end=" << end << ", time=" << time);
         return false;
     }
 
-    if (time == 0)
+    if (time <= 1)
     {
         int inst = end - 1;
 
@@ -2593,12 +2599,15 @@ bool TButton::startAnimation(int start, int end, int time)
             if (mActInstance != inst)
             {
                 mActInstance = inst;
+                mChanged = true;
                 drawButton(inst);
             }
         }
 
         return true;
     }
+
+    int start = std::max(1, st);
 
     if (mAniRunning || mThrAni.joinable())
     {
@@ -4905,6 +4914,18 @@ bool TButton::textEffect(SkCanvas *canvas, sk_sp<SkTextBlob>& blob, SkScalar sta
     return false;
 }
 
+/**
+ * @brief TButton::buttonBorder - draw a border, if any.
+ * This method draws a border if there is one defined in \b sr[].bs. If there
+ * is also a global border defined in \b bs then this border is limiting the
+ * valid borders to it. The method does not check this, because it is subject
+ * to TPDesign.
+ *
+ * @param bm        Bitmap to draw the border on.
+ * @param inst      The instance where the border definitition should be taken from
+ *
+ * @return TRUE on success, otherwise FALSE.
+ */
 bool TButton::buttonBorder(SkBitmap* bm, int inst)
 {
     DECL_TRACER("TButton::buttonBorder(SkBitmap* bm, int instance)");
@@ -4916,14 +4937,15 @@ bool TButton::buttonBorder(SkBitmap* bm, int inst)
     else if ((size_t)instance > sr.size())
         instance = (int)sr.size() - 1;
 
-    if (sr[instance].bs.empty() && bs.empty())
+    if (sr[instance].bs.empty())
     {
         MSG_DEBUG("No border defined.");
         return true;
     }
 
+    string bname = sr[instance].bs;
     // Try to find the border in the system table
-    if (drawBorder(bm, sr[instance].bs, wt, ht, sr[instance].cb))
+    if (drawBorder(bm, bname, wt, ht, sr[instance].cb))
         return true;
 
     // The border was not found or defined to be not drawn. Therefor we look
@@ -4936,25 +4958,25 @@ bool TButton::buttonBorder(SkBitmap* bm, int inst)
     string borderName1 = (bs.empty() ? sr[instance].bs : bs);
     string borderName2 = (!bs.empty() && !sr[instance].bs.empty() ? sr[instance].bs : bs);
 
-    if (bs.empty())
-    {
-        if (gPageManager->getSystemDraw()->getBorder(sr[instance].bs, TSystemDraw::LT_OFF, &bd))
+//    if (bs.empty())
+//    {
+        if (gPageManager->getSystemDraw()->getBorder(bname, TSystemDraw::LT_OFF, &bd))
             numBorders++;
 
-        if (gPageManager->getSystemDraw()->getBorder(sr[instance].bs, TSystemDraw::LT_ON, &bda))
+        if (gPageManager->getSystemDraw()->getBorder(bname, TSystemDraw::LT_ON, &bda))
             numBorders++;
 
         if (numBorders == 2)
             extBorder = true;
-    }
-    else
-    {
-        if (gPageManager->getSystemDraw()->getBorder(bs, (instance == 0 ? TSystemDraw::LT_OFF : TSystemDraw::LT_ON), &bd, sr[instance].bs))
-        {
-            numBorders++;
-            extBorder = true;
-        }
-    }
+//    }
+//    else
+//    {
+//        if (gPageManager->getSystemDraw()->getBorder(bs, (instance == 0 ? TSystemDraw::LT_OFF : TSystemDraw::LT_ON), &bd, bname))
+//        {
+//            numBorders++;
+//            extBorder = true;
+//        }
+//    }
 
     if (extBorder)
     {
@@ -5052,7 +5074,7 @@ bool TButton::buttonBorder(SkBitmap* bm, int inst)
 //        target.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
     }
     else    // We try to draw a frame by forcing it to draw even the not to draw marked frames.
-        drawBorder(bm, sr[instance].bs, wt, ht, sr[instance].cb, true);
+        drawBorder(bm, bname, wt, ht, sr[instance].cb, true);
 
     return true;
 }
@@ -5132,7 +5154,7 @@ void TButton::runAnimationRange(int start, int end, ulong step)
         return;
 
     mAniRunning = true;
-    int instance = start;
+    int instance = start - 1;
     int max = std::min(end, (int)sr.size());
     std::chrono::steady_clock::time_point startt = std::chrono::steady_clock::now();
 
@@ -5147,7 +5169,7 @@ void TButton::runAnimationRange(int start, int end, ulong step)
         instance++;
 
         if (instance >= max)
-            instance = start;
+            instance = start - 1;
 
         std::this_thread::sleep_for(std::chrono::milliseconds(step));
 
@@ -5207,22 +5229,10 @@ bool TButton::drawButton(int instance, bool show, bool subview)
     if (subview)
         mSubViewPart = subview;
 
-    if (mDrawBlock)
-    {
-        _DRAW_BLOCK_t db;
-        db.instance = instance;
-        db.show = show;
-        mDrawQueue.push_back(db);
-        return true;
-    }
-
-    mDrawBlock = true;
-
     if ((size_t)instance >= sr.size() || instance < 0)
     {
         MSG_ERROR("Instance " << instance << " is out of bounds!");
         TError::setError();
-        mDrawBlock = false;
         return false;
     }
 
@@ -5234,8 +5244,6 @@ bool TButton::drawButton(int instance, bool show, bool subview)
         bool db = (_displayButton != nullptr);
         MSG_DEBUG("Button " << bi << ", \"" << na << "\" at instance " << instance << " is not to draw!");
         MSG_DEBUG("Visible: " << (visible ? "YES" : "NO") << ", Hidden: " << (hd ? "YES" : "NO") << ", Instance/actual instance: " << instance << "/" << mActInstance << ", callback: " << (db ? "PRESENT" : "N/A"));
-        mDrawBlock = false;
-        runDrawQueue();
         return true;
     }
 
@@ -5254,8 +5262,6 @@ bool TButton::drawButton(int instance, bool show, bool subview)
             }
         }
 
-        mDrawBlock = false;
-        runDrawQueue();
         return true;
     }
 
@@ -5263,20 +5269,12 @@ bool TButton::drawButton(int instance, bool show, bool subview)
     getDrawOrder(sr[instance]._do, (DRAW_ORDER *)&mDOrder);
 
     if (TError::isError())
-    {
-        mDrawBlock = false;
-        runDrawQueue();
         return false;
-    }
 
     SkBitmap imgButton;
 
     if (!allocPixels(wt, ht, &imgButton))
-    {
-        mDrawBlock = false;
-        runDrawQueue();
         return false;
-    }
 
     // We create an empty (transparent) image here. Later it depends on the
     // draw order of the elements. If, for example, the back ground fill is
@@ -5290,52 +5288,29 @@ bool TButton::drawButton(int instance, bool show, bool subview)
         if (mDOrder[i] == ORD_ELEM_FILL)
         {
             if (!buttonFill(&imgButton, instance))
-            {
-                mDrawBlock = false;
-                runDrawQueue();
                 return false;
-            }
         }
         else if (mDOrder[i] == ORD_ELEM_BITMAP)
         {
             if (!sr[instance].dynamic && !buttonBitmap(&imgButton, instance))
-            {
-                mDrawBlock = false;
-                runDrawQueue();
                 return false;
-            }
             else if (sr[instance].dynamic && !buttonDynamic(&imgButton, instance, show, &dynState))
-            {
-                mDrawBlock = false;
-                runDrawQueue();
                 return false;
-            }
         }
         else if (mDOrder[i] == ORD_ELEM_ICON)
         {
             if (!buttonIcon(&imgButton, instance))
-            {
-                mDrawBlock = false;
-                runDrawQueue();
                 return false;
-            }
         }
         else if (mDOrder[i] == ORD_ELEM_TEXT)
         {
             if (!buttonText(&imgButton, instance))
-            {
-                mDrawBlock = false;
-                runDrawQueue();
                 return false;
-            }
         }
         else if (mDOrder[i] == ORD_ELEM_BORDER)
         {
             if (!buttonBorder(&imgButton, instance))
-            {
-                mDrawBlock = false;
                 return false;
-            }
         }
     }
 
@@ -5346,10 +5321,7 @@ bool TButton::drawButton(int instance, bool show, bool subview)
         int h = imgButton.height();
 
         if (!allocPixels(w, h, &ooButton))
-        {
-            mDrawBlock = false;
             return false;
-        }
 
         SkCanvas canvas(ooButton);
         SkIRect irect = SkIRect::MakeXYWH(0, 0, w, h);
@@ -5442,33 +5414,7 @@ bool TButton::drawButton(int instance, bool show, bool subview)
             gPageManager->showSubViewList(st, this);
     }
 
-    mDrawBlock = false;
-    runDrawQueue();
     return true;
-}
-
-void TButton::runDrawQueue()
-{
-    DECL_TRACER("TButton::runDrawQueue()");
-
-    if (mDrawQueueBusy)
-        return;
-
-    mDrawQueueBusy = true;
-
-    if (mDrawQueue.empty())
-    {
-        mDrawQueueBusy = false;
-        return;
-    }
-
-    while (mDrawQueue.size() > 0)
-    {
-        drawButton(mDrawQueue[0].instance, mDrawQueue[0].show);
-        mDrawQueue.erase(mDrawQueue.begin());
-    }
-
-    mDrawQueueBusy = false;
 }
 
 bool TButton::drawTextArea(int instance)
@@ -5950,14 +5896,12 @@ bool TButton::drawList(bool show)
 
 bool TButton::drawBargraph(int instance, int level, bool show)
 {
-    mutex_bargraph.lock();
     DECL_TRACER("TButton::drawBargraph(int instance, int level, bool show)");
 
     if ((size_t)instance >= sr.size() || instance < 0)
     {
         MSG_ERROR("Instance " << instance << " is out of bounds!");
         TError::setError();
-        mutex_bargraph.unlock();
         return false;
     }
 
@@ -5967,9 +5911,10 @@ bool TButton::drawBargraph(int instance, int level, bool show)
     if (!mChanged && mLastLevel == level)
     {
         showLastButton();
-        mutex_bargraph.unlock();
         return true;
     }
+
+    TTRYLOCK(mutex_bargraph);
 
     if (level < rl)
         mLastLevel = rl;
@@ -5985,7 +5930,6 @@ bool TButton::drawBargraph(int instance, int level, bool show)
         bool db = (_displayButton != nullptr);
         MSG_DEBUG("Bargraph " << bi << ", \"" << na << "\" at instance " << instance << " with level " << mLastLevel << " is not to draw!");
         MSG_DEBUG("Visible: " << (visible ? "YES" : "NO") << ", Instance/actual instance: " << instance << "/" << mActInstance << ", callback: " << (db ? "PRESENT" : "N/A"));
-        mutex_bargraph.unlock();
         return true;
     }
 
@@ -6000,10 +5944,7 @@ bool TButton::drawBargraph(int instance, int level, bool show)
         getDrawOrder(sr[instance]._do, (DRAW_ORDER *)&mDOrder);
 
     if (TError::isError())
-    {
-        mutex_bargraph.unlock();
         return false;
-    }
 
     SkBitmap imgButton;
 
@@ -6018,42 +5959,27 @@ bool TButton::drawBargraph(int instance, int level, bool show)
         if (mDOrder[i] == ORD_ELEM_FILL && !haveFrame)
         {
             if (!buttonFill(&imgButton, (type == BARGRAPH ? 0 : inst)))
-            {
-                mutex_bargraph.unlock();
                 return false;
-            }
         }
         else if (mDOrder[i] == ORD_ELEM_BITMAP)
         {
             if (!barLevel(&imgButton, inst, mLastLevel))
-            {
-                mutex_bargraph.unlock();
                 return false;
-            }
         }
         else if (mDOrder[i] == ORD_ELEM_ICON)
         {
             if (!buttonIcon(&imgButton, inst))
-            {
-                mutex_bargraph.unlock();
                 return false;
-            }
         }
         else if (mDOrder[i] == ORD_ELEM_TEXT)
         {
             if (!buttonText(&imgButton, inst))
-            {
-                mutex_bargraph.unlock();
                 return false;
-            }
         }
         else if (mDOrder[i] == ORD_ELEM_BORDER)
         {
             if (!buttonBorder(&imgButton, (type == BARGRAPH ? 0 : inst)))
-            {
-                mutex_bargraph.unlock();
                 return false;
-            }
 
             haveFrame = true;
         }
@@ -6139,7 +6065,6 @@ bool TButton::drawBargraph(int instance, int level, bool show)
         _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop, isPassThrough());
     }
 
-    mutex_bargraph.unlock();
     return true;
 }
 
@@ -8064,7 +7989,7 @@ bool TButton::doClick(int x, int y, bool pressed)
         }
 
         // Send the level
-        if (lp && lv)
+        if (lp && lv && gPageManager && gPageManager->getLevelSendState())
         {
             scmd.device = TConfig::getChannel();
             scmd.port = lp;
@@ -8225,6 +8150,7 @@ bool TButton::doClick(int x, int y, bool pressed)
                 cmd.data.message_string.length = iter->length();
                 memset(&cmd.data.message_string.content, 0, sizeof(cmd.data.message_string.content));
                 strncpy((char *)&cmd.data.message_string.content, iter->c_str(), sizeof(cmd.data.message_string.content)-1);
+                MSG_DEBUG("Executing system command: " << *iter);
                 gPageManager->doCommand(cmd);
             }
         }

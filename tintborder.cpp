@@ -138,7 +138,7 @@ bool TIntBorder::drawBorder(SkBitmap* bm, const string& bname, int wt, int ht, c
     SkColor color = TColor::getSkiaColor(cb);
 
     paint.setColor(color);
-    paint.setBlendMode(SkBlendMode::kSrcOver);
+    paint.setBlendMode(SkBlendMode::kSrc);
     paint.setStyle(SkPaint::kStroke_Style);
     SkRRect outher, inner;
     SkScalar radius = (SkScalar)sysBorders[borderIndex].radius;

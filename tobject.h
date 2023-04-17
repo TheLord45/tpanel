@@ -81,6 +81,7 @@ class TObject
             bool aniDirection{false};
             WId wid{0};                     // Used to identify a QTextEdit or QLineEdit
             bool remove{false};             // Object is marked for remove. Used with animation.
+            bool connected{false};          // TRUE = there is a connection.
         }OBJECT_t;
 
         TObject();

@@ -137,7 +137,7 @@ void TQScrollArea::init()
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     // Set a transparent background
     QPalette palette(this->palette());
-    palette.setColor(QPalette::Window, QColor(Qt::transparent));
+    palette.setColor(QPalette::Window, Qt::transparent);
     setPalette(palette);
 
     if (!mMain)
@@ -233,6 +233,14 @@ QSize TQScrollArea::getSize()
     return QSize(mWidth, mHeight);
 }
 
+/**
+ * @brief TQScrollArea::setScrollbar
+ * Makes the scrollbar visible or invisible.
+ *
+ * @param sb    TRUE: The scrollbar is set to visible. It depends on the type
+ *              of scroll area. On vertical areas the bottom scrollbar may
+ *              become visible and on horizontal areas the right one.
+ */
 void TQScrollArea::setScrollbar(bool sb)
 {
     DECL_TRACER("TQScrollArea::setScrollbar(bool sb)");
@@ -258,6 +266,15 @@ void TQScrollArea::setScrollbar(bool sb)
     }
 }
 
+/**
+ * @brief TQScrollArea::setScrollbarOffset
+ * Positions the scrollbar to the \b offset position. On a vertical scroll
+ * area the offset is alway the top visible pixel line and on horizontal
+ * scroll areas it is the left visible pixel.
+ *
+ * @param offset    The offset position. If this is less then 0 or grater then
+ *                  the whole size, the value is ignored.
+ */
 void TQScrollArea::setScrollbarOffset(int offset)
 {
     DECL_TRACER("TQScrollArea::setScrollbarOffset(int offset)");
@@ -265,13 +282,11 @@ void TQScrollArea::setScrollbarOffset(int offset)
     if (!mScrollbar)
         return;
 
-    if (offset == 0)
-    {
+    if (offset <= 0)
         mScrollbarOffset = 0;
-        return;
-    }
+    else
+        mScrollbarOffset = scale(offset);
 
-    mScrollbarOffset = scale(offset);
     QScrollBar *sbar = nullptr;
 
     if (mVertical)
@@ -280,16 +295,47 @@ void TQScrollArea::setScrollbarOffset(int offset)
         sbar = horizontalScrollBar();
 
     if (sbar)
+    {
+        if (mScrollbarOffset > (mVertical ? sbar->pos().y() : sbar->pos().x()))
+            mScrollbarOffset = (mVertical ? sbar->pos().y() : sbar->pos().x());
+
         sbar->setSliderPosition(mScrollbarOffset);
+    }
 }
 
+/**
+ * @brief TQScrollArea::setAnchor
+ * Sets the anchor position. This can be left, center or right for horizontal
+ * scroll areas or top, center or bottom for vertical.
+ * The anchor position is the one the items scroll to if they should appear at
+ * this position. The center position is the default one.
+ *
+ * @param position  Defines the anchor position.
+ */
 void TQScrollArea::setAnchor(Button::SUBVIEW_POSITION_t position)
 {
     DECL_TRACER("TQScrollArea::setAnchor(Button::SUBVIEW_POSITION_t position)");
 
     mPosition = position;
+
+    if (!mWrapItems)
+    {
+        QWidget *w = mMain->childAt(mWidth / 2, mHeight / 2);
+
+        if (w)
+            setPosition(w, 0);
+    }
+    else
+        setPosition();
 }
 
+/**
+ * @brief TQScrollArea::show
+ * Shows all items in the scroll area. If some were invisible or not enabled,
+ * they are visible and enabled. Depending on the set anchor position the
+ * whole area is set to it. This means for example, that the center item is
+ * moved into the view area if the anchor position is set to SVP_CENTER.
+ */
 void TQScrollArea::show()
 {
     DECL_TRACER("TQScrollArea::show()");
@@ -308,31 +354,8 @@ void TQScrollArea::show()
             mMain->show();
     }
 
-    if (mWrapItems && !mMainWidgets.empty())
-    {
-        QWidget *anchor = nullptr;
-        size_t pos = 0;
-
-        switch (mPosition)
-        {
-            case Button::SVP_LEFT_TOP:
-                anchor = mMainWidgets[0];
-                break;
-
-            case Button::SVP_CENTER:
-                pos = mMainWidgets.size() / 2;
-                anchor = mMainWidgets[pos];
-                break;
-
-            case Button::SVP_RIGHT_BOTTOM:
-                pos = mMainWidgets.size() - 1;
-                anchor = mMainWidgets[pos];
-                break;
-        }
-
-        if (anchor)
-            ensureWidgetVisible(anchor);
-    }
+    if (mWrapItems)
+        setPosition();
 }
 
 /**
@@ -457,10 +480,11 @@ void TQScrollArea::setSpace(int s)
 {
     DECL_TRACER("TQScrollArea::setSpace(double s)");
 
-    if (s < 0 || s > 99)
+    if (s < 0 || s > 99 || mSpace == s)
         return;
 
     mSpace = s;
+    refresh();
 }
 
 /**
@@ -473,41 +497,57 @@ void TQScrollArea::addItem(PGSUBVIEWITEM_T& item)
 {
     DECL_TRACER("TQScrollArea::addItem(PGSUBVIEWITEM_T& item)");
 
-    mItems.push_back(item);
-    addItems(mItems);
+    _clearAllItems();
+    resetSlider();
+    mItems.push_back(subViewItemToItem(item));
+    _addItems(mItems, true);
 }
 
+/**
+ * @brief TQScrollArea::addItems
+ * Adds one or more items to the scroll area and sizes the scroll area large
+ * enough to hold all items. It calculates also the space between the items.
+ * If there were already some items visible, they are deleted first. Then they
+ * are displayed again.
+ *
+ * @param items     A list of items to be displayed
+ * @param intern    TRUE: The list of items is not stored internal.
+ */
 void TQScrollArea::addItems(std::vector<PGSUBVIEWITEM_T>& items)
 {
-    DECL_TRACER("TQScrollArea::addItems(std::vector<PGSUBVIEWITEM_T>& items)");
+    DECL_TRACER("TQScrollArea::addItems(std::vector<PGSUBVIEWITEM_T>& items, bool intern)");
 
     if (items.empty())
         return;
 
-    mWrapItems = items[0].wrap;
+    _clearAllItems();
+    resetSlider();
+    mItems.clear();
 
-    if (mMainWidgets.size() > 0)
-    {
-        vector<QWidget *>::iterator iter;
+    vector<PGSUBVIEWITEM_T>::iterator iter;
 
-        for (iter = mMainWidgets.begin(); iter != mMainWidgets.end(); ++iter)
-        {
-            QWidget *w = *iter;
-            w->close();
-        }
+    for (iter = items.begin(); iter != items.end(); ++iter)
+        mItems.push_back(subViewItemToItem(*iter));
 
-        mMainWidgets.clear();
-    }
+    _addItems(mItems, true);
+}
 
-    mItems = items;
+void TQScrollArea::_addItems(std::vector<_ITEMS_T>& items, bool intern)
+{
+    DECL_TRACER("_addItems(std::vector<ITEMS_T>& items, bool intern)");
+
+    mWrapItems = items[0].wrap;     // Endless scroll
+
+    if (!intern)
+        mItems = items;             // Store the items to the internal vector array
 
     if (mVertical)
         mTotalHeight = 0;
     else
         mTotalWidth = 0;
 
-    int total = 0;      // The total width or height
-    vector<PGSUBVIEWITEM_T>::iterator iter;
+    int total = 0;                  // The total width or height
+    vector<_ITEMS_T>::iterator iter;
     // First calculate the total width and height if it was not set by a previous call
     if ((mTotalWidth <= 0 && !mVertical) || (mTotalHeight <= 0 && mVertical))
     {
@@ -532,7 +572,6 @@ void TQScrollArea::addItems(std::vector<PGSUBVIEWITEM_T>& items)
             else
                 mTotalHeight += iter->height;
 
-            MSG_DEBUG("Item " << num << " (" << handleToString(iter->handle) << "): Size: " << iter->width << " x " << iter->height);
             num++;
         }
 
@@ -549,8 +588,6 @@ void TQScrollArea::addItems(std::vector<PGSUBVIEWITEM_T>& items)
 
         if (mMain)
             mMain->setFixedSize(mTotalWidth, mTotalHeight);
-
-        MSG_DEBUG("Total size: " << mTotalWidth << " x " << mTotalHeight << " (Vertical is " << (mVertical ? "TRUE" : "FALSE") << ")");
     }
 
     MSG_DEBUG("Number of items: " << items.size());
@@ -648,7 +685,7 @@ void TQScrollArea::addItems(std::vector<PGSUBVIEWITEM_T>& items)
             setAtom(*itAtom, label);
         }
 
-        mMainWidgets.push_back(item);
+        iter->item = item;
 
         if (mVertical && mVLayout)
             mVLayout->addWidget(item);
@@ -659,8 +696,21 @@ void TQScrollArea::addItems(std::vector<PGSUBVIEWITEM_T>& items)
             MSG_ERROR("Layout not initialized!");
         }
     }
+
+    if (mOldActPosition > 0)
+    {
+        MSG_DEBUG("Setting position to old value " << mOldActPosition);
+        resetSlider(mOldActPosition);
+        mOldActPosition = 0;
+    }
 }
 
+/**
+ * @brief TQScrollArea::updateItem
+ * Updates one item.
+ *
+ * @param item  The item to update.
+ */
 void TQScrollArea::updateItem(PGSUBVIEWITEM_T& item)
 {
     DECL_TRACER("TQScrollArea::updateItem(PGSUBVIEWITEM_T& item)");
@@ -668,7 +718,7 @@ void TQScrollArea::updateItem(PGSUBVIEWITEM_T& item)
     if (mItems.empty())
         return;
 
-    vector<PGSUBVIEWITEM_T>::iterator iter;
+    vector<_ITEMS_T>::iterator iter;
 
     for (iter = mItems.begin(); iter != mItems.end(); ++iter)
     {
@@ -677,43 +727,32 @@ void TQScrollArea::updateItem(PGSUBVIEWITEM_T& item)
             iter->bgcolor = item.bgcolor;
             iter->bounding = item.bounding;
             iter->image = item.image;
+            iter->atoms = item.atoms;
 
-            if (!item.atoms.empty())
-                iter->atoms = item.atoms;
-            // Find the item and change it in the scroll area
-            vector<QWidget *>::iterator wit;
-
-            for (wit = mMainWidgets.begin(); wit != mMainWidgets.end(); ++wit)
+            if (!iter->atoms.empty())
             {
-                QWidget *w = *wit;
-                ulong handle = extractHandle(w->objectName().toStdString());
+                QObjectList list = iter->item->children();
+                QList<QObject *>::Iterator obit;
+                vector<PGSUBVIEWATOM_T>::iterator atit;
 
-                // If we have new "atoms" we search for it and update it
-                if (iter->handle == handle && !iter->atoms.empty())
+                for (atit = iter->atoms.begin(); atit != iter->atoms.end(); ++atit)
                 {
-                    QObjectList list = w->children();
-                    QList<QObject *>::Iterator obit;
-                    vector<PGSUBVIEWATOM_T>::iterator atit;
-
-                    for (atit = iter->atoms.begin(); atit != iter->atoms.end(); ++atit)
+                    for (obit = list.begin(); obit != list.end(); ++obit)
                     {
-                        for (obit = list.begin(); obit != list.end(); ++obit)
-                        {
-                            QObject *o = *obit;
-                            QString obname = o->objectName();
-                            ulong atHandle = extractHandle(obname.toStdString());
+                        QObject *o = *obit;
+                        QString obname = o->objectName();
+                        ulong atHandle = extractHandle(obname.toStdString());
 
-                            if (atit->handle == atHandle && obname.startsWith("Label_"))
-                            {
-                                QLabel *lbl = dynamic_cast<QLabel *>(o);
-                                setAtom(*atit, lbl);
-                                break;
-                            }
+                        if (atit->handle == atHandle && obname.startsWith("Label_"))
+                        {
+                            QLabel *lbl = dynamic_cast<QLabel *>(o);
+                            setAtom(*atit, lbl);
+                            break;
                         }
                     }
-
-                    break;
                 }
+
+                iter->item->show();
             }
 
             break;
@@ -725,98 +764,85 @@ void TQScrollArea::showItem(ulong handle, int position)
 {
     DECL_TRACER("TQScrollArea::showItem(ulong handle, int position)");
 
-    if (mMainWidgets.empty())
+    if (mItems.empty())
         return;
 
-    vector<QWidget *>::iterator iter;
+    vector<_ITEMS_T>::iterator iter;
 
-    for (iter = mMainWidgets.begin(); iter != mMainWidgets.end(); ++iter)
+    for (iter = mItems.begin(); iter != mItems.end(); ++iter)
     {
-        QWidget *w = *iter;
-        ulong h = extractHandle(w->objectName().toStdString());
-        MSG_DEBUG("Evaluating item " << handleToString(h));
+        if (!iter->item)
+            continue;
 
-        if (h == handle)
+        if (iter->handle == handle)
         {
-            int defPosX = 50;
-            int defPosY = 50;
+            if (!iter->item->isVisible())
+                iter->item->setVisible(true);
 
-            if (position > 0 && position < 65535)
+            setPosition(iter->item, position);
+            break;
+        }
+    }
+}
+
+void TQScrollArea::toggleItem(ulong handle, int position)
+{
+    DECL_TRACER("TQScrollArea::toggleItem(ulong handle, int position)");
+
+    if (mItems.empty())
+        return;
+
+    vector<_ITEMS_T>::iterator iter;
+
+    for (iter = mItems.begin(); iter != mItems.end(); ++iter)
+    {
+        if (iter->handle == handle && iter->item)
+        {
+            if (iter->item->isVisible())
+                iter->item->setVisible(false);
+            else
             {
-                if (mVertical)
-                {
-                    defPosY = position;
-                    defPosX = 0;
-                }
-                else
-                {
-                    defPosY = position;
-                    defPosX = 0;
-                }
-
-                ensureWidgetVisible(w, defPosX, defPosY);
-            }
-            else if (mPosition == Button::SVP_LEFT_TOP)
-            {
-                if (mVertical)
-                {
-                    int top = w->geometry().y();
-                    QScrollBar *bar = verticalScrollBar();
-
-                    if (bar)
-                        bar->setSliderPosition(top);
-                }
-                else
-                {
-                    int left = w->geometry().x();
-                    QScrollBar *bar = horizontalScrollBar();
-
-                    if (bar)
-                        bar->setSliderPosition(left);
-                }
-            }
-            else if (mPosition == Button::SVP_CENTER)
-            {
-                if (mVertical)
-                {
-                    int topMargin = (mHeight - w->geometry().height()) / 2;
-                    int top = w->geometry().y() - topMargin;
-                    QScrollBar *bar = verticalScrollBar();
-
-                    if (bar)
-                        bar->setSliderPosition(top);
-                }
-                else
-                {
-                    int leftMargin = (mWidth - w->geometry().width()) / 2;
-                    int left = w->geometry().x() - leftMargin;
-                    QScrollBar *bar = horizontalScrollBar();
-
-                    if (bar)
-                        bar->setSliderPosition(left);
-                }
-            }
-            else if (mPosition == Button::SVP_RIGHT_BOTTOM)
-            {
-                if (mVertical)
-                {
-                    int bottom = w->geometry().y() + w->geometry().height();
-                    QScrollBar *bar = verticalScrollBar();
-
-                    if (bar)
-                        bar->setSliderPosition(bottom);
-                }
-                else
-                {
-                    int right = w->geometry().x() + w->geometry().width();
-                    QScrollBar *bar = horizontalScrollBar();
-
-                    if (bar)
-                        bar->setSliderPosition(right);
-                }
+                iter->item->setVisible(true);
+                setPosition(iter->item, position);
             }
 
             break;
+        }
+    }
+}
+
+void TQScrollArea::hideAllItems()
+{
+    DECL_TRACER("TQScrollArea::hideAllItems()");
+
+    if (mItems.empty())
+        return;
+
+    resetSlider();
+    vector<_ITEMS_T>::iterator iter;
+
+    for (iter = mItems.begin(); iter != mItems.end(); ++iter)
+    {
+        if (iter->item)
+            iter->item->setVisible(false);
+    }
+}
+
+void TQScrollArea::hideItem(ulong handle)
+{
+    DECL_TRACER("TQScrollArea::hideItem(ulong handle)");
+
+    if (mItems.empty())
+        return;
+
+    vector<_ITEMS_T>::iterator iter;
+
+    for (iter = mItems.begin(); iter != mItems.end(); ++iter)
+    {
+        if (iter->handle == handle && iter->item)
+        {
+            iter->item->setVisible(false);
+            return;
         }
     }
 }
@@ -889,82 +915,273 @@ void TQScrollArea::setAtom(PGSUBVIEWATOM_T& atom, QLabel *label)
 
         label->setPalette(palette);
     }
+}
 
+void TQScrollArea::refresh()
+{
+    DECL_TRACER("TQScrollArea::refresh()");
+
+    if (!mMain || mItems.empty())
+        return;
+
+    resetSlider();
+    _clearAllItems();
+    _addItems(mItems, true);
+}
+
+void TQScrollArea::setPosition()
+{
+    DECL_TRACER("TQScrollArea::setPosition()");
+
+    if (mItems.empty())
+        return;
+
+    QWidget *anchor = nullptr;
+    size_t pos = 0;
+    MSG_DEBUG("Wrap items: " << (mWrapItems ? "TRUE" : "FALSE") << ", number items: " << mItems.size());
+
+    switch (mPosition)
+    {
+        case Button::SVP_LEFT_TOP:
+            anchor = mItems[0].item;
+        break;
+
+        case Button::SVP_CENTER:
+            pos = mItems.size() / 2;
+            anchor = mItems[pos].item;
+        break;
+
+        case Button::SVP_RIGHT_BOTTOM:
+            pos = mItems.size() - 1;
+            anchor = mItems[pos].item;
+        break;
+    }
+
+    if (anchor)
+    {
+        QRect geom = anchor->geometry();
+        bool makeVisible = false;
+
+        if (mVertical)
+        {
+            if ((geom.y() + geom.height()) < mActPosition ||
+                    geom.y() > (mActPosition + mHeight))
+                makeVisible = true;
+        }
+        else
+        {
+            if ((geom.x() + geom.width()) < mActPosition ||
+                    geom.x() > (mActPosition + mWidth))
+                makeVisible = true;
+        }
+
+        ulong handle = extractHandle(anchor->objectName().toStdString());
+
+        if (makeVisible)
+        {
+            ensureWidgetVisible(anchor);
+            MSG_DEBUG("Item number " << pos << " (" << handleToString(handle) << ") was moved to position.");
+        }
+        else
+        {
+            MSG_DEBUG("Item number " << pos << " (" << handleToString(handle) << ") is already at visible position.");
+        }
+    }
+}
+
+void TQScrollArea::setPosition(QWidget* w, int position)
+{
+    DECL_TRACER("TQScrollArea::setPosition(QWidget* w, int position)");
+
+    int defPosX = 50;
+    int defPosY = 50;
+
+    if (position > 0 && position < 65535)
+    {
+        if (mVertical)
+        {
+            defPosY = position;
+            defPosX = 0;
+        }
+        else
+        {
+            defPosY = position;
+            defPosX = 0;
+        }
+
+        ensureWidgetVisible(w, defPosX, defPosY);
+    }
+    else if (mPosition == Button::SVP_LEFT_TOP)
+    {
+        if (mVertical)
+        {
+            int top = w->geometry().y();
+            QScrollBar *bar = verticalScrollBar();
+
+            if (bar)
+                bar->setSliderPosition(top);
+        }
+        else
+        {
+            int left = w->geometry().x();
+            QScrollBar *bar = horizontalScrollBar();
+
+            if (bar)
+                bar->setSliderPosition(left);
+        }
+    }
+    else if (mPosition == Button::SVP_CENTER)
+    {
+        if (mVertical)
+        {
+            int topMargin = (mHeight - w->geometry().height()) / 2;
+            int top = w->geometry().y() - topMargin;
+            QScrollBar *bar = verticalScrollBar();
+
+            if (bar)
+                bar->setSliderPosition(top);
+        }
+        else
+        {
+            int leftMargin = (mWidth - w->geometry().width()) / 2;
+            int left = w->geometry().x() - leftMargin;
+            QScrollBar *bar = horizontalScrollBar();
+
+            if (bar)
+                bar->setSliderPosition(left);
+        }
+    }
+    else if (mPosition == Button::SVP_RIGHT_BOTTOM)
+    {
+        if (mVertical)
+        {
+            int bottom = w->geometry().y() + w->geometry().height();
+            QScrollBar *bar = verticalScrollBar();
+
+            if (bar)
+                bar->setSliderPosition(bottom);
+        }
+        else
+        {
+            int right = w->geometry().x() + w->geometry().width();
+            QScrollBar *bar = horizontalScrollBar();
+
+            if (bar)
+                bar->setSliderPosition(right);
+        }
+    }
+}
+
+TQScrollArea::_ITEMS_T TQScrollArea::subViewItemToItem(PGSUBVIEWITEM_T& item)
+{
+    DECL_TRACER("TQScrollArea::subViewItemToItem(PGSUBVIEWITEM_T& item)");
+
+    _ITEMS_T it;
+    it.handle = item.handle;
+    it.parent = item.parent;
+    it.width = item.width;
+    it.height = item.height;
+    it.bgcolor = item.bgcolor;
+    it.bounding = item.bounding;
+    it.image = item.image;
+    it.position = item.position;
+    it.scrollbar = item.scrollbar;
+    it.scrollbarOffset = item.scrollbarOffset;
+    it.wrap = item.wrap;
+    it.atoms = item.atoms;
+
+    return it;
+}
+
+void TQScrollArea::_clearAllItems()
+{
+    DECL_TRACER("TQScrollArea::_clearAllItems()");
+
+    if (mItems.empty())
+        return;
+
+    vector<_ITEMS_T>::iterator clIter;
+
+    for (clIter = mItems.begin(); clIter != mItems.end(); ++clIter)
+    {
+        if (clIter->item)
+        {
+            if (mVertical)
+            {
+                if (mVLayout)
+                    mVLayout->removeWidget(clIter->item);
+            }
+            else
+            {
+                if (mHLayout)
+                    mHLayout->removeWidget(clIter->item);
+            }
+
+            clIter->item->close();
+            clIter->item = nullptr;
+        }
+    }
+}
+
+void TQScrollArea::resetSlider(int position)
+{
+    DECL_TRACER("TQScrollArea::resetSlider(int position)");
+
+    if (mActPosition <= 0)
+        return;
+
+    QScrollBar *sbar = nullptr;
+
+    if (mVertical)
+        sbar = verticalScrollBar();
+    else
+        sbar = horizontalScrollBar();
+
+    if (sbar)
+    {
+        mOldActPosition = sbar->value();
+        sbar->setSliderPosition(position);
+    }
+    else
+        mOldActPosition = mActPosition;
 }
 
 /*****************************************************************************
  * Signals and overwritten functions start here
  *****************************************************************************/
-/*
-bool TQScrollArea::event(QEvent* event)
+
+void TQScrollArea::scrollContentsBy(int dx, int dy)
 {
-    if (event->type() == QEvent::MouseMove && mMousePress)
+    DECL_TRACER("TQScrollArea::scrollContentsBy(int dx, int dy)");
+
+    QScrollArea::scrollContentsBy(dx, dy);      // First let the original class do it's job.
+    QScrollBar *sbar = nullptr;
+
+    if (mVertical)
+        sbar = verticalScrollBar();
+    else
+        sbar = horizontalScrollBar();
+
+    if (sbar)
     {
-        if (mMousePressTimer && mMousePressTimer->isActive())
+        mActPosition = sbar->value();
+        MSG_DEBUG("Actual slider position: " << mActPosition);
+
+        if (mScrollbar && mScrollbarOffset > 0 && mActPosition < mScrollbarOffset)
         {
-            mMousePressTimer->stop();
-            mClick = false;
+            sbar->setSliderPosition(mScrollbarOffset);
+            mActPosition = sbar->value();
         }
-
-        QMouseEvent *me = static_cast<QMouseEvent*>(event);
-        int move = 0;
-        mMouseScroll = true;
-
-        if (mVertical)
-        {
-            if (mOldPoint.y() != 0)
-            {
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-                move = me->pos().y() - mOldPoint.y();
-#else
-                move = me->position().y() - mOldPoint.y();
-#endif
-                QScrollBar *bar = verticalScrollBar();
-
-                if (bar)
-                {
-                    int value = bar->value();
-                    value += (move * -1);
-                    bar->setValue(value);
-                }
-            }
-        }
-        else
-        {
-            if (mOldPoint.x() != 0)
-            {
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-                move = me->pos().x() - mOldPoint.x();
-#else
-                move = me->position().x() - mOldPoint.x();
-#endif
-                scrollContentsBy(move, 0);
-                QScrollBar *bar = horizontalScrollBar();
-
-                if (bar)
-                {
-                    int value = bar->value();
-                    value += (move * -1);
-                    bar->setValue(value);
-                }
-            }
-        }
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-        mOldPoint = me->pos();
-#else
-        mOldPoint = me->position();
-#endif
     }
-
-    return QScrollArea::event(event);
 }
-*/
+
 void TQScrollArea::mouseMoveEvent(QMouseEvent* event)
 {
     DECL_TRACER("TQScrollArea::mouseMoveEvent(QMouseEvent* event)");
 
     mMousePress = false;
     mMouseScroll = true;
+    mDoMouseEvent = false;
 
     if (mMousePressTimer && mMousePressTimer->isActive())
         mMousePressTimer->stop();
@@ -1012,8 +1229,6 @@ void TQScrollArea::mouseMoveEvent(QMouseEvent* event)
 
                 if (newValue >= 0 && newValue != value)
                     bar->setValue(newValue);
-
-                MSG_DEBUG("Moving mouse to value " << newValue << " (old: " << value << "). Step is " << move);
             }
         }
     }
@@ -1029,102 +1244,151 @@ void TQScrollArea::mousePressEvent(QMouseEvent* event)
 {
     DECL_TRACER("TQScrollArea::mousePressEvent(QMouseEvent* event)");
 
-    if (!event || mMouseScroll)
+    if (!event || mMouseScroll || event->button() != Qt::LeftButton)
         return;
 
-    if (event->button() == Qt::LeftButton)
-    {
-        mMousePress = true;
-        mOldPoint.setX(0.0);
-        mOldPoint.setY(0.0);
+    mMousePress = true;
+    mOldPoint.setX(0.0);
+    mOldPoint.setY(0.0);
 
-        int x = 0, y = 0;
+    int x = 0, y = 0;
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-        x = event->pos().x();
-        y = event->pos().y();
+    x = event->pos().x();
+    y = event->pos().y();
 #else
-        x = event->position().x();
-        y = event->position().y();
+    x = event->position().x();
+    y = event->position().y();
 #endif
-        mLastMousePress.setX(x);
-        mLastMousePress.setY(y);
+    mLastMousePress.setX(x);
+    mLastMousePress.setY(y);
 
-        MSG_DEBUG("Mouse press event at " << x << " x " << y << " // " << event->globalX() << " x " << event->globalY());
-        /*
-         * Here we're starting a timer with 200 ms. If after this time the
-         * mouse button is still pressed and no scroll event was detected,
-         * then we've a real click.
-         * In case of a real click the method mouseTimerEvent() will call a
-         * signal to inform the parent about the click.
-         */
-        mClick = true;
-
-        if (!mMousePressTimer)
-        {
-            mMousePressTimer = new QTimer(this);
-            connect(mMousePressTimer, &QTimer::timeout, this, &TQScrollArea::mouseTimerEvent);
-        }
-
-        mMousePressTimer->start(200);
-    }
+    MSG_DEBUG("Mouse press event at " << x << " x " << y << " // " << event->globalX() << " x " << event->globalY());
+    /*
+        * Here we're starting a timer with 200 ms. If after this time the
+        * mouse button is still pressed and no scroll event was detected,
+        * then we've a real click.
+        * In case of a real click the method mouseTimerEvent() will call a
+        * signal to inform the parent about the click.
+        */
+    mClick = true;  // This means PRESSED state
+    mMouseTmEventActive = true;
+    mDoMouseEvent = true;
+    QTimer::singleShot(200, this, &TQScrollArea::mouseTimerEvent);
 }
 
 void TQScrollArea::mouseReleaseEvent(QMouseEvent* event)
 {
     DECL_TRACER("TQScrollArea::mouseReleaseEvent(QMouseEvent* event)");
 
-    if (!event)
+    if (!event || event->button() != Qt::LeftButton)
         return;
 
-    if(event->button() == Qt::LeftButton)
+    mDoMouseEvent = false;
+
+    if (mMouseTmEventActive)
     {
-        if (mMousePressTimer && mMousePressTimer->isActive())
+        if (!mMouseScroll)
         {
-            mMousePressTimer->stop();
-
-            if (!mMouseScroll)
-            {
-                mClick = true;
-                mouseTimerEvent();
-                mClick = false;
-                mouseTimerEvent();
-            }
+            mClick = true;      // This means PRESSED state
+            doMouseEvent();
+            mClick = false;     // This means RELEASED state
+            doMouseEvent();
         }
-        else if (!mMouseScroll && mClick)
-        {
-            mClick = false;
-            mouseTimerEvent();
-        }
-
-        mMousePress = false;
-        mMouseScroll = false;
-        mOldPoint.setX(0.0);
-        mOldPoint.setY(0.0);
     }
+    else if (!mMouseScroll && mClick)
+    {
+        mClick = false;         // This means RELEASED state
+        doMouseEvent();
+    }
+
+    mMousePress = false;
+    mMouseScroll = false;
+    mOldPoint.setX(0.0);
+    mOldPoint.setY(0.0);
 }
 
-void TQScrollArea::scrollContentsBy(int dx, int dy)
+void TQScrollArea::doMouseEvent()
 {
-    DECL_TRACER("TQScrollArea::scrollContentsBy(int dx, int dy)");
+    DECL_TRACER("TQScrollArea::doMouseEvent()");
 
-    QScrollArea::scrollContentsBy(dx, dy);      // First let the original class do it's job.
+    if (!mMousePress || mMouseScroll || !mMain)
+        return;
 
-    QScrollBar *sbar = nullptr;
+    QWidget *w = nullptr;
 
     if (mVertical)
-        sbar = verticalScrollBar();
+        w = mMain->childAt(mLastMousePress.x(), mActPosition + mLastMousePress.y());
     else
-        sbar = horizontalScrollBar();
+        w = mMain->childAt(mActPosition + mLastMousePress.x(), mLastMousePress.y());
 
-    if (sbar)
+    if (!w)
+        return;
+
+    QString obname = w->objectName();
+    ulong handle = extractHandle(obname.toStdString());
+
+    if (!handle)
+        return;
+
+    // We must make sure the found object is not marked as pass through.
+    // Because of this we'll scan the items for the handle and if we
+    // find that it is marked as pass through we must look for another
+    // one on the same position. If there is none, the click is ignored.
+    //
+    // Find the object in our list
+    vector<_ITEMS_T>::iterator iter;
+    QRect rect;
+    bool call = true;
+
+    for (iter = mItems.begin(); iter != mItems.end(); ++iter)
     {
-        mActPosition = sbar->value();
+        if (iter->handle == handle)     // Handle found?
+        {                               // Yes, then ...
+            if (iter->bounding == "passThru")   // Item marked as pass through?
+            {                                   // Yes, then start to search for another item
+                rect = w->rect();
+                call = false;
+                // Walk through the childs to find another one on the
+                // clicked position.
+                QObjectList ol = mMain->children(); // Get list of all objects
+                QList<QObject *>::iterator obiter;  // Define an iterator
+                // Loop through all objects
+                for (obiter = ol.begin(); obiter != ol.end(); ++obiter)
+                {
+                    QObject *object = *obiter;
 
-        if (mScrollbar && mScrollbarOffset > 0 && mActPosition < mScrollbarOffset)
-        {
-            sbar->setSliderPosition(mScrollbarOffset);
-            mActPosition = sbar->value();
+                    if (object->objectName() != obname && object->objectName().startsWith("Label_"))    // Have we found a QLabel object?
+                    {                                                                                   // Yes, then test it's position
+                        QLabel *lb = dynamic_cast<QLabel *>(object);    // Cast the object to a QLabel
+
+                        if (lb->rect().contains(mLastMousePress))       // Is the QLabel under the mouse coordinates?
+                        {                                               // Yes, then select it.
+                            ulong h = extractHandle(lb->objectName().toStdString());  // Get the handle
+
+                            if (!h)
+                                break;
+
+                            handle = h;
+                            // Reset the main loop
+                            iter = mItems.begin();
+                            break;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                call = true;
+                break;
+            }
         }
+    }
+
+    if (call)
+    {
+        MSG_DEBUG("Calling signal with handle " << (handle >> 16 & 0x0000ffff) << ":" << (handle & 0x0000ffff) << ": STATE=" << (mClick ? "PRESSED" : "RELEASED"));
+        emit objectClicked(handle, mClick);
+        mClick = false;
     }
 }
 
@@ -1132,86 +1396,14 @@ void TQScrollArea::mouseTimerEvent()
 {
     DECL_TRACER("TQScrollArea::mouseTimerEvent()");
 
-    if (mMousePressTimer && mMousePressTimer->isActive())
-        mMousePressTimer->stop();
-
-    if (!mMousePress || mMouseScroll)
+    if (!mDoMouseEvent)
         return;
 
-    if (mMain)
-    {
-        QWidget *w = nullptr;
+    mDoMouseEvent = false;
 
-        if (mVertical)
-            w = mMain->childAt(mLastMousePress.x(), mActPosition + mLastMousePress.y());
-        else
-            w = mMain->childAt(mActPosition + mLastMousePress.x(), mLastMousePress.y());
+    if (mClick)         // Only if PRESSED
+        doMouseEvent();
 
-        if (w)
-        {
-            QString obname = w->objectName();
-            ulong handle = extractHandle(obname.toStdString());
-
-            if (!handle)
-                return;
-
-            // We must make sure the found object is not marked as pass through.
-            // Because of this we'll scan the items for the handle and if we
-            // find that it is marked as pass through we must look for another
-            // one on the same position. If there is none, the click is ignored.
-            //
-            // Find the object in our list
-            vector<PGSUBVIEWITEM_T>::iterator iter;
-            QRect rect;
-            bool call = true;
-
-            for (iter = mItems.begin(); iter != mItems.end(); ++iter)
-            {
-                if (iter->handle == handle)     // Handle found?
-                {                               // Yes, then ...
-                    if (iter->bounding == "passThru")   // Item marked as pass through?
-                    {                                   // Yes, then start to search for another item
-                        rect = w->rect();
-                        call = false;
-                        // Walk through the childs to find another one on the
-                        // clicked position.
-                        QObjectList ol = mMain->children(); // Get list of all objects
-                        QList<QObject *>::iterator obiter;  // Define an iterator
-                        // Loop through all objects
-                        for (obiter = ol.begin(); obiter != ol.end(); ++obiter)
-                        {
-                            QObject *object = *obiter;
-
-                            if (object->objectName() != obname && object->objectName().startsWith("Label_"))    // Have we found a QLabel object?
-                            {                                                                                   // Yes, then test it's position
-                                QLabel *lb = dynamic_cast<QLabel *>(object);    // Cast the object to a QLabel
-
-                                if (lb->rect().contains(mLastMousePress))       // Is the QLabel under the mouse coordinates?
-                                {                                               // Yes, then select it.
-                                    ulong h = extractHandle(lb->objectName().toStdString());  // Get the handle
-
-                                    if (!h)
-                                        break;
-
-                                    handle = h;
-                                    // Reset the main loop
-                                    iter = mItems.begin();
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    else
-                        call = true;
-                }
-            }
-
-            if (call)
-            {
-                MSG_DEBUG("Calling signal with handle " << (handle >> 16 & 0x0000ffff) << ":" << (handle & 0x0000ffff) << ": STATE=" << (mClick ? "PRESSED" : "RELEASED"));
-                emit objectClicked(handle, mClick);
-            }
-        }
-    }
+    mMouseTmEventActive = false;
 }
 

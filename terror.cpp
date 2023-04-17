@@ -428,7 +428,7 @@ void TStreamError::_init(bool reinit)
         if (TConfig::isLongFormat())
             *mStream << "Timestamp           Type LNr., File name           , ThreadID Message" << std::endl;
         else
-            *mStream << "Type LNr., Message" << std::endl;
+            *mStream << "Type LNr., ThreadID Message" << std::endl;
 
         *mStream << "-----------------------------------------------------------------" << std::endl << std::flush;
     }
@@ -618,7 +618,7 @@ TTracer::TTracer(const std::string msg, int line, char *file, threadID_t tid)
 
 #if LOGPATH == LPATH_FILE
     if (!TConfig::isLongFormat())
-        *TError::Current()->getStream() << "TRC " << std::setw(5) << std::right << line << ", " << indent << "{entry " << msg << std::endl;
+        *TError::Current()->getStream() << "TRC " << std::setw(5) << std::right << line << ", " << _threadIDtoStr(mThreadID) << " " << indent << "{entry " << msg << std::endl;
     else
         *TError::Current()->getStream() << TStreamError::getTime() <<  " TRC " << std::setw(5) << std::right << line << ", " << std::setw(20) << std::left << mFile << ", " << _threadIDtoStr(mThreadID) << " " << indent << "{entry " << msg << std::endl;
 #else
@@ -665,14 +665,14 @@ TTracer::~TTracer()
     if (TConfig::getProfiling())
     {
         if (!TConfig::isLongFormat())
-            *TError::Current()->getStream() << "TRC      , " << indent << "}exit " << mHeadMsg << " Elapsed time: " << nanosecs << std::endl;
+            *TError::Current()->getStream() << "TRC      , " << _threadIDtoStr(mThreadID) << " " << indent << "}exit " << mHeadMsg << " Elapsed time: " << nanosecs << std::endl;
         else
             *TError::Current()->getStream() << TStreamError::getTime() << " TRC      , " << std::setw(20) << std::left << mFile << ", " << _threadIDtoStr(mThreadID) << " " << indent << "}exit " << mHeadMsg << " Elapsed time: " << nanosecs << std::endl;
     }
     else
     {
         if (!TConfig::isLongFormat())
-            *TError::Current()->getStream() << "TRC      , " << indent << "}exit " << mHeadMsg << std::endl;
+            *TError::Current()->getStream() << "TRC      , " << _threadIDtoStr(mThreadID) << " " << indent << "}exit " << mHeadMsg << std::endl;
         else
             *TError::Current()->getStream() << TStreamError::getTime() << " TRC      , " << std::setw(20) << std::left << mFile << ", " << _threadIDtoStr(mThreadID) << " " << indent << "}exit " << mHeadMsg << std::endl;
     }
@@ -855,7 +855,7 @@ std::string TError::append(int lv)
     }
 
     if (!TConfig::isLongFormat())
-        out = prefix;
+        out = prefix + _threadIDtoStr(mThreadID) + " ";
     else
     {
         std::stringstream s;

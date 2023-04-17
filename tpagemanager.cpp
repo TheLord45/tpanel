@@ -862,6 +862,10 @@ TPageManager::TPageManager()
 
     // Here are the commands supported by this emulation.
     MSG_INFO("Registering commands ...");
+    REG_CMD(doLEVON, "LEVON");  // Enable device to send level changes to the master.
+    REG_CMD(doLEVOF, "LEVOF");  // Disable the device from sending level changes to the master.
+    REG_CMD(doRXON, "RXON");    // Enable device to send STRING changes to the master.
+    REG_CMD(doRXOF, "RXOF");    // Disable the device from sending STRING changes to the master.
     REG_CMD(doAFP, "@AFP");     // Flips to a page with the specified page name using an animated transition.
     REG_CMD(doAFP, "^AFP");     // Flips to a page with the specified page name using an animated transition.
     REG_CMD(doAPG, "@APG");     // Add a specific popup page to a specified popup group.
@@ -1007,9 +1011,11 @@ TPageManager::TPageManager()
 //    REG_CMD(doEPR, "^EPR");     // Execute Push on Release.
 //    REG_CMD(doSCE, "^SCE");     // Configures subpage custom events.
 //    REG_CMD(doSDR, "^SDR");     // Enabling subpage dynamic reordering.
-//    REG_CMD(doSHD, "^SHD");     // Hides subpage
+    REG_CMD(doSHA, "^SHA");     // Subpage Hide All Command
+    REG_CMD(doSHD, "^SHD");     // Hides subpage
+    REG_CMD(doSPD, "^SPD");     //  Set the padding between subpages on a subpage viewer button
     REG_CMD(doSSH, "^SSH");     // Subpage show command.
-//    REG_CMD(doSTG, "^STG");     // Subpage toggle command
+    REG_CMD(doSTG, "^STG");     // Subpage toggle command
 
     // ListView commands (G5)
     REG_CMD(doLVD, "^LVD");     // G5: Set Listview Data Source
@@ -4058,7 +4064,7 @@ void TPageManager::mouseEvent(int x, int y, bool pressed)
 {
     DECL_TRACER("TPageManager::mouseEvent(int x, int y, bool pressed)");
 
-    TLOCKER(click_mutex);
+    TTRYLOCK(click_mutex);
 
     _CLICK_QUEUE_t cq;
     cq.x = x;
@@ -4066,7 +4072,6 @@ void TPageManager::mouseEvent(int x, int y, bool pressed)
     cq.pressed = pressed;
     cq.coords = true;
     mClickQueue.push_back(cq);
-    MSG_DEBUG("Queued click for coords " << x << "x" << y << ", state " << (cq.pressed ? "PRESSED" : "RELEASED"));
 }
 
 void TPageManager::_mouseEvent(int x, int y, bool pressed)
@@ -4091,7 +4096,7 @@ void TPageManager::_mouseEvent(int x, int y, bool pressed)
 
     if (pressed)
         subPage = getCoordMatch(realX, realY);
-    else if (!pressed && mLastPagePush)
+    else if (mLastPagePush)
         subPage = getSubPage(mLastPagePush);
     else
         subPage = getCoordMatch(realX, realY);
@@ -4123,6 +4128,9 @@ void TPageManager::mouseEvent(ulong handle, bool pressed)
 {
     DECL_TRACER("TPageManager::mouseEvent(ulong handle, bool pressed)");
 
+    if (!mClickQueue.empty() && mClickQueue.back().handle == handle && mClickQueue.back().pressed == pressed)
+        return;
+
     TLOCKER(click_mutex);
 
     _CLICK_QUEUE_t cq;
@@ -4144,7 +4152,7 @@ void TPageManager::_mouseEvent(ulong handle, bool pressed)
     int pageID = (handle >> 16) & 0x0000ffff;
     int buttonID = (handle & 0x0000ffff);
 
-    if (pageID == 0 || buttonID == 0)
+    if (pageID < REGULAR_SUBPAGE_START || buttonID == 0)
         return;
 
     TSubPage *subPage = getSubPage(pageID);
@@ -4155,7 +4163,7 @@ void TPageManager::_mouseEvent(ulong handle, bool pressed)
 
         if (bt)
         {
-            MSG_DEBUG("Button on page " << pageID << ": " << bt->getButtonIndex());
+            MSG_DEBUG("Button on subpage " << pageID << ": " << buttonID);
             bt->doClick(bt->getLeftPosition() + bt->getWidth() / 2, bt->getTopPosition() + bt->getHeight() / 2, pressed);
         }
     }
@@ -5049,6 +5057,34 @@ void TPageManager::doFTR(int port, vector<int>& channels, vector<string>& pars)
             MSG_WARNING("Missing callback function \"resetSurface\"!");
         }
     }
+}
+
+void TPageManager::doLEVON(int, vector<int>&, vector<string>&)
+{
+    DECL_TRACER("TPageManager::doLEVON(int, vector<int>&, vector<string>&)");
+
+    mLevelSend = true;
+}
+
+void TPageManager::doLEVOF(int, vector<int>&, vector<string>&)
+{
+    DECL_TRACER("TPageManager::doLEVOF(int, vector<int>&, vector<string>&)");
+
+    mLevelSend = false;
+}
+
+void TPageManager::doRXON(int, vector<int>&, vector<string>&)
+{
+    DECL_TRACER("TPageManager::doRXON(int, vector<int>&, vector<string>&)");
+
+    mRxOn = true;
+}
+
+void TPageManager::doRXOF(int, vector<int>&, vector<string>&)
+{
+    DECL_TRACER("TPageManager::doRXOF(int, vector<int>&, vector<string>&)");
+
+    mRxOn = false;
 }
 
 void TPageManager::doON(int port, vector<int>&, vector<string>& pars)
@@ -8290,20 +8326,13 @@ void TPageManager::doICO(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-//            setButtonCallbacks(bt);
 
             if (btState == 0)       // All instances?
             {
-                int bst = bt->getNumberInstances();
-                MSG_DEBUG("Setting Icon on all " << bst << " instances...");
-
-                for (int i = 0; i < bst; i++)
-                {
-                    if (iconIdx > 0)
-                        bt->setIcon(iconIdx, i);
-                    else
-                        bt->revokeIcon(i);
-                }
+                if (iconIdx > 0)
+                    bt->setIcon(iconIdx, -1);
+                else
+                    bt->revokeIcon(-1);
             }
             else if (iconIdx > 0)
                 bt->setIcon(iconIdx, btState - 1);
@@ -8658,6 +8687,7 @@ void TPageManager::doSHO(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
+
             int pgID = (bt->getParent() >> 16) & 0x0000ffff;
             bool pVisible = false;
 
@@ -8903,16 +8933,8 @@ void TPageManager::doTXT(int port, vector<int>& channels, vector<string>& pars)
             if (!bt)
                 break;
 
-//            setButtonCallbacks(bt);
-
             if (btState == 0)       // All instances?
-            {
-                int bst = bt->getNumberInstances();
-                MSG_DEBUG("Setting TXT on all " << bst << " instances...");
-
-                for (int i = 0; i < bst; i++)
-                    bt->setText(text, i);
-            }
+                bt->setText(text, -1);
             else
                 bt->setText(text, btState - 1);
         }
@@ -9999,6 +10021,115 @@ void TPageManager::getPHN(int, vector<int>&, vector<string>& pars)
 #endif  // _NOSIP_
 
 /*
+ *  Hide all subpages in a subpage viewer button.
+ */
+void TPageManager::doSHA(int port, vector<int> &channels, vector<string> &pars)
+{
+    DECL_TRACER("TPageManager::doSHA(int port, vector<int> &channels, vector<string> &pars)");
+
+    vector<TMap::MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (!buttons.empty())
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+
+            if (_hideAllSubViewItems)
+                _hideAllSubViewItems(bt->getHandle());
+        }
+    }
+}
+
+void TPageManager::doSHD(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doSHD(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.size() < 1)
+        return;
+
+    string name = pars[0];
+
+    vector<TMap::MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (!buttons.empty())
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+
+            vector<TSubPage *> subviews = createSubViewList(bt->getSubViewID());
+
+            if (subviews.empty())
+                continue;
+
+            vector<TSubPage *>::iterator itSub;
+
+            for (itSub = subviews.begin(); itSub != subviews.end(); ++itSub)
+            {
+                TSubPage *sub = *itSub;
+
+                if (sub && sub->getName() == name)
+                {
+                    if (_hideSubViewItem)
+                        _hideSubViewItem(bt->getHandle(), sub->getHandle());
+
+                    break;
+                }
+            }
+        }
+    }
+}
+
+void TPageManager::doSPD(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doSPD(int port, vector<int>& channel, vector<string>& pars)");
+
+    if (pars.size() < 1)
+        return;
+
+    TError::clear();
+    int padding = atoi(pars[0].c_str());
+
+    if (padding < 0 || padding > 100)
+        return;
+
+    vector<TMap::MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (!buttons.empty())
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+
+            if (_setSubViewPadding)
+                _setSubViewPadding(bt->getHandle(), padding);
+        }
+    }
+}
+
+/*
  * This command will perform one of three different operations based on the following conditions:
  * 1. If the named subpage is hidden in the set associated with the viewer button it will be shown in the anchor position.
  * 2. If the named subpage is not present in the set it will be added to the set and shown in the anchor position.
@@ -10057,6 +10188,64 @@ void TPageManager::doSSH(int port, vector<int> &channels, vector<string> &pars)
                 {
                     if (_showSubViewItem)
                         _showSubViewItem(sub->getHandle(), bt->getHandle(), position, time);
+
+                    break;
+                }
+            }
+        }
+    }
+}
+
+void TPageManager::doSTG(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doSTG(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.empty())
+    {
+        MSG_ERROR("Expecting 1 parameter but got none! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    string name = pars[0];
+    int position = 0;   // optional
+    int time = 0;       // optional
+
+    if (pars.size() > 1)
+        position = atoi(pars[1].c_str());
+
+    if (pars.size() > 2)
+        time = atoi(pars[2].c_str());
+
+    vector<TMap::MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (!buttons.empty())
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+            vector<TSubPage *> subviews = createSubViewList(bt->getSubViewID());
+
+            if (subviews.empty() || !bt)
+                continue;
+
+            vector<TSubPage *>::iterator itSub;
+
+            for (itSub = subviews.begin(); itSub != subviews.end(); ++itSub)
+            {
+                TSubPage *sub = *itSub;
+
+                if (sub && sub->getName() == name)
+                {
+                    if (_toggleSubViewItem)
+                        _toggleSubViewItem(sub->getHandle(), bt->getHandle(), position, time);
 
                     break;
                 }

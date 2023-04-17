@@ -1,26 +1,30 @@
 buildscript {
     repositories {
         google()
-        jcenter()
+//        jcenter()       /* Qt 5.15.x */
+        mavenCentral()
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.6.0'    /* Qt 5.15.x */
-//        classpath 'com.android.tools.build:gradle:7.0.2'  /* Reserved for Qt 6.x */
+//        classpath 'com.android.tools.build:gradle:3.6.0'    /* Qt 5.15.x */
+        classpath 'com.android.tools.build:gradle:7.4.1'  /* Reserved for Qt 6.x */
     }
 }
 
 repositories {
     google()
-    jcenter()
+//    jcenter()       /* Qt 5.15.x */
+    mavenCentral()
 }
 
 apply plugin: 'com.android.application'
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
-    implementation 'androidx.appcompat:appcompat:1.1.0'
+    implementation 'com.google.android.material:material:1.0.0' /* Qt 6.x */
+//    implementation 'androidx.appcompat:appcompat:1.1.0'       /* Qt 5.15.x */
     implementation 'androidx.preference:preference:1.1.0'
+//    implementation project("org.qtproject.tpanel")
 }
 
 android {
@@ -38,28 +42,29 @@ android {
      *******************************************************/
 
     compileSdkVersion androidCompileSdkVersion.toInteger()
-//    buildToolsVersion androidBuildToolsVersion    /* Reserved for Qt 6.x */
-//    ndkVersion androidNdkVersion                  /* Reserved for Qt 6.x */
+    buildToolsVersion androidBuildToolsVersion    /* Reserved for Qt 6.x */
+    ndkVersion androidNdkVersion                  /* Reserved for Qt 6.x */
+//    namespace 'org.qtproject.theosys'             /* Reserved for Qt 6.x */
 
     // Extract native libraries from the APK
-//    packagingOptions.jniLibs.useLegacyPackaging true  /* Reserved for Qt 6.x */
+    packagingOptions.jniLibs.useLegacyPackaging true  /* Reserved for Qt 6.x */
 
-    buildToolsVersion '30.0.0'      /* Qt 5.15.x */
+//    buildToolsVersion '29.0.3'      /* Qt 5.15.x */
 
     sourceSets {
         main {
             manifest.srcFile 'AndroidManifest.xml'
             // QT 5.15.x
-            java.srcDirs = [qt5AndroidDir + '/src', 'src', 'java']
+/*            java.srcDirs = [qt5AndroidDir + '/src', 'src', 'java']
             aidl.srcDirs = [qt5AndroidDir + '/src', 'src', 'aidl']
             res.srcDirs = [qt5AndroidDir + '/res', 'res']
-
+*/
             // Reserved for Qt 6.x
-/*            java.srcDirs = [qtAndroidDir + '/src', 'src', 'java']
+            java.srcDirs = [qtAndroidDir + '/src', 'src', 'java']
             aidl.srcDirs = [qtAndroidDir + '/src', 'src', 'aidl']
             res.srcDirs = [qtAndroidDir + '/res', 'res']
-*/
-            resources.srcDirs = ['resources']
+
+            resources.srcDirs = ['resources', 'ressources', 'res']
             renderscript.srcDirs = ['src']
             assets.srcDirs = ['assets']
             jniLibs.srcDirs = ['libs']
@@ -88,7 +93,7 @@ android {
         resConfig "en"
         minSdkVersion = qtMinSdkVersion
         targetSdkVersion = qtTargetSdkVersion
-//        ndk.abiFilters = qtTargetAbiList.split(",")   /* Reserved for Qt 6.x */
+        ndk.abiFilters = qtTargetAbiList.split(",")   /* Reserved for Qt 6.x */
     }
 
     packagingOptions {

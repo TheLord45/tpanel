@@ -63,6 +63,9 @@ class TQScrollArea : public QScrollArea
         void addItems(std::vector<PGSUBVIEWITEM_T>& items);
         void updateItem(PGSUBVIEWITEM_T& item);
         void showItem(ulong handle, int position);
+        void toggleItem(ulong handle, int position);
+        void hideAllItems();
+        void hideItem(ulong handle);
 
         int getWidth() { return mWidth; }
         int getHeight() { return mHeight; }
@@ -85,35 +88,80 @@ class TQScrollArea : public QScrollArea
         void scrollContentsBy(int dx, int dy) override;
 
     private:
+        typedef struct _ITEMS_T
+        {
+            ulong handle{0};
+            ulong parent{0};
+            int width{0};
+            int height{0};
+            bool scrollbar{false};
+            int scrollbarOffset{0};
+            Button::SUBVIEW_POSITION_t position{Button::SVP_CENTER};
+            bool wrap{false};
+            TColor::COLOR_T bgcolor;
+            TBitmap image;
+            std::string bounding;
+            QWidget *item{nullptr};
+            std::vector<PGSUBVIEWATOM_T> atoms;
+
+            void clear()
+            {
+                handle = parent = 0;
+                width = height = 0;
+                bgcolor.alpha = bgcolor.blue = bgcolor.green = bgcolor.red = 0;
+                scrollbar = wrap = false;
+                scrollbarOffset = 0;
+                position = Button::SVP_CENTER;
+                image.clear();
+                bounding.clear();
+                atoms.clear();
+
+                if (item)
+                    item->close();
+
+                item = nullptr;
+            }
+        }_ITEMS_T;
+
         void init();
         int scale(int value);
         void setAtom(PGSUBVIEWATOM_T& atom, QLabel *label);
+        void refresh();
+        void setPosition();
+        void setPosition(QWidget *w, int position);
         void mouseTimerEvent();
+        void _addItems(std::vector<_ITEMS_T>& items, bool intern=false);
+        void _clearAllItems();
+        _ITEMS_T subViewItemToItem(PGSUBVIEWITEM_T& item);
+        void resetSlider(int position=0);
+        void doMouseEvent();
 
-        QWidget *mParent{nullptr};              //>! The parent of this object. This is set to QScrollArea.
-        QWidget *mMain{nullptr};                //>! The widget containing the items. This is the whole scroll area
-        QHBoxLayout *mHLayout{nullptr};         //>! If mVertical == FALSE then this layout is used
-        QVBoxLayout *mVLayout{nullptr};         //>! If mVertical == TRUE then this layout is used
-        int mWidth{0};                          //>! Width of visible part of scroll area (QScrollArea)
-        int mHeight{0};                         //>! Height of visible part of scroll area (QScrollArea)
-        int mTotalWidth{0};                     //>! Total width of scroll area (mMain)
-        int mTotalHeight{0};                    //>! Total height of of scroll area (mMain)
-        bool mVertical{false};                  //>! Direction
-        int mSpace{0};                          //>! Optional: The space between the items in percent
-        bool mMousePress{false};                //>! Internal: TRUE when the mouse was pressed
-        bool mClick{false};                     //>! TRUE on mouse press, FALSE on mouse release
-        bool mMouseScroll{false};               //>! Internal: TRUE if scrolling was detected. This prevents a button press from beeing one.
-        QPointF mOldPoint;                      //>! Internal: The last point where the mouse was pressed
-        double mScaleFactor{1.0};               //>! If != 1.0 and > 0.0 then mTotalHeight and mTotalWidth are scaled as well as the size of each item
-        std::vector<PGSUBVIEWITEM_T> mItems;    //>! The list of items
-        std::vector<QWidget *> mMainWidgets;    //>! The QWidget for each item.
-        int mActPosition{0};                    //>! The absolute top/left (depends on mVertical) position in the scrolling area.
-        QTimer *mMousePressTimer{nullptr};      //>! Internal: Used to distinguish between a real mouse click and a mouse move.
-        QPoint mLastMousePress;                 //>! Internal: The absolute point of the last mouse press.
-        Button::SUBVIEW_POSITION_t mPosition{Button::SVP_CENTER};   //>! Defines where the anchor should snap in
-        bool mScrollbar{false};                 //>! TRUE = scrollbar is visible
-        int mScrollbarOffset{0};                //>! Defines the offset of the scrollbar. Only valid if \b mScrollbar is TRUE.
-        bool mWrapItems{false};                 //>! TRUE = The scroll area behaves like a wheel (not supported) and the item according to the anchor position is displayed.
+        QWidget *mParent{nullptr};              //!< The parent of this object. This is set to QScrollArea.
+        QWidget *mMain{nullptr};                //!< The widget containing the items. This is the whole scroll area
+        QHBoxLayout *mHLayout{nullptr};         //!< If mVertical == FALSE then this layout is used
+        QVBoxLayout *mVLayout{nullptr};         //!< If mVertical == TRUE then this layout is used
+        int mWidth{0};                          //!< Width of visible part of scroll area (QScrollArea)
+        int mHeight{0};                         //!< Height of visible part of scroll area (QScrollArea)
+        int mTotalWidth{0};                     //!< Total width of scroll area (mMain)
+        int mTotalHeight{0};                    //!< Total height of of scroll area (mMain)
+        bool mVertical{false};                  //!< Direction
+        int mSpace{0};                          //!< Optional: The space between the items in percent
+        bool mMousePress{false};                //!< Internal: TRUE when the mouse was pressed
+        bool mClick{false};                     //!< TRUE on mouse press, FALSE on mouse release
+        bool mMouseScroll{false};               //!< Internal: TRUE if scrolling was detected. This prevents a button press from beeing one.
+        QPointF mOldPoint;                      //!< Internal: The last point where the mouse was pressed
+        double mScaleFactor{1.0};               //!< If != 1.0 and > 0.0 then mTotalHeight and mTotalWidth are scaled as well as the size of each item
+        std::vector<_ITEMS_T> mItems;           //!< The list of items
+        int mActPosition{0};                    //!< The absolute top/left (depends on mVertical) position in the scrolling area.
+        int mOldActPosition{0};                 //!< Used to store the actual slider position temporary.
+        QTimer *mMousePressTimer{nullptr};      //!< Internal: Used to distinguish between a real mouse click and a mouse move.
+        QPoint mLastMousePress;                 //!< Internal: The absolute point of the last mouse press.
+        Button::SUBVIEW_POSITION_t mPosition{Button::SVP_CENTER};   //!< Defines where the anchor should snap in
+        bool mScrollbar{false};                 //!< TRUE = scrollbar is visible
+        int mScrollbarOffset{0};                //!< Defines the offset of the scrollbar. Only valid if \b mScrollbar is TRUE.
+        bool mWrapItems{false};                 //!< TRUE = The scroll area behaves like a wheel (not supported) and the item according to the anchor position is displayed.
+        bool mMouseTmEventActive{false};        //!< TRUE = the mouse timer event is still running and will not accept calls.
+        bool mDoMouseEvent{false};              //!< TRUE = The mouse timer event is valid.
 };
 
 #endif

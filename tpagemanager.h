@@ -268,6 +268,10 @@ class TPageManager : public TAmxCommands
         void regUpdateViewButton(std::function<void (ulong handle, ulong parent, TBitmap buffer, TColor::COLOR_T fillColor)> uvb) { _updateViewButton = uvb; }
         void regUpdateViewButtonItem(std::function<void (PGSUBVIEWITEM_T& item, ulong parent)> uvb) { _updateViewButtonItem = uvb; }
         void regShowSubViewItem(std::function<void (ulong handle, ulong parent, int position, int timer)> ssvi) { _showSubViewItem = ssvi; }
+        void regToggleSubViewItem(std::function<void (ulong handle, ulong parent, int position, int timer)> tsvi) { _toggleSubViewItem = tsvi; }
+        void regHideAllSubViewItems(std::function<void (ulong handle)> hasvi) { _hideAllSubViewItems = hasvi; }
+        void regHideSubViewItem(std::function<void (ulong handle, ulong parent)> hsvi) { _hideSubViewItem = hsvi; }
+        void regSetSubViewPadding(std::function<void (ulong handle, int padding)> ssvp) { _setSubViewPadding = ssvp; }
 
         /**
          * The following function must be called to start non graphics part
@@ -535,10 +539,16 @@ class TPageManager : public TAmxCommands
         std::function<void (ulong handle, ulong parent, TBitmap buffer, TColor::COLOR_T fillColor)> getUpdateViewButton() { return _updateViewButton; }
         std::function<void (PGSUBVIEWITEM_T& item, ulong parent)> getUpdateViewButtonItem() { return _updateViewButtonItem; }
         std::function<void (ulong handle, ulong parent, int position, int timer)> getShowSubViewItem() { return _showSubViewItem; }
+        std::function<void (ulong handle, ulong parent, int position, int timer)> getToggleSubViewItem() { return _toggleSubViewItem; }
+        std::function<void (ulong handle)> getHideAllSubViewItems() { return _hideAllSubViewItems; }
+        std::function<void (ulong handle, ulong parent)> getHideSubViewItem() { return _hideSubViewItem; }
+        std::function<void (ulong handle, int padding)> getSetSubViewPadding() { return _setSubViewPadding; }
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         std::function<void (int orientation)> onOrientationChange() { return _onOrientationChange; }
         std::function<void (const std::string& oldNetlinx, int oldPort, int oldChannelID, const std::string& oldSurface, bool oldToolbarSuppress, bool oldToolbarForce)> onSettingsChanged() { return _onSettingsChanged; }
 #endif
+        bool getLevelSendState() { return mLevelSend; }
+        bool getRxSendState() { return mRxOn; }
         std::function<void ()> getRepaintWindows() { return _repaintWindows; }
         int getOrientation() { return mOrientation; }
         void setOrientation(int ori) { mOrientation = ori; }
@@ -639,6 +649,10 @@ class TPageManager : public TAmxCommands
         std::function<void (ulong parent, std::vector<PGSUBVIEWITEM_T> items)> _addViewButtonItems{nullptr};
         std::function<void (PGSUBVIEWITEM_T& item, ulong parent)> _updateViewButtonItem{nullptr};
         std::function<void (ulong handle, ulong parent, int position, int timer)> _showSubViewItem{nullptr};
+        std::function<void (ulong handle, ulong parent, int position, int timer)> _toggleSubViewItem{nullptr};
+        std::function<void (ulong handle)> _hideAllSubViewItems{nullptr};
+        std::function<void (ulong handle, ulong parent)> _hideSubViewItem{nullptr};
+        std::function<void (ulong handle, int padding)> _setSubViewPadding{nullptr};
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         std::function<void (int orientation)> _onOrientationChange{nullptr};
         std::function<void (const std::string& oldNetlinx, int oldPort, int oldChannelID, const std::string& oldSurface, bool oldToolbarSuppress, bool oldToolbarForce)> _onSettingsChanged{nullptr};
@@ -710,6 +724,10 @@ class TPageManager : public TAmxCommands
 #endif
         // List of command functions
         void doFTR(int port, std::vector<int>&, std::vector<std::string>& pars);
+        void doLEVON(int, std::vector<int>&, std::vector<std::string>&);
+        void doLEVOF(int, std::vector<int>&, std::vector<std::string>&);
+        void doRXON(int, std::vector<int>&, std::vector<std::string>&);
+        void doRXOF(int, std::vector<int>&, std::vector<std::string>&);
 
         void doON(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doOFF(int port, std::vector<int>& channels, std::vector<std::string>& pars);
@@ -827,7 +845,11 @@ class TPageManager : public TAmxCommands
         void getPHN(int port, std::vector<int>& channels, std::vector<std::string>& pars);
 #endif
         // Commands for subviews (G4/G5)
+        void doSHA(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doSHD(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doSPD(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doSSH(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doSTG(int port, std::vector<int>& channels, std::vector<std::string>& pars);
 
         // Commands for ListView (G5)
         void doLVD(int port, std::vector<int>& channels, std::vector<std::string>& pars);
@@ -848,6 +870,8 @@ class TPageManager : public TAmxCommands
         std::mutex click_mutex;
         std::mutex updview_mutex;
 
+        bool mLevelSend{false};                         // TRUE = Level changes are send to the master
+        bool mRxOn{false};                              // TRUE = String changes are send to master
         int mActualPage{0};                             // The number of the actual visible page
         int mPreviousPage{0};                           // The number of the previous page
         int mSavedPage{0};                              // The number of the last normal page. This is set immediately before a setup page is shown

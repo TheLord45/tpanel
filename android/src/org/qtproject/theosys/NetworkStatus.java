@@ -48,7 +48,7 @@ import android.telephony.SignalStrength;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
-// import org.qtproject.qt.android.QtNative;    // Enable for Qt 6.x
+//import org.qtproject.qt.android.QtNative;    // Enable for Qt 6.x
 import org.qtproject.qt5.android.QtNative;      // Enable for Qt 5.x
 import java.lang.String;
 import java.util.List;

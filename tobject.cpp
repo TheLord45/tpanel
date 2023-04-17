@@ -126,7 +126,10 @@ void TObject::dropContent(OBJECT_t* obj, bool lock)
                 if (obj->object.area)
                 {
                     if (mMainWindow)
+                    {
+                        obj->connected = false;
                         mMainWindow->disconnectArea(obj->object.area);
+                    }
 
                     delete obj->object.area;
                     obj->object.area = nullptr;
@@ -469,10 +472,16 @@ void TObject::invalidateAllSubObjects(ulong handle)
             iter->second.remove = false;
             iter->second.invalid = true;
 
-            if (iter->second.type == OBJ_SUBVIEW && iter->second.object.area && mMainWindow)
+            if (iter->second.type == OBJ_SUBVIEW && iter->second.object.area && mMainWindow && iter->second.connected)
+            {
+                iter->second.connected = false;
                 mMainWindow->disconnectArea(iter->second.object.area);
-            else if (iter->second.type == OBJ_LIST && iter->second.object.list && mMainWindow)
+            }
+            else if (iter->second.type == OBJ_LIST && iter->second.object.list && mMainWindow && iter->second.connected)
+            {
+                iter->second.connected = false;
                 mMainWindow->disconnectList(iter->second.object.list);
+            }
         }
     }
 }
@@ -496,10 +505,16 @@ bool TObject::enableObject(ulong handle)
         iter->second.remove = false;
         iter->second.invalid = false;
 
-        if (iter->second.type == OBJ_SUBVIEW && iter->second.object.area && mMainWindow)
+        if (iter->second.type == OBJ_SUBVIEW && iter->second.object.area && mMainWindow && !iter->second.connected)
+        {
             mMainWindow->reconnectArea(iter->second.object.area);
-        else if (iter->second.type == OBJ_LIST && iter->second.object.list && mMainWindow)
+            iter->second.connected = true;
+        }
+        else if (iter->second.type == OBJ_LIST && iter->second.object.list && mMainWindow && !iter->second.connected)
+        {
             mMainWindow->reconnectList(iter->second.object.list);
+            iter->second.connected = true;
+        }
 
         return true;                         // We can savely return here because a handle is unique
     }
@@ -530,10 +545,16 @@ bool TObject::enableAllSubObjects(ulong handle)
                 iter->second.remove = false;
                 iter->second.invalid = false;
 
-                if (iter->second.type == OBJ_SUBVIEW && iter->second.object.area && mMainWindow)
+                if (iter->second.type == OBJ_SUBVIEW && iter->second.object.area && mMainWindow && !iter->second.connected)
+                {
                     mMainWindow->reconnectArea(iter->second.object.area);
-                else if (iter->second.type == OBJ_LIST && iter->second.object.list && mMainWindow)
+                    iter->second.connected = true;
+                }
+                else if (iter->second.type == OBJ_LIST && iter->second.object.list && mMainWindow && !iter->second.connected)
+                {
                     mMainWindow->reconnectList(iter->second.object.list);
+                    iter->second.connected = true;
+                }
             }
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,6 +23,12 @@
 #include <iconv.h>
 #include <sstream>
 #include "tnameformat.h"
+
+#ifdef __ANDROID__
+#if __ANDROID_API__ < 28
+#error "This module needs Android API level 28 or newer!"
+#endif
+#endif
 
 using namespace std;
 

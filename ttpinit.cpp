@@ -34,7 +34,9 @@
 #else
 #include <QtCore>
 #include <QFuture>
+#if QT_VERSION < QT_VERSION_CHECK(6, 4, 0)
 #include <QtCore/private/qandroidextras_p.h>
+#endif
 #endif
 #endif
 #include <QMap>
@@ -2684,14 +2686,14 @@ bool TTPInit::askPermissions()
         if (iter.value() == QtAndroid::PermissionResult::Denied)
             return false;
     }
-#else
-    for (auto iter = permissions.begin(); iter != permissions.end(); ++iter)
-    {
-        QFuture<QtAndroidPrivate::PermissionResult> result = QtAndroidPrivate::requestPermission(*iter);
+//#else
+//    for (auto iter = permissions.begin(); iter != permissions.end(); ++iter)
+//    {
+//        QFuture<QtAndroidPrivate::PermissionResult> result = QtAndroidPrivate::requestPermission(*iter);
 
-        if (result.result() == QtAndroidPrivate::Denied)
-            return false;
-    }
+//        if (result.result() == QtAndroidPrivate::Denied)
+//            return false;
+//    }
 #endif
     return true;
 }

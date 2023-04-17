@@ -53,6 +53,7 @@ class TLock
 
     private:
         bool addLock(bool *death=nullptr);
+        void wait();
         bool removeLock();
         void stripFileName();
 

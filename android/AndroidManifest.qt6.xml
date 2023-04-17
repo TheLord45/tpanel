@@ -9,8 +9,21 @@
     <!-- %%INSERT_FEATURES -->
 
     <supports-screens android:largeScreens="true" android:normalScreens="true" android:anyDensity="true" android:smallScreens="true"/>
-    <application android:hardwareAccelerated="true" android:name="org.qtproject.qt5.android.bindings.QtApplication" android:label="-- %%INSERT_APP_NAME%% --" android:extractNativeLibs="true" android:icon="@drawable/icon" android:theme="@style/Theme.AppCompat.NoActionBar">
-        <activity android:configChanges="orientation|uiMode|screenLayout|screenSize|smallestScreenSize|layoutDirection|locale|fontScale|keyboard|keyboardHidden|navigation|mcc|mnc|density" android:name="org.qtproject.qt5.android.bindings.QtActivity" android:label="-- %%INSERT_APP_NAME%% --" android:launchMode="singleTop" android:screenOrientation="nosensor">
+    <!-- <application
+        android:hardwareAccelerated="true"
+        android:name="org.qtproject.qt5.android.bindings.QtApplication"
+        android:label="- - %%INSERT_APP_NAME%% - -"
+        android:extractNativeLibs="true"
+        android:icon="@drawable/icon"
+        android:theme="@style/Theme.AppCompat.NoActionBar"> -->
+    <application android:hardwareAccelerated="true" android:name="org.qtproject.qt.android.bindings.QtApplication" android:label="-- %%INSERT_APP_NAME%% --" android:extractNativeLibs="true" android:requestLegacyExternalStorage="true" android:allowNativeHeapPointerTagging="false" android:allowBackup="true" android:fullBackupOnly="false" android:icon="@drawable/icon" android:theme="@style/Theme.AppCompat.NoActionBar">
+        <!-- <activity
+            android:configChanges="orientation|uiMode|screenLayout|screenSize|smallestScreenSize|layoutDirection|locale|fontScale|keyboard|keyboardHidden|navigation|mcc|mnc|density"
+            android:name="org.qtproject.qt5.android.bindings.QtActivity"
+            android:label="- - %%INSERT_APP_NAME%% - -"
+            android:launchMode="singleTop"
+            android:screenOrientation="nosensor"> -->
+        <activity android:configChanges="orientation|uiMode|screenLayout|screenSize|smallestScreenSize|layoutDirection|locale|fontScale|keyboard|keyboardHidden|navigation|mcc|mnc|density" android:name="org.qtproject.qt.android.bindings.QtActivity" android:label="-- %%INSERT_APP_NAME%% --" android:launchMode="singleTop" android:screenOrientation="nosensor" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
@@ -71,15 +84,10 @@
             <meta-data android:name="android.app.splash_screen_drawable" android:resource="@drawable/logo"/>
             <meta-data android:name="android.app.splash_screen_drawable_portrait" android:resource="@drawable/logo_portrait"/>
             <meta-data android:name="android.app.splash_screen_drawable_landscape" android:resource="@drawable/logo_landscape"/>
-            <meta-data android:name="android.app.splash_screen_drawable" android:resource="@drawable/logo"/>
-            <meta-data android:name="android.app.splash_screen_drawable_portrait" android:resource="@drawable/logo_portrait"/>
-            <meta-data android:name="android.app.splash_screen_drawable_landscape" android:resource="@drawable/logo_landscape"/>
         </activity>
-        <activity android:name=".SettingsActivity" android:label="- - %%INSERT_APP_NAME%% - -" android:parentActivityName=".QtApplication" android:screenOrientation="nosensor">
-            <meta-data android:name="android.support.PARENT_ACTIVITY" android:value="org.qtproject.qt5.android.bindings.QtApplication"/>
-            <meta-data android:name="android.app.splash_screen_drawable" android:resource="@drawable/logo"/>
-            <meta-data android:name="android.app.splash_screen_drawable_portrait" android:resource="@drawable/logo_portrait"/>
-            <meta-data android:name="android.app.splash_screen_drawable_landscape" android:resource="@drawable/logo_landscape"/>
+        <activity android:name=".SettingsActivity" android:label="-- %%INSERT_APP_NAME%% --" android:parentActivityName=".QtApplication" android:screenOrientation="nosensor">
+            <!-- <meta-data android:name="android.support.PARENT_ACTIVITY" android:value="org.qtproject.qt5.android.bindings.QtApplication"/> -->
+            <meta-data android:name="android.support.PARENT_ACTIVITY" android:value="org.qtproject.qt.android.bindings.QtApplication"/>
         </activity>
         <!-- For adding service(s) please check: https://wiki.qt.io/AndroidServices -->
     </application>

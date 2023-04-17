@@ -53,8 +53,16 @@ TLock<_TMutex>::TLock(TLock::mutex_type& __m, char *file, int line)
     bool death = false;
     bool l = addLock(&death);
 
-    if ((mNoDeathLock || death) && !l)
-        return;
+//    if ((mNoDeathLock || death) && !l)
+//        return;
+
+    if (!l && (mNoDeathLock || death))
+    {
+        wait();
+
+        if (isLocked())
+            return;
+    }
 
     _M_device.lock();
 }
@@ -62,9 +70,9 @@ TLock<_TMutex>::TLock(TLock::mutex_type& __m, char *file, int line)
 template<typename _TMutex>
 TLock<_TMutex>::TLock(mutex_type& __m, bool tryit, char *file, int line)
     : _M_device(__m),
+      mNoDeathLock(tryit),
       mFilename(file),
-      mLineNumber(line),
-      mNoDeathLock(tryit)
+      mLineNumber(line)
 {
     DECL_TRACER("TLock<_TMutex>::TLock(mutex_type& __m, bool tryit, char *file, int line)");
 
@@ -72,13 +80,18 @@ TLock<_TMutex>::TLock(mutex_type& __m, bool tryit, char *file, int line)
     bool death = false;
     bool l = addLock(&death);
 
-    if ((mNoDeathLock || death) && !l)
-        return;
+//    if ((mNoDeathLock || death) && !l)
+//        return;
 
-    if (tryit)
-        _M_device.try_lock();
-    else
-        _M_device.lock();
+    if (!l && tryit)
+    {
+        wait();
+
+        if (isLocked())
+            return;
+    }
+
+    _M_device.lock();
 }
 
 template<typename _TMutex>
@@ -300,6 +313,23 @@ bool TLock<_TMutex>::addLock(bool *death)
         *death = lc.noDeathLock;
 
     return true;
+}
+
+template<typename _TMutex>
+void TLock<_TMutex>::wait()
+{
+    DECL_TRACER("TLock<_TMutex>::wait()");
+
+    int loops = 100;
+
+    while (!_M_device.try_lock() && loops >= 0)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        loops--;
+    }
+
+    if (loops >= 0)
+        addLock(nullptr);
 }
 
 template<typename _TMutex>

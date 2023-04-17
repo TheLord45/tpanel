@@ -111,6 +111,10 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
         void sigUpdateViewButton(ulong handle, ulong parent, TBitmap buffer, TColor::COLOR_T fillColor);
         void sigUpdateViewButtonItem(PGSUBVIEWITEM_T& item, ulong parent);
         void sigShowViewButtonItem(ulong handle, ulong parent, int position, int timer);
+        void sigToggleViewButtonItem(ulong handle, ulong parent, int position, int timer);
+        void sigHideAllViewItems(ulong handle);
+        void sigHideViewItem(ulong handle, ulong parent);
+        void sigSetSubViewPadding(ulong handle, int padding);
         void sigSetVisible(ulong handle, bool state);
         void sigSetPage(ulong handle, int width, int height);
         void sigSetSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate);
@@ -157,6 +161,8 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
         void mousePressEvent(QMouseEvent* event) override;
         void mouseReleaseEvent(QMouseEvent* event) override;
         void mouseMoveEvent(QMouseEvent* event) override;
+        void keyPressEvent(QKeyEvent *event) override;
+        void keyReleaseEvent(QKeyEvent *event) override;
         bool eventFilter(QObject *, QEvent *ev) override;
 
     private slots:
@@ -171,6 +177,10 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
         void updateViewButton(ulong handle, ulong parent, TBitmap buffer, TColor::COLOR_T fillColor);
         void updateViewButtonItem(PGSUBVIEWITEM_T& item, ulong parent);
         void showViewButtonItem(ulong handle, ulong parent, int position, int timer);
+        void toggleViewButtonItem(ulong handle, ulong parent, int position, int timer);
+        void hideAllViewItems(ulong handle);
+        void hideViewItem(ulong handle, ulong parent);
+        void setSubViewPadding(ulong handle, int padding);
         void SetVisible(ulong handle, bool state);
         void setPage(ulong handle, int width, int height);
         void setSubPage(ulong hanlde, ulong parent, int left, int top, int width, int height, ANIMATION_t animate);
@@ -260,6 +270,10 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
         void _updateViewButton(ulong handle, ulong parent, TBitmap buffer, TColor::COLOR_T fillColor);
         void _updateViewButtonItem(PGSUBVIEWITEM_T& item, ulong parent);
         void _showViewButtonItem(ulong handle, ulong parent, int position, int timer);
+        void _toggleViewButtonItem(ulong handle, ulong parent, int position, int timer);
+        void _hideAllViewItems(ulong handle);
+        void _hideViewItem(ulong handle, ulong parent);
+        void _setSubViewPadding(ulong handle, int padding);
         void _setVisible(ulong handle, bool state);
         void _setPage(ulong handle, int width, int height);
         void _setSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate);

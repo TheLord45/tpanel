@@ -533,6 +533,10 @@ MainWindow::MainWindow()
                                           std::placeholders::_3,
                                           std::placeholders::_4));
 
+    gPageManager->regHideAllSubViewItems(bind(&MainWindow::_hideAllViewItems, this, std::placeholders::_1));
+    gPageManager->regHideSubViewItem(bind(&MainWindow::_hideViewItem, this, std::placeholders::_1, std::placeholders::_2));
+    gPageManager->regSetSubViewPadding(bind(&MainWindow::_setSubViewPadding, this, std::placeholders::_1, std::placeholders::_2));
+
     gPageManager->registerCallbackSP(bind(&MainWindow::_setPage, this,
                                          std::placeholders::_1,
                                          std::placeholders::_2,
@@ -1191,13 +1195,15 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
                 }
             }
         }
+
         return true;    // Filter event out, i.e. stop it being handled further.
     }
 
 //    if (event->type() == QEvent::Gesture)
 //        return gestureEvent(static_cast<QGestureEvent*>(event));
 
-    return QWidget::eventFilter(obj, event);
+    return false;
+//    return QWidget::eventFilter(obj, event);
 }
 
 /**
@@ -1209,37 +1215,6 @@ bool MainWindow::event(QEvent* event)
 {
     if (event->type() == QEvent::Gesture)
         return gestureEvent(static_cast<QGestureEvent*>(event));
-    else if (event->type() == QEvent::KeyPress)
-    {
-        QKeyEvent *sKey = static_cast<QKeyEvent*>(event);
-
-        if (sKey && sKey->key() == Qt::Key_Back && !mToolbar)
-        {
-            QMessageBox msgBox(this);
-            msgBox.setText("Select what to do next:");
-            msgBox.addButton("Quit", QMessageBox::AcceptRole);
-            msgBox.addButton("Setup", QMessageBox::RejectRole);
-            msgBox.addButton("Cancel", QMessageBox::ResetRole);
-            int ret = msgBox.exec();
-
-            if (ret == QMessageBox::Accepted)   // This is correct! QT seems to change here the buttons.
-            {
-                showSetup();
-                return true;
-            }
-            else if (ret == QMessageBox::Rejected)  // This is correct! QT seems to change here the buttons.
-                close();
-            else
-                return true;
-        }
-    }
-    else if (event->type() == QEvent::KeyRelease)
-    {
-        QKeyEvent *sKey = static_cast<QKeyEvent*>(event);
-
-        if (sKey && sKey->key() == Qt::Key_Back && !mToolbar)
-            return true;
-    }
 
     return QWidget::event(event);
 }
@@ -1306,6 +1281,275 @@ bool MainWindow::gestureEvent(QGestureEvent* event)
     }
 
     return false;
+}
+
+/**
+ * @brief MainWindow::mousePressEvent catches the event Qt::LeftButton.
+ *
+ * If the user presses the left mouse button somewhere in the main window, this
+ * method is triggered. It retrieves the position of the mouse pointer and
+ * sends it to the page manager TPageManager.
+ *
+ * @param event The event
+ */
+void MainWindow::mousePressEvent(QMouseEvent* event)
+{
+    DECL_TRACER("MainWindow::mousePressEvent(QMouseEvent* event)");
+
+    if (!gPageManager)
+        return;
+
+    if(event->button() == Qt::LeftButton)
+    {
+        int nx = 0, ny = 0;
+#ifdef Q_OS_IOS
+        if (mHaveNotchPortrait && gPageManager->getSettings()->isPortrait())
+        {
+            nx = mNotchPortrait.left();
+            ny = mNotchPortrait.top();
+        }
+        else if (mHaveNotchLandscape && gPageManager->getSettings()->isLandscape())
+        {
+            nx = mNotchLandscape.left();
+            ny = mNotchLandscape.top();
+        }
+        else
+        {
+            MSG_WARNING("Have no notch distances!");
+        }
+#endif
+        int x = event->x() - nx;
+        int y = event->y() - ny;
+        MSG_DEBUG("Mouse press coordinates: x: " << event->x() << ", y: " << event->y() << " [new x: " << x << ", y: " << y << " -- \"notch\" nx: " << nx << ", ny: " << ny << "]");
+#ifdef Q_OS_IOS
+        MSG_DEBUG("Mouse press coords alt.: pos.x: " << event->position().x() << ", pos.y: " << event->position().y() << ", local.x: " << event->localPos().x() << ", local.y: " << event->localPos().y());
+#elif defined Q_OS_ANDROID
+        MSG_DEBUG("Mouse press coords alt.: pos.x: " << event->pos().x() << ", pos.y: " << event->pos().y() << ", local.x: " << event->localPos().x() << ", local.y: " << event->localPos().y());
+#endif
+        mLastPressX = x;
+        mLastPressY = y;
+/*
+        QWidget *w = childAt(event->x(), event->y());
+
+        if (w)
+        {
+            MSG_DEBUG("Object " << w->objectName().toStdString() << " is under mouse cursor.");
+            QObject *par = w->parent();
+
+            if (par)
+            {
+                MSG_DEBUG("The parent is " << par->objectName().toStdString());
+
+                if (par->objectName().startsWith("Item_"))
+                {
+                    QObject *ppar = par->parent();
+
+                    if (ppar)
+                    {
+                        MSG_DEBUG("The pparent is " << ppar->objectName().toStdString());
+
+                        if (ppar->objectName().startsWith("View_"))
+                        {
+                            QMouseEvent *mev = new QMouseEvent(event->type(), event->localPos(), event->globalPos(), event->button(), event->buttons(), event->modifiers());
+                            QApplication::postEvent(ppar, mev);
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+*/
+        if (gPageManager->isSetupActive() && isSetupScaled())
+        {
+            x = (int)((double)x / mSetupScaleFactor);
+            y = (int)((double)y / mSetupScaleFactor);
+        }
+        else if (isScaled())
+        {
+            x = (int)((double)x / mScaleFactor);
+            y = (int)((double)y / mScaleFactor);
+        }
+
+        gPageManager->mouseEvent(x, y, true);
+        mTouchStart = std::chrono::steady_clock::now();
+        mTouchX = mLastPressX;
+        mTouchY = mLastPressY;
+    }
+    else if (event->button() == Qt::MiddleButton)
+        settings();
+}
+
+/**
+ * @brief MainWindow::mouseReleaseEvent catches the event Qt::LeftButton.
+ *
+ * If the user releases the left mouse button somewhere in the main window, this
+ * method is triggered. It retrieves the position of the mouse pointer and
+ * sends it to the page manager TPageManager.
+ *
+ * @param event The event
+ */
+void MainWindow::mouseReleaseEvent(QMouseEvent* event)
+{
+    DECL_TRACER("MainWindow::mouseReleaseEvent(QMouseEvent* event)");
+
+    if (!gPageManager)
+        return;
+
+    if(event->button() == Qt::LeftButton)
+    {
+        int nx = 0, ny = 0;
+#ifdef Q_OS_IOS
+        if (mHaveNotchPortrait && gPageManager->getSettings()->isPortrait())
+        {
+            nx = mNotchPortrait.left();
+            ny = mNotchPortrait.top();
+        }
+        else if (mHaveNotchLandscape && gPageManager->getSettings()->isLandscape())
+        {
+            nx = mNotchLandscape.left();
+            ny = mNotchLandscape.top();
+        }
+#endif
+        int x = ((mLastPressX >= 0) ? mLastPressX : (event->x() - nx));
+        int y = ((mLastPressY >= 0) ? mLastPressY : (event->y() - ny));
+        MSG_DEBUG("Mouse press coordinates: x: " << event->x() << ", y: " << event->y());
+        mLastPressX = mLastPressY = -1;
+/*
+        QWidget *w = childAt(event->x(), event->y());
+
+        if (w)
+        {
+            MSG_DEBUG("Object " << w->objectName().toStdString() << " is under mouse cursor.");
+            QObject *par = w->parent();
+
+            if (par)
+            {
+                MSG_DEBUG("The parent is " << par->objectName().toStdString());
+
+                if (par->objectName().startsWith("Item_"))
+                {
+                    QObject *ppar = par->parent();
+
+                    if (ppar)
+                    {
+                        MSG_DEBUG("The pparent is " << ppar->objectName().toStdString());
+
+                        if (ppar->objectName().startsWith("View_"))
+                        {
+                            QMouseEvent *mev = new QMouseEvent(event->type(), event->localPos(), event->globalPos(), event->button(), event->buttons(), event->modifiers());
+                            QApplication::postEvent(ppar, mev);
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+*/
+        if (gPageManager->isSetupActive() && isSetupScaled())
+        {
+            x = (int)((double)x / mSetupScaleFactor);
+            y = (int)((double)y / mSetupScaleFactor);
+        }
+        else if (isScaled())
+        {
+            x = (int)((double)x / mScaleFactor);
+            y = (int)((double)y / mScaleFactor);
+        }
+
+        gPageManager->mouseEvent(x, y, false);
+        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+        std::chrono::nanoseconds difftime = end - mTouchStart;
+        std::chrono::milliseconds msecs = std::chrono::duration_cast<std::chrono::milliseconds>(difftime);
+
+        if (msecs.count() < 100)    // 1/10 of a second
+        {
+            MSG_DEBUG("Time was too short: " << msecs.count());
+            return;
+        }
+
+        x = event->x();
+        y = event->y();
+        bool setupActive = gPageManager->isSetupActive();
+        int width = (setupActive ? scaleSetup(gPageManager->getSystemSettings()->getWidth()) : scale(gPageManager->getSettings()->getWidth()));
+        int height = (setupActive ? scaleSetup(gPageManager->getSystemSettings()->getHeight()) : scale(gPageManager->getSettings()->getHeight()));
+        MSG_DEBUG("Coordinates: x1=" << mTouchX << ", y1=" << mTouchY << ", x2=" << x << ", y2=" << y << ", width=" << width << ", height=" << height);
+
+        if (mTouchX < x && (x - mTouchX) > (width / 3))
+            gPageManager->onSwipeEvent(TPageManager::SW_RIGHT);
+        else if (x < mTouchX && (mTouchX - x) > (width / 3))
+            gPageManager->onSwipeEvent(TPageManager::SW_LEFT);
+        else if (mTouchY < y && (y - mTouchY) > (height / 3))
+            gPageManager->onSwipeEvent(TPageManager::SW_DOWN);
+        else if (y < mTouchY && (mTouchY - y) > (height / 3))
+            gPageManager->onSwipeEvent(TPageManager::SW_UP);
+    }
+}
+
+void MainWindow::mouseMoveEvent(QMouseEvent* event)
+{
+    DECL_TRACER("MainWindow::mouseMoveEvent(QMouseEvent* event)");
+/*
+    QWidget *w = childAt(event->x(), event->y());
+
+    if (w)
+    {
+        MSG_DEBUG("Object " << w->objectName().toStdString() << " is under mouse cursor.");
+        QObject *par = w->parent();
+
+        if (par)
+        {
+            MSG_DEBUG("The parent is " << par->objectName().toStdString());
+
+            if (par->objectName().startsWith("Item_"))
+            {
+                QObject *ppar = par->parent();
+
+                if (ppar)
+                {
+                    MSG_DEBUG("The pparent is " << ppar->objectName().toStdString());
+
+                    if (ppar->objectName().startsWith("View_"))
+                    {
+                        QMouseEvent *mev = new QMouseEvent(event->type(), event->localPos(), event->globalPos(), event->button(), event->buttons(), event->modifiers());
+                        QApplication::postEvent(ppar, mev);
+                        return;
+                    }
+                }
+            }
+        }
+    }
+*/
+}
+
+void MainWindow::keyPressEvent(QKeyEvent *event)
+{
+    DECL_TRACER("MainWindow::keyPressEvent(QKeyEvent *event)");
+
+    if (event && event->key() == Qt::Key_Back && !mToolbar)
+    {
+        QMessageBox msgBox(this);
+        msgBox.setText("Select what to do next:");
+        msgBox.addButton("Quit", QMessageBox::AcceptRole);
+        msgBox.addButton("Setup", QMessageBox::RejectRole);
+        msgBox.addButton("Cancel", QMessageBox::ResetRole);
+        int ret = msgBox.exec();
+
+        if (ret == QMessageBox::Accepted)   // This is correct! QT seems to change here the buttons.
+        {
+            showSetup();
+            return;
+        }
+        else if (ret == QMessageBox::Rejected)  // This is correct! QT seems to change here the buttons.
+            close();
+    }
+}
+
+void MainWindow::keyReleaseEvent(QKeyEvent *event)
+{
+    DECL_TRACER("MainWindow::keyReleaseEvent(QKeyEvent *event)");
+
+    if (event && event->key() == Qt::Key_Back && !mToolbar)
+        return;
 }
 
 /**
@@ -1611,243 +1855,6 @@ void MainWindow::createActions()
     exitAct->setStatusTip(tr("Exit the application"));
 
     addToolBar(Qt::RightToolBarArea, mToolbar);
-}
-
-/**
- * @brief MainWindow::mousePressEvent catches the event Qt::LeftButton.
- *
- * If the user presses the left mouse button somewhere in the main window, this
- * method is triggered. It retrieves the position of the mouse pointer and
- * sends it to the page manager TPageManager.
- *
- * @param event The event
- */
-void MainWindow::mousePressEvent(QMouseEvent* event)
-{
-    DECL_TRACER("MainWindow::mousePressEvent(QMouseEvent* event)");
-
-    if (!gPageManager)
-        return;
-
-    if(event->button() == Qt::LeftButton)
-    {
-        int nx = 0, ny = 0;
-#ifdef Q_OS_IOS
-        if (mHaveNotchPortrait && gPageManager->getSettings()->isPortrait())
-        {
-            nx = mNotchPortrait.left();
-            ny = mNotchPortrait.top();
-        }
-        else if (mHaveNotchLandscape && gPageManager->getSettings()->isLandscape())
-        {
-            nx = mNotchLandscape.left();
-            ny = mNotchLandscape.top();
-        }
-        else
-        {
-            MSG_WARNING("Have no notch distances!");
-        }
-#endif
-        int x = event->x() - nx;
-        int y = event->y() - ny;
-        MSG_DEBUG("Mouse press coordinates: x: " << event->x() << ", y: " << event->y() << " [new x: " << x << ", y: " << y << " -- \"notch\" nx: " << nx << ", ny: " << ny << "]");
-#ifdef Q_OS_IOS
-        MSG_DEBUG("Mouse press coords alt.: pos.x: " << event->position().x() << ", pos.y: " << event->position().y() << ", local.x: " << event->localPos().x() << ", local.y: " << event->localPos().y());
-#elif defined Q_OS_ANDROID
-        MSG_DEBUG("Mouse press coords alt.: pos.x: " << event->pos().x() << ", pos.y: " << event->pos().y() << ", local.x: " << event->localPos().x() << ", local.y: " << event->localPos().y());
-#endif
-        mLastPressX = x;
-        mLastPressY = y;
-
-        QWidget *w = childAt(event->x(), event->y());
-
-        if (w)
-        {
-            MSG_DEBUG("Object " << w->objectName().toStdString() << " is under mouse cursor.");
-            QObject *par = w->parent();
-
-            if (par)
-            {
-                MSG_DEBUG("The parent is " << par->objectName().toStdString());
-
-                if (par->objectName().startsWith("Item_"))
-                {
-                    QObject *ppar = par->parent();
-
-                    if (ppar)
-                    {
-                        MSG_DEBUG("The pparent is " << ppar->objectName().toStdString());
-
-                        if (ppar->objectName().startsWith("View_"))
-                        {
-                            QMouseEvent *mev = new QMouseEvent(event->type(), event->localPos(), event->globalPos(), event->button(), event->buttons(), event->modifiers());
-                            QApplication::postEvent(ppar, mev);
-                            return;
-                        }
-                    }
-                }
-            }
-        }
-
-        if (gPageManager->isSetupActive() && isSetupScaled())
-        {
-            x = (int)((double)x / mSetupScaleFactor);
-            y = (int)((double)y / mSetupScaleFactor);
-        }
-        else if (isScaled())
-        {
-            x = (int)((double)x / mScaleFactor);
-            y = (int)((double)y / mScaleFactor);
-        }
-
-        gPageManager->mouseEvent(x, y, true);
-        mTouchStart = std::chrono::steady_clock::now();
-        mTouchX = mLastPressX;
-        mTouchY = mLastPressY;
-    }
-    else if (event->button() == Qt::MiddleButton)
-        settings();
-}
-
-/**
- * @brief MainWindow::mouseReleaseEvent catches the event Qt::LeftButton.
- *
- * If the user releases the left mouse button somewhere in the main window, this
- * method is triggered. It retrieves the position of the mouse pointer and
- * sends it to the page manager TPageManager.
- *
- * @param event The event
- */
-void MainWindow::mouseReleaseEvent(QMouseEvent* event)
-{
-    DECL_TRACER("MainWindow::mouseReleaseEvent(QMouseEvent* event)");
-
-    if (!gPageManager)
-        return;
-
-    if(event->button() == Qt::LeftButton)
-    {
-        int nx = 0, ny = 0;
-#ifdef Q_OS_IOS
-        if (mHaveNotchPortrait && gPageManager->getSettings()->isPortrait())
-        {
-            nx = mNotchPortrait.left();
-            ny = mNotchPortrait.top();
-        }
-        else if (mHaveNotchLandscape && gPageManager->getSettings()->isLandscape())
-        {
-            nx = mNotchLandscape.left();
-            ny = mNotchLandscape.top();
-        }
-#endif
-        int x = ((mLastPressX >= 0) ? mLastPressX : (event->x() - nx));
-        int y = ((mLastPressY >= 0) ? mLastPressY : (event->y() - ny));
-        MSG_DEBUG("Mouse press coordinates: x: " << event->x() << ", y: " << event->y());
-        mLastPressX = mLastPressY = -1;
-
-        QWidget *w = childAt(event->x(), event->y());
-
-        if (w)
-        {
-            MSG_DEBUG("Object " << w->objectName().toStdString() << " is under mouse cursor.");
-            QObject *par = w->parent();
-
-            if (par)
-            {
-                MSG_DEBUG("The parent is " << par->objectName().toStdString());
-
-                if (par->objectName().startsWith("Item_"))
-                {
-                    QObject *ppar = par->parent();
-
-                    if (ppar)
-                    {
-                        MSG_DEBUG("The pparent is " << ppar->objectName().toStdString());
-
-                        if (ppar->objectName().startsWith("View_"))
-                        {
-                            QMouseEvent *mev = new QMouseEvent(event->type(), event->localPos(), event->globalPos(), event->button(), event->buttons(), event->modifiers());
-                            QApplication::postEvent(ppar, mev);
-                            return;
-                        }
-                    }
-                }
-            }
-        }
-
-        if (gPageManager->isSetupActive() && isSetupScaled())
-        {
-            x = (int)((double)x / mSetupScaleFactor);
-            y = (int)((double)y / mSetupScaleFactor);
-        }
-        else if (isScaled())
-        {
-            x = (int)((double)x / mScaleFactor);
-            y = (int)((double)y / mScaleFactor);
-        }
-
-        gPageManager->mouseEvent(x, y, false);
-        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-        std::chrono::nanoseconds difftime = end - mTouchStart;
-        std::chrono::milliseconds msecs = std::chrono::duration_cast<std::chrono::milliseconds>(difftime);
-
-        if (msecs.count() < 100)    // 1/10 of a second
-        {
-            MSG_DEBUG("Time was too short: " << msecs.count());
-            return;
-        }
-
-        x = event->x();
-        y = event->y();
-        bool setupActive = gPageManager->isSetupActive();
-        int width = (setupActive ? scaleSetup(gPageManager->getSystemSettings()->getWidth()) : scale(gPageManager->getSettings()->getWidth()));
-        int height = (setupActive ? scaleSetup(gPageManager->getSystemSettings()->getHeight()) : scale(gPageManager->getSettings()->getHeight()));
-        MSG_DEBUG("Coordinates: x1=" << mTouchX << ", y1=" << mTouchY << ", x2=" << x << ", y2=" << y << ", width=" << width << ", height=" << height);
-
-        if (mTouchX < x && (x - mTouchX) > (width / 3))
-            gPageManager->onSwipeEvent(TPageManager::SW_RIGHT);
-        else if (x < mTouchX && (mTouchX - x) > (width / 3))
-            gPageManager->onSwipeEvent(TPageManager::SW_LEFT);
-        else if (mTouchY < y && (y - mTouchY) > (height / 3))
-            gPageManager->onSwipeEvent(TPageManager::SW_DOWN);
-        else if (y < mTouchY && (mTouchY - y) > (height / 3))
-            gPageManager->onSwipeEvent(TPageManager::SW_UP);
-    }
-}
-
-void MainWindow::mouseMoveEvent(QMouseEvent* event)
-{
-    DECL_TRACER("MainWindow::mouseMoveEvent(QMouseEvent* event)");
-
-    QWidget *w = childAt(event->x(), event->y());
-
-    if (w)
-    {
-        MSG_DEBUG("Object " << w->objectName().toStdString() << " is under mouse cursor.");
-        QObject *par = w->parent();
-
-        if (par)
-        {
-            MSG_DEBUG("The parent is " << par->objectName().toStdString());
-
-            if (par->objectName().startsWith("Item_"))
-            {
-                QObject *ppar = par->parent();
-
-                if (ppar)
-                {
-                    MSG_DEBUG("The pparent is " << ppar->objectName().toStdString());
-
-                    if (ppar->objectName().startsWith("View_"))
-                    {
-                        QMouseEvent *mev = new QMouseEvent(event->type(), event->localPos(), event->globalPos(), event->button(), event->buttons(), event->modifiers());
-                        QApplication::postEvent(ppar, mev);
-                        return;
-                    }
-                }
-            }
-        }
-    }
 }
 
 /**
@@ -2896,6 +2903,36 @@ void MainWindow::_showViewButtonItem(ulong handle, ulong parent, int position, i
     }
 }
 
+void MainWindow::_hideAllViewItems(ulong handle)
+{
+    DECL_TRACER("MainWindow::_hideAllViewItems(ulong handle)");
+
+    if (prg_stopped)
+        return;
+
+    emit sigHideAllViewItems(handle);
+}
+
+void MainWindow::_toggleViewButtonItem(ulong handle, ulong parent, int position, int timer)
+{
+    DECL_TRACER("MainWindow::_toggleViewButtonItem(ulong handle, ulong parent, int position, int timer)");
+
+    if (prg_stopped)
+        return;
+
+    emit sigToggleViewButtonItem(handle, parent, position, timer);
+}
+
+void MainWindow::_hideViewItem(ulong handle, ulong parent)
+{
+    DECL_TRACER("MainWindow::_hideViewItem(ulong handle, ulong parent)");
+
+    if (prg_stopped)
+        return;
+
+    emit sigHideViewItem(handle, parent);
+}
+
 void MainWindow::_setVisible(ulong handle, bool state)
 {
     DECL_TRACER("MainWindow::_setVisible(ulong handle, bool state)");
@@ -2904,6 +2941,16 @@ void MainWindow::_setVisible(ulong handle, bool state)
         return;
 
     emit sigSetVisible(handle, state);
+}
+
+void MainWindow::_setSubViewPadding(ulong handle, int padding)
+{
+    DECL_TRACER("MainWindow::_setSubViewPadding(ulong handle, int padding)");
+
+    if (prg_stopped)
+        return;
+
+    emit sigSetSubViewPadding(handle, padding);
 }
 
 void MainWindow::_setPage(ulong handle, int width, int height)
@@ -3796,6 +3843,7 @@ void MainWindow::displayViewButton(ulong handle, ulong parent, bool vertical, TB
         nobj.object.area->setScaleFactor(mScaleFactor);
         nobj.object.area->setSpace(space);
         nobj.object.area->move(nobj.left, nobj.top);
+        nobj.connected = true;
         connect(nobj.object.area, &TQScrollArea::objectClicked, this, &MainWindow::onSubViewItemClicked);
 
         if (!addObject(nobj))
@@ -3815,7 +3863,7 @@ void MainWindow::displayViewButton(ulong handle, ulong parent, bool vertical, TB
     {
         MSG_DEBUG("Object " << handleToString(handle) << " of type " << TObject::objectToString(obj->type) << " found!");
 
-        if (obj->object.area)
+        if (obj->object.area && !obj->connected)
             reconnectArea(obj->object.area);
     }
 
@@ -3951,11 +3999,52 @@ void MainWindow::showViewButtonItem(ulong handle, ulong parent, int position, in
     par->object.area->showItem(handle, position);
 }
 
+void MainWindow::toggleViewButtonItem(ulong handle, ulong parent, int position, int timer)
+{
+    DECL_TRACER("MainWindow::toggleViewButtonItem(ulong handle, ulong parent, int position, int timer)");
+
+    Q_UNUSED(timer);
+
+    OBJECT_t *par = findObject(parent);
+
+    if (!par || par->type != OBJ_SUBVIEW || !par->object.area)
+    {
+        MSG_ERROR("No object with handle " << handleToString(parent) << " found for update or object is not a subview list!");
+        return;
+    }
+
+    par->object.area->showItem(handle, position);
+}
+
+void MainWindow::hideAllViewItems(ulong handle)
+{
+    DECL_TRACER("MainWindow::hideAllViewItems(ulong handle)");
+
+    OBJECT_t *obj = findObject(handle);
+
+    if (!obj || obj->type != OBJ_SUBVIEW || !obj->object.area)
+        return;
+
+    obj->object.area->hideAllItems();
+}
+
+void MainWindow::hideViewItem(ulong handle, ulong parent)
+{
+    DECL_TRACER("MainWindow::hideViewItem(ulong handle, ulong parent)");
+
+    OBJECT_t *obj = findObject(parent);
+
+    if (!obj || obj->type != OBJ_SUBVIEW || !obj->object.area)
+        return;
+
+    obj->object.area->hideItem(handle);
+}
+
 void MainWindow::SetVisible(ulong handle, bool state)
 {
     DECL_TRACER("MainWindow::SetVisible(ulong handle, bool state)");
 
-    TObject::OBJECT_t *obj = findObject(handle);
+    OBJECT_t *obj = findObject(handle);
 
     if (!obj)
     {
@@ -3963,10 +4052,15 @@ void MainWindow::SetVisible(ulong handle, bool state)
         return;
     }
 
-    if (obj->type == TObject::OBJ_BUTTON && obj->object.label)
+    if (obj->type == OBJ_BUTTON && obj->object.label)
     {
-        MSG_DEBUG("Setting object " << handleToString(handle) << " visibility to " << (state ? "TRUE" : "FALSE"));
         obj->object.label->setVisible(state);
+        obj->invalid = false;
+        obj->remove = false;
+    }
+    else if (obj->type == OBJ_SUBVIEW && obj->object.area)
+    {
+        obj->object.area->setVisible(state);
         obj->invalid = false;
         obj->remove = false;
     }
@@ -3974,6 +4068,24 @@ void MainWindow::SetVisible(ulong handle, bool state)
     {
         MSG_DEBUG("Ignoring non button object " << handleToString(handle));
     }
+}
+
+void MainWindow::setSubViewPadding(ulong handle, int padding)
+{
+    DECL_TRACER("MainWindow::setSubViewPadding(ulong handle, int padding)");
+
+    OBJECT_t *obj = findObject(handle);
+
+    if (!obj)
+    {
+        MSG_ERROR("Object " << handleToString(handle) << " not found!");
+        return;
+    }
+
+    if (obj->type != OBJ_SUBVIEW || !obj->object.area)
+        return;
+
+    obj->object.area->setSpace(padding);
 }
 
 /**
@@ -4502,7 +4614,6 @@ void MainWindow::dropPage(ulong handle)
 
 void MainWindow::dropSubPage(ulong handle)
 {
-    TLOCKER(draw_mutex);
     DECL_TRACER("MainWindow::dropSubPage(ulong handle)");
 
     OBJECT_t *obj = findObject(handle);
@@ -5594,7 +5705,6 @@ void MainWindow::runEvents()
 
 void MainWindow::onSubViewItemClicked(ulong handle, bool pressed)
 {
-    TLOCKER(click_mutex);
     DECL_TRACER("MainWindow::onSubViewItemClicked(ulong handle)");
 
     if (!handle)

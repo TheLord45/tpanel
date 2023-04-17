@@ -23,7 +23,7 @@ android: {
 versionAtMost(QT_VERSION, 5.15.2) {
 QT = core gui widgets multimedia multimediawidgets sensors androidextras
 } else {
-QT = core gui widgets multimedia multimediawidgets sensors
+QT = core gui widgets multimedia multimediawidgets sensors positioning
 }}
 
 # The main application
@@ -325,6 +325,7 @@ equals(OS,iossim) {
 #  * _OPAQUE_SKIA_  If set (default) the calculation for the opaque value is
 #                   done by Skia. This works well but leaves a gray tinge.
 #                   The Qt calculation is currently not working!
+#                   THIS IS DEPRECATED AND WILL BE REMOVED!
 #
 #  * QTSETTINGS     If this is set a Qt dialog is used for the settings. This
 #                   dialog is scaled depending on the size of the screen. It
@@ -335,6 +336,7 @@ equals(OS,iossim) {
 #                   a platform specific setup. For all other platforms the
 #                   Qt dialog settings are used and it is not necessary to set
 #                   this variable!
+#                   THIS IS DEPRECATED AND WILL BE REMOVED!
 #
 DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x050F00 _OPAQUE_SKIA_
 
@@ -360,15 +362,13 @@ android: {
         android/gradle/wrapper/gradle-wrapper.jar \
         android/gradle/wrapper/gradle-wrapper.properties \
         android/gradlew \
-        android/gradlew.bat \
-        android/res/values/libs.xml \
         android/res/layout/settings_activity.xml \
+        android/res/xml/root_preferences.xml \
+        android/res/values/libs.xml \
         android/res/values/arrays.xml \
         android/res/values/strings.xml \
         android/res/values/styles.xml \
-        android/res/values/themes.xml \
-        android/res/xml/root_preferences.xml
-
+        android/res/values/themes.xml
 
     ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
     CONFIG += sdk_no_version_check
@@ -380,7 +380,3 @@ android: {
 
 # Add the ftp library
 DEPENDPATH += $$PWD/ftplib
-
-DISTFILES += \
-    android/src/org/qtproject/theosys/HideToolbar.java \
-    android/src/org/qtproject/theosys/Settings.java

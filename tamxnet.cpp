@@ -1230,45 +1230,51 @@ bool TAmxNet::sendCommand(const ANET_SEND& s)
         break;
 
         case 0x008a:        // level value changed
-            com.data.message_value.device = com.device2;
-            com.data.message_value.port = s.port;
-            com.data.message_value.system = com.system;
-            com.data.message_value.value = s.level;
-            com.data.message_value.type = 0x20;     // unsigned integer
-            com.data.message_value.content.integer = s.value;
-            com.hlen = 0x0016 - 0x0003 + 11;
-            MSG_DEBUG("SEND: LEVEL-" << s.value << "," << s.level << ":" << s.port << ":" << com.device2);
-            comStack.push_back(com);
-            mSendReady = true;
+            if (gPageManager && gPageManager->getLevelSendState())
+            {
+                com.data.message_value.device = com.device2;
+                com.data.message_value.port = s.port;
+                com.data.message_value.system = com.system;
+                com.data.message_value.value = s.level;
+                com.data.message_value.type = 0x20;     // unsigned integer
+                com.data.message_value.content.integer = s.value;
+                com.hlen = 0x0016 - 0x0003 + 11;
+                MSG_DEBUG("SEND: LEVEL-" << s.value << "," << s.level << ":" << s.port << ":" << com.device2);
+                comStack.push_back(com);
+                mSendReady = true;
+            }
         break;
 
         case 0x008b:        // string command
         case 0x008c:        // send command string
-            com.data.message_string.device = com.device2;
-            com.data.message_string.port = s.port;
-            com.data.message_string.system = com.system;
-            com.data.message_string.type = 0x01;    // char string
-
-            if (s.msg.length() >= sizeof(com.data.message_string.content))
-                len = sizeof(com.data.message_string.content) - 1;
-            else
-                len = s.msg.length();
-
-            com.data.message_string.length = len;
-            strncpy((char *)&com.data.message_string.content[0], s.msg.c_str(), len);
-            com.hlen = 0x0016 - 3 + 9 + len;
-
-            if (s.MC == 0x008b)
+            if (gPageManager && gPageManager->getRxSendState())
             {
-                MSG_DEBUG("SEND: STRING-'" << s.msg << "'," << s.port << ":" << com.device2);
-            }
-            else
-            {
-                MSG_DEBUG("SEND: COMMAND-'" << s.msg << "'," << s.port << ":" << com.device2);
-            }
+                com.data.message_string.device = com.device2;
+                com.data.message_string.port = s.port;
+                com.data.message_string.system = com.system;
+                com.data.message_string.type = 0x01;    // char string
 
-            comStack.push_back(com);
-            mSendReady = true;
+                if (s.msg.length() >= sizeof(com.data.message_string.content))
+                    len = sizeof(com.data.message_string.content) - 1;
+                else
+                    len = s.msg.length();
+
+                com.data.message_string.length = len;
+                strncpy((char *)&com.data.message_string.content[0], s.msg.c_str(), len);
+                com.hlen = 0x0016 - 3 + 9 + len;
+
+                if (s.MC == 0x008b)
+                {
+                    MSG_DEBUG("SEND: STRING-'" << s.msg << "'," << s.port << ":" << com.device2);
+                }
+                else
+                {
+                    MSG_DEBUG("SEND: COMMAND-'" << s.msg << "'," << s.port << ":" << com.device2);
+                }
+
+                comStack.push_back(com);
+                mSendReady = true;
+            }
         break;
 
         case 0x008d:    // Custom event

@@ -31,6 +31,7 @@
 #include "tconfig.h"
 #include "tresources.h"
 #include "tpagemanager.h"
+#include "tintborder.h"
 #include "terror.h"
 
 using std::string;
@@ -169,6 +170,21 @@ bool TPageInterface::drawFrame(PAGE_T& pinfo, SkBitmap* bm)
     {
         MSG_DEBUG("No border defined.");
         return false;
+    }
+
+    // First we look into our internal border table
+    Border::TIntBorder *intBorder = new Border::TIntBorder;
+
+    if (intBorder && intBorder->drawBorder(bm, pinfo.sr[instance].bs, pinfo.width, pinfo.height, pinfo.sr[instance].cb))
+    {
+        delete intBorder;
+        return true;
+    }
+
+    if (intBorder)
+    {
+        delete intBorder;
+        intBorder = nullptr;
     }
 
     // Try to find the border in the system table

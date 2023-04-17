@@ -21,7 +21,8 @@
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 #include <QAudioOutput>
 #elif QT_VERSION >= QT_VERSION_CHECK(6, 0, 0) && defined(Q_OS_ANDROID)
-#include <QtCore/private/qandroidextras_p.h>
+#include <QJniObject>
+//#include <QtCore/private/qandroidextras_p.h>
 #endif
 #include <QScreen>
 #include <QGuiApplication>
