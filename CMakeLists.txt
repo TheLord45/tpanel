@@ -123,6 +123,7 @@ set(SOURCES tmain.cpp
 			tqkeypad.cpp
 			tqtphone.cpp
 			tqemitqueue.cpp
+			tqgesturefilter.cpp
 			tamxnet.cpp
 			tamxcommands.cpp
 			tmap.cpp
@@ -152,6 +153,7 @@ set(SOURCES tmain.cpp
 			tqscrollarea.cpp
 			tbitmap.cpp
 			tintborder.cpp
+			testmode.cpp
 			tpanel.qrc)
 
 add_executable(tpanel ${SOURCES})
@@ -160,6 +162,7 @@ add_definitions(-D_REENTRANT)
 add_definitions(-D_GNU_SOURCE)
 add_definitions(-DPJ_AUTOCONF)
 add_definitions(-D_OPAQUE_SKIA_)
+add_definitions(-DTESTMODE=1)
 add_definitions(${Qt6Widgets_DEFINITIONS})
 add_compile_definitions(QT_DISABLE_DEPRECATED_BEFORE=0x050F00)
 include_directories(/usr/local/include/skia)

@@ -99,7 +99,7 @@ void TExternal::initialize()
     size_t index = 0;
     size_t oldIndex = 0;
 
-    if ((index = xml.getElementIndex("externalButtons", &depth)) == TExpat::npos)
+    if (xml.getElementIndex("externalButtons", &depth) == TExpat::npos)
     {
         MSG_ERROR("Element \"externalButtons\" was not found!");
         TError::setError();

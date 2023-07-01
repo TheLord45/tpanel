@@ -202,13 +202,17 @@ string TExpat::getElement(const string &name, int depth, bool *valid)
     vector<_ELEMENT_t>::iterator iter, startElement;
     bool start = false;
 
-    if (mElements.size() > 0 && mLastIter != mElements.end())
+    if (!mElements.empty() && mLastIter != mElements.end())
         startElement = mLastIter;
-    else if (mElements.size() > 0)
+    else if (!mElements.empty())
         startElement = mElements.begin();
     else
     {
         MSG_DEBUG("Have no elements in queue!");
+
+        if (valid)
+            *valid = false;
+
         return string();
     }
 
@@ -286,7 +290,7 @@ double TExpat::getElementDouble(const string &name, int depth, bool *valid)
 {
     DECL_TRACER("TExpat::getElementDouble(const string &name, int depth, bool *valid)");
 
-    bool val;
+    bool val = false;
     string erg = getElement(name, depth, &val);
 
     if (valid)

@@ -22,6 +22,9 @@
 #include "tresources.h"
 #include "tconfig.h"
 #include "texpat++.h"
+#if TESTMODE == 1
+#include "testmode.h"
+#endif
 
 #include <string>
 #include <vector>
@@ -251,6 +254,7 @@ CMD_DEFINATIONS cmdDefinations[] = {
     { "^SHD", true, true, ',' },
     { "^SSH", true, true, ',' },
     { "^STG", true, true, ',' },
+    { "^MUT", false, true, ',' },
     { "", false, false, '\0' }
 };
 
@@ -520,6 +524,9 @@ bool TAmxCommands::parseCommand(int device, int port, const string& cmd)
     }
 
     MSG_WARNING("Command \"" << cmd << "\" currently not supported!");
+#if TESTMODE == 1
+    __done = true;
+#endif
     return false;
 }
 

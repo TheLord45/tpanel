@@ -54,6 +54,7 @@ HEADERS = \
    $$PWD/tpalette.h \
    $$PWD/tprjresources.h \
    $$PWD/tqtmain.h \
+   $$PWD/testmode.h \
    $$PWD/tqtsettings.h \
    $$PWD/tresources.h \
    $$PWD/tsettings.h \
@@ -89,7 +90,8 @@ HEADERS = \
    $$PWD/tlock.h \
    $$PWD/ftplib/ftplib.h \
    $$PWD/tqsingleline.h \
-   tqmultiline.h
+   $$PWD/tqgesturefilter.h \
+   $$PWD/tqmultiline.h
 
 SOURCES = \
    $$PWD/base64.cpp \
@@ -108,6 +110,7 @@ SOURCES = \
    $$PWD/ticons.cpp \
    $$PWD/timagerefresh.cpp \
    $$PWD/tmain.cpp \
+   $$PWD/testmode.cpp \
    $$PWD/tnameformat.cpp \
    $$PWD/tobject.cpp \
    $$PWD/tpage.cpp \
@@ -151,7 +154,8 @@ SOURCES = \
    $$PWD/tintborder.cpp \
    $$PWD/ftplib/ftplib.cpp \
    $$PWD/tqsingleline.cpp \
-   tqmultiline.cpp
+   $$PWD/tqgesturefilter.cpp \
+   $$PWD/tqmultiline.cpp
 
 android: {
 OTHER_FILES += \

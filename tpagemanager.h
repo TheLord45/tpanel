@@ -838,6 +838,7 @@ class TPageManager : public TAmxCommands
         void doSetup(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doShutdown(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doSOU(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doMUT(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doTKP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doVKB(int port, std::vector<int>& channels, std::vector<std::string>& pars);
 #ifndef _NOSIP_

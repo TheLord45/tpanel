@@ -490,7 +490,6 @@ bool TObject::enableObject(ulong handle)
 {
     DECL_TRACER("TObject::enableObject(ulong handle)");
 
-    TLOCKER(mutex_obj);
     map<ulong, OBJECT_t>::iterator iter = mObjects.find(handle);
 
     if (iter != mObjects.end())
@@ -502,6 +501,7 @@ bool TObject::enableObject(ulong handle)
             return false;
         }
 
+        TLOCKER(mutex_obj);
         iter->second.remove = false;
         iter->second.invalid = false;
 

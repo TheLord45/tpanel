@@ -23,13 +23,9 @@
 
 #include "tconfig.h"
 #include "terror.h"
-//#include "tsettings.h"
-//#include "tpagelist.h"
-//#include "tpage.h"
-//#include "tsubpage.h"
 #include "tpagemanager.h"
 #include "tqtmain.h"
-
+#include "testmode.h"
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
 #include <QStandardPaths>
 #endif
@@ -163,11 +159,21 @@ void usage()
 {
 #if not defined(Q_OS_ANDROID) && not defined(Q_OS_IOS)
     cout << TConfig::getProgName() << " version " <<  VERSION_STRING() << endl << endl;
+#if TESTMODE == 1
+    cout << "Usage: tpanel [-c <config file>] [-t]" << endl;
+#else
     cout << "Usage: tpanel [-c <config file>]" << endl;
+#endif
     cout << "-c | --config-file <file> The path and name of the configuration file." << endl;
     cout << "                          This parameter is optional. If it is omitted," << endl;
     cout << "                          The standard path is searched for the" << endl;
     cout << "                          configuration file." << endl << endl;
+#if TESTMODE == 1
+    cout << "-t | --test-mode          Opens all files in the local directory with the" << endl;
+    cout << "                          extension .tst and executes the content. It" << endl;
+    cout << "                          prints detailed information about the status of" << endl;
+    cout << "                          each test." << endl << endl;
+#endif
     cout << "-h | --help               This help." << endl << endl;
 #endif
 }
@@ -266,6 +272,7 @@ bool _startUp(int, int argc, char *argv[])
 int main(int argc, char *argv[])
 {
     string configFile;
+    string testPath;
     int oldArgc = argc;
 #if not defined(Q_OS_ANDROID) && not defined(Q_OS_IOS)
     string pname = *argv;
@@ -283,7 +290,30 @@ int main(int argc, char *argv[])
     TConfig::setProgName(pname);    // Remember the name of this application.
 #if not defined(Q_OS_ANDROID) && not defined(Q_OS_IOS)
     InputParser input(&argc, argv); // Parse the command line parameters.
+#if TESTMODE == 1
+    if (input.cmdOptionExists("-t") || input.cmdOptionExists("--test-mode"))
+    {
+        testPath = input.getCmdOption("-t");
 
+        if (testPath.empty())
+            testPath = input.getCmdOption("--test-mode");
+
+        if (testPath.empty())
+        {
+            banner(pname);
+            std::cerr << "Missing the path where the test cases are!" << std::endl;
+            usage();
+            return 1;
+        }
+
+        _testmode = true;
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_INFO, "tpanel", "Testmode enabled!");
+#else
+        cout << "Testmod enabled" << endl;
+#endif
+    }
+#endif
     // Evaluate the command line parameters.
     if (input.cmdOptionExists("-h") || input.cmdOptionExists("--help"))
     {
@@ -308,7 +338,7 @@ int main(int argc, char *argv[])
         }
     }
 #endif
-    if (haveParameters && configFile.empty())
+    if (!_testmode && haveParameters && configFile.empty())
     {
 #ifdef __ANDROID__
         __android_log_print(ANDROID_LOG_ERROR, "tpanel", "Unknown command line parameter found!");
@@ -318,7 +348,13 @@ int main(int argc, char *argv[])
         usage();
         return 1;
     }
-
+#if TESTMODE == 1
+    else if (_testmode)
+    {
+        configFile = testPath + "/testconfig.cfg";
+        _gTestMode = new _TestMode(testPath);
+    }
+#endif
     TError::clear();                    // Clear all errors (initialize)
     TConfig config(configFile);         // Read the configuration file.
 

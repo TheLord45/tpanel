@@ -51,6 +51,17 @@ namespace amx
 #define WAIT_RESET          3   // Number of seconds to wait in case of connecting to another controller
 #define WAIT_RECONNECT      15  // Number of seconds to wait in case of reconnecting to the same controller
 
+#define DTSZ_STRING         0x01    // ASCII string (8 bit)
+#define DTSZ_WSTRING        0x02    // Wide string (16 bit)
+#define DTSZ_BYTE           0x10    // Byte (8 bit unsigned)
+#define DTSZ_CHAR           0x11    // Byte (8 bit signed)
+#define DTSZ_UINT           0x20    // Word (16 bit unsigned)
+#define DTSZ_INT            0x21    // Word (16 bit signed)
+#define DTSZ_LUINT          0x40    // DWORD (32 bit unsigned)
+#define DTSZ_LINTT          0x41    // DWORD (32 bit signed)
+#define DTSZ_FLOAT          0x4f    // FLOAT (32 bit)
+#define DTSZ_DOUBLE         0x8f    // DOUBLE (32/64 bit)
+
     typedef struct ANET_SEND
     {
         uint16_t device{0};     // Device ID of panel

@@ -81,6 +81,9 @@ namespace fs = std::filesystem;
 #ifdef Q_OS_IOS
 #include "ios/tiosbattery.h"
 #endif
+#if TESTMODE == 1
+#include "testmode.h"
+#endif
 
 using std::vector;
 using std::string;
@@ -998,6 +1001,7 @@ TPageManager::TPageManager()
     REG_CMD(doShutdown, "SHUTDOWN");// Shut down the App
     REG_CMD(doSOU, "@SOU");     // Play a sound file.
     REG_CMD(doSOU, "^SOU");     // G5: Play a sound file.
+    REG_CMD(doMUT, "^MUT");     // G5: Panel Volume Mute
     REG_CMD(doTKP, "@TKP");     // Present a telephone keypad.
     REG_CMD(doTKP, "^TKP");     // G5: Bring up a telephone keypad.
     REG_CMD(doTKP, "@VKB");     // Present a virtual keyboard
@@ -9560,8 +9564,15 @@ void TPageManager::doABEEP(int, std::vector<int>&, vector<string>&)
     string snd = TConfig::getSystemPath(TConfig::SOUNDS) + "/" + TConfig::getSingleBeepSound();
     TValidateFile vf;
 
-    if (_playSound && vf.isValidFile(snd))
+    if (vf.isValidFile(snd))
         _playSound(snd);
+#if TESTMODE == 1
+    else
+    {
+        MSG_PROTOCOL("Sound file invalid!");
+        __done = true;
+    }
+#endif
 }
 
 void TPageManager::doADBEEP(int, std::vector<int>&, vector<string>&)
@@ -9574,8 +9585,15 @@ void TPageManager::doADBEEP(int, std::vector<int>&, vector<string>&)
     string snd = TConfig::getSystemPath(TConfig::SOUNDS) + "/" + TConfig::getDoubleBeepSound();
     TValidateFile vf;
 
-    if (_playSound && vf.isValidFile(snd))
+    if (vf.isValidFile(snd))
         _playSound(snd);
+#if TESTMODE == 1
+    else
+    {
+        MSG_PROTOCOL("Sound file invalid!");
+        __done = true;
+    }
+#endif
 }
 
 void TPageManager::doBEEP(int, std::vector<int>&, vector<string>&)
@@ -9583,14 +9601,35 @@ void TPageManager::doBEEP(int, std::vector<int>&, vector<string>&)
     DECL_TRACER("TPageManager::doBEEP(int, std::vector<int>&, vector<string>&)");
 
     if (!_playSound)
+    {
+#if TESTMODE == 1
+        MSG_PROTOCOL("Method \"playSound()\" not initialized!");
+        __done = true;
+#endif
         return;
+    }
 
     string snd = TConfig::getSystemPath(TConfig::SOUNDS) + "/" + TConfig::getSingleBeepSound();
     TValidateFile vf;
     TSystemSound sysSound(TConfig::getSystemPath(TConfig::SOUNDS));
 
-    if (_playSound && sysSound.getSystemSoundState() && vf.isValidFile(snd))
+    if (sysSound.getSystemSoundState() && vf.isValidFile(snd))
         _playSound(snd);
+#if TESTMODE == 1
+    else
+    {
+        if (!sysSound.getSystemSoundState())
+        {
+            MSG_PROTOCOL("Sound state disabled!")
+        }
+        else
+        {
+            MSG_PROTOCOL("Sound file invalid!");
+        }
+
+        __done = true;
+    }
+#endif
 }
 
 void TPageManager::doDBEEP(int, std::vector<int>&, vector<string>&)
@@ -9604,8 +9643,23 @@ void TPageManager::doDBEEP(int, std::vector<int>&, vector<string>&)
     TValidateFile vf;
     TSystemSound sysSound(TConfig::getSystemPath(TConfig::SOUNDS));
 
-    if (_playSound && sysSound.getSystemSoundState() && vf.isValidFile(snd))
+    if (sysSound.getSystemSoundState() && vf.isValidFile(snd))
         _playSound(snd);
+#if TESTMODE == 1
+    else
+    {
+        if (!sysSound.getSystemSoundState())
+        {
+            MSG_PROTOCOL("Sound state disabled!")
+        }
+        else
+        {
+            MSG_PROTOCOL("Sound file invalid!");
+        }
+
+        __done = true;
+    }
+#endif
 }
 
 /**
@@ -9719,6 +9773,36 @@ void TPageManager::doSOU(int, vector<int>&, vector<string>& pars)
         return;
 
     _playSound(pars[0]);
+}
+
+void TPageManager::doMUT(int, vector<int>&, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doMUT(int, vector<int>&, vector<string>& pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("^MUT: Expecting a state parameter! Ignoring command.");
+        return;
+    }
+
+    bool mute = 0;
+
+    if (pars[0] == "0")
+        mute = false;
+    else
+        mute = true;
+
+    TConfig::setMuteState(mute);
+#if TESTMODE == 1
+    if (_gTestMode)
+    {
+        bool st = TConfig::getMuteState();
+        _gTestMode->setResult(st ? "1" : "0");
+    }
+
+    __success = true;
+    __done = true;
+#endif
 }
 
 /**

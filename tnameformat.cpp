@@ -234,11 +234,10 @@ char *TNameFormat::EncodeTo(char* buf, size_t *len, const string& str, const str
 
 	char *out_buf = buf;
 	size_t out_left = *len - 1;
-	size_t new_len;
 
 	do
 	{
-		if ((new_len = iconv(cd, &in_buf, &in_left, &out_buf, &out_left)) == (size_t) -1)
+		if (iconv(cd, &in_buf, &in_left, &out_buf, &out_left) == (size_t) -1)
 		{
 			MSG_ERROR("iconv failed: " << strerror(errno));
 			TError::setError();

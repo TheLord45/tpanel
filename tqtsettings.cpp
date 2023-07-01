@@ -548,8 +548,9 @@ void TQtSettings::doResize()
                             {
                                 QComboBox *cb = dynamic_cast<QComboBox *>(on);
                                 scaleObject(cb);
-                                QFont font = cb->font();
 #ifdef __ANDROID__
+                                QFont font = cb->font();
+
                                 if (font.pixelSize() > 0)
                                 {
                                     cb->setPalette(qt_fusionPalette());

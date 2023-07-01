@@ -27,6 +27,7 @@
 #include "tobject.h"
 #include "tqemitqueue.h"
 #include "tpagelist.h"
+#include "tqgesturefilter.h"
 
 extern bool prg_stopped;
 extern std::atomic<bool> killed;
@@ -163,7 +164,6 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
         void mouseMoveEvent(QMouseEvent* event) override;
         void keyPressEvent(QKeyEvent *event) override;
         void keyReleaseEvent(QKeyEvent *event) override;
-        bool eventFilter(QObject *, QEvent *ev) override;
 
     private slots:
         void settings();
@@ -261,6 +261,7 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
         void onInputChanged(ulong handle, std::string& text);
         void onFocusChanged(ulong handle, bool in);
         void onCursorChanged(ulong handle, int oldPos, int newPos);
+        void onGestureEvent(QObject *obj, QGestureEvent *event);
         QPixmap scaleImage(QPixmap& pix);
         QPixmap scaleImage(unsigned char *buffer, int width, int height, int pixline);
 
@@ -370,6 +371,7 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
         QOrientationSensor *mSensor{nullptr};   // Basic sensor for orientation
         QMediaPlayer *mMediaPlayer{nullptr};// Class to play sound files.
         TQtWait *mWaitBox{nullptr};         // This is a wait dialog.
+        TQGestureFilter *mGestureFilter{nullptr};   // This handles the pinch and swipe gestures
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
         QGeoPositionInfoSource *mSource{nullptr};   // The geo location is used on IOS to keep app running in background
         QAudioOutput *mAudioOutput{nullptr};

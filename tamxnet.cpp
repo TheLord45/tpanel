@@ -75,7 +75,7 @@ string cmdList[] =
     "^ABP-", "^ADB", "^SOU-", "^STP", "^TKP-", "^PGE-", "^PPA-", "^PPF-",
     "^PPG-", "^PPK-", "^PPM-", "^PPN-", "^PPT-", "^PPX", "^UTF-", "^LVC-",
     "^LVD-", "^LVE-", "^LVF-", "^LVL-", "^LVM-", "^LVN-", "^LVR-", "^LVS-",
-    "\0"
+    "^MUT-", "\0"
 };
 
 #define NUMBER_CMDS     144
@@ -1236,7 +1236,7 @@ bool TAmxNet::sendCommand(const ANET_SEND& s)
                 com.data.message_value.port = s.port;
                 com.data.message_value.system = com.system;
                 com.data.message_value.value = s.level;
-                com.data.message_value.type = 0x20;     // unsigned integer
+                com.data.message_value.type = DTSZ_UINT;     // unsigned integer
                 com.data.message_value.content.integer = s.value;
                 com.hlen = 0x0016 - 0x0003 + 11;
                 MSG_DEBUG("SEND: LEVEL-" << s.value << "," << s.level << ":" << s.port << ":" << com.device2);
@@ -1252,7 +1252,7 @@ bool TAmxNet::sendCommand(const ANET_SEND& s)
                 com.data.message_string.device = com.device2;
                 com.data.message_string.port = s.port;
                 com.data.message_string.system = com.system;
-                com.data.message_string.type = 0x01;    // char string
+                com.data.message_string.type = DTSZ_STRING;    // char string
 
                 if (s.msg.length() >= sizeof(com.data.message_string.content))
                     len = sizeof(com.data.message_string.content) - 1;
@@ -1330,7 +1330,7 @@ bool TAmxNet::sendCommand(const ANET_SEND& s)
             com.data.sendSize.device = com.device2;
             com.data.sendSize.port = s.port;
             com.data.sendSize.system = com.system;
-            com.data.sendSize.type = 0x01;
+            com.data.sendSize.type = DTSZ_STRING;
             com.data.sendSize.length = s.value;
             com.hlen = 0x0016 - 3 + 9;
             comStack.push_back(com);
@@ -1359,7 +1359,7 @@ bool TAmxNet::sendCommand(const ANET_SEND& s)
             com.data.sendStatusCode.port = s.port;
             com.data.sendStatusCode.system = com.system;
             com.data.sendStatusCode.status = 0;
-            com.data.sendStatusCode.type = 0x11;
+            com.data.sendStatusCode.type = DTSZ_CHAR;
             com.data.sendStatusCode.length = 2;
             com.data.sendStatusCode.str[0] = 'O';
             com.data.sendStatusCode.str[1] = 'K';

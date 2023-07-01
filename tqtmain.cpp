@@ -101,6 +101,9 @@
 #include "ios/tiosrotate.h"
 #include "ios/tiosbattery.h"
 #endif
+#if TESTMODE == 1
+#include "testmode.h"
+#endif
 
 #if __cplusplus < 201402L
 #   error "This module requires at least C++14 standard!"
@@ -388,7 +391,8 @@ MainWindow::MainWindow()
         EXCEPTFATALMSG("The class TPageManager was not initialized!");
     }
 
-#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+    mGestureFilter = new TQGestureFilter(this);
+    connect(mGestureFilter, &TQGestureFilter::gestureEvent, this, &MainWindow::onGestureEvent);
     setAttribute(Qt::WA_AcceptTouchEvents, true);   // We accept touch events
     grabGesture(Qt::PinchGesture);                  // We use a pinch gesture to open the settings dialog
     grabGesture(Qt::SwipeGesture);                  // We support swiping also
@@ -415,7 +419,6 @@ MainWindow::MainWindow()
         }
     }
 #endif  // Q_OS_IOS
-#endif  // defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
 
     // We create the central widget here to make sure the application
     // initializes correct. On mobiles the whole screen is used while on
@@ -834,6 +837,12 @@ MainWindow::~MainWindow()
     if (mIosRotate)
         delete mIosRotate;
 #endif
+
+    if (mGestureFilter)
+    {
+        disconnect(mGestureFilter, &TQGestureFilter::gestureEvent, this, &MainWindow::onGestureEvent);
+        delete mGestureFilter;
+    }
 }
 
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
@@ -1139,38 +1148,130 @@ void MainWindow::closeEvent(QCloseEvent *event)
 }
 
 /**
- * @brief MainWindow::eventFilter filters the QEvent::MouseMove event
- * Beside the filtering of the MouseEvent, it waits for a gesture and
- * call the method gestureEvent() which handles the gesture and opens the
- * setting dialog.
- * @param obj   The object where the event occured.
- * @param event The event.
- * @return `true` when the event should be ignored.
+ * @brief MainWindow::event Looks for a gesture
+ * @param event The event occured
+ * @return TRUE if event was accepted
  */
-bool MainWindow::eventFilter(QObject *obj, QEvent *event)
+bool MainWindow::event(QEvent* event)
 {
-    ulong handle = 0;
+    if (event->type() == QEvent::Gesture)
+        return gestureEvent(static_cast<QGestureEvent*>(event));
 
-    if (obj)
+    return QMainWindow::event(event);
+}
+
+/**
+ * @brief MainWindow::gestureEvent handles a pinch event
+ * If a pinch event occured where the scale factor increased, the settings
+ * dialog is called. This exists for devices, where the left toolbox is not
+ * visible.
+ * @param event The guesture occured
+ * @return FALSE
+ */
+bool MainWindow::gestureEvent(QGestureEvent* event)
+{
+    DECL_TRACER("MainWindow::gestureEvent(QGestureEvent* event)");
+
+    if (QGesture *pinch = event->gesture(Qt::PinchGesture))
     {
-        if ((handle = extractHandle(obj->objectName().toStdString())) != 0)
-        {
-            OBJECT_t *o = findObject(handle);
+        QPinchGesture *pg = static_cast<QPinchGesture *>(pinch);
+#ifdef QT_DEBUG
+        string gs;
 
-            if (o && o->type == OBJ_SUBVIEW)
-            {
-                MSG_DEBUG("Event of object " << handleToString(handle) << " was not filtered out.");
-                return false;
-            }
+        switch(pg->state())
+        {
+            case Qt::NoGesture:         gs.assign("no gesture"); break;
+            case Qt::GestureStarted:    gs.assign("gesture started"); break;
+            case Qt::GestureUpdated:    gs.assign("gesture updated"); break;
+            case Qt::GestureFinished:   gs.assign("gesture finished"); break;
+            case Qt::GestureCanceled:   gs.assign("gesture canceled"); break;
         }
-        else
+
+        MSG_DEBUG("PinchGesture state " << gs << " detected");
+#endif
+        if (pg->state() == Qt::GestureFinished)
+        {
+            MSG_DEBUG("total scale: " << pg->totalScaleFactor() << ", scale: " << pg->scaleFactor() << ", last scale: " << pg->lastScaleFactor());
+
+            if (pg->totalScaleFactor() > pg->scaleFactor())
+                settings();
+
+            return true;
+        }
+    }
+    else if (QGesture *swipe = event->gesture(Qt::SwipeGesture))
+    {
+        if (!gPageManager)
             return false;
+
+        QSwipeGesture *sw = static_cast<QSwipeGesture *>(swipe);
+        MSG_DEBUG("Swipe gesture detected.");
+
+        if (sw->state() == Qt::GestureFinished)
+        {
+            if (sw->horizontalDirection() == QSwipeGesture::Left)
+                gPageManager->onSwipeEvent(TPageManager::SW_LEFT);
+            else if (sw->horizontalDirection() == QSwipeGesture::Right)
+                gPageManager->onSwipeEvent(TPageManager::SW_RIGHT);
+            else if (sw->verticalDirection() == QSwipeGesture::Up)
+                gPageManager->onSwipeEvent(TPageManager::SW_UP);
+            else if (sw->verticalDirection() == QSwipeGesture::Down)
+                gPageManager->onSwipeEvent(TPageManager::SW_DOWN);
+
+            return true;
+        }
     }
 
-    if (event->type() == QEvent::MouseMove)
+    return false;
+}
+
+/**
+ * @brief MainWindow::mousePressEvent catches the event Qt::LeftButton.
+ *
+ * If the user presses the left mouse button somewhere in the main window, this
+ * method is triggered. It retrieves the position of the mouse pointer and
+ * sends it to the page manager TPageManager.
+ *
+ * @param event The event
+ */
+void MainWindow::mousePressEvent(QMouseEvent* event)
+{
+    DECL_TRACER("MainWindow::mousePressEvent(QMouseEvent* event)");
+
+    if (!gPageManager)
+        return;
+
+    if(event->button() == Qt::LeftButton)
     {
-        QMouseEvent *mev = dynamic_cast<QMouseEvent *>(event);
-        QWidget *w = childAt(mev->x(), mev->y());
+        int nx = 0, ny = 0;
+#ifdef Q_OS_IOS
+        if (mHaveNotchPortrait && gPageManager->getSettings()->isPortrait())
+        {
+            nx = mNotchPortrait.left();
+            ny = mNotchPortrait.top();
+        }
+        else if (mHaveNotchLandscape && gPageManager->getSettings()->isLandscape())
+        {
+            nx = mNotchLandscape.left();
+            ny = mNotchLandscape.top();
+        }
+        else
+        {
+            MSG_WARNING("Have no notch distances!");
+        }
+#endif
+        int x = event->x() - nx;
+        int y = event->y() - ny;
+        MSG_DEBUG("Mouse press coordinates: x: " << event->x() << ", y: " << event->y() << " [new x: " << x << ", y: " << y << " -- \"notch\" nx: " << nx << ", ny: " << ny << "]");
+#ifdef Q_OS_IOS
+        MSG_DEBUG("Mouse press coords alt.: pos.x: " << event->position().x() << ", pos.y: " << event->position().y() << ", local.x: " << event->localPos().x() << ", local.y: " << event->localPos().y());
+#elif defined Q_OS_ANDROID
+        MSG_DEBUG("Mouse press coords alt.: pos.x: " << event->pos().x() << ", pos.y: " << event->pos().y() << ", local.x: " << event->localPos().x() << ", local.y: " << event->localPos().y());
+#endif
+        mLastPressX = x;
+        mLastPressY = y;
+/*
+        QWidget *w = childAt(event->x(), event->y());
 
         if (w)
         {
@@ -1190,97 +1291,208 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
                         MSG_DEBUG("The pparent is " << ppar->objectName().toStdString());
 
                         if (ppar->objectName().startsWith("View_"))
-                            return false;
+                        {
+                            QMouseEvent *mev = new QMouseEvent(event->type(), event->localPos(), event->globalPos(), event->button(), event->buttons(), event->modifiers());
+                            QApplication::postEvent(ppar, mev);
+                            return;
+                        }
                     }
                 }
             }
         }
+*/
+        if (gPageManager->isSetupActive() && isSetupScaled())
+        {
+            x = (int)((double)x / mSetupScaleFactor);
+            y = (int)((double)y / mSetupScaleFactor);
+        }
+        else if (isScaled())
+        {
+            x = (int)((double)x / mScaleFactor);
+            y = (int)((double)y / mScaleFactor);
+        }
 
-        return true;    // Filter event out, i.e. stop it being handled further.
+        gPageManager->mouseEvent(x, y, true);
+        mTouchStart = std::chrono::steady_clock::now();
+        mTouchX = mLastPressX;
+        mTouchY = mLastPressY;
     }
-
-//    if (event->type() == QEvent::Gesture)
-//        return gestureEvent(static_cast<QGestureEvent*>(event));
-
-    return false;
-//    return QWidget::eventFilter(obj, event);
+    else if (event->button() == Qt::MiddleButton)
+        settings();
 }
 
 /**
- * @brief MainWindow::event Looks for a gesture
- * @param event The event occured
- * @return TRUE if event was accepted
+ * @brief MainWindow::mouseReleaseEvent catches the event Qt::LeftButton.
+ *
+ * If the user releases the left mouse button somewhere in the main window, this
+ * method is triggered. It retrieves the position of the mouse pointer and
+ * sends it to the page manager TPageManager.
+ *
+ * @param event The event
  */
-bool MainWindow::event(QEvent* event)
+void MainWindow::mouseReleaseEvent(QMouseEvent* event)
 {
-    if (event->type() == QEvent::Gesture)
-        return gestureEvent(static_cast<QGestureEvent*>(event));
+    DECL_TRACER("MainWindow::mouseReleaseEvent(QMouseEvent* event)");
 
-    return QWidget::event(event);
+    if (!gPageManager)
+        return;
+
+    if(event->button() == Qt::LeftButton)
+    {
+        int nx = 0, ny = 0;
+#ifdef Q_OS_IOS
+        if (mHaveNotchPortrait && gPageManager->getSettings()->isPortrait())
+        {
+            nx = mNotchPortrait.left();
+            ny = mNotchPortrait.top();
+        }
+        else if (mHaveNotchLandscape && gPageManager->getSettings()->isLandscape())
+        {
+            nx = mNotchLandscape.left();
+            ny = mNotchLandscape.top();
+        }
+#endif
+        int x = ((mLastPressX >= 0) ? mLastPressX : (event->x() - nx));
+        int y = ((mLastPressY >= 0) ? mLastPressY : (event->y() - ny));
+        MSG_DEBUG("Mouse press coordinates: x: " << event->x() << ", y: " << event->y());
+        mLastPressX = mLastPressY = -1;
+/*
+        QWidget *w = childAt(event->x(), event->y());
+
+        if (w)
+        {
+            MSG_DEBUG("Object " << w->objectName().toStdString() << " is under mouse cursor.");
+            QObject *par = w->parent();
+
+            if (par)
+            {
+                MSG_DEBUG("The parent is " << par->objectName().toStdString());
+
+                if (par->objectName().startsWith("Item_"))
+                {
+                    QObject *ppar = par->parent();
+
+                    if (ppar)
+                    {
+                        MSG_DEBUG("The pparent is " << ppar->objectName().toStdString());
+
+                        if (ppar->objectName().startsWith("View_"))
+                        {
+                            QMouseEvent *mev = new QMouseEvent(event->type(), event->localPos(), event->globalPos(), event->button(), event->buttons(), event->modifiers());
+                            QApplication::postEvent(ppar, mev);
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+*/
+        if (gPageManager->isSetupActive() && isSetupScaled())
+        {
+            x = (int)((double)x / mSetupScaleFactor);
+            y = (int)((double)y / mSetupScaleFactor);
+        }
+        else if (isScaled())
+        {
+            x = (int)((double)x / mScaleFactor);
+            y = (int)((double)y / mScaleFactor);
+        }
+
+        gPageManager->mouseEvent(x, y, false);
+        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+        std::chrono::nanoseconds difftime = end - mTouchStart;
+        std::chrono::milliseconds msecs = std::chrono::duration_cast<std::chrono::milliseconds>(difftime);
+
+        if (msecs.count() < 100)    // 1/10 of a second
+        {
+            MSG_DEBUG("Time was too short: " << msecs.count());
+            return;
+        }
+
+        x = event->x();
+        y = event->y();
+        bool setupActive = gPageManager->isSetupActive();
+        int width = (setupActive ? scaleSetup(gPageManager->getSystemSettings()->getWidth()) : scale(gPageManager->getSettings()->getWidth()));
+        int height = (setupActive ? scaleSetup(gPageManager->getSystemSettings()->getHeight()) : scale(gPageManager->getSettings()->getHeight()));
+        MSG_DEBUG("Coordinates: x1=" << mTouchX << ", y1=" << mTouchY << ", x2=" << x << ", y2=" << y << ", width=" << width << ", height=" << height);
+
+        if (mTouchX < x && (x - mTouchX) > (width / 3))
+            gPageManager->onSwipeEvent(TPageManager::SW_RIGHT);
+        else if (x < mTouchX && (mTouchX - x) > (width / 3))
+            gPageManager->onSwipeEvent(TPageManager::SW_LEFT);
+        else if (mTouchY < y && (y - mTouchY) > (height / 3))
+            gPageManager->onSwipeEvent(TPageManager::SW_DOWN);
+        else if (y < mTouchY && (mTouchY - y) > (height / 3))
+            gPageManager->onSwipeEvent(TPageManager::SW_UP);
+    }
 }
 
-/**
- * @brief MainWindow::gestureEvent handles a pinch event
- * If a pinch event occured where the scale factor increased, the settings
- * dialog is called. This exists for devices, where the left toolbox is not
- * visible.
- * @param event The guesture occured
- * @return FALSE
- */
-bool MainWindow::gestureEvent(QGestureEvent* event)
+void MainWindow::mouseMoveEvent(QMouseEvent* event)
 {
-    DECL_TRACER("MainWindow::gestureEvent(QGestureEvent* event)");
+    DECL_TRACER("MainWindow::mouseMoveEvent(QMouseEvent* event)");
 
-    if (QGesture *pinch = event->gesture(Qt::PinchGesture))
+    Q_UNUSED(event);
+/*
+    QWidget *w = childAt(event->x(), event->y());
+
+    if (w)
     {
-#ifdef QT_DEBUG
-        string gs;
-#endif
-        QPinchGesture *pg = static_cast<QPinchGesture *>(pinch);
-#ifdef QT_DEBUG
-        switch(pg->state())
-        {
-            case Qt::NoGesture:         gs.assign("no gesture"); break;
-            case Qt::GestureStarted:    gs.assign("gesture started"); break;
-            case Qt::GestureUpdated:    gs.assign("gesture updated"); break;
-            case Qt::GestureFinished:   gs.assign("gesture finished"); break;
-            case Qt::GestureCanceled:   gs.assign("gesture canceled"); break;
-        }
+        MSG_DEBUG("Object " << w->objectName().toStdString() << " is under mouse cursor.");
+        QObject *par = w->parent();
 
-        MSG_DEBUG("PinchGesture state " << gs << " detected");
-#endif
-        if (pg->state() == Qt::GestureFinished)
+        if (par)
         {
-            MSG_DEBUG("total scale: " << pg->totalScaleFactor() << ", scale: " << pg->scaleFactor() << ", last scale: " << pg->lastScaleFactor());
+            MSG_DEBUG("The parent is " << par->objectName().toStdString());
 
-            if (pg->totalScaleFactor() > pg->scaleFactor())
-                settings();
+            if (par->objectName().startsWith("Item_"))
+            {
+                QObject *ppar = par->parent();
+
+                if (ppar)
+                {
+                    MSG_DEBUG("The pparent is " << ppar->objectName().toStdString());
+
+                    if (ppar->objectName().startsWith("View_"))
+                    {
+                        QMouseEvent *mev = new QMouseEvent(event->type(), event->localPos(), event->globalPos(), event->button(), event->buttons(), event->modifiers());
+                        QApplication::postEvent(ppar, mev);
+                        return;
+                    }
+                }
+            }
         }
     }
-    else if (QGesture *swipe = event->gesture(Qt::SwipeGesture))
+*/
+}
+
+void MainWindow::keyPressEvent(QKeyEvent *event)
+{
+    DECL_TRACER("MainWindow::keyPressEvent(QKeyEvent *event)");
+
+    if (event && event->key() == Qt::Key_Back && !mToolbar)
     {
-        string gs;
+        QMessageBox msgBox(this);
+        msgBox.setText("Select what to do next:");
+        msgBox.addButton("Quit", QMessageBox::AcceptRole);
+        msgBox.addButton("Setup", QMessageBox::RejectRole);
+        msgBox.addButton("Cancel", QMessageBox::ResetRole);
+        int ret = msgBox.exec();
 
-        if (!gPageManager)
-            return false;
-
-        QSwipeGesture *sw = static_cast<QSwipeGesture *>(swipe);
-        MSG_DEBUG("Swipe gesture detected.");
-
-        if (sw->state() == Qt::GestureFinished)
+        if (ret == QMessageBox::Accepted)   // This is correct! QT seems to change here the buttons.
         {
-            if (sw->horizontalDirection() == QSwipeGesture::Left)
-                gPageManager->onSwipeEvent(TPageManager::SW_LEFT);
-            else if (sw->horizontalDirection() == QSwipeGesture::Right)
-                gPageManager->onSwipeEvent(TPageManager::SW_RIGHT);
-            else if (sw->verticalDirection() == QSwipeGesture::Up)
-                gPageManager->onSwipeEvent(TPageManager::SW_UP);
-            else if (sw->verticalDirection() == QSwipeGesture::Down)
-                gPageManager->onSwipeEvent(TPageManager::SW_DOWN);
+            showSetup();
+            return;
         }
+        else if (ret == QMessageBox::Rejected)  // This is correct! QT seems to change here the buttons.
+            close();
     }
+}
 
-    return false;
+void MainWindow::keyReleaseEvent(QKeyEvent *event)
+{
+    DECL_TRACER("MainWindow::keyReleaseEvent(QKeyEvent *event)");
+
+    Q_UNUSED(event);
 }
 
 /**
@@ -2758,6 +2970,12 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
                                   QASettings::getOldToolbarForce());
             }
 #endif
+#if TESTMODE == 1
+            {
+                if (_gTestMode)
+                    _gTestMode->run();
+            }
+#endif
         break;
 #if not defined(Q_OS_IOS) && not defined(Q_OS_ANDROID)
         default:
@@ -3728,9 +3946,14 @@ void MainWindow::displayButton(ulong handle, ulong parent, TBitmap buffer, int w
 
         nobj.object.label = new QLabel("", par->object.widget);
         nobj.object.label->setObjectName(QString("Label_") + handleToString(handle).c_str());
-        nobj.object.label->installEventFilter(this);
-        nobj.object.label->grabGesture(Qt::PinchGesture);
-        nobj.object.label->grabGesture(Qt::SwipeGesture);
+
+        if (mGestureFilter)
+        {
+            nobj.object.label->installEventFilter(mGestureFilter);
+            nobj.object.label->grabGesture(Qt::PinchGesture);
+            nobj.object.label->grabGesture(Qt::SwipeGesture);
+        }
+
         nobj.object.label->move(nobj.left, nobj.top);
         nobj.object.label->setFixedSize(nobj.width, nobj.height);
 
@@ -4187,9 +4410,14 @@ void MainWindow::setPage(ulong handle, int width, int height)
     {
         obj->object.widget = new QWidget;
         obj->object.widget->setObjectName(QString("Page_") + handleToString(handle).c_str());
-        obj->object.widget->installEventFilter(this);
-        obj->object.widget->grabGesture(Qt::PinchGesture);
-        obj->object.widget->grabGesture(Qt::SwipeGesture);
+
+        if (mGestureFilter)
+        {
+            obj->object.widget->installEventFilter(mGestureFilter);
+            obj->object.widget->grabGesture(Qt::PinchGesture);
+            obj->object.widget->grabGesture(Qt::SwipeGesture);
+        }
+
         obj->object.widget->setAutoFillBackground(true);
         obj->invalid = false;
         obj->object.widget->move(0, 0);
@@ -4299,9 +4527,13 @@ void MainWindow::setSubPage(ulong handle, ulong parent, int left, int top, int w
     obj->invalid = false;
     obj->remove = false;
     // filter move event
-    obj->object.widget->installEventFilter(this);
-    obj->object.widget->grabGesture(Qt::PinchGesture);
-    obj->object.widget->grabGesture(Qt::SwipeGesture);
+    if (mGestureFilter)
+    {
+        obj->object.widget->installEventFilter(mGestureFilter);
+        obj->object.widget->grabGesture(Qt::PinchGesture);
+        obj->object.widget->grabGesture(Qt::SwipeGesture);
+    }
+
     obj->aniDirection = true;
     obj->animate = animate;
 
@@ -5270,7 +5502,13 @@ void MainWindow::playSound(const string& file)
     MSG_DEBUG("Playing file " << file);
 
     if (TConfig::getMuteState())
+    {
+#if TESTMODE == 1
+        __success = true;
+        __done = true;
+#endif
         return;
+    }
 
     if (!mMediaPlayer)
     {
@@ -5288,6 +5526,10 @@ void MainWindow::playSound(const string& file)
     mAudioOutput->setVolume(TConfig::getSystemVolume());
 #endif
     mMediaPlayer->play();
+#if TESTMODE == 1
+    __success = true;
+    __done = true;
+#endif
 }
 
 void MainWindow::stopSound()
@@ -5750,6 +5992,14 @@ void MainWindow::onCursorChanged(ulong handle, int oldPos, int newPos)
 
     if (gPageManager)
         gPageManager->inputCursorPositionChanged(handle, oldPos, newPos);
+}
+
+void MainWindow::onGestureEvent(QObject *obj, QGestureEvent *event)
+{
+    DECL_TRACER("MainWindow::onGestureEvent(QObject *obj, QGestureEvent *event)");
+
+    Q_UNUSED(obj);
+    gestureEvent(event);
 }
 
 QPixmap MainWindow::scaleImage(QPixmap& pix)

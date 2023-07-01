@@ -335,7 +335,7 @@ void TFont::initialize()
     size_t index = 0;
     size_t oldIndex = 0;
 
-    if ((index = xml.getElementIndex("fontList", &depth)) == TExpat::npos)
+    if (xml.getElementIndex("fontList", &depth) == TExpat::npos)
     {
         MSG_DEBUG("File does not contain the element \"fontList\"!");
         TError::setError();
@@ -424,7 +424,7 @@ bool TFont::systemFonts(bool setup)
     size_t index = 0;
     size_t oldIndex = 0;
 
-    if ((index = xml.getElementIndex("fontList", &depth)) == TExpat::npos)
+    if (xml.getElementIndex("fontList", &depth) == TExpat::npos)
     {
         MSG_DEBUG("File does not contain the element \"fontList\"!");
         TError::setError();

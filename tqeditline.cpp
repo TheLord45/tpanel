@@ -72,6 +72,9 @@ TQEditLine::~TQEditLine()
         disconnect(mEdit, &TQSingleLine::focusChanged, this, &TQEditLine::onFocusChanged);
         disconnect(mEdit, &TQSingleLine::keyPressed, this, &TQEditLine::onKeyPressed);
     }
+
+    if (mLayout)
+        delete mLayout;
 }
 
 void TQEditLine::init()

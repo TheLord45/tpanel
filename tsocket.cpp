@@ -143,7 +143,7 @@ bool TSocket::connect(bool encrypt)
         }
     }
 
-    if (ainfo->ai_family == AF_INET)
+    if (ainfo && ainfo->ai_family == AF_INET)
     {
         char str[INET_ADDRSTRLEN];
         struct sockaddr_in addr;

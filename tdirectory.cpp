@@ -282,11 +282,15 @@ int TDirectory::scanFiles(const string &filter)
         }
 
         done = true;
-        MSG_TRACE("Read " << count << " entries.");
-        vector<DFILES_T>::iterator iter;
+        MSG_DEBUG("Read " << count << " entries.");
 
-        for (iter = entries.begin(); iter != entries.end(); ++iter)
-            MSG_DEBUG("Entry: " << iter->name);
+        if (TStreamError::checkFilter(HLOG_DEBUG))
+        {
+            vector<DFILES_T>::iterator iter;
+
+            for (iter = entries.begin(); iter != entries.end(); ++iter)
+                MSG_DEBUG("Entry: " << iter->name);
+        }
     }
     catch(exception& e)
     {
@@ -412,7 +416,7 @@ bool TDirectory::dropDir(const string& path)
         MSG_WARNING("Directory \"" << path << "\" does not exist!");
         return 0;
     }
-    
+
     MSG_DEBUG("Dropping directory: " << path);
     int count = 0;
 
