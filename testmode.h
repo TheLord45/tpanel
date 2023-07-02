@@ -24,6 +24,8 @@
 #include <atomic>
 #include <vector>
 
+#include <QtGlobal>
+
 #if !defined(Q_OS_ANDROID) && !defined(Q_OS_IOS)
 #define TESTMODE    1
 #endif

@@ -191,7 +191,7 @@ QMAKE_CXXFLAGS += -std=c++17 -DPJ_AUTOCONF
 QMAKE_LFLAGS += -std=c++17
 
 equals(ANDROID_TARGET_ARCH,arm64-v8a) {
-    INCLUDEPATH += $$EXT_LIB_PATH/openssl/arm64-v8a/include
+#    INCLUDEPATH += $$EXT_LIB_PATH/openssl/arm64-v8a/include
 
     LIBS += $$EXT_LIB_PATH/skia/arm64/libskia.a \
     -L$$SDK_PATH/android_openssl/no-asm/latest/arm64 \
@@ -214,7 +214,7 @@ equals(ANDROID_TARGET_ARCH,arm64-v8a) {
 }
 
 equals(ANDROID_TARGET_ARCH,armeabi-v7a) {
-    INCLUDEPATH += $$EXT_LIB_PATH/openssl/armeabi-v7a/include
+#    INCLUDEPATH += $$EXT_LIB_PATH/openssl/armeabi-v7a/include
 
     LIBS += $$EXT_LIB_PATH/skia/arm/libskia.a \
     -L$$SDK_PATH/android_openssl/no-asm/latest/arm \
@@ -237,7 +237,7 @@ equals(ANDROID_TARGET_ARCH,armeabi-v7a) {
 }
 
 equals(ANDROID_TARGET_ARCH,x86) {
-    INCLUDEPATH += $$EXT_LIB_PATH/openssl/x86/include
+#    INCLUDEPATH += $$EXT_LIB_PATH/openssl/x86/include
 
     LIBS += $$EXT_LIB_PATH/skia/x86/libskia.a \
     -L$$SDK_PATH/android_openssl/no-asm/latest/x86 \
@@ -260,7 +260,7 @@ equals(ANDROID_TARGET_ARCH,x86) {
 }
 
 equals(ANDROID_TARGET_ARCH,x86_64) {
-    INCLUDEPATH += $$EXT_LIB_PATH/openssl/x86_64/include
+#    INCLUDEPATH += $$EXT_LIB_PATH/openssl/x86_64/include
 
     LIBS += $$EXT_LIB_PATH/skia/x86_64/libskia.a \
     -L$$SDK_PATH/android_openssl/no-asm/latest/x86_64 \
@@ -357,7 +357,7 @@ FORMS += \
 
 android: {
     INCLUDEPATH += $$(QTDIR)/include/QtGui/$$QT_VERSION/QtGui
-    LIBS += -lcrypto_1_1 -lssl_1_1 -lEGL -landroid -lmediandk
+    LIBS += -lEGL -landroid -lmediandk
 
     DISTFILES += \
         android/AndroidManifest.xml \
@@ -377,7 +377,19 @@ android: {
     ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
     CONFIG += sdk_no_version_check
     # Add openSSL library for Android
-    include($$SDK_PATH/android_openssl/openssl.pri)
+    if (versionAtLeast(QT_VERSION, 6.5.0)) {
+        ANDROID_EXTRA_LIBS += \
+            $$SSL_PATH/ssl_3/$$ANDROID_TARGET_ARCH/libcrypto_3.so \
+            $$SSL_PATH/ssl_3/$$ANDROID_TARGET_ARCH/libssl_3.so
+        INCLUDEPATH += $$SSL_PATH/ssl_3/include
+        LIBS += -L$$SSL_PATH/ssl_3/$$ANDROID_TARGET_ARCH -lcrypto -lssl
+    } else {
+        ANDROID_EXTRA_LIBS += \
+            $$SSL_PATH/ssl_1.1/$$ANDROID_TARGET_ARCH/libcrypto_1_1.so \
+            $$SSL_PATH/ssl_1.1/$$ANDROID_TARGET_ARCH/libssl_1_1.so
+        INCLUDEPATH += $$SSL_PATH/ssl_1.1/include
+        LIBS += -L$$SSL_PATH/ssl_1.1/$$ANDROID_TARGET_ARCH -lcrypto -lssl
+    }
 } else {
     LIBS += -lcrypto -lssl -liconv
 }
