@@ -63,6 +63,7 @@ TSystemDraw::TSystemDraw(const string &path)
 
     if (isValidDir(path + "/fonts"))
         mHaveFonts = true;
+    else
     {
         MSG_WARNING("Have no system fonts");
         string perms = getPermissions(path);

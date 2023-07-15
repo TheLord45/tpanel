@@ -58,6 +58,9 @@
 #include "timgcache.h"
 #include "turl.h"
 #include "tlock.h"
+#if TESTMODE == 1
+#include "testmode.h"
+#endif
 
 using std::exception;
 using std::string;
@@ -658,6 +661,19 @@ bool TButton::invalidate()
     return true;
 }
 
+string& TButton::getDrawOrder(int instance)
+{
+    DECL_TRACER("TButton::getDrawOrder(int instance)");
+
+    if (instance < 0 || (size_t)instance > sr.size())
+    {
+        MSG_ERROR("Instance is out of range!");
+        return dummy;
+    }
+
+    return sr[instance]._do;
+}
+
 BUTTONTYPE TButton::getButtonType(const string& bt)
 {
     DECL_TRACER("TButton::getButtonType(const string& bt)");
@@ -929,7 +945,7 @@ bool TButton::makeElement(int instance)
     }
     else
     {
-        mActInstance = inst;
+//        mActInstance = inst;
         return drawButton(inst);
     }
 
@@ -1090,11 +1106,29 @@ bool TButton::setText(const string& txt, int instance)
     if (instance >= 0 && (size_t)instance >= sr.size())
     {
         MSG_ERROR("Instance " << instance << " does not exist!");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return false;
     }
 
     if (!setTextOnly(txt, instance))
+    {
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return false;
+    }
+
+    if (!mChanged)      // Do not try to redraw the button if nothing changed
+    {
+#if TESTMODE == 1
+        MSG_INFO("Nothing changed!");
+        __success = true;
+        setScreenDone();
+#endif
+        return true;
+    }
 
     return makeElement(instance);
 }
@@ -1109,25 +1143,25 @@ bool TButton::setTextOnly(const string& txt, int instance)
         return false;
     }
 
-    int inst = instance;
-    int loop = 1;
-
-    if (inst < 0 || type == TEXT_INPUT)
+    if (instance < 0)
     {
-        loop = (int)sr.size();
-        inst = 0;
+        for (size_t i = 0; i < sr.size(); ++i)
+        {
+            if (sr[i].te != txt && (int)i == mActInstance)
+                mChanged = true;
+
+            sr[i].te = txt;
+        }
     }
-
-    for (int i = 0; i < loop; ++i)
+    else
     {
-        if (sr[inst].te != txt)
+        if (sr[instance].te != txt && (int)instance == mActInstance)
             mChanged = true;
 
-        sr[inst].te = txt;
-        inst++;
+        sr[instance].te = txt;
     }
 
-    if (isSystemButton())
+    if (instance <= 0 && isSystemButton())
     {
         bool temp = TConfig::setTemporary(true);
         // If we've an input line or the text line of a "combobox" then we'll
@@ -1167,31 +1201,30 @@ bool TButton::appendText(const string &txt, int instance)
 {
     DECL_TRACER("TButton::appendText(const string &txt, int instance)");
 
-    if (instance >= 0 || (size_t)instance >= sr.size())
+    if (instance >= 0 && (size_t)instance >= sr.size())
     {
         MSG_ERROR("Instance " << instance << " does not exist!");
         return false;
     }
 
     if (txt.empty())
+    {
+#if TESTMODE == 1
+        __success = true;
+        __done = true;
+#endif
         return true;
-
-    int inst = instance;
-    int loop = 1;
-
-    if (inst < 0)
-    {
-        loop = (int)sr.size();
-        inst = 0;
     }
 
-    for (int i = 0; i < loop; ++i)
+    if (instance < 0)
     {
-        sr[inst].te.append(txt);
-        mChanged = true;
-        inst++;
+        for (size_t i = 0; i < sr.size(); ++i)
+            sr[i].te.append(txt);
     }
+    else
+        sr[instance].te.append(txt);
 
+    mChanged = true;
     return makeElement(instance);
 }
 
@@ -1386,9 +1419,27 @@ bool TButton::setDrawOrder(const string& order, int instance)
     return makeElement(instance);
 }
 
+FEEDBACK TButton::getFeedback()
+{
+    DECL_TRACER("TButton::getFeedback()");
+
+    if (type != GENERAL)
+        return FB_NONE;
+
+    return fb;
+}
+
 bool TButton::setFeedback(FEEDBACK feedback)
 {
     DECL_TRACER("TButton::setFeedback(FEEDBACK feedback)");
+
+    if (type != GENERAL)
+    {
+#if TESTMODE == 1
+        setAllDone();
+#endif
+        return false;
+    }
 
     int oldFB = fb;
     fb = feedback;
@@ -1408,7 +1459,12 @@ bool TButton::setFeedback(FEEDBACK feedback)
             makeElement(0);
         }
     }
+#if TESTMODE == 1
+    if (!mChanged)
+        __success = true;
 
+    setScreenDone();
+#endif
     return true;
 }
 
@@ -1423,13 +1479,22 @@ bool TButton::setBorderStyle(const string& style, int instance)
     }
 
     mChanged = true;
+    MSG_DEBUG("Setting border " << style);
 
     if (strCaseCompare(style, "None") == 0)     // Clear the border?
     {
         if (instance < 0)
+        {
             bs.clear();
+
+            for (size_t i = 0; i < sr.size(); ++i)
+                sr[i].bs.clear();
+        }
         else
+        {
             sr[instance].bs.clear();
+            bs.clear();
+        }
 
         if (mEnabled && !hd)
             makeElement(instance);
@@ -1443,9 +1508,19 @@ bool TButton::setBorderStyle(const string& style, int instance)
         if (gPageManager->getSystemDraw()->existBorder(style))
         {
             if (instance < 0)
+            {
                 bs = style;
+
+                for (size_t i = 0; i < sr.size(); ++i)
+                    sr[i].bs = style;
+            }
             else
+            {
                 sr[instance].bs = style;
+
+                if (bs != style)
+                    bs.clear();
+            }
 
             if (mEnabled && !hd)
                 makeElement(instance);
@@ -1461,9 +1536,68 @@ bool TButton::setBorderStyle(const string& style, int instance)
     if (!style.empty())
     {
         if (instance < 0)
+        {
             bs = corrName;
+
+            for (size_t i = 0; i < sr.size(); ++i)
+                sr[i].bs = corrName;
+        }
         else
+        {
             sr[instance].bs = corrName;
+
+            if (bs != corrName)
+                bs.clear();
+        }
+
+        if (mEnabled && !hd)
+            makeElement(instance);
+
+        return true;
+    }
+#if TESTMODE == 1
+    __done = true;
+#endif
+    return false;
+}
+
+bool TButton::setBorderStyle(int style, int instance)
+{
+    DECL_TRACER("TButton::setBorderStyle(int style, int instance)");
+
+    if (instance >= 0 && (size_t)instance >= sr.size())
+    {
+        MSG_ERROR("Instance " << instance << " does not exist!");
+        return false;
+    }
+
+    if (style == 0)     // Clear the border?
+    {
+        if (instance < 0)
+        {
+            bs.clear();
+
+            for (size_t i = 0; i < sr.size(); ++i)
+            {
+                if (!sr[i].bs.empty())
+                    mChanged = true;
+
+                sr[i].bs.clear();
+            }
+
+            if (!bs.empty())
+                mChanged = true;
+
+            bs.clear();
+        }
+        else
+        {
+            if (!sr[instance].bs.empty())
+                mChanged = true;
+
+            sr[instance].bs.clear();
+            bs.clear();
+        }
 
         if (mEnabled && !hd)
             makeElement(instance);
@@ -1471,7 +1605,71 @@ bool TButton::setBorderStyle(const string& style, int instance)
         return true;
     }
 
-    return false;
+    string st = getBorderName(style);
+
+    if (st.empty())
+    {
+        MSG_WARNING("The index " << style << " is not supported!");
+#if TESTMODE == 1
+        setAllDone();
+#endif
+        return false;
+    }
+
+    // Look in the system table and try to find the border.
+    if (gPageManager && gPageManager->getSystemDraw())
+    {
+        if (gPageManager->getSystemDraw()->existBorder(st))
+        {
+            MSG_DEBUG("Found frame " << st << " and draw it ...");
+
+            if (instance < 0)
+            {
+                bs = st;
+
+                for (size_t i = 0; i < sr.size(); ++i)
+                    sr[i].bs = st;
+            }
+            else
+            {
+                sr[instance].bs = st;
+
+                if (bs != st)
+                    bs.clear();
+            }
+
+            mChanged = true;
+
+            if (mEnabled && !hd)
+                makeElement(instance);
+
+            return true;
+        }
+    }
+
+    // Check whether it is a supported style or not. If the style is not
+    // supported, it will be ignored.
+    if (instance < 0)
+    {
+        bs = st;
+
+        for (size_t i = 0; i < sr.size(); ++i)
+            sr[i].bs = st;
+    }
+    else
+    {
+        sr[instance].bs = st;
+
+        if (bs != st)
+            bs.clear();
+    }
+
+    mChanged = true;
+
+    if (mEnabled && !hd)
+        makeElement(instance);
+
+    return true;
 }
 
 string TButton::getBorderStyle(int instance)
@@ -1483,6 +1681,9 @@ string TButton::getBorderStyle(int instance)
         MSG_ERROR("Invalid instance " << (instance + 1) << " submitted!");
         return string();
     }
+
+    if (sr[instance].bs.empty())
+        return bs;
 
     return sr[instance].bs;
 }
@@ -1541,34 +1742,100 @@ bool TButton::setFontFileName(const string& name, int /*size*/, int instance)
     DECL_TRACER("TButton::setFontFileName(const string& name, int size)");
 
     if (name.empty() || !mFonts)
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return false;
+    }
 
     if ((size_t)instance >= sr.size())
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return false;
+    }
 
     int id = mFonts->getFontIDfromFile(name);
 
     if (id == -1)
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return false;
-
-    int inst = instance;
-    int loop = 1;
-
-    if (inst < 0)
-    {
-        loop = (int)sr.size();
-        inst = 0;
     }
 
-    for (int i = 0; i < loop; ++i)
+    if (instance < 0)
     {
-        if (sr[inst].fi != id)
-            mChanged = true;
+        for (size_t i = 0; i < sr.size(); ++i)
+        {
+            if (sr[i].fi != id)
+                mChanged = true;
 
-        sr[inst].fi = id;
-        inst++;
+            sr[i].fi = id;
+        }
+    }
+    else if (sr[instance].fi != id)
+    {
+        mChanged = true;
+        sr[instance].fi = id;
+    }
+#if TESTMODE == 1
+    setScreenDone();
+#endif
+    return true;
+}
+
+bool TButton::setFontName(const string &name, int instance)
+{
+    DECL_TRACER("TButton::setFontName(const string &name, int instance)");
+
+    if (name.empty() || !mFonts)
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
+        return false;
     }
 
+    if ((size_t)instance >= sr.size())
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
+        return false;
+    }
+
+    int id = mFonts->getFontIDfromName(name);
+
+    if (id == -1)
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
+        return false;
+    }
+
+    if (instance < 0)
+    {
+        for (size_t i = 0; i < sr.size(); ++i)
+        {
+            if (sr[i].fi != id)
+                mChanged = true;
+
+            sr[i].fi = id;
+        }
+    }
+    else if (sr[instance].fi != id)
+    {
+        mChanged = true;
+        sr[instance].fi = id;
+    }
+#if TESTMODE == 1
+    setScreenDone();
+#endif
     return true;
 }
 
@@ -1846,35 +2113,45 @@ bool TButton::setOpacity(int op, int instance)
     if (instance >= 0 && (size_t)instance >= sr.size())
     {
         MSG_ERROR("Instance " << instance << " does not exist!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return false;
     }
 
-    if (op < 0 || op < 255)
+    if (op < 0 || op > 255)
     {
         MSG_ERROR("Invalid opacity " << op << "!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return false;
     }
 
-    int inst = instance;
-    int loop = 1;
-
-    if (inst < 0)
+    if (instance < 0)
     {
-        loop = (int)sr.size();
-        inst = 0;
+        for (size_t i = 0; i < sr.size(); ++i)
+        {
+            if (sr[i].oo == op)
+                continue;
+
+            sr[i].oo = op;
+            mChanged = true;
+        }
+    }
+    else if (sr[instance].oo != op)
+    {
+        sr[instance].oo = op;
+        mChanged = true;
     }
 
-    for (int i = 0; i < loop; ++i)
+    if (!mChanged)
     {
-        if (sr[inst].oo == op)
-        {
-            inst++;
-            continue;
-        }
-
-        sr[inst].oo = op;
-        mChanged = true;
-        inst++;
+#if TESTMODE == 1
+        __success = true;
+        setScreenDone();
+#endif
+        return true;
     }
 
     return makeElement(instance);
@@ -1993,6 +2270,24 @@ void TButton::setRectangle(int left, int top, int right, int bottom)
         ht = height;
 }
 
+void TButton::getRectangle(int *left, int *top, int *height, int *width)
+{
+    DECL_TRACER("TButton::getRectangle(int *left, int *top, int *height, int *width)");
+
+    if (left)
+        *left = lt;
+
+    if (top)
+        *top = tp;
+
+    if (height)
+        *height = ht;
+
+    if (width)
+        *width = wt;
+
+}
+
 void TButton::setResourceName(const string& name, int instance)
 {
     DECL_TRACER("TButton::setResourceName(const string& name, int instance)");
@@ -2039,10 +2334,10 @@ int TButton::getBitmapJustification(int* x, int* y, int instance)
     }
 
     if (x)
-        *x = sr[instance].bx;
+        *x = sr[instance].jb == 0 ? sr[instance].bx : 0;
 
     if (y)
-        *y = sr[instance].by;
+        *y = sr[instance].jb == 0 ? sr[instance].by : 0;
 
     return sr[instance].jb;
 }
@@ -2052,7 +2347,12 @@ void TButton::setBitmapJustification(int j, int x, int y, int instance)
     DECL_TRACER("TButton::setBitmapJustification(int j, int instance)");
 
     if (j < 0 || j > 9 || instance >= (int)sr.size())
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
+    }
 
     if (instance < 0)
     {
@@ -2098,10 +2398,10 @@ int TButton::getIconJustification(int* x, int* y, int instance)
     }
 
     if (x)
-        *x = sr[instance].ix;
+        *x = sr[instance].ji == 0 ? sr[instance].ix : 0;
 
     if (y)
-        *y = sr[instance].iy;
+        *y = sr[instance].ji == 0 ? sr[instance].iy : 0;
 
     return sr[instance].ji;
 }
@@ -2111,7 +2411,12 @@ void TButton::setIconJustification(int j, int x, int y, int instance)
     DECL_TRACER("TButton::setIconJustification(int j, int x, int y, int instance)");
 
     if (j < 0 || j > 9 || instance >= (int)sr.size())
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
+    }
 
     if (instance < 0)
     {
@@ -2157,10 +2462,10 @@ int TButton::getTextJustification(int* x, int* y, int instance)
     }
 
     if (x)
-        *x = sr[instance].tx;
+        *x = sr[instance].jt == 0 ? sr[instance].tx : 0;
 
     if (y)
-        *y = sr[instance].ty;
+        *y = sr[instance].jt == 0 ? sr[instance].ty : 0;
 
     return sr[instance].jt;
 }
@@ -2170,7 +2475,12 @@ void TButton::setTextJustification(int j, int x, int y, int instance)
     DECL_TRACER("TButton::setTextJustification(int j, int x, int y, int instance)");
 
     if (!setTextJustificationOnly(j, x, y, instance))
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
+    }
 
     makeElement();
 }
@@ -2564,20 +2874,14 @@ void TButton::setSound(const string& sound, int inst)
     if (inst < 0)
     {
         for (size_t i = 0; i < sr.size(); i++)
-        {
-            if (sr[i].sd != sound)
-                mChanged = true;
-
             sr[i].sd = sound;
-        }
     }
     else
-    {
-        if (sr[inst].sd != sound)
-            mChanged = true;
-
         sr[inst].sd = sound;
-    }
+#if TESTMODE == 1
+    __success = true;
+    setScreenDone();
+#endif
 }
 
 bool TButton::startAnimation(int st, int end, int time)
@@ -4773,7 +5077,7 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
                 count = skFont.textToGlyphs(text.data(), text.size(), SkTextEncoding::kUTF8, glyphs, (int)glyphSize);
             }
 
-            if (glyphs)
+            if (glyphs && count > 0)
             {
                 MSG_DEBUG("1st glyph: 0x" << std::hex << std::setw(8) << std::setfill('0') << *glyphs << ", # glyphs: " << std::dec << count);
                 canvas.drawSimpleText(glyphs, sizeof(uint16_t) * count, SkTextEncoding::kGlyphID, startX, startY, skFont, paint);
@@ -4781,13 +5085,11 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
             else    // Try to print something
             {
                 MSG_WARNING("Got no glyphs! Try to print: " << text);
-                glyphs = new uint16_t[text.size()];
-                size_t glyphSize = sizeof(uint16_t) * text.size();
-                count = skFont.textToGlyphs(text.data(), text.size(), SkTextEncoding::kUTF8, glyphs, (int)glyphSize);
-                canvas.drawSimpleText(glyphs, sizeof(uint16_t) * count, SkTextEncoding::kGlyphID, startX, startY, skFont, paint);
+                canvas.drawString(text.data(), startX, startY, skFont, paint);
             }
 
-            delete[] glyphs;
+            if (glyphs)
+                delete[] glyphs;
         }
     }
 
@@ -5233,6 +5535,9 @@ bool TButton::drawButton(int instance, bool show, bool subview)
     {
         MSG_ERROR("Instance " << instance << " is out of bounds!");
         TError::setError();
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return false;
     }
 
@@ -5244,6 +5549,9 @@ bool TButton::drawButton(int instance, bool show, bool subview)
         bool db = (_displayButton != nullptr);
         MSG_DEBUG("Button " << bi << ", \"" << na << "\" at instance " << instance << " is not to draw!");
         MSG_DEBUG("Visible: " << (visible ? "YES" : "NO") << ", Hidden: " << (hd ? "YES" : "NO") << ", Instance/actual instance: " << instance << "/" << mActInstance << ", callback: " << (db ? "PRESENT" : "N/A"));
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return true;
     }
 
@@ -5269,12 +5577,22 @@ bool TButton::drawButton(int instance, bool show, bool subview)
     getDrawOrder(sr[instance]._do, (DRAW_ORDER *)&mDOrder);
 
     if (TError::isError())
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return false;
+    }
 
     SkBitmap imgButton;
 
     if (!allocPixels(wt, ht, &imgButton))
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return false;
+    }
 
     // We create an empty (transparent) image here. Later it depends on the
     // draw order of the elements. If, for example, the back ground fill is
@@ -5288,29 +5606,59 @@ bool TButton::drawButton(int instance, bool show, bool subview)
         if (mDOrder[i] == ORD_ELEM_FILL)
         {
             if (!buttonFill(&imgButton, instance))
+            {
+#if TESTMODE == 1
+                setScreenDone();
+#endif
                 return false;
+            }
         }
         else if (mDOrder[i] == ORD_ELEM_BITMAP)
         {
             if (!sr[instance].dynamic && !buttonBitmap(&imgButton, instance))
+            {
+#if TESTMODE == 1
+                setScreenDone();
+#endif
                 return false;
+            }
             else if (sr[instance].dynamic && !buttonDynamic(&imgButton, instance, show, &dynState))
+            {
+#if TESTMODE == 1
+                setScreenDone();
+#endif
                 return false;
+            }
         }
         else if (mDOrder[i] == ORD_ELEM_ICON)
         {
             if (!buttonIcon(&imgButton, instance))
+            {
+#if TESTMODE == 1
+                setScreenDone();
+#endif
                 return false;
+            }
         }
         else if (mDOrder[i] == ORD_ELEM_TEXT)
         {
             if (!buttonText(&imgButton, instance))
+            {
+#if TESTMODE == 1
+                setScreenDone();
+#endif
                 return false;
+            }
         }
         else if (mDOrder[i] == ORD_ELEM_BORDER)
         {
             if (!buttonBorder(&imgButton, instance))
+            {
+#if TESTMODE == 1
+                setScreenDone();
+#endif
                 return false;
+            }
         }
     }
 
@@ -5321,7 +5669,12 @@ bool TButton::drawButton(int instance, bool show, bool subview)
         int h = imgButton.height();
 
         if (!allocPixels(w, h, &ooButton))
+        {
+#if TESTMODE == 1
+            setScreenDone();
+#endif
             return false;
+        }
 
         SkCanvas canvas(ooButton);
         SkIRect irect = SkIRect::MakeXYWH(0, 0, w, h);
@@ -5422,15 +5775,28 @@ bool TButton::drawTextArea(int instance)
     DECL_TRACER("TButton::drawTextArea(int instance)");
 
     if (prg_stopped)
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return false;
+    }
 
     if (!visible || hd)
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return true;
+    }
 
     if ((size_t)instance >= sr.size() || instance < 0)
     {
         MSG_ERROR("Instance " << instance << " is out of bounds!");
         TError::setError();
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return false;
     }
 
@@ -5443,36 +5809,71 @@ bool TButton::drawTextArea(int instance)
     getDrawOrder(sr[instance]._do, (DRAW_ORDER *)&mDOrder);
 
     if (TError::isError())
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return false;
+    }
 
     SkBitmap imgButton;
 
     if (!allocPixels(wt, ht, &imgButton))
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return false;
+    }
 
     for (int i = 0; i < ORD_ELEM_COUNT; i++)
     {
         if (mDOrder[i] == ORD_ELEM_FILL)
         {
             if (!buttonFill(&imgButton, instance))
+            {
+#if TESTMODE == 1
+                setScreenDone();
+#endif
                 return false;
+            }
         }
         else if (mDOrder[i] == ORD_ELEM_BITMAP)
         {
             if (!sr[instance].dynamic && !buttonBitmap(&imgButton, instance))
+            {
+#if TESTMODE == 1
+                setScreenDone();
+#endif
                 return false;
+            }
             else if (sr[instance].dynamic && !buttonDynamic(&imgButton, instance, false))
+            {
+#if TESTMODE == 1
+                setScreenDone();
+#endif
                 return false;
+            }
         }
         else if (mDOrder[i] == ORD_ELEM_ICON)
         {
             if (!buttonIcon(&imgButton, instance))
+            {
+#if TESTMODE == 1
+                setScreenDone();
+#endif
                 return false;
+            }
         }
         else if (mDOrder[i] == ORD_ELEM_BORDER)
         {
             if (!buttonBorder(&imgButton, instance))
+            {
+#if TESTMODE == 1
+                setScreenDone();
+#endif
                 return false;
+            }
         }
     }
 
@@ -5483,7 +5884,12 @@ bool TButton::drawTextArea(int instance)
         int h = imgButton.height();
 
         if (!allocPixels(w, h, &ooButton))
+        {
+#if TESTMODE == 1
+            setScreenDone();
+#endif
             return false;
+        }
 
         SkCanvas canvas(ooButton);
         SkIRect irect = SkIRect::MakeXYWH(0, 0, w, h);
@@ -5578,6 +5984,9 @@ bool TButton::drawMultistateBargraph(int level, bool show)
 
     if (prg_stopped)
     {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         mutex_button.unlock();
         return false;
     }
@@ -5590,6 +5999,9 @@ bool TButton::drawMultistateBargraph(int level, bool show)
         bool db = (_displayButton != nullptr);
         MSG_DEBUG("Multistate bargraph " << bi << ", \"" << na << " is not to draw!");
         MSG_DEBUG("Visible: " << (visible ? "YES" : "NO") << ", callback: " << (db ? "PRESENT" : "N/A"));
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         mutex_button.unlock();
         return true;
     }
@@ -5609,6 +6021,9 @@ bool TButton::drawMultistateBargraph(int level, bool show)
 
     if (TError::isError())
     {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         mutex_button.unlock();
         return false;
     }
@@ -5616,7 +6031,12 @@ bool TButton::drawMultistateBargraph(int level, bool show)
     SkBitmap imgButton;
 
     if (!allocPixels(wt, ht, &imgButton))
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return false;
+    }
 
     for (int i = 0; i < ORD_ELEM_COUNT; i++)
     {
@@ -5624,6 +6044,9 @@ bool TButton::drawMultistateBargraph(int level, bool show)
         {
             if (!buttonFill(&imgButton, maxLevel))
             {
+#if TESTMODE == 1
+                setScreenDone();
+#endif
                 mutex_button.unlock();
                 return false;
             }
@@ -5632,6 +6055,9 @@ bool TButton::drawMultistateBargraph(int level, bool show)
         {
             if (!buttonBitmap(&imgButton, maxLevel))
             {
+#if TESTMODE == 1
+                setScreenDone();
+#endif
                 mutex_button.unlock();
                 return false;
             }
@@ -5640,6 +6066,9 @@ bool TButton::drawMultistateBargraph(int level, bool show)
         {
             if (!buttonIcon(&imgButton, maxLevel))
             {
+#if TESTMODE == 1
+                setScreenDone();
+#endif
                 mutex_button.unlock();
                 return false;
             }
@@ -5648,6 +6077,9 @@ bool TButton::drawMultistateBargraph(int level, bool show)
         {
             if (!buttonText(&imgButton, maxLevel))
             {
+#if TESTMODE == 1
+                setScreenDone();
+#endif
                 mutex_button.unlock();
                 return false;
             }
@@ -5656,6 +6088,9 @@ bool TButton::drawMultistateBargraph(int level, bool show)
         {
             if (!buttonBorder(&imgButton, maxLevel))
             {
+#if TESTMODE == 1
+                setScreenDone();
+#endif
                 mutex_button.unlock();
                 return false;
             }
@@ -5669,7 +6104,12 @@ bool TButton::drawMultistateBargraph(int level, bool show)
         int h = imgButton.height();
 
         if (!allocPixels(w, h, &ooButton))
+        {
+#if TESTMODE == 1
+            setScreenDone();
+#endif
             return false;
+        }
 
         SkCanvas canvas(ooButton);
         SkIRect irect = SkIRect::MakeXYWH(0, 0, w, h);
@@ -5747,6 +6187,10 @@ bool TButton::drawMultistateBargraph(int level, bool show)
             TBitmap image((unsigned char *)imgButton.getPixels(), imgButton.info().width(), imgButton.info().height());
             _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop, isPassThrough());
         }
+#if TESTMODE == 1
+        else
+            setScreenDone();
+#endif
     }
 
     mutex_button.unlock();
@@ -6655,6 +7099,9 @@ void TButton::show()
 {
     DECL_TRACER("TButton::show()");
 
+    if (visible && !mChanged)
+        return;
+
     visible = true;
     makeElement();
 
@@ -6667,7 +7114,12 @@ void TButton::showLastButton()
     DECL_TRACER("TButton::showLastButton()");
 
     if (mLastImage.empty())
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
+    }
 
     if (!_displayButton && gPageManager)
         _displayButton = gPageManager->getCallbackDB();

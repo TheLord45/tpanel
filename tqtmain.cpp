@@ -589,6 +589,7 @@ MainWindow::MainWindow()
     gPageManager->regCallbackPlaySound(bind(&MainWindow::_playSound, this, std::placeholders::_1));
     gPageManager->regCallbackStopSound(bind(&MainWindow::_stopSound, this));
     gPageManager->regCallbackMuteSound(bind(&MainWindow::_muteSound, this, std::placeholders::_1));
+    gPageManager->regCallbackSetVolume(bind(&MainWindow::_setVolume, this, std::placeholders::_1));
     gPageManager->registerCBsetVisible(bind(&MainWindow::_setVisible, this, std::placeholders::_1, std::placeholders::_2));
     gPageManager->regSendVirtualKeys(bind(&MainWindow::_sendVirtualKeys, this, std::placeholders::_1));
     gPageManager->regShowPhoneDialog(bind(&MainWindow::_showPhoneDialog, this, std::placeholders::_1));
@@ -667,6 +668,7 @@ MainWindow::MainWindow()
         connect(this, &MainWindow::sigKeypad, this, &MainWindow::showKeypad);
         connect(this, &MainWindow::sigShowSetup, this, &MainWindow::showSetup);
         connect(this, &MainWindow::sigPlaySound, this, &MainWindow::playSound);
+        connect(this, &MainWindow::sigSetVolume, this, &MainWindow::setVolume);
         connect(this, &MainWindow::sigDropButton, this, &MainWindow::dropButton);
         connect(this, &MainWindow::sigSetVisible, this, &MainWindow::SetVisible);
         connect(this, &MainWindow::sigSendVirtualKeys, this, &MainWindow::sendVirtualKeys);
@@ -2123,6 +2125,10 @@ void MainWindow::animationInFinished()
         }
     }
     while (repeat);
+#if TESTMODE == 1
+    __success = true;
+    setScreenDone();
+#endif
 }
 
 void MainWindow::animationFinished()
@@ -2167,6 +2173,10 @@ void MainWindow::animationFinished()
         }
     }
     while (repeat);
+#if TESTMODE == 1
+    __success = true;
+    setScreenDone();
+#endif
 }
 
 void MainWindow::repaintWindows()
@@ -2189,11 +2199,18 @@ void MainWindow::toFront(ulong handle)
     if (!obj)
     {
         MSG_WARNING("Object with " << handleToString(handle) << " not found!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
     }
 
     if (obj->type == TObject::OBJ_SUBPAGE && obj->object.widget)
         obj->object.widget->raise();
+#if TESTMODE == 1
+    __success = true;
+    setScreenDone();
+#endif
 }
 
 void MainWindow::downloadSurface(const string &file, size_t size)
@@ -2365,7 +2382,7 @@ void MainWindow::fileDialog(ulong handle, const string &path, const std::string&
 
 void MainWindow::onTListCallbackCurrentItemChanged(QListWidgetItem *current, QListWidgetItem *previous)
 {
-    DECL_TRACER("MainWindow::on_tlistCallback_currentItemChanged(QListWidgetItem *current, QListWidgetItem *previous)");
+    DECL_TRACER("MainWindow::onTListCallbackCurrentItemChanged(QListWidgetItem *current, QListWidgetItem *previous)");
 
     if (!current || current == previous)
         return;
@@ -2542,6 +2559,9 @@ void MainWindow::pageFinished(ulong handle)
 
         if (obj->type == OBJ_SUBVIEW && obj->object.area)
             obj->object.area->show();
+#if TESTMODE == 1
+        __success = true;
+#endif
     }
 #ifdef QT_DEBUG
     else
@@ -2549,7 +2569,9 @@ void MainWindow::pageFinished(ulong handle)
         MSG_WARNING("Object " << handleToString(handle) << " not found!");
     }
 #endif
-//    cleanMarked();
+#if TESTMODE == 1
+    setScreenDone();
+#endif
 }
 
 /**
@@ -2702,10 +2724,10 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
             }
 #endif
 #if TESTMODE == 1
-            {
-                if (_gTestMode)
-                    _gTestMode->run();
-            }
+            if (_gTestMode)
+                _gTestMode->run();
+
+            _run_test_ready = true;
 #endif
         break;
 #if not defined(Q_OS_IOS) && not defined(Q_OS_ANDROID)
@@ -2978,10 +3000,6 @@ void MainWindow::_dropPage(ulong handle)
     }
 
     emit sigDropPage(handle);
-
-//#ifndef Q_OS_ANDROID
-//    std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT));
-//#endif
 }
 
 void MainWindow::_dropSubPage(ulong handle)
@@ -2997,10 +3015,6 @@ void MainWindow::_dropSubPage(ulong handle)
     }
 
     emit sigDropSubPage(handle);
-
-//#ifndef Q_OS_ANDROID
-//    std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT));
-//#endif
 }
 
 void MainWindow::_dropButton(ulong handle)
@@ -3141,6 +3155,13 @@ void MainWindow::_muteSound(bool state)
     DECL_TRACER("MainWindow::_muteSound(bool state)");
 
     emit sigMuteSound(state);
+}
+
+void MainWindow::_setVolume(int volume)
+{
+    DECL_TRACER("MainWindow::_setVolume(int volume)");
+
+    emit sigSetVolume(volume);
 }
 
 void MainWindow::_setOrientation(J_ORIENTATION ori)
@@ -3302,9 +3323,8 @@ void MainWindow::doReleaseButton()
         }
 
         gPageManager->mouseEvent(x, y, false);
+        mLastPressX = mLastPressY = -1;
     }
-
-    mLastPressX = mLastPressY = -1;
 }
 
 /**
@@ -3384,15 +3404,15 @@ int MainWindow::calcVolume(int value)
     DECL_TRACER("TQtSettings::calcVolume(int value)");
 
     // volumeSliderValue is in the range [0..100]
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+//#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     qreal linearVolume = QAudio::convertVolume(value / qreal(100.0),
                                                QAudio::LogarithmicVolumeScale,
                                                QAudio::LinearVolumeScale);
 
     return qRound(linearVolume * 100);
-#else
-    return value;
-#endif
+//#else
+//    return value;
+//#endif
 }
 
 /**
@@ -3628,7 +3648,9 @@ void MainWindow::displayButton(ulong handle, ulong parent, TBitmap buffer, int w
     {
         if (TStreamError::checkFilter(HLOG_DEBUG))
             MSG_WARNING("Button " << handleToString(handle) << " has no parent (" << handleToString(parent) << ")! Ignoring it.");
-
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
     }
 
@@ -3644,11 +3666,17 @@ void MainWindow::displayButton(ulong handle, ulong parent, TBitmap buffer, int w
             MSG_WARNING("Object " << handleToString(parent) << " has not finished the animation!");
         }
 
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
     }
     else if (par->remove)
     {
         MSG_WARNING("Object " << handleToString(parent) << " is marked for remove. Will not draw image!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
     }
 
@@ -3694,6 +3722,9 @@ void MainWindow::displayButton(ulong handle, ulong parent, TBitmap buffer, int w
         if (!addObject(nobj))
         {
             MSG_ERROR("Unable to add the new object " << handleToString(handle) << "!");
+#if TESTMODE == 1
+            setScreenDone();
+#endif
             return;
         }
 
@@ -3709,11 +3740,49 @@ void MainWindow::displayButton(ulong handle, ulong parent, TBitmap buffer, int w
         if (!enableObject(handle))
         {
             MSG_ERROR("Object " << handleToString(handle) << " of type " << objectToString(obj->type) << " couldn't be enabled!");
+#if TESTMODE == 1
+            setScreenDone();
+#endif
             return;
+        }
+
+        // In case the dimensions or position has changed we calculate the
+        // position and size again.
+        int lt, tp, wt, ht;
+
+        if (gPageManager->isSetupActive())
+        {
+            wt = scaleSetup(width);
+            ht = scaleSetup(height);
+            lt = scaleSetup(left);
+            tp = scaleSetup(top);
+        }
+        else
+        {
+            wt = scale(width);
+            ht = scale(height);
+            lt = scale(left);
+            tp = scale(top);
+        }
+
+        if (obj->type != OBJ_INPUT && (wt != obj->width || ht != obj->height || lt != obj->left || tp != obj->top))
+        {
+            MSG_DEBUG("Scaled button with new size: lt: " << obj->left << ", tp: " << obj->top << ", wt: " << obj->width << ", ht: " << obj->height);
+
+            if (obj->left != lt || obj->top != tp)
+                obj->object.label->move(lt, tp);
+
+            if (obj->width != wt || obj->height != ht)
+                obj->object.label->setFixedSize(wt, ht);
+
+            obj->left = lt;
+            obj->top = tp;
+            obj->width = wt;
+            obj->height = ht;
         }
     }
 
-    if (obj->type != TObject::OBJ_INPUT)
+    if (obj->type != OBJ_INPUT)
     {
         try
         {
@@ -3723,7 +3792,12 @@ void MainWindow::displayButton(ulong handle, ulong parent, TBitmap buffer, int w
                 QPixmap pixmap = scaleImage((unsigned char *)buffer.getBitmap(), buffer.getWidth(), buffer.getHeight(), buffer.getPixline());
 
                 if (obj->object.label)
+                {
                     obj->object.label->setPixmap(pixmap);
+#if TESTMODE == 1
+                    __success = true;
+#endif
+                }
                 else
                 {
                     MSG_WARNING("Object " << handleToString(handle) << " does not exist any more!");
@@ -3739,6 +3813,9 @@ void MainWindow::displayButton(ulong handle, ulong parent, TBitmap buffer, int w
             MSG_ERROR("Unexpected exception occured [MainWindow::displayButton()]");
         }
     }
+#if TESTMODE == 1
+    setScreenDone();
+#endif
 }
 
 void MainWindow::displayViewButton(ulong handle, ulong parent, bool vertical, TBitmap buffer, int width, int height, int left, int top, int space, TColor::COLOR_T fillColor)
@@ -3756,6 +3833,9 @@ void MainWindow::displayViewButton(ulong handle, ulong parent, bool vertical, TB
         if (TStreamError::checkFilter(HLOG_DEBUG))
             MSG_WARNING("Button " << handleToString(handle) << " has no parent (" << handleToString(parent) << ")! Ignoring it.");
 
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
     }
 
@@ -3771,11 +3851,17 @@ void MainWindow::displayViewButton(ulong handle, ulong parent, bool vertical, TB
             MSG_WARNING("Object " << handleToString(parent) << " has not finished the animation!");
         }
 
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
     }
     else if (par->remove)
     {
         MSG_WARNING("Object " << handleToString(parent) << " is marked for remove. Will not draw image!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
     }
 
@@ -3803,6 +3889,9 @@ void MainWindow::displayViewButton(ulong handle, ulong parent, bool vertical, TB
         if (!addObject(nobj))
         {
             MSG_ERROR("Couldn't add the object " << handleToString(handle) << "!");
+#if TESTMODE == 1
+            setScreenDone();
+#endif
             return;
         }
 
@@ -3811,6 +3900,9 @@ void MainWindow::displayViewButton(ulong handle, ulong parent, bool vertical, TB
     else if (obj->type != OBJ_SUBVIEW)
     {
         MSG_ERROR("Object " << handleToString(handle) << " is of wrong type " << objectToString(obj->type) << "!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
     }
     else
@@ -3844,6 +3936,9 @@ void MainWindow::displayViewButton(ulong handle, ulong parent, bool vertical, TB
             if (pixmap.isNull())
             {
                 MSG_ERROR("Unable to create a pixmap out of an image!");
+#if TESTMODE == 1
+                setScreenDone();
+#endif
                 return;
             }
 
@@ -3887,6 +3982,9 @@ void MainWindow::addViewButtonItems(ulong parent, vector<PGSUBVIEWITEM_T> items)
         if (!enableObject(parent))
         {
             MSG_ERROR("Object " << handleToString(parent) << " of type " << objectToString(par->type) << " couldn't be enabled!");
+#if TESTMODE == 1
+            setScreenDone();
+#endif
             return;
         }
     }
@@ -3910,6 +4008,9 @@ void MainWindow::updateViewButton(ulong handle, ulong parent, TBitmap buffer, TC
     if (!par || par->type != OBJ_SUBVIEW || !par->object.area)
     {
         MSG_ERROR("No object with handle " << handleToString(parent) << " found for update or object is not a subview list!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
     }
 
@@ -3930,6 +4031,9 @@ void MainWindow::updateViewButtonItem(PGSUBVIEWITEM_T& item, ulong parent)
     if (!par || par->type != OBJ_SUBVIEW || !par->object.area)
     {
         MSG_ERROR("No object with handle " << handleToString(parent) << " found for update or object is not a subview list!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
     }
 
@@ -3947,6 +4051,9 @@ void MainWindow::showViewButtonItem(ulong handle, ulong parent, int position, in
     if (!par || par->type != OBJ_SUBVIEW || !par->object.area)
     {
         MSG_ERROR("No object with handle " << handleToString(parent) << " found for update or object is not a subview list!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
     }
 
@@ -3964,6 +4071,9 @@ void MainWindow::toggleViewButtonItem(ulong handle, ulong parent, int position, 
     if (!par || par->type != OBJ_SUBVIEW || !par->object.area)
     {
         MSG_ERROR("No object with handle " << handleToString(parent) << " found for update or object is not a subview list!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
     }
 
@@ -3977,7 +4087,12 @@ void MainWindow::hideAllViewItems(ulong handle)
     OBJECT_t *obj = findObject(handle);
 
     if (!obj || obj->type != OBJ_SUBVIEW || !obj->object.area)
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
+    }
 
     obj->object.area->hideAllItems();
 }
@@ -3989,7 +4104,12 @@ void MainWindow::hideViewItem(ulong handle, ulong parent)
     OBJECT_t *obj = findObject(parent);
 
     if (!obj || obj->type != OBJ_SUBVIEW || !obj->object.area)
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
+    }
 
     obj->object.area->hideItem(handle);
 }
@@ -4003,6 +4123,9 @@ void MainWindow::SetVisible(ulong handle, bool state)
     if (!obj)
     {
         MSG_ERROR("Object " << handleToString(handle) << " not found!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
     }
 
@@ -4033,11 +4156,19 @@ void MainWindow::setSubViewPadding(ulong handle, int padding)
     if (!obj)
     {
         MSG_ERROR("Object " << handleToString(handle) << " not found!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
     }
 
     if (obj->type != OBJ_SUBVIEW || !obj->object.area)
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
+    }
 
     obj->object.area->setSpace(padding);
 }
@@ -4061,7 +4192,12 @@ void MainWindow::setPage(ulong handle, int width, int height)
     DECL_TRACER("MainWindow::setPage(ulong handle, int width, int height)");
 
     if (handle == mActualPageHandle)
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
+    }
 
     TLOCKER(draw_mutex);
     QWidget *wBackground = centralWidget();
@@ -4069,12 +4205,18 @@ void MainWindow::setPage(ulong handle, int width, int height)
     if (!wBackground)
     {
         MSG_ERROR("No central widget!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
     }
 
     if (!mCentralWidget)
     {
         MSG_ERROR("Stack for pages not initialized!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
     }
 
@@ -4116,6 +4258,9 @@ void MainWindow::setPage(ulong handle, int width, int height)
         if (!addObject(nobj))
         {
             MSG_ERROR("Error crating an object for handle " << handleToString(handle));
+#if TESTMODE == 1
+            setScreenDone();
+#endif
             return;
         }
 
@@ -4126,6 +4271,9 @@ void MainWindow::setPage(ulong handle, int width, int height)
         if (obj->type != OBJ_PAGE)
         {
             MSG_WARNING("Object " << handleToString(handle) << " is not a page! Will not reuse it as a page.");
+#if TESTMODE == 1
+            setScreenDone();
+#endif
             return;
         }
 
@@ -4181,19 +4329,27 @@ void MainWindow::setSubPage(ulong handle, ulong parent, int left, int top, int w
         {
             MSG_ERROR("Subpage " << handleToString(handle) << " has invalid parent " << handleToString(parent) << " which is no page! Ignoring it.");
         }
-
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
     }
 
     if (!par->object.widget)
     {
         MSG_ERROR("Parent page " << handleToString(parent) << " has no widget defined!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
     }
 
     if (mCentralWidget && mCentralWidget->currentWidget() != par->object.widget)
     {
         MSG_WARNING("The parent page " << handleToString(parent) << " is not the current page " << handleToString(handle) << "!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
     }
 
@@ -4204,6 +4360,9 @@ void MainWindow::setSubPage(ulong handle, ulong parent, int left, int top, int w
     if (obj && obj->type != OBJ_SUBPAGE)
     {
         MSG_WARNING("Object " << handleToString(handle) << " exists but is not a subpage! Refusing to create a new page with this handle.");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
     }
     else if (!obj)
@@ -4274,6 +4433,9 @@ void MainWindow::setSubPage(ulong handle, ulong parent, int left, int top, int w
         {
             MSG_ERROR("Couldn't add the object " << handleToString(handle) << "!");
             nobj.object.widget->close();
+#if TESTMODE == 1
+            setScreenDone();
+#endif
         }
     }
 }
@@ -4290,6 +4452,9 @@ void MainWindow::setBackground(ulong handle, TBitmap image, int width, int heigh
     if (!mCentralWidget)
     {
         MSG_ERROR("The internal page stack is not initialized!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
     }
 
@@ -4302,6 +4467,9 @@ void MainWindow::setBackground(ulong handle, TBitmap image, int width, int heigh
 #else
         MSG_WARNING("No object " << handleToString(handle) << " found!");
 #endif
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
     }
     else if (obj->invalid)
@@ -4309,6 +4477,9 @@ void MainWindow::setBackground(ulong handle, TBitmap image, int width, int heigh
         if (!enableObject(handle))
         {
             MSG_ERROR("Object " << handleToString(handle) << " of type " << objectToString(obj->type) << " couldn't be anabled!");
+#if TESTMODE == 1
+            setScreenDone();
+#endif
             return;
         }
     }
@@ -4316,6 +4487,9 @@ void MainWindow::setBackground(ulong handle, TBitmap image, int width, int heigh
     if (obj->type != OBJ_SUBPAGE && obj->type != OBJ_BUTTON && obj->type != OBJ_PAGE)
     {
         MSG_ERROR("Method does not support object type " << objectToString(obj->type) << " for object " << handleToString(handle) << "!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
     }
 
@@ -4328,11 +4502,17 @@ void MainWindow::setBackground(ulong handle, TBitmap image, int width, int heigh
         if (obj->type == OBJ_BUTTON && !obj->object.label)
         {
             MSG_ERROR("The label of the object " << handleToString(handle) << " was not initialized!");
+#if TESTMODE == 1
+            setScreenDone();
+#endif
             return;
         }
         else if (obj->type == OBJ_SUBPAGE && !obj->object.widget)
         {
             MSG_ERROR("The widget of the object " << handleToString(handle) << " was not initialized!");
+#if TESTMODE == 1
+            setScreenDone();
+#endif
             return;
         }
 
@@ -4400,6 +4580,9 @@ void MainWindow::setBackground(ulong handle, TBitmap image, int width, int heigh
         if (!central)
         {
             MSG_ERROR("There is no page widget initialized for page " << handleToString(handle));
+#if TESTMODE == 1
+            setScreenDone();
+#endif
             displayMessage("Can't set a background without an active page!", "Internal error");
             return;
         }
@@ -4584,12 +4767,18 @@ void MainWindow::dropSubPage(ulong handle)
     if (!obj)
     {
         MSG_WARNING("Object " << handleToString(handle) << " (SubPage) does not exist. Ignoring!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
     }
 
     if (obj->type != OBJ_SUBPAGE)
     {
         MSG_WARNING("Object " << handleToString(handle) << " is not a SubPage!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
     }
 
@@ -4608,7 +4797,13 @@ void MainWindow::dropSubPage(ulong handle)
         obj->remove = false;
 
         if (obj->object.widget)
+        {
             obj->object.widget->hide();
+#if TESTMODE == 1
+            __success = true;
+            setScreenDone();
+#endif
+        }
     }
 }
 
@@ -5236,7 +5431,7 @@ void MainWindow::playSound(const string& file)
     {
 #if TESTMODE == 1
         __success = true;
-        __done = true;
+        setAllDone();
 #endif
         return;
     }
@@ -5246,20 +5441,49 @@ void MainWindow::playSound(const string& file)
         mMediaPlayer = new QMediaPlayer;
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
         mAudioOutput = new QAudioOutput;
+        mMediaPlayer->setAudioOutput(mAudioOutput);
 #endif
     }
 
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     mMediaPlayer->setMedia(QUrl::fromLocalFile(file.c_str()));
     mMediaPlayer->setVolume(calcVolume(TConfig::getSystemVolume()));
+
+    if (mMediaPlayer->playbackState() != QMediaPlayer::StoppedState)
+        mMediaPlayer->stop();
 #else
     mMediaPlayer->setSource(QUrl::fromLocalFile(file.c_str()));
-    mAudioOutput->setVolume(TConfig::getSystemVolume());
+    mAudioOutput->setVolume(calcVolume(TConfig::getSystemVolume()));
+
+    if (!mMediaPlayer->isAvailable())
+    {
+        MSG_WARNING("No audio modul found!");
+#if TESTMODE == 1
+        setAllDone();
 #endif
+        return;
+    }
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+    if (mMediaPlayer->isPlaying())
+        mMediaPlayer->stop();
+#else
+    if (mMediaPlayer->playbackState() != QMediaPlayer::StoppedState)
+        mMediaPlayer->stop();
+#endif  // #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+#endif  // QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+
     mMediaPlayer->play();
 #if TESTMODE == 1
-    __success = true;
-    __done = true;
+    QMediaPlayer::Error err = QMediaPlayer::NoError;
+
+    if ((err = mMediaPlayer->error()) != QMediaPlayer::NoError)
+    {
+        MSG_ERROR("Error playing \"" << file << "\": " << mMediaPlayer->errorString().toStdString());
+    }
+    else
+        __success = true;
+
+    setAllDone();
 #endif
 }
 
@@ -5282,6 +5506,42 @@ void MainWindow::muteSound(bool state)
     if (mAudioOutput)
         mAudioOutput->setMuted(state);
 #endif
+#if TESTMODE == 1
+    __success = true;
+    setAllDone();
+#endif
+}
+
+void MainWindow::setVolume(int volume)
+{
+    DECL_TRACER("MainWindow::setVolume(int volume)");
+
+    if (!mMediaPlayer)
+    {
+#if TESTMODE == 1
+        setAllDone();
+#endif
+        return;
+    }
+
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    mMediaPlayer->setVolume(calcVolume(volume));
+#else
+    if (!mMediaPlayer || !mAudioOutput)
+    {
+#if TESTMODE == 1
+        setAllDone();
+#endif
+        return;
+    }
+
+    mAudioOutput->setVolume(calcVolume(volume));
+#if TESTMODE == 1
+    MSG_DEBUG("Volume was set to " << volume);
+    __success = true;
+    setAllDone();
+#endif
+#endif  // QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 }
 
 void MainWindow::playShowList()
@@ -5487,11 +5747,19 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
     mLastObject = nullptr;
 
     if (effect == SE_NONE || duration <= 0 || (obj->type != OBJ_SUBPAGE && obj->type != OBJ_PAGE))
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return false;
+    }
 
     if (!obj->object.widget)
     {
         MSG_WARNING("Object " << handleToString(obj->handle) << " has no widget defined! Ignoring fade effect.");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return false;
     }
 

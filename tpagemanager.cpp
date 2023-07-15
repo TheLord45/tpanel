@@ -78,6 +78,7 @@ namespace fs = std::filesystem;
 #include "ttpinit.h"
 #include "tconfig.h"
 #include "tlock.h"
+#include "tintborder.h"
 #ifdef Q_OS_IOS
 #include "ios/tiosbattery.h"
 #endif
@@ -3941,13 +3942,21 @@ void TPageManager::hideSubPage(const string& name)
     DECL_TRACER("TPageManager::hideSubPage(const string& name)");
 
     if (name.empty())
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
+    }
 
     TPage *page = getPage(mActualPage);
 
     if (!page)
     {
         MSG_ERROR("No active page found! Internal error.");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
     }
 
@@ -4076,6 +4085,9 @@ void TPageManager::mouseEvent(int x, int y, bool pressed)
     cq.pressed = pressed;
     cq.coords = true;
     mClickQueue.push_back(cq);
+#if TESTMODE == 1
+    setScreenDone();
+#endif
 }
 
 void TPageManager::_mouseEvent(int x, int y, bool pressed)
@@ -4083,6 +4095,10 @@ void TPageManager::_mouseEvent(int x, int y, bool pressed)
     DECL_TRACER("TPageManager::_mouseEvent(int x, int y, bool pressed)");
 
     TError::clear();
+#if TESTMODE == 1
+    if (_gTestMode)
+        _gTestMode->setMouseClick(x, y, pressed);
+#endif
     int realX = x - mFirstLeftPixel;
     int realY = y - mFirstTopPixel;
 
@@ -5571,6 +5587,9 @@ void TPageManager::doPPF(int, std::vector<int>&, std::vector<std::string>& pars)
 
     TError::clear();
     hideSubPage(pars[0]);
+#if TESTMODE == 1
+    setDone();
+#endif
 }
 
 /**
@@ -5966,7 +5985,6 @@ void TPageManager::doAPF(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-//            setButtonCallbacks(bt);
             bt->addPushFunction(action, pname);
         }
     }
@@ -5982,6 +6000,9 @@ void TPageManager::doBAT(int port, vector<int> &channels, vector<string> &pars)
     if (pars.size() < 1)
     {
         MSG_ERROR("Expecting 1 parameters but got none! Ignoring command.");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
@@ -5995,30 +6016,43 @@ void TPageManager::doBAT(int port, vector<int> &channels, vector<string> &pars)
     vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
+    {
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
+    }
 
     vector<Button::TButton *> buttons = collectButtons(map);
 
     if (buttons.empty())
+    {
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
+    }
 
     vector<Button::TButton *>::iterator mapIter;
 
     for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
     {
         Button::TButton *bt = *mapIter;
-//        setButtonCallbacks(bt);
 
-        if (btState == 0)       // All instances?
+        bt->appendText(text, btState - 1);
+#if TESTMODE == 1
+        if (_gTestMode)
         {
-            int bst = bt->getNumberInstances();
-
-            for (int i = 0; i < bst; i++)
-                bt->appendText(text, i);
+            int st = (btState > 0 ? (btState - 1) : 0);
+            _gTestMode->setResult(bt->getText(st));
         }
-        else
-            bt->appendText(text, btState - 1);
+
+        __success = true;
+#endif
     }
+#if TESTMODE == 1
+    setDone();
+#endif
 }
 
 /**
@@ -6041,18 +6075,23 @@ void TPageManager::doBAU(int port, vector<int>& channels, vector<string>& pars)
     string text;
     char ch[3];
 
-    if (pars.size() > 1 && (pars.size() % 2) == 0)
+    if (pars.size() > 1)
+        text = pars[1];
+
+    if ((text.size() % 4) == 0)
     {
         try
         {
             text = pars[1];
+            MSG_DEBUG("Processing UTF16 string: " << text);
             // Because the unicode characters are hex numbers, we scan the text
             // and convert the hex numbers into real numbers.
             size_t len = text.length();
             bool inHex = false;
             int lastChar = 0;
-            std::wstring uniText;
+            uint16_t *numstr = new uint16_t[len / 4];
             int uniPos = 0;
+            int cntCount = 0;
 
             for (size_t i = 0; i < len; i++)
             {
@@ -6074,24 +6113,54 @@ void TPageManager::doBAU(int port, vector<int>& channels, vector<string>& pars)
                     ch[1] = c;
                     ch[2] = 0;
                     uint16_t num = (uint16_t)strtol(ch, NULL, 16);
-                    uniText += num;
-                    uniPos++;
+
+                    if ((cntCount % 2) != 0)
+                    {
+                        numstr[uniPos] |= num;
+                        uniPos++;
+                    }
+                    else
+                        numstr[uniPos] = (num << 8) & 0xff00;
+
+                    cntCount++;
                     inHex = false;
 
                     if (uniPos >= 50)
                         break;
-
-                    continue;
                 }
             }
 
-            text = CharConvert::UtfConv<std::string>(uniText);
+            text.clear();
+            // Here we make from the real numbers a UTF8 string
+            for (size_t i = 0; i < len / 4; ++i)
+            {
+                if (numstr[i] <= 0x00ff)
+                {
+                    ch[0] = numstr[i];
+                    ch[1] = 0;
+                    text.append(ch);
+                }
+                else
+                {
+                    ch[0] = (numstr[i] >> 8) & 0x00ff;
+                    ch[1] = numstr[i] & 0x00ff;
+                    ch[2] = 0;
+                    text.append(ch);
+                }
+            }
+
+            delete[] numstr;
         }
         catch (std::exception const & e)
         {
             MSG_ERROR("Character conversion error: " << e.what());
             return;
         }
+    }
+    else
+    {
+        MSG_WARNING("No or invalid UTF16 string: " << text);
+        return;
     }
 
     vector<TMap::MAP_T> map = findButtons(port, channels);
@@ -6108,19 +6177,19 @@ void TPageManager::doBAU(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-//            setButtonCallbacks(bt);
 
-            if (btState == 0)       // All instances?
-            {
-                int bst = bt->getNumberInstances();
+            bt->appendText(text, btState - 1);
+#if TESTMODE == 1
+            if (_gTestMode)
+                _gTestMode->setResult(bt->getText(btState - 1));
 
-                for (int i = 0; i < bst; i++)
-                    bt->appendText(text, i);
-            }
-            else
-                bt->appendText(text, btState - 1);
+            __success = true;
+#endif
         }
     }
+#if TESTMODE == 1
+    setDone();
+#endif
 }
 
 /**
@@ -6542,10 +6611,12 @@ void TPageManager::doBFB(int port, vector<int>& channels, vector<std::string>& p
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-//            setButtonCallbacks(bt);
             bt->setFeedback(type);
         }
     }
+#if TESTMODE == 1
+    setDone();
+#endif
 }
 
 /*
@@ -6698,7 +6769,13 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
     DECL_TRACER("TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)");
 
     if (pars.size() < 2)
+    {
+        MSG_ERROR("Less then 2 parameters!");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
+    }
 
     TError::clear();
     int btState = atoi(pars[0].c_str()) - 1;
@@ -6715,14 +6792,19 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
     vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
+    {
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
+    }
 
     // Start of parsing the command line
     // We splitt the command line into parts by searching for a percent (%) sign.
     vector<string> parts = StrSplit(commands, "%");
 
     if (parts.empty())
-        return;
+        parts.push_back(commands);
 
     // Search for all buttons who need to be updated
     vector<Button::TButton *> buttons = collectButtons(map);
@@ -6754,7 +6836,15 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
                 {
                     case 'B':   // Border style
                         content = iter->substr(1);
-                        bt->setBorderStyle(content, btState);
+
+                        if (!content.empty() && isdigit(content[0]))
+                            bt->setBorderStyle(atoi(content.c_str()), btState);
+                        else
+                            bt->setBorderStyle(content, btState);
+#if TESTMODE == 1
+                        if (_gTestMode)
+                            _gTestMode->setResult(bt->getBorderStyle(btState < 0 ? 0 : btState));
+#endif
                     break;
 
                     case 'C':   // Colors
@@ -6765,14 +6855,26 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
                         {
                             case 'B':   // Border color
                                 bt->setBorderColor(content, btState);
+#if TESTMODE == 1
+                                if (_gTestMode)
+                                    _gTestMode->setResult(bt->getBorderColor(btState < 0 ? 0 : btState));
+#endif
                             break;
 
                             case 'F':   // Fill color
                                 bt->setFillColor(content, btState);
+#if TESTMODE == 1
+                                if (_gTestMode)
+                                    _gTestMode->setResult(bt->getFillColor(btState < 0 ? 0 : btState));
+#endif
                             break;
 
                             case 'T':   // Text color
                                 bt->setTextColor(content, btState);
+#if TESTMODE == 1
+                                if (_gTestMode)
+                                    _gTestMode->setResult(bt->getTextColor(btState < 0 ? 0 : btState));
+#endif
                             break;
                         }
                     break;
@@ -6782,7 +6884,13 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
                         content = iter->substr(2);
 
                         if (cmd2 == 'O')
+                        {
                             bt->setDrawOrder(content, btState);
+#if TESTMODE == 1
+                            if (_gTestMode)
+                                _gTestMode->setResult(bt->getDrawOrder(btState < 0 ? 0 : btState));
+#endif
+                        }
                     break;
 
                     case 'E':   // Text effect
@@ -6793,14 +6901,30 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
                         {
                             case 'C':   // Text effect color
                                 bt->setTextEffectColor(content, btState);
+#if TESTMODE == 1
+                                if (_gTestMode)
+                                    _gTestMode->setResult(bt->getTextEffectColor(btState < 0 ? 0 : btState));
+#endif
                             break;
 
                             case 'F':   // Text effect name
                                 bt->setTextEffectName(content, btState);
+#if TESTMODE == 1
+                                if (_gTestMode)
+                                    _gTestMode->setResult(bt->getTextEffectName(btState < 0 ? 0 : btState));
+#endif
                             break;
 
                             case 'N':   // Enable/disable button
                                 bt->setEnable((content[0] == '1' ? true : false));
+#if TESTMODE == 1
+                                if (_gTestMode)
+                                {
+                                    _gTestMode->setResult(bt->isEnabled() ? "TRUE" : "FALSE");
+                                    __success = true;
+                                    setScreenDone();
+                                }
+#endif
                             break;
                         }
                     break;
@@ -6809,9 +6933,13 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
                         content = iter->substr(1);
 
                         if (!isdigit(content[0]))
-                            bt->setFontFileName(content, -1, btState);
+                            bt->setFontName(content, btState);
                         else
                             bt->setFontIndex(atoi(content.c_str()), btState);
+#if TESTMODE == 1
+                        if (_gTestMode)
+                            _gTestMode->setResult(intToString(bt->getFontIndex(btState < 0 ? 0 : btState)));
+#endif
                     break;
 
                     case 'G':   // Bargraphs
@@ -6865,6 +6993,10 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
                     case 'I':   // Set the icon
                         content = iter->substr(1);
                         bt->setIcon(atoi(content.c_str()), btState);
+#if TESTMODE == 1
+                        if (_gTestMode)
+                            _gTestMode->setResult(intToString(bt->getIconIndex()));
+#endif
                     break;
 
                     case 'J':   // Set text justification
@@ -6888,6 +7020,14 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
                             }
 
                             bt->setTextJustification(atoi(content.c_str()), x, y, btState);
+#if TESTMODE == 1
+                            if (_gTestMode)
+                            {
+                                just = bt->getTextJustification(&x, &y, btState < 0 ? 0 : btState);
+                                string s = intToString(just) + "," + intToString(x) + "," + intToString(y);
+                                _gTestMode->setResult(s);
+                            }
+#endif
                         }
                         else
                         {
@@ -6910,16 +7050,32 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
                             {
                                 case 'B':   // Alignment of bitmap
                                     bt->setBitmapJustification(atoi(content.c_str()), x, y, btState);
+#if TESTMODE == 1
+                                    just = bt->getBitmapJustification(&x, &y, btState < 0 ? 0 : btState);
+#endif
                                 break;
 
                                 case 'I':   // Alignment of icon
                                     bt->setIconJustification(atoi(content.c_str()), x, y, btState);
+#if TESTMODE == 1
+                                    just = bt->getIconJustification(&x, &y, btState < 0 ? 0 : btState);
+#endif
                                 break;
 
                                 case 'T':   // Alignment of text
                                     bt->setTextJustification(atoi(content.c_str()), x, y, btState);
+#if TESTMODE == 1
+                                    just = bt->getTextJustification(&x, &y, btState < 0 ? 0 : btState);
+#endif
                                 break;
                             }
+#if TESTMODE == 1
+                            if (_gTestMode)
+                            {
+                                string s = intToString(just) + "," + intToString(x) + "," + intToString(y);
+                                _gTestMode->setResult(s);
+                            }
+#endif
                         }
                     break;
 
@@ -6972,6 +7128,10 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
                                 {
                                     MSG_WARNING("Unknown feedback type " << content);
                                 }
+#if TESTMODE == 1
+                                if (_gTestMode)
+                                    _gTestMode->setResult(intToString(bt->getFeedback()));
+#endif
                             break;
 
                             default:
@@ -7020,8 +7180,20 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
                             }
 
                             if (pos >= 4)
+                            {
                                 bt->setRectangle(left, top, right, bottom);
+                                bt->refresh();
+                            }
                         }
+#if TESTMODE == 1
+                        if (_gTestMode)
+                        {
+                            int left, top, width, height;
+                            bt->getRectangle(&left, &top, &height, &width);
+                            string res(intToString(left) + "," + intToString(top) + "," + intToString(width) + "," + intToString(height));
+                            _gTestMode->setResult(res);
+                        }
+#endif
                     }
                     break;
 
@@ -7049,6 +7221,10 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
 
                             case 'O':   // Sound
                                 bt->setSound(content, btState);
+#if TESTMODE == 1
+                                if (_gTestMode)
+                                    _gTestMode->setResult(bt->getSound(btState < 0 ? 0 : btState));
+#endif
                             break;
 
                             case 'T':   // Button style
@@ -7057,9 +7233,13 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
 
                             case 'W':   // Show / hide button
                                 if (content[0] == '0')
-                                    bt->hide();
+                                    bt->hide(true);
                                 else
                                     bt->show();
+#if TESTMODE == 1
+                                if (_gTestMode)
+                                    _gTestMode->setResult(bt->isVisible() ? "TRUE" : "FALSE");
+#endif
                             break;
                         }
                     break;
@@ -7076,6 +7256,10 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
                         }
 
                         bt->setText(content, btState);
+#if TESTMODE == 1
+                        if (_gTestMode)
+                            _gTestMode->setResult(bt->getText(btState < 0 ? 0 : btState));
+#endif
                     break;
 
                     case 'U':   // Set the unicode text
@@ -7126,6 +7310,9 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
             }
         }
     }
+#if TESTMODE == 1
+    setDone();
+#endif
 }
 
 /**
@@ -7344,11 +7531,14 @@ void TPageManager::doBOP(int port, vector<int>& channels, vector<string>& pars)
     if (pars.size() < 2)
     {
         MSG_ERROR("Expecting 2 parameters but got " << pars.size() << "! Ignoring command.");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
     TError::clear();
-    int btState = atoi(pars[0].c_str());
+    int btState = atoi(pars[0].c_str()) - 1;
     int btOpacity = 0;
 
     if (pars[1].at(0) == '#')
@@ -7359,7 +7549,12 @@ void TPageManager::doBOP(int port, vector<int>& channels, vector<string>& pars)
     vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
+    {
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
+    }
 
     vector<Button::TButton *> buttons = collectButtons(map);
 
@@ -7370,20 +7565,16 @@ void TPageManager::doBOP(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-//            setButtonCallbacks(bt);
-
-            if (btState == 0)       // All instances?
-            {
-                int bst = bt->getNumberInstances();
-                MSG_DEBUG("Setting opacity " << btOpacity << " on all " << bst << " instances...");
-
-                for (int i = 0; i < bst; i++)
-                    bt->setOpacity(btOpacity, i);
-            }
-            else
-                bt->setOpacity(btOpacity, btState);
+            bt->setOpacity(btOpacity, btState);
+#if TESTMODE == 1
+            if (_gTestMode)
+                _gTestMode->setResult(intToString(bt->getOpacity(btState < 0 ? 0 : btState)));
         }
+#endif
     }
+#if TESTMODE == 1
+    setDone();
+#endif
 }
 
 void TPageManager::getBOP(int port, vector<int>& channels, vector<string>& pars)
@@ -7435,76 +7626,59 @@ void TPageManager::doBOR(int port, vector<int>& channels, vector<string>& pars)
     if (pars.size() < 1)
     {
         MSG_ERROR("Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
     TError::clear();
     // Numbers of styles from 0 to 41
-    vector<string> styles = { "No border", "No border", "Single line", "Double line", "Quad line",
-                              "Circle 15", "Circle 25", "Single line", "Double line",
-                              "Quad line", "Picture frame", "Picture frame", "Double line",
-                              "N/A", "N/A", "N/A", "N/A", "N/A", "N/A", "N/A",
-                              "Bevel-S", "Bevel-M", "Circle 15", "Circle 25", "Neon inactive-S",
-                              "Neon inactive-M", "Neon inactive-L", "Neon inactive-L",
-                              "N/A", "N/A", "N/A", "N/A", "N/A", "N/A", "N/A", "N/A", "N/A", "N/A",
-                              "Diamond 55", "Diamond 56" };
     string bor = pars[0];
     string border = "None";
     int ibor = -1;
+    Border::TIntBorder borders;
 
     if (bor.at(0) >= '0' && bor.at(0) <= '9')
+    {
         ibor = atoi(bor.c_str());
+
+        if (ibor >= 0 && ibor <= 41)
+            border = borders.getTP4BorderName(ibor);
+        else
+        {
+            MSG_WARNING("Invalid border style ID " << ibor);
+#if TESTMODE == 1
+            setAllDone();
+#endif
+            return;
+        }
+
+        MSG_DEBUG("Id " << ibor << " is border " << border);
+    }
     else
     {
-        vector<string>::iterator iter;
-        int i = 0;
-
-        for (iter = styles.begin(); iter != styles.end(); ++iter)
+        if (!borders.isTP4BorderValid(bor))
         {
-            if (strCaseCompare(*iter, bor) == 0)
-            {
-                ibor = i;
-                break;
-            }
-
-            i++;
+            MSG_WARNING("Unknown border style " << bor);
+#if TESTMODE == 1
+            setAllDone();
+#endif
+            return;
         }
-    }
 
-    if (ibor < 0 || ibor > 41)
-    {
-        MSG_ERROR("Invalid border type " << bor << "!");
-        return;
-    }
-
-    switch (ibor)
-    {
-        case 20: border = "Bevel Raised -S"; break;
-        case 21: border = "Bevel Raised -M"; break;
-        case 24: border = "AMX Elite Raised -S"; break;
-        case 25: border = "AMX Elite Inset -S"; break;
-        case 26: border = "AMX Elite Raised -M"; break;
-        case 27: border = "AMX Elite Inset -M"; break;
-        case 28: border = "AMX Elite Raised -L"; break;
-        case 29: border = "AMX Elite Inset -L"; break;
-        case 30: border = "Circle 35"; break;
-        case 31: border = "Circle 45"; break;
-        case 32: border = "Circle 55"; break;
-        case 33: border = "Circle 65"; break;
-        case 34: border = "Circle 75"; break;
-        case 35: border = "Circle 85"; break;
-        case 36: border = "Circle 95"; break;
-        case 37: border = "Circle 105"; break;
-        case 38: border = "Circle 115"; break;
-        case 39: border = "Circle 125"; break;
-        default:
-            border = styles[ibor];
+        border = bor;
     }
 
     vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
+    {
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
+    }
 
     vector<Button::TButton *> buttons = collectButtons(map);
 
@@ -7515,10 +7689,16 @@ void TPageManager::doBOR(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-//            setButtonCallbacks(bt);
             bt->setBorderStyle(border);
+#if TESTMODE == 1
+            if (_gTestMode)
+                _gTestMode->setResult(bt->getBorderStyle(0));
+#endif
         }
     }
+#if TESTMODE == 1
+    setDone();
+#endif
 }
 
 void TPageManager::doBOS(int port, vector<int>& channels, vector<string>& pars)
@@ -8901,13 +9081,18 @@ void TPageManager::doTXT(int port, vector<int>& channels, vector<string>& pars)
     if (pars.size() < 1)
     {
         MSG_ERROR("Expecting 1 parameters but got none! Ignoring command.");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
     TError::clear();
-    int btState = atoi(pars[0].c_str());
+    int btState = atoi(pars[0].c_str()) - 1;
     string text;
 
+    // Every comma (,) in the text produces a new parameter. Therefor we must
+    // concatenate this parameters together and insert the comma.
     if (pars.size() > 1)
     {
         for (size_t i = 1; i < pars.size(); ++i)
@@ -8922,7 +9107,12 @@ void TPageManager::doTXT(int port, vector<int>& channels, vector<string>& pars)
     vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
+    {
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
+    }
 
     vector<Button::TButton *> buttons = collectButtons(map);
 
@@ -8930,19 +9120,25 @@ void TPageManager::doTXT(int port, vector<int>& channels, vector<string>& pars)
     {
         vector<Button::TButton *>::iterator mapIter;
 
-        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); ++mapIter)
         {
             Button::TButton *bt = *mapIter;
 
             if (!bt)
-                break;
+                continue;
 
-            if (btState == 0)       // All instances?
-                bt->setText(text, -1);
-            else
-                bt->setText(text, btState - 1);
+            bt->setText(text, btState);
+#if TESTMODE == 1
+            if (_gTestMode)
+                _gTestMode->setResult(bt->getText(btState < 0 ? 0 : btState));
+
+            __success = true;
+#endif
         }
     }
+#if TESTMODE == 1
+    setDone();
+#endif
 }
 
 void TPageManager::getTXT(int port, vector<int>& channels, vector<string>& pars)
@@ -8977,14 +9173,25 @@ void TPageManager::getTXT(int port, vector<int>& channels, vector<string>& pars)
             {
                 string c = bt->getText(i);
                 sendCustomEvent(i + 1, (int)c.length(), 0, c, 1001, bt->getChannelPort(), bt->getChannelNumber());
+#if TESTMODE == 1
+                if (_gTestMode)
+                    _gTestMode->setResult(c);
+#endif
             }
         }
         else
         {
             string c = bt->getText(btState-1);
             sendCustomEvent(btState, (int)c.length(), 0, c, 1001, bt->getChannelPort(), bt->getChannelNumber());
+#if TESTMODE == 1
+            if (_gTestMode)
+                _gTestMode->setResult(c);
+#endif
         }
     }
+#if TESTMODE == 1
+    setAllDone();
+#endif
 }
 
 /*
@@ -9000,11 +9207,14 @@ void TPageManager::doUNI(int port, vector<int>& channels, vector<string>& pars)
     if (pars.size() < 1)
     {
         MSG_ERROR("Expecting 1 parameters but got none! Ignoring command.");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
     TError::clear();
-    int btState = atoi(pars[0].c_str());
+    int btState = atoi(pars[0].c_str()) - 1;
     string text;
 
     // Because UTF8 is not supported out of the box from Windows and NetLinx
@@ -9027,7 +9237,12 @@ void TPageManager::doUNI(int port, vector<int>& channels, vector<string>& pars)
     vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
+    {
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
+    }
 
     vector<Button::TButton *> buttons = collectButtons(map);
 
@@ -9038,20 +9253,22 @@ void TPageManager::doUNI(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-//            setButtonCallbacks(bt);
 
-            if (btState == 0)       // All instances?
-            {
-                int bst = bt->getNumberInstances();
-                MSG_DEBUG("Setting UNI on all " << bst << " instances...");
+#if TESTMODE == 1
+            bool res = bt->setText(text, btState);
 
-                for (int i = 0; i < bst; i++)
-                    bt->setText(text, i);
-            }
-            else
-                bt->setText(text, btState - 1);
+            if (_gTestMode)
+                _gTestMode->setResult(bt->getText(btState < 0 ? 0 : btState));
+
+            __success = res;
+#else
+            bt->setText(text, btState);
+#endif
         }
     }
+#if TESTMODE == 1
+    setDone();
+#endif
 }
 
 void TPageManager::doUTF(int port, vector<int>& channels, vector<string>& pars)
@@ -9559,7 +9776,12 @@ void TPageManager::doABEEP(int, std::vector<int>&, vector<string>&)
     DECL_TRACER("TPageManager::doBEEP(int, std::vector<int>&, vector<string>&)");
 
     if (!_playSound)
+    {
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
+    }
 
     string snd = TConfig::getSystemPath(TConfig::SOUNDS) + "/" + TConfig::getSingleBeepSound();
     TValidateFile vf;
@@ -9570,7 +9792,7 @@ void TPageManager::doABEEP(int, std::vector<int>&, vector<string>&)
     else
     {
         MSG_PROTOCOL("Sound file invalid!");
-        __done = true;
+        setAllDone();
     }
 #endif
 }
@@ -9591,7 +9813,7 @@ void TPageManager::doADBEEP(int, std::vector<int>&, vector<string>&)
     else
     {
         MSG_PROTOCOL("Sound file invalid!");
-        __done = true;
+        setAllDone();
     }
 #endif
 }
@@ -9604,7 +9826,7 @@ void TPageManager::doBEEP(int, std::vector<int>&, vector<string>&)
     {
 #if TESTMODE == 1
         MSG_PROTOCOL("Method \"playSound()\" not initialized!");
-        __done = true;
+        setAllDone();
 #endif
         return;
     }
@@ -9627,7 +9849,7 @@ void TPageManager::doBEEP(int, std::vector<int>&, vector<string>&)
             MSG_PROTOCOL("Sound file invalid!");
         }
 
-        __done = true;
+        setAllDone();
     }
 #endif
 }
@@ -9657,7 +9879,7 @@ void TPageManager::doDBEEP(int, std::vector<int>&, vector<string>&)
             MSG_PROTOCOL("Sound file invalid!");
         }
 
-        __done = true;
+        setAllDone();
     }
 #endif
 }
@@ -9801,7 +10023,7 @@ void TPageManager::doMUT(int, vector<int>&, vector<string>& pars)
     }
 
     __success = true;
-    __done = true;
+    setAllDone();
 #endif
 }
 

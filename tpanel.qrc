@@ -1871,5 +1871,6 @@
         <file>ressources/prj.xma</file>
         <file>ressources/table.xma</file>
         <file>ressources/images/theosys_logo.png</file>
+        <file>ressources/sounds/docked.mp3</file>
     </qresource>
 </RCC>

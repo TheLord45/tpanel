@@ -386,11 +386,22 @@ namespace Button
             /**
              * Set font file name and optional the size
              *
-             * @param font  File name of the font
+             * @param name  File name of the font
              * @param size  The size of the font in PT
              * @param inst  The instance of the button
+             *
+             * @return TRUE success
              */
             bool setFontFileName(const std::string& name, int size, int inst);
+            /**
+             * Set font name.
+             *
+             * @param name  The font name
+             * @param inst  The instance of the button
+             *
+             * @return TRUE success
+             */
+            bool setFontName(const std::string& name, int inst);
 
             std::string& getName() { return na; }
             int getRangeLow() { return rl; }
@@ -504,6 +515,7 @@ namespace Button
             void setLeft(int left);
             void setLeftTop(int left, int top);
             void setRectangle(int left, int top, int right, int bottom);
+            void getRectangle(int *left, int *top, int *height, int *width);
             void setResourceName(const std::string& name, int instance);
             int getBitmapJustification(int *x, int *y, int instance);
             void setBitmapJustification(int j, int x, int y, int instance);
@@ -722,6 +734,14 @@ namespace Button
              */
             bool setFeedback(FEEDBACK feedback);
             /**
+             * @brief setFeedback - Sets the feedback type.
+             * This retrieves the feedback type of a button. Only if the button
+             * is a general type one, a valid value is returned.
+             *
+             * @return The feedback type of a button.
+             */
+            FEEDBACK getFeedback();
+            /**
              * Set a border to a specific border style associated with a border
              * value for those buttons with a defined address range.
              * @param style     The name of the border style
@@ -729,6 +749,14 @@ namespace Button
              * > 0 means the style is valid only for this instance.
              */
             bool setBorderStyle(const std::string& style, int instance=-1);
+            /**
+             * Set a border to a specific border style associated with a border
+             * value for those buttons with a defined address range.
+             * @param style     The index number of the border style
+             * @param instance  -1 = style for all instances
+             * > 0 means the style is valid only for this instance.
+             */
+            bool setBorderStyle(int style, int instance=-1);
             /**
              * Retrieves the border style, if any, of the instance \p instance
              * and returns it.
@@ -1025,6 +1053,13 @@ namespace Button
              */
             bool invalidate();
             /**
+             * Returns the draw order of the elements of a button.
+             *
+             * @param instance  The button instance. This value must be >= 0.
+             * @return The draw order as a string with a length of 10.
+             */
+            std::string& getDrawOrder(int instance);
+            /**
              * Returns the rows of the list in case this button is a list.
              * Otherwise an empty list is returned.
              *
@@ -1306,6 +1341,7 @@ namespace Button
             bool mSubViewPart{false};   // TRUE = The button is part of a subview item.
             int mCursorPosition{0}; // The cursor position if this is of type TEXT_INPUT
             bool mHasFocus{false};  // If this is of type TEXT_INPUT this holds the focus state
+            std::string dummy;      // dummy string used to return an empty string.
     };
 
     typedef struct BUTTONS_T

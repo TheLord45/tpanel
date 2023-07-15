@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2021 to 2023 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

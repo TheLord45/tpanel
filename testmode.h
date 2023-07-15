@@ -26,13 +26,11 @@
 
 #include <QtGlobal>
 
-#if !defined(Q_OS_ANDROID) && !defined(Q_OS_IOS)
-#define TESTMODE    1
-#endif
-
-extern std::atomic<bool> __success;
-extern std::atomic<bool> __done;
+extern bool __success;
+extern bool __done;
+extern bool _test_screen;
 extern bool _testmode;
+extern bool _run_test_ready;
 
 class _TestMode
 {
@@ -41,7 +39,8 @@ class _TestMode
         ~_TestMode();
 
         void run();
-        void setResult(const std::string& res) { verify = res; }
+        void setMouseClick(int x, int y, bool pressed);
+        void setResult(const std::string& res) { mVerify = res; }
 
     private:
         typedef struct _TESTCMD
@@ -49,6 +48,9 @@ class _TestMode
             std::string command;    // The command to execute
             std::string result;     // The expected result
             bool compare{false};    // TRUE: Compare expected result with real result
+            bool nowait{false};     // TRUE: Don't wait until the command finished (no compare!)
+            bool reverse{false};    // TRUE: This changes the meaning of success and failure.
+            bool waitscreen{false}; // TRUE: Wait for screen finished even if no comparison is made.
         }_TESTCMD;
 
         void inject(int port, const std::string& c);
@@ -60,10 +62,18 @@ class _TestMode
         bool isRunning{false};
         std::string mPath;
         std::vector<std::string> mCmdFiles;
-        std::string verify;         // The real result
+        std::string mVerify;         // The real result
+        int mX{0};
+        int mY{0};
+        bool mPressed{false};
+        int mCaseNumber{0};         // The number of the test case
 };
 
 extern _TestMode *_gTestMode;
+
+#define setDone()       __done = true;
+#define setScreenDone() { MSG_DEBUG("setScreenDone(); at module " << __FILE__ << ": " << __LINE__); _test_screen = true; }
+#define setAllDone()    { MSG_DEBUG("setAllDone(); at module " << __FILE__ << ": " << __LINE__); _test_screen = true; __done = true; }
 
 #ifndef TESTMODE
 extern bool _testmode;

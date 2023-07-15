@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -521,7 +521,32 @@ int TFont::getFontIDfromFile(const string& file)
         if (iter->second.file == file)
             return iter->first;
     }
+#if TESTMODE == 1
+    MSG_WARNING("There is no font file \"" << file << "\" found!");
+#endif
+    return -1;
+}
 
+int TFont::getFontIDfromName(const string &name)
+{
+    DECL_TRACER("TFont::getFontIDfromName(const string &name)");
+
+    if (mFonts.size() == 0)
+    {
+        MSG_WARNING("No fonts found!");
+        return -1;
+    }
+
+    map<int, FONT_T>::iterator iter;
+
+    for (iter = mFonts.begin(); iter != mFonts.end(); ++iter)
+    {
+        if (iter->second.name == name)
+            return iter->first;
+    }
+#if TESTMODE == 1
+    MSG_WARNING("There is no font name \"" << name << "\" found!");
+#endif
     return -1;
 }
 

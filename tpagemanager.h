@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -244,6 +244,7 @@ class TPageManager : public TAmxCommands
         void regCallbackPlaySound(std::function<void (const std::string& file)> playSound) { _playSound = playSound; }
         void regCallbackStopSound(std::function<void ()> stopSound) { _stopSound = stopSound; }
         void regCallbackMuteSound(std::function<void (bool state)> muteSound) { _muteSound = muteSound; }
+        void regCallbackSetVolume(std::function<void (int volume)> setVolume) { _setVolume = setVolume; }
         void regSendVirtualKeys(std::function<void (const std::string& str)> sendVirtualKeys) { _sendVirtualKeys = sendVirtualKeys; }
         void regShowPhoneDialog(std::function<void (bool state)> showPhoneDialog) { _showPhoneDialog = showPhoneDialog; }
         void regSetPhoneNumber(std::function<void (const std::string& number)> setPhoneNumber) { _setPhoneNumber = setPhoneNumber; }
@@ -520,6 +521,7 @@ class TPageManager : public TAmxCommands
         std::function<void (const std::string& file)> getCallPlaySound() { return _playSound; }
         std::function<void ()> getCallStopSound() { return _stopSound; }
         std::function<void (bool state)> getCallMuteSound() { return _muteSound; }
+        std::function<void (int volume)> getCallSetVolume() { return _setVolume; }
         std::function<void (const std::string& str)> sendVirtualKeys() { return _sendVirtualKeys; }
         std::function<void (bool state)> getShowPhoneDialog() { return _showPhoneDialog; }
         std::function<void (const std::string& number)> getSetPhoneNumber() { return _setPhoneNumber; }
@@ -629,6 +631,7 @@ class TPageManager : public TAmxCommands
         std::function<void (const std::string& file)> _playSound{nullptr};
         std::function<void ()> _stopSound{nullptr};
         std::function<void (bool state)> _muteSound{nullptr};
+        std::function<void (int volume)> _setVolume{nullptr};
         std::function<void (const std::string& str)> _sendVirtualKeys{nullptr};
         std::function<void (bool state)> _showPhoneDialog{nullptr};
         std::function<void (const std::string& number)> _setPhoneNumber{nullptr};

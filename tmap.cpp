@@ -208,7 +208,7 @@ bool TMap::readMap()
 
 vector<TMap::MAP_T> TMap::findButtons(int port, vector<int>& channels, MAP_TYPE mt)
 {
-    DECL_TRACER("TAmxCommands::findButtons(int port, vector<int>& channels, MAP_TYPE mt)");
+    DECL_TRACER("TMap::findButtons(int port, vector<int>& channels, MAP_TYPE mt)");
 
     vector<MAP_T> map;
     vector<int>::iterator iter;

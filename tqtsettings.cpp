@@ -1364,6 +1364,9 @@ void TQtSettings::on_horizontalSlider_Volume_valueChanged(int value)
         return;
 
     TConfig::saveSystemVolume(value);
+
+    if (gPageManager && gPageManager->getCallSetVolume())
+        gPageManager->getCallSetVolume()(value);
 }
 
 void TQtSettings::on_horizontalSlider_Gain_valueChanged(int value)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -67,6 +67,7 @@ class TFont : public TValidateFile
         bool systemFonts(bool setup=false);
         FONT_T getFont(int number);
         int getFontIDfromFile(const std::string& file);
+        int getFontIDfromName(const std::string& name);
         FONT_STYLE getStyle(int number);
         FONT_STYLE getStyle(FONT_T& font);
         SkFontStyle getSkiaStyle(int number);

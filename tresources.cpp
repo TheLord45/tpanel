@@ -201,7 +201,8 @@ SkString GetResourcePath(const char* resource, _RESOURCE_TYPE rs)
     if (!resource)
         return SkString();
 
-    if (*resource == '/')       // absolute path?
+//    if (*resource == '/')       // absolute path?
+    if (strstr(resource, "/") != NULL && !endsWith(resource, "/"))
     {                           // yes, then take it as it is
         return SkString(resource);
     }

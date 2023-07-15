@@ -137,6 +137,7 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
         void sigPlaySound(const std::string& file);
         void sigStopSound();
         void sigMuteSound(bool state);
+        void sigSetVolume(int volume);
         void sigSendVirtualKeys(const std::string& str);
         void sigShowPhoneDialog(bool state);
         void sigSetPhoneNumber(const std::string& number);
@@ -203,6 +204,7 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
         void playSound(const std::string& file);
         void stopSound();
         void muteSound(bool state);
+        void setVolume(int volume);
         void onAppStateChanged(Qt::ApplicationState state);
         void onScreenOrientationChanged(Qt::ScreenOrientation ori);
         void onCurrentOrientationChanged(int currentOrientation);
@@ -298,6 +300,7 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
         void _playSound(const std::string& file);
         void _stopSound();
         void _muteSound(bool state);
+        void _setVolume(int volume);
         void _setOrientation(J_ORIENTATION ori);
         void _sendVirtualKeys(const std::string& str);
         void _showPhoneDialog(bool state);

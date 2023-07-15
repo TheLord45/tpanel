@@ -86,6 +86,166 @@ SYSBORDER_t sysBorders[] = {
     {  0, nullptr, 0, nullptr, 0, 0 }
 };
 
+TP4BORDERS_t tp4Borders[] = {
+    { 0, "None", {0, 0, 0, 0} },
+    { 1, "None", {0, 0, 0, 0} },
+    { 2, "AMX Elite -L", {0, 0, 0, 0} },
+    { 3, "AMX Elite -M", {0, 0, 0, 0} },
+    { 4, "AMX Elite -S", {0, 0, 0, 0} },
+    { 5, "Bevel -L", {0, 0, 0, 0} },
+    { 6, "Bevel -M", {21, 0, 0, 0} },
+    { 7, "Bevel -S", {20, 0, 0, 0} },
+    { 8, "Circle 15", {5, 22, 0, 0} },
+    { 9, "Circle 25", {6, 23, 0, 0} },
+    { 10, "Circle 35", {0, 0, 0, 0} },
+    { 11, "Circle 45", {0, 0, 0, 0} },
+    { 12, "Circle 55", {0, 0, 0, 0} },
+    { 13, "Circle 65", {0, 0, 0, 0} },
+    { 14, "Circle 75", {0, 0, 0, 0} },
+    { 15, "Circle 85", {0, 0, 0, 0} },
+    { 16, "Circle 95", {0, 0, 0, 0} },
+    { 17, "Circle 105", {0, 0, 0, 0} },
+    { 18, "Circle 115", {0, 0, 0, 0} },
+    { 19, "Circle 125", {0, 0, 0, 0} },
+    { 20, "Circle 135", {0, 0, 0, 0} },
+    { 21, "Circle 145", {0, 0, 0, 0} },
+    { 22, "Circle 155", {0, 0, 0, 0} },
+    { 23, "Circle 165", {0, 0, 0, 0} },
+    { 24, "Circle 175", {0, 0, 0, 0} },
+    { 25, "Circle 185", {0, 0, 0, 0} },
+    { 26, "Circle 195", {0, 0, 0, 0} },
+    { 27, "Cursor Bottom", {0, 0, 0, 0} },
+    { 28, "Cursor Bottom with Hole", {0, 0, 0, 0} },
+    { 29, "Cursor Top", {0, 0, 0, 0} },
+    { 30, "Cursor Top with Hole", {0, 0, 0, 0} },
+    { 31, "Cursor Left", {0, 0, 0, 0} },
+    { 32, "Cursor Left with Hole", {0, 0, 0, 0} },
+    { 33, "Cursor Right", {0, 0, 0, 0} },
+    { 34, "Cursor Right with Hole", {0, 0, 0, 0} },
+    { 35, "Custom Frame", {0, 0, 0, 0} },
+    { 36, "Diamond 15", {0, 0, 0, 0} },
+    { 37, "Diamond 25", {0, 0, 0, 0} },
+    { 38, "Diamond 35", {0, 0, 0, 0} },
+    { 39, "Diamond 45", {0, 0, 0, 0} },
+    { 40, "Diamond 55", {40, 0, 0, 0} },
+    { 41, "Diamond 65", {41, 0, 0, 0} },
+    { 42, "Diamond 75", {0, 0, 0, 0} },
+    { 43, "Diamond 85", {0, 0, 0, 0} },
+    { 44, "Diamond 95", {0, 0, 0, 0} },
+    { 45, "Diamond 105", {0, 0, 0, 0} },
+    { 46, "Diamond 115", {0, 0, 0, 0} },
+    { 47, "Diamond 125", {0, 0, 0, 0} },
+    { 48, "Diamond 135", {0, 0, 0, 0} },
+    { 49, "Diamond 145", {0, 0, 0, 0} },
+    { 50, "Diamond 155", {0, 0, 0, 0} },
+    { 51, "Diamond 165", {0, 0, 0, 0} },
+    { 52, "Diamond 175", {0, 0, 0, 0} },
+    { 53, "Diamond 185", {0, 0, 0, 0} },
+    { 54, "Diamond 195", {0, 0, 0, 0} },
+    { 55, "Double Bevel -L", {0, 0, 0, 0} },
+    { 56, "Double Bevel -M", {0, 0, 0, 0} },
+    { 57, "Double Bevel -S", {0, 0, 0, 0} },
+    { 58, "Double Line", {3, 8, 12, 0} },
+    { 59, "Fuzzy", {0, 0, 0, 0} },
+    { 60, "Glow-L", {0, 0, 0, 0} },
+    { 61, "Glow-S", {0, 0, 0, 0} },
+    { 62, "Help Down", {0, 0, 0, 0} },
+    { 63, "Neon Active -L", {27, 0, 0, 0} },
+    { 64, "Neon Active -S", {26, 0, 0, 0} },
+    { 65, "Neon Inactive -L", {25, 0, 0, 0} },
+    { 66, "Neon Inactive -S", {24, 0, 0, 0} },
+    { 67, "Oval H 60x30", {0, 0, 0, 0} },
+    { 68, "Oval H 100x50", {0, 0, 0, 0} },
+    { 69, "Oval H 150x75", {0, 0, 0, 0} },
+    { 70, "Oval H 200x100", {0, 0, 0, 0} },
+    { 71, "Oval V 30x60", {0, 0, 0, 0} },
+    { 72, "Oval V 50x100", {0, 0, 0, 0} },
+    { 73, "Oval V 75x150", {0, 0, 0, 0} },
+    { 74, "Oval V 100x200", {0, 0, 0, 0} },
+    { 75, "Picture Frame", {10, 11, 0, 0} },
+    { 76, "Quad Line", {4, 9, 0, 0} },
+    { 77, "Single Line", {2, 7, 0, 0} },
+    { 78, "Windows Style Popup", {0, 0, 0, 0} },
+    { 79, "Windows Style Popup (Status Bar)", {0, 0, 0, 0} },
+    { 80, "Menu Bottom Rounded 15", {0, 0, 0, 0} },
+    { 81, "Menu Bottom Rounded 25", {0, 0, 0, 0} },
+    { 82, "Menu Bottom Rounded 35", {0, 0, 0, 0} },
+    { 83, "Menu Bottom Rounded 45", {0, 0, 0, 0} },
+    { 84, "Menu Bottom Rounded 55", {0, 0, 0, 0} },
+    { 85, "Menu Bottom Rounded 65", {0, 0, 0, 0} },
+    { 86, "Menu Bottom Rounded 75", {0, 0, 0, 0} },
+    { 87, "Menu Bottom Rounded 85", {0, 0, 0, 0} },
+    { 88, "Menu Bottom Rounded 95", {0, 0, 0, 0} },
+    { 89, "Menu Bottom Rounded 105", {0, 0, 0, 0} },
+    { 90, "Menu Bottom Rounded 115", {0, 0, 0, 0} },
+    { 91, "Menu Bottom Rounded 125", {0, 0, 0, 0} },
+    { 92, "Menu Bottom Rounded 135", {0, 0, 0, 0} },
+    { 93, "Menu Bottom Rounded 145", {0, 0, 0, 0} },
+    { 94, "Menu Bottom Rounded 155", {0, 0, 0, 0} },
+    { 95, "Menu Bottom Rounded 165", {0, 0, 0, 0} },
+    { 96, "Menu Bottom Rounded 175", {0, 0, 0, 0} },
+    { 97, "Menu Bottom Rounded 185", {0, 0, 0, 0} },
+    { 98, "Menu Bottom Rounded 195", {0, 0, 0, 0} },
+    { 99, "Menu Top Rounded 15", {0, 0, 0, 0} },
+    { 100, "Menu Top Rounded 25", {0, 0, 0, 0} },
+    { 101, "Menu Top Rounded 35", {0, 0, 0, 0} },
+    { 102, "Menu Top Rounded 45", {0, 0, 0, 0} },
+    { 103, "Menu Top Rounded 55", {0, 0, 0, 0} },
+    { 104, "Menu Top Rounded 65", {0, 0, 0, 0} },
+    { 105, "Menu Top Rounded 75", {0, 0, 0, 0} },
+    { 106, "Menu Top Rounded 85", {0, 0, 0, 0} },
+    { 107, "Menu Top Rounded 95", {0, 0, 0, 0} },
+    { 108, "Menu Top Rounded 105", {0, 0, 0, 0} },
+    { 109, "Menu Top Rounded 115", {0, 0, 0, 0} },
+    { 110, "Menu Top Rounded 125", {0, 0, 0, 0} },
+    { 111, "Menu Top Rounded 135", {0, 0, 0, 0} },
+    { 112, "Menu Top Rounded 145", {0, 0, 0, 0} },
+    { 113, "Menu Top Rounded 155", {0, 0, 0, 0} },
+    { 114, "Menu Top Rounded 165", {0, 0, 0, 0} },
+    { 115, "Menu Top Rounded 175", {0, 0, 0, 0} },
+    { 116, "Menu Top Rounded 185", {0, 0, 0, 0} },
+    { 117, "Menu Top Rounded 195", {0, 0, 0, 0} },
+    { 118, "Menu Right Rounded 15", {0, 0, 0, 0} },
+    { 119, "Menu Right Rounded 25", {0, 0, 0, 0} },
+    { 120, "Menu Right Rounded 35", {0, 0, 0, 0} },
+    { 121, "Menu Right Rounded 45", {0, 0, 0, 0} },
+    { 122, "Menu Right Rounded 55", {0, 0, 0, 0} },
+    { 123, "Menu Right Rounded 65", {0, 0, 0, 0} },
+    { 124, "Menu Right Rounded 75", {0, 0, 0, 0} },
+    { 125, "Menu Right Rounded 85", {0, 0, 0, 0} },
+    { 126, "Menu Right Rounded 95", {0, 0, 0, 0} },
+    { 127, "Menu Right Rounded 105", {0, 0, 0, 0} },
+    { 128, "Menu Right Rounded 115", {0, 0, 0, 0} },
+    { 129, "Menu Right Rounded 125", {0, 0, 0, 0} },
+    { 130, "Menu Right Rounded 135", {0, 0, 0, 0} },
+    { 131, "Menu Right Rounded 145", {0, 0, 0, 0} },
+    { 132, "Menu Right Rounded 155", {0, 0, 0, 0} },
+    { 133, "Menu Right Rounded 165", {0, 0, 0, 0} },
+    { 134, "Menu Right Rounded 175", {0, 0, 0, 0} },
+    { 135, "Menu Right Rounded 185", {0, 0, 0, 0} },
+    { 136, "Menu Right Rounded 195", {0, 0, 0, 0} },
+    { 137, "Menu Left Rounded 15", {0, 0, 0, 0} },
+    { 138, "Menu Left Rounded 25", {0, 0, 0, 0} },
+    { 139, "Menu Left Rounded 35", {0, 0, 0, 0} },
+    { 140, "Menu Left Rounded 45", {0, 0, 0, 0} },
+    { 141, "Menu Left Rounded 55", {0, 0, 0, 0} },
+    { 142, "Menu Left Rounded 65", {0, 0, 0, 0} },
+    { 143, "Menu Left Rounded 75", {0, 0, 0, 0} },
+    { 144, "Menu Left Rounded 85", {0, 0, 0, 0} },
+    { 145, "Menu Left Rounded 95", {0, 0, 0, 0} },
+    { 146, "Menu Left Rounded 105", {0, 0, 0, 0} },
+    { 147, "Menu Left Rounded 115", {0, 0, 0, 0} },
+    { 148, "Menu Left Rounded 125", {0, 0, 0, 0} },
+    { 149, "Menu Left Rounded 135", {0, 0, 0, 0} },
+    { 150, "Menu Left Rounded 145", {0, 0, 0, 0} },
+    { 151, "Menu Left Rounded 155", {0, 0, 0, 0} },
+    { 152, "Menu Left Rounded 165", {0, 0, 0, 0} },
+    { 153, "Menu Left Rounded 175", {0, 0, 0, 0} },
+    { 154, "Menu Left Rounded 185", {0, 0, 0, 0} },
+    { 155, "Menu Left Rounded 195", {0, 0, 0, 0} },
+    { -1, "", {0, 0, 0, 0}}
+};
+
 TIntBorder::TIntBorder()
 {
     DECL_TRACER("TIntBorder::TIntBorder()");
@@ -244,7 +404,7 @@ bool TIntBorder::drawBorder(SkBitmap* bm, const string& bname, int wt, int ht, c
         }
         break;
 
-        case 30:    // BevelInset -L
+        case 30:    // Bevel Inset -L
         case 32:    // Bevel Inset -M
         case 34:    // Bevel Inset -S
             borderColor = TColor::getSkiaColor(cb);
@@ -374,6 +534,32 @@ bool TIntBorder::borderExist(const string& name)
     return false;
 }
 
+bool TIntBorder::borderExist(int index)
+{
+    DECL_TRACER("TIntBorder::borderExist(int index)");
+
+    for (int i = 0; sysBorders[i].id > 0; ++i)
+    {
+        if (index == sysBorders[i].id)
+            return true;
+    }
+
+    return false;
+}
+
+string TIntBorder::getBorderName(int index)
+{
+    DECL_TRACER("TIntBorder::getBorderName(int index)");
+
+    for (int i = 0; sysBorders[i].id > 0; ++i)
+    {
+        if (sysBorders[i].id == index)
+            return sysBorders[i].name;
+    }
+
+    return string();
+}
+
 string TIntBorder::getCorrectName(const string& name)
 {
     DECL_TRACER("TIntBorder::getCorrectName(const string& name)");
@@ -398,6 +584,53 @@ bool TIntBorder::isForcedBorder(const string& name)
     }
 
     return false;
+}
+
+bool TIntBorder::isTP4BorderValid(const string &name)
+{
+    DECL_TRACER("TIntBorder::isTP4BorderValid(const string &name)");
+
+    if (name.empty())
+        return false;
+
+    int i = 0;
+
+    while (tp4Borders[i].id >= 0)
+    {
+        if (strCaseCompare(tp4Borders[i].name, name) == 0)
+            return true;
+
+        i++;
+    }
+
+    return false;
+}
+
+string TIntBorder::getTP4BorderName(int id)
+{
+    DECL_TRACER("TIntBorder::getTP4BorderName(int id)");
+
+    if (id < 1 || id > 41)
+        return "None";
+
+    int i = 0;
+
+    while (tp4Borders[i].id >= 0)
+    {
+        int j = 0;
+
+        while (j < 4)
+        {
+            if (tp4Borders[i].prgNum[j] == id)
+                return tp4Borders[i].name;
+
+            j++;
+        }
+
+        i++;
+    }
+
+    return "None";
 }
 
 void TIntBorder::erasePart(SkBitmap *bm, const SkBitmap& mask, ERASE_PART_t ep)

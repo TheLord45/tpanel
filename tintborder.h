@@ -46,6 +46,13 @@ namespace Border
         bool calc{false};           // TRUE = Calculated inside, FALSE = Read from images
     }SYSBORDER_t;
 
+    typedef struct TP4BORDERS_t
+    {
+        int id{0};
+        std::string name;
+        int prgNum[4];
+    }TP4BORDERS_t;
+
     class TIntBorder
     {
         public:
@@ -54,8 +61,12 @@ namespace Border
             bool drawBorder(SkBitmap* bm, const std::string& bname, int wt, int ht, const std::string& cb, bool force=false);
             int getBorderWidth(const std::string& bname, bool force=false);
             bool borderExist(const std::string& name);
+            bool borderExist(int index);
+            std::string getBorderName(int index);
             std::string getCorrectName(const std::string& name);
             bool isForcedBorder(const std::string& name);
+            bool isTP4BorderValid(const std::string& name);
+            std::string getTP4BorderName(int id);
 
             void erasePart(SkBitmap *bm, const SkBitmap& mask, ERASE_PART_t ep);
 

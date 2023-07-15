@@ -29,8 +29,8 @@
 #include <android/log.h>
 #endif
 
-#define TIMEOUT     5000000  // Microseconds (5 seconds)
-#define DELAY       100      // Wait this amount of microseconds
+#define TIMEOUT     5000000         // Microseconds (5 seconds)
+#define DELAY       100             // Wait this amount of microseconds
 
 using std::string;
 using std::strncpy;
@@ -42,11 +42,13 @@ using std::endl;
 using std::ifstream;
 using namespace dir;
 
-atomic<bool> __success{false};
-atomic<bool> __done{false};
-bool _testmode{false};
-string gLastCommand;
-_TestMode *_gTestMode{nullptr};
+bool __success{false};              // TRUE indicates a successful test
+bool __done{false};                 // TRUE marks a test case as done
+bool _test_screen{false};           // TRUE: The graphical part of a test case is done.
+bool _testmode{false};              // TRUE: Test mode is active. Activated by command line.
+bool _run_test_ready{false};        // TRUE: The test cases are allowd to start.
+string gLastCommand;                // The last command to be tested.
+_TestMode *_gTestMode{nullptr};     // Pointer to class _TestMode. This class must exist only once!
 
 extern amx::TAmxNet *gAmxNet;
 
@@ -114,6 +116,9 @@ void _TestMode::start()
     isRunning = true;
     DECL_TRACER("_TestMode::start()");
 
+    while (!_run_test_ready)
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
     vector<string>::iterator iter;
 
     for (iter = mCmdFiles.begin(); iter != mCmdFiles.end(); ++iter)
@@ -125,53 +130,99 @@ void _TestMode::start()
             ifstream is(*iter);
             char buffer[4096];
             int line = 1;
+            int port = 1;
+            string command, content;
             tcmd.command.clear();
             tcmd.result.clear();
             tcmd.compare = false;
 
             while (is.getline(buffer, sizeof(buffer)))
             {
-                if (buffer[0] == '#')
+                if (buffer[0] == '#' || buffer[0] == '\0')
+                {
+                    line++;
                     continue;
-
-                if (startsWith(buffer, "command="))
-                {
-                    string scmd(buffer);
-
-                    size_t pos = scmd.find("=");
-                    tcmd.command = scmd.substr(pos + 1);
                 }
-                else if (startsWith(buffer, "result="))
-                {
-                    string scmd(buffer);
 
-                    size_t pos = scmd.find("=");
-                    tcmd.result = scmd.substr(pos + 1);
-                }
-                else if (startsWith(buffer, "compare="))
-                {
-                    string scmd(buffer);
+                string scmd(buffer);
+                command.clear();
+                content.clear();
+                size_t pos = scmd.find("=");
 
-                    size_t pos = scmd.find("=");
-                    string res = scmd.substr(pos + 1);
-                    tcmd.compare = isTrue(res);
+                // Parse the command line and extract the command and the content
+                if (scmd == "exec")
+                    command = scmd;
+                else if (pos == string::npos)
+                {
+                    MSG_WARNING("(" << *iter << ") Line " << line << ": Invalid or malformed command!");
+                    line++;
+                    continue;
                 }
-                else if (startsWith(buffer, "exec"))
+                else
+                {
+                    command = scmd.substr(0, pos);
+                    content = scmd.substr(pos + 1);
+                }
+
+                // Test for the command and take the desired action.
+                if (command == "command")
+                    tcmd.command = content;
+                else if (command == "port")
+                {
+                    int p = atoi(content.c_str());
+
+                    if (p > 0)
+                        port = p;
+                }
+                else if (command == "result")
+                    tcmd.result = content;
+                else if (command == "compare")
+                    tcmd.compare = isTrue(content);
+                else if (command == "reverse")
+                    tcmd.reverse = isTrue(content);
+                else if (command == "wait")
+                {
+                    unsigned long ms = atol(content.c_str());
+
+                    if (ms != 0)
+                        std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+                }
+                else if (command == "nowait")
+                    tcmd.nowait = isTrue(content);
+                else if (command == "screenwait")
+                    tcmd.waitscreen = isTrue(content);
+                else if (command == "exec")
                 {
                     if (tcmd.command.empty())
                     {
-                       MSG_WARNING("Nothing to execute on line " << line << "!");
+                       MSG_WARNING("(" << *iter << ") Nothing to execute on line " << line << "!");
                        line++;
                        continue;
                     }
 
-                    inform("Testing command: " + tcmd.command);
-                    inject(1, tcmd.command);
-                    testSuccess(tcmd);
+                    mCaseNumber++;
+                    inform("\x1b[1;37mCase " + intToString(mCaseNumber) + "\x1b[0m: \x1b[0;33m" + tcmd.command + "\x1b[0m");
+                    __done = false;
+                    __success = false;
+                    _test_screen = false;
+                    inject(port, tcmd.command);
+
+                    if (!tcmd.nowait)
+                        testSuccess(tcmd);
+                    else
+                    {
+                        MSG_WARNING("Skipped result check!");
+                        inform("   Result check skipped!");
+                    }
 
                     tcmd.command.clear();
                     tcmd.result.clear();
                     tcmd.compare = false;
+                    tcmd.nowait = false;
+                    tcmd.reverse = false;
+                    tcmd.waitscreen = false;
+                    mVerify.clear();
+                    port = 1;
                 }
 
                 line++;
@@ -185,15 +236,7 @@ void _TestMode::start()
             continue;
         }
     }
-/*
-    inform("Testing command: ^MUT-1");
-    inject(1, "^MUT-1");
-    testSuccess();
 
-    inform("Testing command: ^MUT-0");
-    inject(1, "^MUT-0");
-    testSuccess();
-*/
     isRunning = false;
     delete this;
 }
@@ -207,29 +250,118 @@ void _TestMode::inject(int port, const string& c)
     int channel = TConfig::getChannel();
     int system = TConfig::getSystem();
 
-    amx::ANET_COMMAND cmd;
-    cmd.MC = 0x000c;
-    cmd.device1 = channel;
-    cmd.port1 = port;
-    cmd.system = system;
-    cmd.data.message_string.system = system;
-    cmd.data.message_string.device = channel;
-    cmd.data.message_string.port = port;    // Must be the address port of button
-    cmd.data.message_string.type = DTSZ_STRING;    // Char string
-    cmd.data.message_string.length = min(c.length(), sizeof(cmd.data.message_string.content));
-    memset(cmd.data.message_string.content, 0, sizeof(cmd.data.message_string.content));
-    memcpy ((char *)cmd.data.message_string.content, c.c_str(), cmd.data.message_string.length);
-    gPageManager->doCommand(cmd);
+    string bef = c;
+
+    if (startsWith(bef, "PUSH-"))
+    {
+        amx::ANET_SEND scmd;
+        size_t pos = bef.find("-");
+        string bt = bef.substr(pos + 1);
+        vector<string> parts = StrSplit(bt, ",");
+
+        if (parts.size() < 2)
+        {
+            MSG_ERROR("Command PUSH has syntax: PUSH-<x>,<y>!");
+            return;
+        }
+
+        mX = atoi(parts[0].c_str());
+        mY = atoi(parts[1].c_str());
+        mPressed = true;
+
+        if (gPageManager)
+            gPageManager->mouseEvent(mX, mY, mPressed);
+    }
+    else if (startsWith(bef, "RELEASE-"))
+    {
+        amx::ANET_SEND scmd;
+        size_t pos = bef.find("-");
+        string bt = bef.substr(pos + 1);
+        vector<string> parts = StrSplit(bt, ",");
+
+        if (parts.size() < 2)
+        {
+            MSG_ERROR("Command RELEASE has syntax: RELEASE-<x>,<y>!");
+            return;
+        }
+
+        mX = atoi(parts[0].c_str());
+        mY = atoi(parts[1].c_str());
+        mPressed = false;
+
+        if (gPageManager)
+            gPageManager->mouseEvent(mX, mY, mPressed);
+    }
+    else if (startsWith(bef, "CLICK-"))
+    {
+        amx::ANET_SEND scmd;
+        size_t pos = bef.find("-");
+        string bt = bef.substr(pos + 1);
+        vector<string> parts = StrSplit(bt, ",");
+
+        if (parts.size() < 2)
+        {
+            MSG_ERROR("Command CLICK has syntax: CLICK-<x>,<y>!");
+            return;
+        }
+
+        mX = atoi(parts[0].c_str());
+        mY = atoi(parts[1].c_str());
+
+        if (gPageManager)
+        {
+            mPressed = true;
+            gPageManager->mouseEvent(mX, mY, true);
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            mPressed = false;
+            gPageManager->mouseEvent(mX, mY, false);
+        }
+    }
+    else
+    {
+        amx::ANET_COMMAND cmd;
+        cmd.MC = 0x000c;
+        cmd.device1 = channel;
+        cmd.port1 = port;
+        cmd.system = system;
+        cmd.data.message_string.system = system;
+        cmd.data.message_string.device = channel;
+        cmd.data.message_string.port = port;    // Must be the address port of button
+        cmd.data.message_string.type = DTSZ_STRING;    // Char string
+        cmd.data.message_string.length = min(c.length(), sizeof(cmd.data.message_string.content));
+        memset(cmd.data.message_string.content, 0, sizeof(cmd.data.message_string.content));
+        memcpy ((char *)cmd.data.message_string.content, c.c_str(), cmd.data.message_string.length);
+        gPageManager->doCommand(cmd);
+    }
+}
+
+void _TestMode::setMouseClick(int x, int y, bool pressed)
+{
+    DECL_TRACER("_TestMode::setMouseClick(int x, int y, bool pressed)");
+
+    if (mX == 0 && mY == 0 && mPressed == false)
+        return;
+
+    if (mX == x && mY == y && mPressed == pressed)
+    {
+        __success = true;
+        _test_screen = true;
+        __done = true;
+        mX = mY = 0;
+        mPressed = false;
+    }
 }
 
 void _TestMode::testSuccess(_TESTCMD& tc)
 {
     ulong total = 0;
+    bool ready = ((tc.compare || tc.waitscreen) ? (__done && _test_screen) : __done);
 
-    while (!__done && total < TIMEOUT)
+    while (!ready && total < TIMEOUT)
     {
         usleep(DELAY);
         total += DELAY;
+        ready = ((tc.compare || tc.waitscreen) ? (__done && _test_screen) : __done);
     }
 
     if (total >= TIMEOUT)
@@ -240,39 +372,42 @@ void _TestMode::testSuccess(_TESTCMD& tc)
 #else
         cout << "Command \"" << gLastCommand << "\" timed out!" << endl;
 #endif
+        __success = false;
+        tc.compare = false;
     }
 
-    if (tc.compare && tc.result == verify)
+    if (tc.compare && tc.result.compare(mVerify) == 0)
     {
-        MSG_WARNING("The result \"" << verify << "\" is equal to \"" << tc.result << "\"!");
-        __success = true;
+        MSG_WARNING("The result \"" << mVerify << "\" is equal to \"" << tc.result << "\"!");
+        __success = tc.reverse ? false : true;
     }
     else if (tc.compare)
     {
-        MSG_WARNING("The result \"" << verify << "\" does not match the expected result of \"" << tc.result << "\"!");
-        __success = false;
+        MSG_WARNING("The result \"" << mVerify << "\" does not match the expected result of \"" << tc.result << "\"!");
+        __success = tc.reverse ? true : false;
     }
 
     if (__success)
     {
         MSG_INFO("SUCCESS (" << gLastCommand << ")");
 #ifdef __ANDROID__
-        __android_log_print(ANDROID_LOG_INFO, "tpanel", "SUCCESS (%s)", gLastCommand.c_str());
+        __android_log_print(ANDROID_LOG_INFO, "tpanel", "SUCCESS");
 #else
-        cout << "   SUCCESS (" << gLastCommand << ")" << endl;
+        cout << "   \x1b[0;32mSUCCESS\x1b[0m" << endl;
 #endif
     }
     else
     {
         MSG_ERROR("FAILED (" << gLastCommand << ")");
 #ifdef __ANDROID__
-        __android_log_print(ANDROID_LOG_ERROR, "tpanel", "FAILED (%s)", gLastCommand.c_str());
+        __android_log_print(ANDROID_LOG_ERROR, "tpanel", "FAILED");
 #else
-        cout << "   FAILED (" << gLastCommand << ")" << endl;
+        cout << "   \x1b[0;31mFAILED\x1b[0m" << endl;
 #endif
     }
 
     __success = false;
+    _test_screen = false;
     __done = false;
 }
 

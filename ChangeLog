@@ -3,6 +3,27 @@ ChangeLog
 
 Release: 1.4.0
 ===============================================================================
+2023-07-12 Fixed setting of opacity.
+           Added another command to the testmode to be able to distinguish
+           between screen part and lower level part finish.
+           Fixed sound playing with Qt6.x.
+
+2023-07-10 Fixed the repositioning and sizing of a button.
+
+2023-07-04 Added more test cases and improved the test framework.
+
+2023-07-03 Fixed the creating of paths for ressources.
+
+2023-06-18 Started to implement a test framework.
+
+2023-04-18 Created a seperate class for the filter events.
+
+2023-04-12 Improvement of subviews.
+
+2023-04-06 Fixed the commands ICO and TXT to not enable the latest state automatically.
+
+2023-04-01 Fixed issues with input lines and the system keyboard.
+
 2023-03-31 Completed the system keyboard. If such a keayboard is displayed, the
            input lines, if there are any, are ordered to the keyboard.
 
