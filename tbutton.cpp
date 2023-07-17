@@ -5257,84 +5257,55 @@ bool TButton::buttonBorder(SkBitmap* bm, int inst)
     int numBorders = 0;
     bool extBorder = false;
 
-    string borderName1 = (bs.empty() ? sr[instance].bs : bs);
-    string borderName2 = (!bs.empty() && !sr[instance].bs.empty() ? sr[instance].bs : bs);
-
-//    if (bs.empty())
-//    {
+    if (sr.size() == 2)
+    {
         if (gPageManager->getSystemDraw()->getBorder(bname, TSystemDraw::LT_OFF, &bd))
             numBorders++;
+    }
+    else if (gPageManager->getSystemDraw()->getBorder(bname, TSystemDraw::LT_ON, &bd))
+        numBorders++;
 
-        if (gPageManager->getSystemDraw()->getBorder(bname, TSystemDraw::LT_ON, &bda))
-            numBorders++;
-
-        if (numBorders == 2)
-            extBorder = true;
-//    }
-//    else
-//    {
-//        if (gPageManager->getSystemDraw()->getBorder(bs, (instance == 0 ? TSystemDraw::LT_OFF : TSystemDraw::LT_ON), &bd, bname))
-//        {
-//            numBorders++;
-//            extBorder = true;
-//        }
-//    }
+    if (numBorders)
+        extBorder = true;
 
     if (extBorder)
     {
-        MSG_DEBUG("System border \"" << borderName1 << "\" and \"" << borderName2 << "\" found.");
         SkColor color = TColor::getSkiaColor(sr[instance].cb);      // border color
-        SkColor bgColor = TColor::getSkiaColor(sr[instance].cf);    // fill color
         MSG_DEBUG("Button color: #" << std::setw(6) << std::setfill('0') << std::hex << color);
         // Load images
         SkBitmap imgB, imgBR, imgR, imgTR, imgT, imgTL, imgL, imgBL;
 
-        imgB = retrieveBorderImage(bd.b, bda.b, color, bgColor);
-
-        if (imgB.empty())
+        if (!retrieveImage(bd.b, &imgB) || imgB.empty())
             return false;
 
         MSG_DEBUG("Got images " << bd.b << " and " << bda.b << " with size " << imgB.info().width() << " x " << imgB.info().height());
-        imgBR = retrieveBorderImage(bd.br, bda.br, color, bgColor);
-
-        if (imgBR.empty())
+        if (!retrieveImage(bd.br, &imgBR) || imgBR.empty())
             return false;
 
         MSG_DEBUG("Got images " << bd.br << " and " << bda.br << " with size " << imgBR.info().width() << " x " << imgBR.info().height());
-        imgR = retrieveBorderImage(bd.r, bda.r, color, bgColor);
-
-        if (imgR.empty())
+        if (!retrieveImage(bd.r, &imgR) || imgR.empty())
             return false;
 
         MSG_DEBUG("Got images " << bd.r << " and " << bda.r << " with size " << imgR.info().width() << " x " << imgR.info().height());
-        imgTR = retrieveBorderImage(bd.tr, bda.tr, color, bgColor);
-
-        if (imgTR.empty())
+        if (!retrieveImage(bd.tr, &imgTR) || imgTR.empty())
             return false;
 
         MSG_DEBUG("Got images " << bd.tr << " and " << bda.tr << " with size " << imgTR.info().width() << " x " << imgTR.info().height());
-        imgT = retrieveBorderImage(bd.t, bda.t, color, bgColor);
-
-        if (imgT.empty())
+        if (!retrieveImage(bd.t, &imgT) || imgT.empty())
             return false;
 
         MSG_DEBUG("Got images " << bd.t << " and " << bda.t << " with size " << imgT.info().width() << " x " << imgT.info().height());
-        imgTL = retrieveBorderImage(bd.tl, bda.tl, color, bgColor);
-
-        if (imgTL.empty())
+        if (!retrieveImage(bd.tl, &imgTL) || imgTL.empty())
             return false;
 
         MSG_DEBUG("Got images " << bd.tl << " and " << bda.tl << " with size " << imgTL.info().width() << " x " << imgTL.info().height());
-        imgL = retrieveBorderImage(bd.l, bda.l, color, bgColor);
-
-        if (imgL.empty())
+        if (!retrieveImage(bd.l, &imgL) || imgL.empty())
             return false;
 
         mBorderWidth = imgL.info().width();
-        MSG_DEBUG("Got images " << bd.l << " and " << bda.l << " with size " << imgL.info().width() << " x " << imgL.info().height());
-        imgBL = retrieveBorderImage(bd.bl, bda.bl, color, bgColor);
 
-        if (imgBL.empty())
+        MSG_DEBUG("Got images " << bd.l << " and " << bda.l << " with size " << imgL.info().width() << " x " << imgL.info().height());
+        if (!retrieveImage(bd.bl, &imgBL) || imgBL.empty())
             return false;
 
         MSG_DEBUG("Got images " << bd.bl << " and " << bda.bl << " with size " << imgBL.info().width() << " x " << imgBL.info().height());
@@ -5371,9 +5342,10 @@ bool TButton::buttonBorder(SkBitmap* bm, int inst)
         _image = SkImage::MakeFromBitmap(imgBL);
         canvas.drawImage(_image, 0, ht - imgBL.info().height(), SkSamplingOptions(), &paint);
 
-        colorizeFrame(&frame, TColor::getSkiaColor(sr[instance].cb));
         erasePart(bm, frame, Border::ERASE_OUTSIDE);
+        backgroundFrame(bm, frame, color);
         _image = SkImage::MakeFromBitmap(frame);
+        paint.setBlendMode(SkBlendMode::kSrcATop);
         target.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
     }
     else    // We try to draw a frame by forcing it to draw even the not to draw marked frames.
@@ -7071,7 +7043,8 @@ SkBitmap TButton::retrieveBorderImage(const string& pa, const string& pb, SkColo
         return SkBitmap();
 
     if (!pb.empty() && !retrieveImage(pb, &bma))
-        return SkBitmap();
+        return bm;
+//        return SkBitmap();
 
     return colorImage(bm, bma, color, bgColor, false);
 }

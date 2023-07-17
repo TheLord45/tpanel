@@ -52,7 +52,7 @@ namespace dir
 
 			int readDir();
 			int readDir(const std::string& p);
-            int scanFiles(const std::string& filter);
+            int scanFiles(const std::string& filter, bool start=false);
 			size_t getNumEntries();
 			void setPath(const std::string& p) { path.assign(p); }
 			void setStripPath(bool b) { strip = b; }
@@ -69,6 +69,7 @@ namespace dir
             bool dropFile(const std::string& fname);
             std::string getEntryWithEnd(const std::string& end);
             std::string getEntryWithPart(const std::string& part, bool precice=true);
+            std::string getEntryWithStart(const std::string& start);
 			bool testDirectory(unsigned short att) { return (att & ATTR_DIRECTORY); }
 			bool testText(unsigned short att) { return (att & ATTR_TEXT); }
 			bool testGraphic(unsigned short att) { return (att & ATTR_GRAPHIC); }

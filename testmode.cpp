@@ -72,6 +72,8 @@ _TestMode::_TestMode(const string& path)
 
         pos++;
     }
+
+    sort(mCmdFiles.begin(), mCmdFiles.end());
 #endif
 }
 
@@ -124,6 +126,7 @@ void _TestMode::start()
     for (iter = mCmdFiles.begin(); iter != mCmdFiles.end(); ++iter)
     {
         _TESTCMD tcmd;
+        inform("------ File: " + *iter + " ------");
 
         try
         {

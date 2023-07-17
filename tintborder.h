@@ -70,10 +70,10 @@ namespace Border
 
             void erasePart(SkBitmap *bm, const SkBitmap& mask, ERASE_PART_t ep);
             void colorizeFrame(SkBitmap *frame, SkColor color);
+            void backgroundFrame(SkBitmap *bm, SkBitmap& frame, SkColor color);
 
         private:
             SkRect calcRect(int width, int height, int pen);
-            bool setPixel(uint32_t *wpix, uint32_t color, bool bar);
     };
 }
 

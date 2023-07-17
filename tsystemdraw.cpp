@@ -731,7 +731,7 @@ bool TSystemDraw::getBorder(const string &family, LINE_TYPE_t lt, BORDER_t *bord
         {
             if (!info)
             {
-                int num = dir.scanFiles(brdIter->baseFile + "_");
+                int num = dir.scanFiles(brdIter->baseFile + "_", true);
 
                 if (num < 8)
                     continue;

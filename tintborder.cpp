@@ -633,6 +633,19 @@ string TIntBorder::getTP4BorderName(int id)
     return "None";
 }
 
+/**
+ * @brief erasePart - Erases the parts of a button who are not coverered by a border.
+ * The method starts from left, right, top or bottom and erases avery pixel
+ * who has an alpha value grater 0. It stops if it finds a visible pixel.
+ * So every pixel outside of the border is removed (transparent).
+ *
+ * @param bm        A pointer to a bitmap containing the button image. This
+ *                  must not be null or empty.
+ * @param mask      A bitmap containg the border image. This must be of the
+ *                  same size as \b bm.
+ * @param ep        The side (left, right, top, bottom, outside) who should be
+ *                  filtered. The option "outside" filters all four sides.
+ */
 void TIntBorder::erasePart(SkBitmap *bm, const SkBitmap& mask, ERASE_PART_t ep)
 {
     DECL_TRACER("TIntBorder::erasePart(SkBitmap *bm, const SkBitmap& mask, ERASE_PART_t ep)");
@@ -649,13 +662,15 @@ void TIntBorder::erasePart(SkBitmap *bm, const SkBitmap& mask, ERASE_PART_t ep)
         case ERASE_LEFT_RIGHT:
             for (y = 0; y < height; ++y)
             {
-                bool barrier = false;
-
                 for (x = 0; x < width; ++x)
                 {
-                    uint32_t *wpix = bm->getAddr32(x, y);
-                    uint32_t color = mask.getColor(x, y);
-                    barrier = setPixel(wpix, color, barrier);
+                    SkColor *wpix = bm->getAddr32(x, y);
+                    SkColor alpha = SkColorGetA(mask.getColor(x, y));
+
+                    if (alpha == 0)
+                        *wpix = SK_ColorTRANSPARENT;
+                    else
+                        break;
                 }
             }
         break;
@@ -663,13 +678,15 @@ void TIntBorder::erasePart(SkBitmap *bm, const SkBitmap& mask, ERASE_PART_t ep)
         case ERASE_RIGHT_LEFT:
             for (y = 0; y < height; ++y)
             {
-                bool barrier = false;
-
-                for (x = width - 1; x > 0; --x)
+                for (x = width - 1; x >= 0; --x)
                 {
-                    uint32_t *wpix = bm->getAddr32(x, y);
-                    uint32_t color = mask.getColor(x, y);
-                    barrier = setPixel(wpix, color, barrier);
+                    SkColor *wpix = bm->getAddr32(x, y);;
+                    SkColor alpha = SkColorGetA(mask.getColor(x, y));
+
+                    if (alpha == 0)
+                        *wpix = SK_ColorTRANSPARENT;
+                    else
+                        break;
                 }
             }
         break;
@@ -677,13 +694,15 @@ void TIntBorder::erasePart(SkBitmap *bm, const SkBitmap& mask, ERASE_PART_t ep)
         case ERASE_TOP_DOWN:
             for (x = 0; x < width; ++x)
             {
-                bool barrier = false;
-
                 for (y = 0; y < height; ++y)
                 {
-                    uint32_t *wpix = bm->getAddr32(x, y);
-                    uint32_t color = mask.getColor(x, y);
-                    barrier = setPixel(wpix, color, barrier);
+                    SkColor *wpix = bm->getAddr32(x, y);;
+                    SkColor alpha = SkColorGetA(mask.getColor(x, y));
+
+                    if (alpha == 0)
+                        *wpix = SK_ColorTRANSPARENT;
+                    else
+                        break;
                 }
             }
         break;
@@ -691,13 +710,15 @@ void TIntBorder::erasePart(SkBitmap *bm, const SkBitmap& mask, ERASE_PART_t ep)
         case ERASE_BOTTOM_UP:
             for (x = 0; x < width; ++x)
             {
-                bool barrier = false;
-
-                for (y = height - 1; y > 0; --y)
+                for (y = height - 1; y >= 0; --y)
                 {
-                    uint32_t *wpix = bm->getAddr32(x, y);
-                    uint32_t color = mask.getColor(x, y);
-                    barrier = setPixel(wpix, color, barrier);
+                    SkColor *wpix = bm->getAddr32(x, y);;
+                    SkColor alpha = SkColorGetA(mask.getColor(x, y));
+
+                    if (alpha == 0)
+                        *wpix = SK_ColorTRANSPARENT;
+                    else
+                        break;
                 }
             }
         break;
@@ -705,32 +726,48 @@ void TIntBorder::erasePart(SkBitmap *bm, const SkBitmap& mask, ERASE_PART_t ep)
         case ERASE_OUTSIDE:
             for (y = 0; y < height; ++y)
             {
-                SkColor color = 0;
-
-                for (x = 0; x < width; ++x)
+                for (x = 0; x < width; ++x)         // from left
                 {
                     SkColor *wpix = bm->getAddr32(x, y);
                     SkColor alpha = SkColorGetA(mask.getColor(x, y));
 
                     if (alpha == 0)
-                        color = SK_ColorTRANSPARENT;
+                        *wpix = SK_ColorTRANSPARENT;
                     else
                         break;
-
-                    *wpix = color;
                 }
 
-                for (x = width - 1; x >= 0; --x)
+                for (x = width - 1; x >= 0; --x)    // from right
                 {
                     SkColor *wpix = bm->getAddr32(x, y);;
                     SkColor alpha = SkColorGetA(mask.getColor(x, y));
 
                     if (alpha == 0)
-                        color = SK_ColorTRANSPARENT;
+                        *wpix = SK_ColorTRANSPARENT;
                     else
                         break;
+                }
 
-                    *wpix = color;
+                for (y = 0; y < height; ++y)        // from top
+                {
+                    SkColor *wpix = bm->getAddr32(x, y);;
+                    SkColor alpha = SkColorGetA(mask.getColor(x, y));
+
+                    if (alpha == 0)
+                        *wpix = SK_ColorTRANSPARENT;
+                    else
+                        break;
+                }
+
+                for (y = height - 1; y >= 0; --y)   // from bottom
+                {
+                    SkColor *wpix = bm->getAddr32(x, y);;
+                    SkColor alpha = SkColorGetA(mask.getColor(x, y));
+
+                    if (alpha == 0)
+                        *wpix = SK_ColorTRANSPARENT;
+                    else
+                        break;
                 }
             }
         break;
@@ -740,32 +777,15 @@ void TIntBorder::erasePart(SkBitmap *bm, const SkBitmap& mask, ERASE_PART_t ep)
     }
 }
 
-bool TIntBorder::setPixel(uint32_t *wpix, uint32_t col, bool bar)
-{
-//    DECL_TRACER("TIntBorder::setPixel(uint32_t *wpix, uint32_t col, bool bar)");
-
-    uint32_t alpha = SkColorGetA(col);
-    uint32_t color = col;
-    bool barrier = bar;
-
-    if (alpha == 0 && !barrier)
-        color = SK_ColorTRANSPARENT;
-    else if (alpha > 0 && !barrier)
-    {
-        barrier = true;
-        int red = SkColorGetR(*wpix);
-        int green = SkColorGetG(*wpix);
-        int blue = SkColorGetB(*wpix);
-        color = SkColorSetARGB(alpha, red, green, blue);
-//        color = *wpix;
-    }
-    else if (barrier)
-        color = *wpix;
-
-    *wpix = color;
-    return barrier;
-}
-
+/**
+ * @brief colorizeFrame - changes the basic color of frame.
+ * This method replaces the color of every pixel of the \b frame with \b color.
+ * Only real black pixels are not replaced. The alpha value remains as it is.
+ *
+ * @param frame     A pointer to bitmap containing the frame. This must not NULL
+ *                  and it must not be empty.
+ * @param color     The color to replace the pixels with.
+ */
 void TIntBorder::colorizeFrame(SkBitmap *frame, SkColor color)
 {
     DECL_TRACER("TIntBorder::colorizeFrame(SkBitmap *frame, SkColor color)");
@@ -798,6 +818,44 @@ void TIntBorder::colorizeFrame(SkBitmap *frame, SkColor color)
             }
             else
                 *wpix = SK_ColorTRANSPARENT;
+        }
+    }
+}
+
+/**
+ * @brief backgroudFrame - Draws a solid underground for a border.
+ * The method draw a pixel with color \b color at each point (pixel) where
+ * the alpha value of the bitmap containing the border is not 0.
+ *
+ * @param bm        The bitmap containg the button image without the frame.
+ * @param frame     The bitmap containg the frame.
+ * @param color     The color to draw for each visible pixel in \b frame.
+ */
+void TIntBorder::backgroundFrame(SkBitmap* bm, SkBitmap& frame, SkColor color)
+{
+    DECL_TRACER("TIntBorder::backgroundFrame(SkBitmap* bm, SkBitmap& frame, SkColor color)");
+
+    if (!bm || bm->empty() || frame.empty())
+        return;
+
+    int width = bm->info().width();
+    int height = bm->info().height();
+
+    if (width != frame.info().width() || height != frame.info().height())
+    {
+        MSG_WARNING("Size of bitmap and frame is different!");
+        return;
+    }
+
+    for (int y = 0; y < height; ++y)
+    {
+        for (int x = 0; x < width; ++x)
+        {
+            SkColor *wpix = bm->getAddr32(x, y);
+            SkColor fpix = frame.getColor(x, y);
+
+            if (SkColorGetA(fpix) > 0)
+                *wpix = color;
         }
     }
 }

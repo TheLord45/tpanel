@@ -3,6 +3,8 @@ ChangeLog
 
 Release: 1.4.0
 ===============================================================================
+2023-07-17 Fixed the drawing of external system defined borders.
+
 2023-07-12 Fixed setting of opacity.
            Added another command to the testmode to be able to distinguish
            between screen part and lower level part finish.

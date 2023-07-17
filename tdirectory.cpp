@@ -197,9 +197,9 @@ int TDirectory::readDir (const string &p)
 	return readDir();
 }
 
-int TDirectory::scanFiles(const string &filter)
+int TDirectory::scanFiles(const string &filter, bool start)
 {
-    DECL_TRACER("TDirectory::scanFiles(const string &filter)");
+    DECL_TRACER("TDirectory::scanFiles(const string &filter, bool start)");
 
     if (path.empty())
         return 0;
@@ -217,7 +217,12 @@ int TDirectory::scanFiles(const string &filter)
             if (checkDot(f))
                 continue;
 
-            if (!filter.empty() && f.find(filter) == string::npos)
+            size_t pos;
+
+            if (!filter.empty() && (pos = f.find(filter)) == string::npos)
+                continue;
+
+            if (start && pos != 0)
                 continue;
 
             count++;
@@ -504,11 +509,12 @@ string TDirectory::getEntryWithPart(const string &part, bool precice)
         if ((pos = iter->name.find(part)) != string::npos)
         {
             char next = iter->name.at(pos + part.length());
+            char prev = (pos > 0 ? iter->name.at(pos - 1) : 0);
 
             if (next == '.')
                 return iter->name;
 
-            if (precice && next == '_')
+            if (precice && (next == '_' || prev != 0))
                 continue;
 
             if ((next >= 'A' && next <= 'Z') || (next >= 'a' && next <= 'z'))
@@ -516,6 +522,26 @@ string TDirectory::getEntryWithPart(const string &part, bool precice)
 
             return iter->name;
         }
+    }
+
+    return string();
+}
+
+string TDirectory::getEntryWithStart(const string& start)
+{
+    DECL_TRACER("TDirectory::getEntryWithStart(const string& start)");
+
+    if (start.empty())
+        return string();
+
+    MSG_DEBUG("Searching for \"" << start << "\"");
+
+    vector<DFILES_T>::iterator iter;
+
+    for (iter = entries.begin(); iter != entries.end(); ++iter)
+    {
+        if (startsWith(iter->name, start))
+            return iter->name;
     }
 
     return string();
