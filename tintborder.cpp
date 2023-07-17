@@ -345,7 +345,7 @@ bool TIntBorder::drawBorder(SkBitmap* bm, const string& bname, int wt, int ht, c
         case 22: // Circle 185
         case 23: // Circle 195
             lineWidth = sysBorders[borderIndex].width;
-            paint.setStrokeWidth(1.0);
+            paint.setStrokeWidth(0.1);
             paint.setStyle(SkPaint::kFill_Style);
             MSG_DEBUG("Line width: " << lineWidth << ", radius: " << radius);
             // We draw a rounded rectangle to "clip" the corners. To do this
@@ -705,12 +705,12 @@ void TIntBorder::erasePart(SkBitmap *bm, const SkBitmap& mask, ERASE_PART_t ep)
         case ERASE_OUTSIDE:
             for (y = 0; y < height; ++y)
             {
-                uint32_t color = 0;
+                SkColor color = 0;
 
                 for (x = 0; x < width; ++x)
                 {
-                    uint32_t *wpix = bm->getAddr32(x, y);
-                    uint32_t alpha = SkColorGetA(mask.getColor(x, y));
+                    SkColor *wpix = bm->getAddr32(x, y);
+                    SkColor alpha = SkColorGetA(mask.getColor(x, y));
 
                     if (alpha == 0)
                         color = SK_ColorTRANSPARENT;
@@ -720,10 +720,10 @@ void TIntBorder::erasePart(SkBitmap *bm, const SkBitmap& mask, ERASE_PART_t ep)
                     *wpix = color;
                 }
 
-                for (x = width - 1; x > 0; --x)
+                for (x = width - 1; x >= 0; --x)
                 {
-                    uint32_t *wpix = bm->getAddr32(x, y);
-                    uint32_t alpha = SkColorGetA(mask.getColor(x, y));
+                    SkColor *wpix = bm->getAddr32(x, y);;
+                    SkColor alpha = SkColorGetA(mask.getColor(x, y));
 
                     if (alpha == 0)
                         color = SK_ColorTRANSPARENT;
@@ -742,7 +742,7 @@ void TIntBorder::erasePart(SkBitmap *bm, const SkBitmap& mask, ERASE_PART_t ep)
 
 bool TIntBorder::setPixel(uint32_t *wpix, uint32_t col, bool bar)
 {
-    DECL_TRACER("TIntBorder::setPixel(uint32_t *wpix, uint32_t col, bool bar)");
+//    DECL_TRACER("TIntBorder::setPixel(uint32_t *wpix, uint32_t col, bool bar)");
 
     uint32_t alpha = SkColorGetA(col);
     uint32_t color = col;
@@ -753,13 +753,53 @@ bool TIntBorder::setPixel(uint32_t *wpix, uint32_t col, bool bar)
     else if (alpha > 0 && !barrier)
     {
         barrier = true;
-        color = *wpix;
+        int red = SkColorGetR(*wpix);
+        int green = SkColorGetG(*wpix);
+        int blue = SkColorGetB(*wpix);
+        color = SkColorSetARGB(alpha, red, green, blue);
+//        color = *wpix;
     }
     else if (barrier)
         color = *wpix;
 
     *wpix = color;
     return barrier;
+}
+
+void TIntBorder::colorizeFrame(SkBitmap *frame, SkColor color)
+{
+    DECL_TRACER("TIntBorder::colorizeFrame(SkBitmap *frame, SkColor color)");
+
+    if (!frame || frame->empty())
+        return;
+
+    int red   = SkColorGetR(color);
+    int green = SkColorGetG(color);
+    int blue  = SkColorGetB(color);
+
+    for (int y = 0; y < frame->info().height(); ++y)
+    {
+        for (int x = 0; x < frame->info().width(); ++x)
+        {
+            SkColor *wpix = frame->getAddr32(x, y);
+            int alpha = SkColorGetA(*wpix);
+
+            if (alpha > 0)
+            {
+                int wpred = SkColorGetR(*wpix);
+                int wpgreen = SkColorGetG(*wpix);
+                int wpblue = SkColorGetB(*wpix);
+
+                if (wpred == 0 && wpgreen == 0 && wpblue == 0)  // black?
+                    continue;
+                else
+                    *wpix = SkColorSetARGB(alpha, red, green, blue);
+
+            }
+            else
+                *wpix = SK_ColorTRANSPARENT;
+        }
+    }
 }
 
 SkRect TIntBorder::calcRect(int width, int height, int pen)

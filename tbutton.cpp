@@ -5349,7 +5349,7 @@ bool TButton::buttonBorder(SkBitmap* bm, int inst)
         SkBitmap frame;
         allocPixels(bm->info().width(), bm->info().height(), &frame);
         frame.eraseColor(SK_ColorTRANSPARENT);
-//        SkCanvas target(*bm, SkSurfaceProps());
+        SkCanvas target(*bm, SkSurfaceProps());
         SkCanvas canvas(frame, SkSurfaceProps());
         SkPaint paint;
 
@@ -5371,9 +5371,10 @@ bool TButton::buttonBorder(SkBitmap* bm, int inst)
         _image = SkImage::MakeFromBitmap(imgBL);
         canvas.drawImage(_image, 0, ht - imgBL.info().height(), SkSamplingOptions(), &paint);
 
+        colorizeFrame(&frame, TColor::getSkiaColor(sr[instance].cb));
         erasePart(bm, frame, Border::ERASE_OUTSIDE);
-//        _image = SkImage::MakeFromBitmap(frame);
-//        target.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
+        _image = SkImage::MakeFromBitmap(frame);
+        target.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
     }
     else    // We try to draw a frame by forcing it to draw even the not to draw marked frames.
         drawBorder(bm, bname, wt, ht, sr[instance].cb, true);
