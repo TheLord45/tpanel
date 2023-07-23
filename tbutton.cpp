@@ -877,7 +877,10 @@ bool TButton::makeElement(int instance)
     else if (type == TEXT_INPUT)
     {
         if (isSystem && !mSystemReg)
+        {
             registerSystemButton();
+            mChanged = true;
+        }
 
         drawTextArea(inst);
         mActInstance = inst;
@@ -937,15 +940,22 @@ bool TButton::makeElement(int instance)
         else if (isSystemTextLine(ad) && ad != SYSTEM_ITEM_FTPSURFACE)
         {
             sr[0].te = sr[1].te = fillButtonText(ad, 0);
+            mChanged = true;
         }
 
         TConfig::setTemporary(false);
+
+        if (mLastImage.empty())
+            mChanged = true;
+
         MSG_DEBUG("Drawing system button " << ch << " with instance " << inst);
         return drawButton(inst);
     }
     else
     {
-//        mActInstance = inst;
+        if (mLastImage.empty())
+            mChanged = true;
+
         return drawButton(inst);
     }
 
@@ -957,16 +967,30 @@ bool TButton::setActive(int instance)
     DECL_TRACER("TButton::setActive(int instance)");
 
     if (mAniRunning)
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return true;
+    }
 
     if (instance < 0 || (size_t)instance >= sr.size())
     {
         MSG_ERROR("Instance " << instance << " is out of range from 0 to " << sr.size() << "!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return false;
     }
 
     if (instance == mActInstance && !mLastImage.empty())
+    {
+#if TESTMODE == 1
+        __success = true;
+        setScreenDone();
+#endif
         return true;
+    }
 
     mActInstance = instance;
     mChanged = true;
@@ -2177,26 +2201,21 @@ bool TButton::setFontOnly(int id, int instance)
         return false;
     }
 
-    int inst = instance;
-    int loop = 1;
-
-    if (inst < 0)
+    if (instance < 0)
     {
-        loop = (int)sr.size();
-        inst = 0;
-    }
-
-    for (int i = 0; i < loop; ++i)
-    {
-        if (sr[inst].fi == id)
+        for (size_t i = 0; i < sr.size(); ++i)
         {
-            inst++;
-            continue;
+            if (sr[i].fi != id)
+            {
+                mChanged = true;
+                sr[i].fi = id;
+            }
         }
-
-        sr[inst].fi = id;
+    }
+    else if (sr[instance].fi != id)
+    {
         mChanged = true;
-        inst++;
+        sr[instance].fi = id;
     }
 
     return true;
@@ -2239,6 +2258,8 @@ void TButton::setLeftTop(int left, int top)
 
     if (lt != left || tp != top)
         mChanged = true;
+    else
+        return;
 
     lt = left;
     tp = top;
@@ -7073,9 +7094,21 @@ void TButton::show()
 {
     DECL_TRACER("TButton::show()");
 
-    if (visible && !mChanged)
-        return;
+    // First we detect whether we have a dynamic button or not.
+    // To do this, we find out the current active instance.
+    int inst = 0;
 
+    if (mActInstance >= 0 && (size_t)mActInstance < sr.size())
+        inst = mActInstance;
+    // If the dynamic flag is not set and we have already an image of the
+    // button, we send just the saved image to the screen.
+    if (visible && !mChanged && !sr[inst].dynamic && !mLastImage.empty())
+    {
+        showLastButton();
+        return;
+    }
+    // Here the button, or the active instance was never drawn or it is a
+    // dynamic button. Then the button must be drawn.
     visible = true;
     makeElement();
 

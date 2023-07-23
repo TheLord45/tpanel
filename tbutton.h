@@ -462,6 +462,7 @@ namespace Button
             bool getWrapSubViewPages() { return (ws != 0 ? true : false); }
             bool isFocused() { return mHasFocus; }
             int getTextCursorPosition() { return mCursorPosition; }
+            void setChanged(bool ch) { mChanged = ch; }
             SUBVIEW_POSITION_t getSubViewAnchor();
             std::function<std::vector<std::string>(ulong handle, int ap, int ta, int ti, int rows, int columns)> getCallbackListContent() { return _getListContent; }
             std::function<std::string(int ti, int row)> getCallbackListRow() { return _getListRow; }

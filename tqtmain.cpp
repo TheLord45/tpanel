@@ -3638,7 +3638,7 @@ void MainWindow::displayButton(ulong handle, ulong parent, TBitmap buffer, int w
 {
     DECL_TRACER("MainWindow::displayButton(ulong handle, TBitmap buffer, size_t size, int width, int height, int left, int top, bool passthrough)");
 
-    TLOCKER(draw_mutex);
+//    TLOCKER(draw_mutex);
 
     TObject::OBJECT_t *obj = findObject(handle);
     TObject::OBJECT_t *par = findObject(parent);
@@ -3713,8 +3713,9 @@ void MainWindow::displayButton(ulong handle, ulong parent, TBitmap buffer, int w
             nobj.object.label->grabGesture(Qt::SwipeGesture);
         }
 
-        nobj.object.label->move(nobj.left, nobj.top);
-        nobj.object.label->setFixedSize(nobj.width, nobj.height);
+        nobj.object.label->setGeometry(nobj.left, nobj.top, nobj.width, nobj.height);
+//        nobj.object.label->move(nobj.left, nobj.top);
+//        nobj.object.label->setFixedSize(nobj.width, nobj.height);
 
         if (passthrough)
             nobj.object.label->setAttribute(Qt::WA_TransparentForMouseEvents);
@@ -3768,12 +3769,15 @@ void MainWindow::displayButton(ulong handle, ulong parent, TBitmap buffer, int w
         if (obj->type != OBJ_INPUT && (wt != obj->width || ht != obj->height || lt != obj->left || tp != obj->top))
         {
             MSG_DEBUG("Scaled button with new size: lt: " << obj->left << ", tp: " << obj->top << ", wt: " << obj->width << ", ht: " << obj->height);
-
+/*
             if (obj->left != lt || obj->top != tp)
                 obj->object.label->move(lt, tp);
 
             if (obj->width != wt || obj->height != ht)
                 obj->object.label->setFixedSize(wt, ht);
+*/
+//            if (obj->left != lt || obj->top != tp || obj->width != wt || obj->height != ht)
+                obj->object.label->setGeometry(lt, tp, wt, ht);
 
             obj->left = lt;
             obj->top = tp;
@@ -3794,6 +3798,8 @@ void MainWindow::displayButton(ulong handle, ulong parent, TBitmap buffer, int w
                 if (obj->object.label)
                 {
                     obj->object.label->setPixmap(pixmap);
+                    if (obj->handle == (((588 << 16) & 0xffff0000) | 6))
+                        pixmap.save("px588-6.png");
 #if TESTMODE == 1
                     __success = true;
 #endif
@@ -3822,7 +3828,7 @@ void MainWindow::displayViewButton(ulong handle, ulong parent, bool vertical, TB
 {
     DECL_TRACER("MainWindow::displayViewButton(ulong handle, TBitmap buffer, size_t size, int width, int height, int left, int top)");
 
-    TLOCKER(draw_mutex);
+//    TLOCKER(draw_mutex);
 
     TObject::OBJECT_t *obj = findObject(handle);
     TObject::OBJECT_t *par = findObject(parent);
@@ -4316,7 +4322,7 @@ void MainWindow::setSubPage(ulong handle, ulong parent, int left, int top, int w
 {
     DECL_TRACER("MainWindow::setSubPage(ulong handle, int left, int top, int width, int height)");
 
-    TLOCKER(draw_mutex);
+//    TLOCKER(draw_mutex);
     OBJECT_t *par = findObject(parent);
 
     if (!par || par->type != OBJ_PAGE)
@@ -4732,7 +4738,7 @@ void MainWindow::reconnectList(QListWidget *list)
  */
 void MainWindow::dropPage(ulong handle)
 {
-    TLOCKER(draw_mutex);
+//    TLOCKER(draw_mutex);
     DECL_TRACER("MainWindow::dropPage(ulong handle)");
 
     MSG_PROTOCOL("Dropping page " << handleToString(handle));
@@ -4809,7 +4815,7 @@ void MainWindow::dropSubPage(ulong handle)
 
 void MainWindow::dropButton(ulong handle)
 {
-    TLOCKER(draw_mutex);
+//    TLOCKER(draw_mutex);
     DECL_TRACER("MainWindow::dropButton(ulong handle)");
 
     OBJECT_t *obj = findObject(handle);
@@ -4841,7 +4847,7 @@ void MainWindow::setSizeMainWindow(int width, int height)
 
 void MainWindow::playVideo(ulong handle, ulong parent, int left, int top, int width, int height, const string& url, const string& user, const string& pw)
 {
-    TLOCKER(draw_mutex);
+//    TLOCKER(draw_mutex);
     DECL_TRACER("MainWindow::playVideo(ulong handle, const string& url, const string& user, const string& pw))");
 
     TObject::OBJECT_t *obj = findObject(handle);
@@ -4927,7 +4933,7 @@ void MainWindow::inputText(Button::TButton *button, QByteArray buf, int width, i
         return;
     }
 
-    TLOCKER(draw_mutex);
+//    TLOCKER(draw_mutex);
     ulong handle = button->getHandle();
     ulong parent = button->getParent();
     TObject::OBJECT_t *obj = findObject(handle);
@@ -5449,7 +5455,7 @@ void MainWindow::playSound(const string& file)
     mMediaPlayer->setMedia(QUrl::fromLocalFile(file.c_str()));
     mMediaPlayer->setVolume(calcVolume(TConfig::getSystemVolume()));
 
-    if (mMediaPlayer->playbackState() != QMediaPlayer::StoppedState)
+    if (mMediaPlayer->state() != QMediaPlayer::StoppedState)
         mMediaPlayer->stop();
 #else
     mMediaPlayer->setSource(QUrl::fromLocalFile(file.c_str()));

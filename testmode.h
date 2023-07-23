@@ -19,6 +19,8 @@
 #ifndef __TESTMODE_H__
 #define __TESTMODE_H__
 
+#if TESTMODE == 1
+
 #include <string>
 #include <thread>
 #include <atomic>
@@ -51,12 +53,23 @@ class _TestMode
             bool nowait{false};     // TRUE: Don't wait until the command finished (no compare!)
             bool reverse{false};    // TRUE: This changes the meaning of success and failure.
             bool waitscreen{false}; // TRUE: Wait for screen finished even if no comparison is made.
+            bool saveresult{false}; // TRUE: The result is saved into the named variable
+            bool compresult{false}; // TRUE: The result is compared against the named variable
         }_TESTCMD;
+
+        typedef struct _VARS
+        {
+            std::string name;
+            std::string content;
+        }_VARS;
 
         void inject(int port, const std::string& c);
         void testSuccess(_TESTCMD& tc);
         void start();
         void inform(const std::string& msg);
+        void saveVariable(const std::string& name, const std::string& content);
+        std::string getVariable(const std::string& name);
+        void deleteVariable(const std::string& name);
 
         std::thread mThread;
         bool isRunning{false};
@@ -67,18 +80,17 @@ class _TestMode
         int mY{0};
         bool mPressed{false};
         int mCaseNumber{0};         // The number of the test case
+        std::string mVarName;
+        std::vector<_VARS> mVariables;
 };
 
 extern _TestMode *_gTestMode;
 
-#define setDone()       __done = true;
-#define setScreenDone() { MSG_DEBUG("setScreenDone(); at module " << __FILE__ << ": " << __LINE__); _test_screen = true; }
-#define setAllDone()    { MSG_DEBUG("setAllDone(); at module " << __FILE__ << ": " << __LINE__); _test_screen = true; __done = true; }
+#define setDone()       if (_testmode) { __done = true; }
+#define setScreenDone() if (_testmode) { MSG_DEBUG("setScreenDone(); at module " << __FILE__ << ": " << __LINE__); _test_screen = true; }
+#define setAllDone()    if (_testmode) { MSG_DEBUG("setAllDone(); at module " << __FILE__ << ": " << __LINE__); _test_screen = true; __done = true; }
 
-#ifndef TESTMODE
+#else
 extern bool _testmode;
-#elif TESTMODE != 1
-extern bool _testmode;
-#endif  // TESTMODE
-
-#endif
+#endif  // TESTMODE == 1
+#endif  // __TESTMODE_H__

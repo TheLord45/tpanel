@@ -15,6 +15,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
  */
+#if TESTMODE == 1
 #include <cstring>
 #include <iomanip>
 #include <fstream>
@@ -194,6 +195,16 @@ void _TestMode::start()
                     tcmd.nowait = isTrue(content);
                 else if (command == "screenwait")
                     tcmd.waitscreen = isTrue(content);
+                else if (command == "saveresult")
+                {
+                    mVarName = content;
+                    tcmd.saveresult = true;
+                }
+                else if (command == "compresult")
+                {
+                    mVarName = content;
+                    tcmd.compresult = true;
+                }
                 else if (command == "exec")
                 {
                     if (tcmd.command.empty())
@@ -224,6 +235,8 @@ void _TestMode::start()
                     tcmd.nowait = false;
                     tcmd.reverse = false;
                     tcmd.waitscreen = false;
+                    tcmd.saveresult = false;
+                    tcmd.compresult = false;
                     mVerify.clear();
                     port = 1;
                 }
@@ -367,6 +380,17 @@ void _TestMode::testSuccess(_TESTCMD& tc)
         ready = ((tc.compare || tc.waitscreen) ? (__done && _test_screen) : __done);
     }
 
+    if (!mVarName.empty())
+    {
+        if (tc.saveresult)
+            saveVariable(mVarName, mVerify);
+
+        if (tc.compresult)
+            mVerify = getVariable(mVarName);
+
+        mVarName.clear();
+    }
+
     if (total >= TIMEOUT)
     {
         MSG_WARNING("Command \"" << gLastCommand << "\" timed out!");
@@ -423,3 +447,77 @@ void _TestMode::inform(const string& msg)
     cout << msg << endl;
 #endif
 }
+
+void _TestMode::saveVariable(const string &name, const string &content)
+{
+    DECL_TRACER("_TestMode::saveVariable(const string &name, const string &content)");
+
+    if (name.empty())
+        return;
+
+    _VARS v;
+
+    if (mVariables.empty())
+    {
+        v.name = name;
+        v.content = content;
+        mVariables.push_back(v);
+        return;
+    }
+
+    vector<_VARS>::iterator iter;
+
+    for (iter = mVariables.begin(); iter != mVariables.end(); ++iter)
+    {
+        if (iter->name == name)
+        {
+            iter->content = content;
+            return;
+        }
+    }
+
+    v.name = name;
+    v.content = content;
+    mVariables.push_back(v);
+}
+
+string _TestMode::getVariable(const string &name)
+{
+    DECL_TRACER("_TestMode::getVariable(const string &name)");
+
+    if (mVariables.empty())
+        return string();
+
+    vector<_VARS>::iterator iter;
+
+    for (iter = mVariables.begin(); iter != mVariables.end(); ++iter)
+    {
+        if (iter->name == name)
+            return iter->content;
+    }
+
+    return string();
+}
+
+void _TestMode::deleteVariable(const string &name)
+{
+    DECL_TRACER("_TestMode::deleteVariable(const string &name)");
+
+    if (mVariables.empty())
+        return;
+
+    vector<_VARS>::iterator iter;
+
+    for (iter = mVariables.begin(); iter != mVariables.end(); ++iter)
+    {
+        if (iter->name == name)
+        {
+            mVariables.erase(iter);
+            return;
+        }
+    }
+}
+
+#else
+bool _testmode{false};              // TRUE: Test mode is active. Activated by command line.
+#endif

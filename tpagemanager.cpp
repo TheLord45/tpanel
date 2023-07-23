@@ -2165,39 +2165,6 @@ bool TPageManager::setPage(int PageID, bool forget)
     DECL_TRACER("TPageManager::setPage(int PageID, bool forget)");
 
     return _setPageDo(PageID, "", forget);
-/*
-    if (mActualPage == PageID)
-        return true;
-
-    TPage *pg = getPage(mActualPage);
-    // FIXME: Make this a vector array to hold a larger history!
-    if (!forget)
-        mPreviousPage = mActualPage;
-
-    if (pg)
-        pg->drop();
-
-    mActualPage = 0;
-    PAGELIST_T listPg = findPage(PageID);
-    bool refresh = false;
-
-    if ((pg = loadPage(listPg, &refresh)) == nullptr)
-        return false;
-
-    mActualPage = PageID;
-
-    if (PageID >= SYSTEM_PAGE_START && !refresh)
-        reloadSystemPage(pg);
-
-    int width = (PageID >= SYSTEM_PAGE_START ? mSystemSettings->getWidth() : mTSettings->getWidth());
-    int height = (PageID >= SYSTEM_PAGE_START ? mSystemSettings->getHeight() : mTSettings->getHeight());
-
-    if (_setPage)
-        _setPage((mActualPage << 16) & 0xffff0000, width, height);
-
-    pg->show();
-    return true;
-*/
 }
 
 bool TPageManager::setPage(const string& name, bool forget)
@@ -2205,37 +2172,6 @@ bool TPageManager::setPage(const string& name, bool forget)
     DECL_TRACER("TPageManager::setPage(const string& name, bool forget)");
 
     return _setPageDo(0, name, forget);
-/*
-    TPage *pg = getPage(mActualPage);
-
-    if (pg && pg->getName().compare(name) == 0)
-        return true;
-
-    // FIXME: Make this a vector array to hold a larger history!
-    if (!forget)
-        mPreviousPage = mActualPage;    // Necessary to be able to jump back to at least the last previous page
-
-    if (pg)
-        pg->drop();
-
-    mActualPage = 0;
-    PAGELIST_T listPg = findPage(name);
-    bool refresh = false;
-
-    if ((pg = loadPage(listPg, &refresh)) == nullptr)
-        return false;
-
-    mActualPage = pg->getNumber();
-
-    if (mActualPage >= SYSTEM_PAGE_START && !refresh)
-        reloadSystemPage(pg);
-
-    if (_setPage)
-        _setPage((mActualPage << 16) & 0xffff0000, pg->getWidth(), pg->getHeight());
-
-    pg->show();
-    return true;
-*/
 }
 
 bool TPageManager::_setPageDo(int pageID, const string& name, bool forget)
@@ -2245,18 +2181,35 @@ bool TPageManager::_setPageDo(int pageID, const string& name, bool forget)
     TPage *pg = nullptr;
 
     if (pageID > 0 && mActualPage == pageID)
+    {
+#if TESTMODE == 1
+        __success = true;
+        setScreenDone();
+#endif
         return true;
+    }
     else if (!name.empty())
     {
         pg = getPage(mActualPage);
 
         if (pg && pg->getName().compare(name) == 0)
+        {
+#if TESTMODE == 1
+            __success = true;
+            setScreenDone();
+#endif
             return true;
+        }
     }
     else if (pageID > 0)
         pg = getPage(mActualPage);
     else
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return false;
+    }
 
     // FIXME: Make this a vector array to hold a larger history!
     if (!forget)
@@ -2276,7 +2229,12 @@ bool TPageManager::_setPageDo(int pageID, const string& name, bool forget)
     bool refresh = false;
 
     if ((pg = loadPage(listPg, &refresh)) == nullptr)
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return false;
+    }
 
     mActualPage = pg->getNumber();
 
@@ -5084,6 +5042,10 @@ void TPageManager::doLEVON(int, vector<int>&, vector<string>&)
     DECL_TRACER("TPageManager::doLEVON(int, vector<int>&, vector<string>&)");
 
     mLevelSend = true;
+#if TESTMODE == 1
+    __success = true;
+    setAllDone();
+#endif
 }
 
 void TPageManager::doLEVOF(int, vector<int>&, vector<string>&)
@@ -5091,6 +5053,10 @@ void TPageManager::doLEVOF(int, vector<int>&, vector<string>&)
     DECL_TRACER("TPageManager::doLEVOF(int, vector<int>&, vector<string>&)");
 
     mLevelSend = false;
+#if TESTMODE == 1
+    __success = true;
+    setAllDone();
+#endif
 }
 
 void TPageManager::doRXON(int, vector<int>&, vector<string>&)
@@ -5098,6 +5064,10 @@ void TPageManager::doRXON(int, vector<int>&, vector<string>&)
     DECL_TRACER("TPageManager::doRXON(int, vector<int>&, vector<string>&)");
 
     mRxOn = true;
+#if TESTMODE == 1
+    __success = true;
+    setAllDone();
+#endif
 }
 
 void TPageManager::doRXOF(int, vector<int>&, vector<string>&)
@@ -5105,6 +5075,10 @@ void TPageManager::doRXOF(int, vector<int>&, vector<string>&)
     DECL_TRACER("TPageManager::doRXOF(int, vector<int>&, vector<string>&)");
 
     mRxOn = false;
+#if TESTMODE == 1
+    __success = true;
+    setAllDone();
+#endif
 }
 
 void TPageManager::doON(int port, vector<int>&, vector<string>& pars)
@@ -5114,6 +5088,9 @@ void TPageManager::doON(int port, vector<int>&, vector<string>& pars)
     if (pars.empty())
     {
         MSG_WARNING("Command ON needs 1 parameter! Ignoring command.");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
@@ -5123,6 +5100,9 @@ void TPageManager::doON(int port, vector<int>&, vector<string>& pars)
     if (c <= 0)
     {
         MSG_WARNING("Invalid channel " << c << "! Ignoring command.");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
@@ -5130,7 +5110,12 @@ void TPageManager::doON(int port, vector<int>&, vector<string>& pars)
     vector<TMap::MAP_T> map = findButtons(port, chans, TMap::TYPE_CM);
 
     if (TError::isError() || map.empty())
+    {
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
+    }
 
     vector<Button::TButton *> buttons = collectButtons(map);
 
@@ -5143,9 +5128,18 @@ void TPageManager::doON(int port, vector<int>&, vector<string>& pars)
             Button::TButton *bt = *mapIter;
 
             if (bt->getButtonType() == GENERAL)
+            {
                 bt->setActive(1);
+#if TESTMODE == 1
+                if (_gTestMode)
+                    _gTestMode->setResult(intToString(bt->getActiveInstance() + 1));
+#endif
+            }
         }
     }
+#if TESTMODE == 1
+    setDone();
+#endif
 }
 
 void TPageManager::doOFF(int port, vector<int>&, vector<string>& pars)
@@ -5155,6 +5149,9 @@ void TPageManager::doOFF(int port, vector<int>&, vector<string>& pars)
     if (pars.empty())
     {
         MSG_WARNING("Command OFF needs 1 parameter! Ignoring command.");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
@@ -5164,6 +5161,9 @@ void TPageManager::doOFF(int port, vector<int>&, vector<string>& pars)
     if (c <= 0)
     {
         MSG_WARNING("Invalid channel " << c << "! Ignoring command.");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
@@ -5185,8 +5185,15 @@ void TPageManager::doOFF(int port, vector<int>&, vector<string>& pars)
 
             if (bt->getButtonType() == GENERAL)
                 bt->setActive(0);
+#if TESTMODE == 1
+                if (_gTestMode)
+                    _gTestMode->setResult(intToString(bt->getActiveInstance() + 1));
+#endif
         }
     }
+#if TESTMODE == 1
+    setDone();
+#endif
 }
 
 void TPageManager::doLEVEL(int port, vector<int>&, vector<string>& pars)
@@ -5196,6 +5203,9 @@ void TPageManager::doLEVEL(int port, vector<int>&, vector<string>& pars)
     if (pars.size() < 2)
     {
         MSG_WARNING("Command LEVEL needs 2 parameters! Ignoring command.");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
@@ -5206,6 +5216,9 @@ void TPageManager::doLEVEL(int port, vector<int>&, vector<string>& pars)
     if (c <= 0)
     {
         MSG_WARNING("Invalid channel " << c << "! Ignoring command.");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
@@ -5215,6 +5228,9 @@ void TPageManager::doLEVEL(int port, vector<int>&, vector<string>& pars)
     if (TError::isError() || map.empty())
     {
         MSG_WARNING("No bargraphs found!");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
@@ -5229,14 +5245,27 @@ void TPageManager::doLEVEL(int port, vector<int>&, vector<string>& pars)
             Button::TButton *bt = *mapIter;
 
             if (bt->getButtonType() == BARGRAPH)
+            {
                 bt->drawBargraph(bt->getActiveInstance(), level);
+#if TESTMODE == 1
+                if (_gTestMode)
+                    _gTestMode->setResult(intToString(bt->getLevelValue()));
+#endif
+            }
             else if (bt->getButtonType() == MULTISTATE_BARGRAPH)
             {
                 int state = (int)((double)bt->getStateCount() / (double)(bt->getRangeHigh() - bt->getRangeLow()) * (double)level);
                 bt->setActive(state);
+#if TESTMODE == 1
+                if (_gTestMode)
+                    _gTestMode->setResult(intToString(bt->getActiveInstance()));
+#endif
             }
         }
     }
+#if TESTMODE == 1
+    setDone();
+#endif
 }
 
 void TPageManager::doBLINK(int, vector<int>&, vector<string>& pars)
@@ -5246,6 +5275,9 @@ void TPageManager::doBLINK(int, vector<int>&, vector<string>& pars)
     if (pars.size() < 4)
     {
         MSG_WARNING("Command BLINK expects 4 parameters! Command ignored.");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
@@ -5256,6 +5288,9 @@ void TPageManager::doBLINK(int, vector<int>&, vector<string>& pars)
     if (TError::isError() || map.empty())
     {
         MSG_WARNING("No system buttons found.");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
@@ -5266,7 +5301,14 @@ void TPageManager::doBLINK(int, vector<int>&, vector<string>& pars)
     {
         Button::TButton *bt = *mapIter;
         bt->setActive(0);
+#if TESTMODE == 1
+                if (_gTestMode)
+                    _gTestMode->setResult(intToString(bt->getActiveInstance() + 1));
+#endif
     }
+#if TESTMODE == 1
+    setDone();
+#endif
 }
 
 /**
@@ -5284,9 +5326,17 @@ void TPageManager::doVER(int, vector<int>&, vector<string>&)
     scmd.MC = 0x008c;
 
     if (gAmxNet)
+    {
         gAmxNet->sendCommand(scmd);
+#if TESTMODE == 1
+        __success = true;
+#endif
+    }
     else
         MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+#if TESTMODE == 1
+    setAllDone();
+#endif
 }
 
 /**
@@ -5299,7 +5349,12 @@ void TPageManager::doWCN(int, vector<int>&, vector<string>&)
     DECL_TRACER("TPageManager::doWCN(int, vector<int>&, vector<string>&)");
 
     if (!TConfig::getSIPstatus())
+    {
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
+    }
 
     amx::ANET_SEND scmd;
     scmd.port = 1;
@@ -5308,9 +5363,17 @@ void TPageManager::doWCN(int, vector<int>&, vector<string>&)
     scmd.MC = 0x008c;
 
     if (gAmxNet)
+    {
         gAmxNet->sendCommand(scmd);
+#if TESTMODE == 1
+        __success = true;
+#endif
+    }
     else
         MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+#if TESTMODE == 1
+        setAllDone();
+#endif
 }
 #endif
 /**
@@ -5324,6 +5387,9 @@ void TPageManager::doAFP(int, vector<int>&, vector<string>& pars)
     if (pars.size() < 4)
     {
         MSG_ERROR("Less than 4 parameters!");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
@@ -5339,6 +5405,12 @@ void TPageManager::doAFP(int, vector<int>&, vector<string>& pars)
         setPage(pname);
     else if (mPreviousPage)
         setPage(mPreviousPage);
+#if TESTMODE == 1
+    if (_gTestMode)
+        _gTestMode->setResult(getActualPage()->getName());
+
+    setDone();
+#endif
 }
 
 /**
@@ -5354,6 +5426,9 @@ void TPageManager::doAPG(int, std::vector<int>&, std::vector<std::string>& pars)
     if (pars.size() < 2)
     {
         MSG_ERROR("Less than 2 parameters!");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
@@ -5366,12 +5441,18 @@ void TPageManager::doAPG(int, std::vector<int>&, std::vector<std::string>& pars)
     if (!subPage)
     {
         MSG_ERROR("Subpage " << pars[0] << " couldn't either found or created!");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
     if (!page)
     {
         MSG_ERROR("There seems to be no page for subpage " << pars[0]);
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
@@ -5380,6 +5461,9 @@ void TPageManager::doAPG(int, std::vector<int>&, std::vector<std::string>& pars)
     subPage->setZOrder(page->getNextZOrder());
     MSG_DEBUG("Setting new Z-order " << page->getActZOrder() << " on page " << page->getName());
     subPage->show();
+#if TESTMODE == 1
+    setDone();
+#endif
 }
 
 /**
@@ -5392,6 +5476,9 @@ void TPageManager::doCPG(int, std::vector<int>&, std::vector<std::string>& pars)
     if (pars.size() < 1)
     {
         MSG_ERROR("Expecting 1 parameter but got only 1!");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
@@ -5411,9 +5498,15 @@ void TPageManager::doCPG(int, std::vector<int>&, std::vector<std::string>& pars)
 
                 if (pg)
                     pg->setGroup(pgIter->group);
+#if TESTMODE == 1
+                __success = true;
+#endif
             }
         }
     }
+#if TESTMODE == 1
+    setDone();
+#endif
 }
 
 /**
@@ -7569,8 +7662,8 @@ void TPageManager::doBOP(int port, vector<int>& channels, vector<string>& pars)
 #if TESTMODE == 1
             if (_gTestMode)
                 _gTestMode->setResult(intToString(bt->getOpacity(btState < 0 ? 0 : btState)));
-        }
 #endif
+        }
     }
 #if TESTMODE == 1
     setDone();
@@ -7841,6 +7934,9 @@ void TPageManager::doBSP(int port, vector<int>& channels, vector<string>& pars)
     if (pars.size() < 1)
     {
         MSG_ERROR("Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
@@ -7879,7 +7975,7 @@ void TPageManager::doBSP(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-            setButtonCallbacks(bt);
+//            setButtonCallbacks(bt);
 
             if (bLeft)
                 x = 0;
@@ -7887,44 +7983,11 @@ void TPageManager::doBSP(int port, vector<int>& channels, vector<string>& pars)
             if (bTop)
                 y = 0;
 
-            if (bRight)
+            if (bRight || bBottom)
             {
                 ulong handle = bt->getHandle();
                 int parentID = (handle >> 16) & 0x0000ffff;
                 int pwidth = 0;
-
-                if (parentID < 500)
-                {
-                    TPage *pg = getPage(parentID);
-
-                    if (!pg)
-                    {
-                        MSG_ERROR("Internal error: Page " << parentID << " not found!");
-                        return;
-                    }
-
-                    pwidth = pg->getWidth();
-                }
-                else
-                {
-                    TSubPage *spg = getSubPage(parentID);
-
-                    if (!spg)
-                    {
-                        MSG_ERROR("Internal error: Subpage " << parentID << " not found!");
-                        return;
-                    }
-
-                    pwidth = spg->getWidth();
-                }
-
-                x = pwidth - bt->getWidth();
-            }
-
-            if (bBottom)
-            {
-                ulong handle = bt->getHandle();
-                int parentID = (handle >> 16) & 0x0000ffff;
                 int pheight = 0;
 
                 if (parentID < 500)
@@ -7937,6 +8000,7 @@ void TPageManager::doBSP(int port, vector<int>& channels, vector<string>& pars)
                         return;
                     }
 
+                    pwidth = pg->getWidth();
                     pheight = pg->getHeight();
                 }
                 else
@@ -7949,15 +8013,32 @@ void TPageManager::doBSP(int port, vector<int>& channels, vector<string>& pars)
                         return;
                     }
 
+                    pwidth = spg->getWidth();
                     pheight = spg->getHeight();
                 }
 
-                y = pheight - bt->getHeight();
+                if (bRight)
+                    x = pwidth - bt->getWidth();
+
+                if (bBottom)
+                    y = pheight - bt->getHeight();
             }
 
             bt->setLeftTop(x, y);
+#if TESTMODE == 1
+            if (_gTestMode)
+            {
+                int left = bt->getLeftPosition();
+                int top = bt->getTopPosition();
+                string res = intToString(left) + "," + intToString(top);
+                _gTestMode->setResult(res);
+            }
+#endif
         }
     }
+#if TESTMODE == 1
+    setDone();
+#endif
 }
 
 /**
@@ -7972,7 +8053,12 @@ void TPageManager::doBSM(int port, vector<int>& channels, vector<string>&)
     vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
+    {
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
+    }
 
     vector<Button::TButton *> buttons = collectButtons(map);
 
@@ -7985,7 +8071,12 @@ void TPageManager::doBSM(int port, vector<int>& channels, vector<string>&)
             Button::TButton *bt = *mapIter;
 
             if (bt->getButtonType() != TEXT_INPUT && bt->getButtonType() != GENERAL)
+            {
+#if TESTMODE == 1
+                setAllDone();
+#endif
                 return;
+            }
 
             amx::ANET_SEND scmd;
             scmd.port = bt->getChannelPort();
@@ -8252,6 +8343,9 @@ void TPageManager::doENA(int port, vector<int>& channels, vector<string>& pars)
     if (pars.empty())
     {
         MSG_ERROR("Expecting 1 parameter but got none! Ignoring command.");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
@@ -8261,7 +8355,12 @@ void TPageManager::doENA(int port, vector<int>& channels, vector<string>& pars)
     vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
+    {
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
+    }
 
     vector<Button::TButton *> buttons = collectButtons(map);
 
@@ -8272,10 +8371,18 @@ void TPageManager::doENA(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-//            setButtonCallbacks(bt);
             bt->setEnable(((cvalue)?true:false));
+#if TESTMODE == 1
+            __success = true;
+
+            if (_gTestMode)
+                _gTestMode->setResult(intToString(cvalue));
+#endif
         }
     }
+#if TESTMODE == 1
+    setAllDone();
+#endif
 }
 
 /**
@@ -8290,11 +8397,14 @@ void TPageManager::doFON(int port, vector<int>& channels, vector<string>& pars)
     if (pars.size() < 2)
     {
         MSG_ERROR("Expecting 2 parameters but got " << pars.size() << "! Ignoring command.");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
     TError::clear();
-    int btState = atoi(pars[0].c_str());
+    int btState = atoi(pars[0].c_str()) - 1;
     int fvalue = atoi(pars[1].c_str());
 
     vector<TMap::MAP_T> map = findButtons(port, channels);
@@ -8311,20 +8421,16 @@ void TPageManager::doFON(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-//            setButtonCallbacks(bt);
-
-            if (btState == 0)       // All instances?
-            {
-                int bst = bt->getNumberInstances();
-                MSG_DEBUG("Setting font " << fvalue << " on all " << bst << " instances...");
-
-                for (int i = 0; i < bst; i++)
-                    bt->setFont(fvalue, i);
-            }
-            else
-                bt->setFont(fvalue, btState - 1);
+            bt->setFont(fvalue, btState);
+#if TESTMODE == 1
+            if (_gTestMode)
+                _gTestMode->setResult(intToString(bt->getFontIndex(btState < 0 ? 0 : btState)));
+#endif
         }
     }
+#if TESTMODE == 1
+    setDone();
+#endif
 }
 
 void TPageManager::getFON(int port, vector<int>& channels, vector<string>& pars)
@@ -8334,6 +8440,9 @@ void TPageManager::getFON(int port, vector<int>& channels, vector<string>& pars)
     if (pars.size() < 1)
     {
         MSG_ERROR("Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
@@ -8343,7 +8452,12 @@ void TPageManager::getFON(int port, vector<int>& channels, vector<string>& pars)
     vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())
+    {
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
+    }
 
     vector<Button::TButton *> buttons = collectButtons(map);
 
@@ -8360,7 +8474,15 @@ void TPageManager::getFON(int port, vector<int>& channels, vector<string>& pars)
         }
         else
             sendCustomEvent(btState, bt->getFontIndex(btState - 1), 0, "", 1007, bt->getChannelPort(), bt->getChannelNumber());
+#if TESTMODE == 1
+        if (_gTestMode)
+            _gTestMode->setResult(intToString(bt->getFontIndex(btState < 0 ? 0 : btState)));
+#endif
     }
+#if TESTMODE == 1
+    __success = true;
+    setAllDone();
+#endif
 }
 
 /**
@@ -10333,6 +10455,7 @@ void TPageManager::doSHA(int port, vector<int> &channels, vector<string> &pars)
 {
     DECL_TRACER("TPageManager::doSHA(int port, vector<int> &channels, vector<string> &pars)");
 
+    Q_UNUSED(pars);
     vector<TMap::MAP_T> map = findButtons(port, channels);
 
     if (TError::isError() || map.empty())

@@ -31,6 +31,9 @@
 #include "texpat++.h"
 #include "tconfig.h"
 #include "terror.h"
+#if TESTMODE == 1
+#include "testmode.h"
+#endif
 
 #if __cplusplus < 201402L
 #   error "This module requires at least C++14 standard!"
@@ -615,6 +618,9 @@ void TPage::show()
         else
         {
             MSG_WARNING("No callback \"setBackground\" was set!");
+#if TESTMODE == 1
+            setScreenDone();
+#endif
             return;
         }
     }
@@ -625,7 +631,12 @@ void TPage::show()
     SkBitmap target;
 
     if (!allocPixels(mPage.width, mPage.height, &target))
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
+    }
 
     target.eraseColor(TColor::getSkiaColor(sr[0].cf));
     // Draw the background, if any
@@ -698,12 +709,22 @@ void TPage::show()
             dImage.setSr(sr);
 
             if (!dImage.drawImage(&target))
+            {
+#if TESTMODE == 1
+                setScreenDone();
+#endif
                 return;
+            }
 
             if (!sr[0].te.empty())
             {
                 if (!drawText(mPage, &target))
+                {
+#if TESTMODE == 1
+                    setScreenDone();
+#endif
                     return;
+                }
             }
 
 #ifdef _SCALE_SKIA_
@@ -727,7 +748,12 @@ void TPage::show()
                 sk_sp<SkImage> im = SkImage::MakeFromBitmap(target);
 
                 if (!allocPixels(twidth, theight, &target))
+                {
+#if TESTMODE == 1
+                    setScreenDone();
+#endif
                     return;
+                }
 
                 target.eraseColor(TColor::getSkiaColor(sr[0].cf));
                 SkCanvas can(target, SkSurfaceProps());

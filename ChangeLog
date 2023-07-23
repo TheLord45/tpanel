@@ -3,6 +3,9 @@ ChangeLog
 
 Release: 1.4.0
 ===============================================================================
+2023-07-22 Fixed the drawing of buttons so that all elements are drawn.
+           Optimized the rules to draw a button new what increased speed.
+
 2023-07-17 Fixed the drawing of external system defined borders.
 
 2023-07-12 Fixed setting of opacity.

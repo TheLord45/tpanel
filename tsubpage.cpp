@@ -29,6 +29,9 @@
 #include "tdrawimage.h"
 #include "tconfig.h"
 #include "terror.h"
+#if TESTMODE == 1
+#include "testmode.h"
+#endif
 
 #if __cplusplus < 201402L
 #   error "This module requires at least C++14 standard!"
@@ -331,6 +334,9 @@ void TSubPage::show()
         else
         {
             MSG_WARNING("No callback \"setBackground\" was set!");
+#if TESTMODE == 1
+            setScreenDone();
+#endif
             return;
         }
     }
@@ -341,7 +347,12 @@ void TSubPage::show()
     SkBitmap target;
 
     if (!allocPixels(mSubpage.width, mSubpage.height, &target))
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
+    }
 
     target.eraseColor(TColor::getSkiaColor(mSubpage.sr[0].cf));
     // Draw the background, if any
@@ -447,7 +458,12 @@ void TSubPage::show()
                 sk_sp<SkImage> im = SkImage::MakeFromBitmap(target);
 
                 if (!allocPixels(twidth, theight, &target))
+                {
+#if TESTMODE == 1
+                    setScreenDone();
+#endif
                     return;
+                }
 
                 target.eraseColor(TColor::getSkiaColor(mSubpage.sr[0].cf));
                 SkCanvas can(target, SkSurfaceProps());
@@ -517,7 +533,7 @@ void TSubPage::show()
     {
         if (button->button)
         {
-            MSG_DEBUG("Drawing button " << button->button->getButtonIndex() << ": " << button->button->getButtonName());
+            MSG_DEBUG("Drawing button " << handleToString(button->button->getHandle()) << ": " << button->button->getButtonIndex() << " --> " << button->button->getButtonName());
             TPageInterface::registerListCallback<TSubPage>(button->button, this);
             button->button->registerCallback(_displayButton);
             button->button->regCallPlayVideo(_playVideo);
@@ -528,6 +544,7 @@ void TSubPage::show()
             if (mSubpage.sr.size() > 0)
                 button->button->setGlobalOpacity(mSubpage.sr[0].oo);
 
+//            button->button->setChanged(true);
             button->button->show();
         }
 
