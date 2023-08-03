@@ -754,6 +754,9 @@ bool TButton::createButtons(bool force)
     }
 
     // Get the images, if there any
+    if (sr.empty())
+        return true;
+
     vector<SR_T>::iterator srIter;
 
     for (srIter = sr.begin(); srIter != sr.end(); ++srIter)

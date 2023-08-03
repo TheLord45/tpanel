@@ -76,6 +76,9 @@ void TObject::dropContent(OBJECT_t* obj, bool lock)
 {
     DECL_TRACER("TObject::dropContent(OBJECT_t* obj, bool lock)");
 
+    if (!obj)
+        return;
+
     if (lock)
         TLOCKER(mutex_obj);
 
@@ -178,12 +181,12 @@ bool TObject::addObject(OBJECT_t& obj)
 {
     DECL_TRACER("TObject::addObject(OBJECT_t& obj)");
 
-    TLOCKER(mutex_obj);
-
     if (obj.handle == 0 || obj.type == OBJ_NONE)
         return false;
 
-    if (mObjects.find(obj.handle) != mObjects.end())
+    TLOCKER(mutex_obj);
+
+    if (!mObjects.empty() && mObjects.find(obj.handle) != mObjects.end())
         return false;
 
     const auto [o, success] = mObjects.insert(pair<ulong, OBJECT_t>(obj.handle, obj));
@@ -194,6 +197,9 @@ TObject::OBJECT_t *TObject::findObject(ulong handle)
 {
     DECL_TRACER("TObject::findObject(ulong handle)");
 
+    if (mObjects.empty())
+        return nullptr;
+
     map<ulong, OBJECT_t>::iterator iter = mObjects.find(handle);
 
     if (iter != mObjects.end())
@@ -202,7 +208,7 @@ TObject::OBJECT_t *TObject::findObject(ulong handle)
     return nullptr;
 }
 
-TObject::OBJECT_t * TObject::findObject(WId id)
+TObject::OBJECT_t *TObject::findObject(WId id)
 {
     DECL_TRACER("TObject::findObject(WId id)");
 
@@ -224,6 +230,9 @@ TObject::OBJECT_t *TObject::findFirstChild(ulong handle)
 {
     DECL_TRACER("TObject::findFirstChild(ulong handle)");
 
+    if (mObjects.empty())
+        return nullptr;
+
     map<ulong, OBJECT_t>::iterator iter;
 
     for (iter = mObjects.begin(); iter != mObjects.end(); ++iter)
@@ -238,6 +247,9 @@ TObject::OBJECT_t *TObject::findFirstChild(ulong handle)
 TObject::OBJECT_t *TObject::findNextChild(ulong handle)
 {
     DECL_TRACER("TObject::findNextChild(ulong handle)");
+
+    if (mObjects.empty())
+        return nullptr;
 
     map<ulong, OBJECT_t>::iterator iter;
     bool next = true;
@@ -261,6 +273,9 @@ TObject::OBJECT_t * TObject::getMarkedRemove()
 {
     DECL_TRACER("TObject::getMarkedRemove()");
 
+    if (mObjects.empty())
+        return nullptr;
+
     map<ulong, OBJECT_t>::iterator iter;
 
     for (iter = mObjects.begin(); iter != mObjects.end(); ++iter)
@@ -276,7 +291,7 @@ TObject::OBJECT_t * TObject::getNextMarkedRemove(TObject::OBJECT_t* object)
 {
     DECL_TRACER("TObject::getNextMarkedRemove(TObject::OBJECT_t* obj)");
 
-    if (!object)
+    if (!object || mObjects.empty())
         return nullptr;
 
     map<ulong, OBJECT_t>::iterator iter;
@@ -301,6 +316,9 @@ TObject::OBJECT_t *TObject::findFirstWindow()
 {
     DECL_TRACER("TObject::getFirstWindow()");
 
+    if (mObjects.empty())
+        return nullptr;
+
     map<ulong, OBJECT_t>::iterator iter;
 
     for (iter = mObjects.begin(); iter != mObjects.end(); ++iter)
@@ -316,7 +334,7 @@ TObject::OBJECT_t *TObject::findNextWindow(TObject::OBJECT_t *obj)
 {
     DECL_TRACER("TObject::findNextWindow()");
 
-    if (!obj)
+    if (!obj || mObjects.empty())
         return nullptr;
 
     map<ulong, OBJECT_t>::iterator iter;
@@ -391,6 +409,9 @@ void TObject::cleanMarked()
 {
     DECL_TRACER("TObject::cleanMarked()");
 
+    if (mObjects.empty())
+        return;
+
     TLOCKER(mutex_obj);
     map<ulong, OBJECT_t>::iterator iter;
     bool repeat = false;
@@ -422,6 +443,9 @@ void TObject::invalidateAllObjects()
 {
     DECL_TRACER("TObject::invalidateAllObjects()");
 
+    if (mObjects.empty())
+        return;
+
     TLOCKER(mutex_obj);
     map<ulong, OBJECT_t>::iterator iter;
 
@@ -435,6 +459,9 @@ void TObject::invalidateAllObjects()
 void TObject::invalidateObject(ulong handle)
 {
     DECL_TRACER("TObject::invalidateObject(ulong handle)");
+
+    if (mObjects.empty())
+        return;
 
     TLOCKER(mutex_obj);
     map<ulong, OBJECT_t>::iterator iter = mObjects.find(handle);
@@ -450,10 +477,10 @@ void TObject::invalidateAllSubObjects(ulong handle)
 {
     DECL_TRACER("TObject::invalidateAllSubObjects(ulong handle)");
 
-    TLOCKER(mutex_obj);
-
     if (mObjects.empty())
         return;
+
+    TLOCKER(mutex_obj);
 
     map<ulong, OBJECT_t>::iterator iter;
     bool first = true;
@@ -490,6 +517,9 @@ bool TObject::enableObject(ulong handle)
 {
     DECL_TRACER("TObject::enableObject(ulong handle)");
 
+    if (mObjects.empty())
+        return false;
+
     map<ulong, OBJECT_t>::iterator iter = mObjects.find(handle);
 
     if (iter != mObjects.end())
@@ -525,6 +555,9 @@ bool TObject::enableObject(ulong handle)
 bool TObject::enableAllSubObjects(ulong handle)
 {
     DECL_TRACER("::enableAllSubObjects(ulong handle)");
+
+    if (mObjects.empty())
+        return false;
 
     TLOCKER(mutex_obj);
     map<ulong, OBJECT_t>::iterator iter;

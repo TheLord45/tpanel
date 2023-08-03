@@ -46,6 +46,7 @@
 #   include <QtMultimedia/QMediaPlaylist>
 #else
 #   include <QAudioOutput>
+#   include <QMediaMetaData>
 #endif
 #include <QListWidget>
 #include <QLayout>
@@ -566,7 +567,7 @@ MainWindow::MainWindow()
                                          std::placeholders::_6));
 #endif
     gPageManager->regCallDropPage(bind(&MainWindow::_dropPage, this, std::placeholders::_1));
-    gPageManager->regCallDropSubPage(bind(&MainWindow::_dropSubPage, this, std::placeholders::_1));
+    gPageManager->regCallDropSubPage(bind(&MainWindow::_dropSubPage, this, std::placeholders::_1, std::placeholders::_2));
     gPageManager->regCallPlayVideo(bind(&MainWindow::_playVideo, this,
                                        std::placeholders::_1,
                                        std::placeholders::_2,
@@ -2084,6 +2085,14 @@ void MainWindow::animationInFinished()
 {
     DECL_TRACER("MainWindow::animationInFinished()");
 
+    if (mAnimObjects.empty())
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
+        return;
+    }
+
     TLOCKER(anim_mutex);
     map<ulong, OBJECT_t *>::iterator iter;
 
@@ -2134,6 +2143,14 @@ void MainWindow::animationInFinished()
 void MainWindow::animationFinished()
 {
     DECL_TRACER("MainWindow::animationFinished()");
+
+    if (mAnimObjects.empty())
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
+        return;
+    }
 
     TLOCKER(anim_mutex);
     map<ulong, OBJECT_t *>::iterator iter;
@@ -3002,9 +3019,9 @@ void MainWindow::_dropPage(ulong handle)
     emit sigDropPage(handle);
 }
 
-void MainWindow::_dropSubPage(ulong handle)
+void MainWindow::_dropSubPage(ulong handle, ulong parent)
 {
-    DECL_TRACER("MainWindow::_dropSubPage(ulong handle)");
+    DECL_TRACER("MainWindow::_dropSubPage(ulong handle, ulong parent)");
 
     doReleaseButton();
 
@@ -3014,7 +3031,7 @@ void MainWindow::_dropSubPage(ulong handle)
         return;
     }
 
-    emit sigDropSubPage(handle);
+    emit sigDropSubPage(handle, parent);
 }
 
 void MainWindow::_dropButton(ulong handle)
@@ -4469,7 +4486,14 @@ void MainWindow::setBackground(ulong handle, TBitmap image, int width, int heigh
     if (!obj || obj->remove)
     {
 #ifdef QT_DEBUG
-        MSG_WARNING("No object " << handleToString(handle) << " found! (Flag remove: " << (obj->remove ? "TRUE" : "FALSE") << ")");
+        if (obj)
+        {
+            MSG_WARNING("No object " << handleToString(handle) << " found! (Flag remove: " << (obj->remove ? "TRUE" : "FALSE") << ")");
+        }
+        else
+        {
+            MSG_WARNING("No object " << handleToString(handle) << " found!");
+        }
 #else
         MSG_WARNING("No object " << handleToString(handle) << " found!");
 #endif
@@ -4748,12 +4772,18 @@ void MainWindow::dropPage(ulong handle)
     if (!obj)
     {
         MSG_WARNING("Object " << handleToString(handle) << " (Page) does not exist. Ignoring!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
     }
 
     if (obj->type != OBJ_PAGE)
     {
         MSG_WARNING("Object " << handleToString(handle) << " is not a page!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
     }
 
@@ -4761,14 +4791,23 @@ void MainWindow::dropPage(ulong handle)
     invalidateAllSubObjects(handle);
 
     if (obj->object.widget)
+    {
         obj->object.widget->setHidden(true);
+#if TESTMODE == 1
+        __success = true;
+#endif
+    }
+#if TESTMODE == 1
+    setScreenDone();
+#endif
 }
 
-void MainWindow::dropSubPage(ulong handle)
+void MainWindow::dropSubPage(ulong handle, ulong parent)
 {
-    DECL_TRACER("MainWindow::dropSubPage(ulong handle)");
+    DECL_TRACER("MainWindow::dropSubPage(ulong handle, ulong parent)");
 
     OBJECT_t *obj = findObject(handle);
+    OBJECT_t *par = findObject(parent);
 
     if (!obj)
     {
@@ -4779,9 +4818,32 @@ void MainWindow::dropSubPage(ulong handle)
         return;
     }
 
+    if (!par)
+    {
+        MSG_DEBUG("Parent object " << handleToString(parent) << " not found!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
+        return;
+    }
+
     if (obj->type != OBJ_SUBPAGE)
     {
         MSG_WARNING("Object " << handleToString(handle) << " is not a SubPage!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
+        return;
+    }
+
+    QWidget *w = par->object.widget->findChild<QWidget *>(QString("Subpage_%1").arg(handleToString(handle).c_str()));
+
+    if (!w)
+    {
+        MSG_DEBUG("Parent object " << handleToString(parent) << " has no child " << handleToString(handle) << "!");
+        obj->object.widget = nullptr;
+        obj->remove = true;
+        obj->invalid = true;
 #if TESTMODE == 1
         setScreenDone();
 #endif
@@ -4807,10 +4869,12 @@ void MainWindow::dropSubPage(ulong handle)
             obj->object.widget->hide();
 #if TESTMODE == 1
             __success = true;
-            setScreenDone();
 #endif
         }
     }
+#if TESTMODE == 1
+    setScreenDone();
+#endif
 }
 
 void MainWindow::dropButton(ulong handle)
@@ -5457,7 +5521,7 @@ void MainWindow::playSound(const string& file)
 
     if (mMediaPlayer->state() != QMediaPlayer::StoppedState)
         mMediaPlayer->stop();
-#else
+#else   // QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     mMediaPlayer->setSource(QUrl::fromLocalFile(file.c_str()));
     mAudioOutput->setVolume(calcVolume(TConfig::getSystemVolume()));
 
@@ -5476,8 +5540,8 @@ void MainWindow::playSound(const string& file)
     if (mMediaPlayer->playbackState() != QMediaPlayer::StoppedState)
         mMediaPlayer->stop();
 #endif  // #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+    mMediaPlayer->setPosition(0);
 #endif  // QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-
     mMediaPlayer->play();
 #if TESTMODE == 1
     QMediaPlayer::Error err = QMediaPlayer::NoError;
@@ -5641,7 +5705,7 @@ void MainWindow::playShowList()
                     MSG_PROTOCOL("Replay: SUBPAGE object " << handleToString(handle));
 
                     if (isDeleted())
-                        emit sigDropSubPage(handle);
+                        emit sigDropSubPage(handle, parent);
                     else
                         emit sigSetSubPage(handle, parent, left, top, width, height, animate);
                 }
@@ -5753,12 +5817,7 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
     mLastObject = nullptr;
 
     if (effect == SE_NONE || duration <= 0 || (obj->type != OBJ_SUBPAGE && obj->type != OBJ_PAGE))
-    {
-#if TESTMODE == 1
-        setScreenDone();
-#endif
         return false;
-    }
 
     if (!obj->object.widget)
     {

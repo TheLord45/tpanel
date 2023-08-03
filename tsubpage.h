@@ -72,6 +72,7 @@ class TSubPage : public TValidateFile, public TPageInterface, public Border::TIn
         SHOWEFFECT getHideEffect() { return mSubpage.hideEffect; }
         void setHideEffect(SHOWEFFECT he) { mSubpage.hideEffect = he; }
         void setHideEndPosition(int x, int y) { mSubpage.hideX = x; mSubpage.hideY = y; }
+        void getHideEndPosition(int *x, int *y) { if (x) *x = mSubpage.hideX; if (y) *y = mSubpage.hideY; }
         int getHideTime() { return mSubpage.hideTime; }
         void setHideTime(int t) { mSubpage.hideTime = t; }
         int getTimeout() { return mSubpage.timeout; }
@@ -95,7 +96,7 @@ class TSubPage : public TValidateFile, public TPageInterface, public Border::TIn
         void registerCallback(std::function<void (ulong handle, TBitmap image, int width, int height, ulong color, int opacity)> setBackground) { _setBackground = setBackground; }
 #endif
         void registerCallbackDB(std::function<void(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough)> displayButton) { _displayButton = displayButton; }
-        void regCallDropSubPage(std::function<void (ulong handle)> callDropSubPage) { _callDropSubPage = callDropSubPage; }
+        void regCallDropSubPage(std::function<void (ulong handle, ulong parent)> callDropSubPage) { _callDropSubPage = callDropSubPage; }
         void regCallPlayVideo(std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw)> playVideo) { _playVideo = playVideo; };
 
     protected:
@@ -113,7 +114,7 @@ class TSubPage : public TValidateFile, public TPageInterface, public Border::TIn
         std::function<void (ulong handle, TBitmap image, int width, int height, ulong color, int opacity)> _setBackground{nullptr};
 #endif
         std::function<void (ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough)> _displayButton{nullptr};
-        std::function<void (ulong handle)> _callDropSubPage{nullptr};
+        std::function<void (ulong handle, ulong parent)> _callDropSubPage{nullptr};
         std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw)> _playVideo{nullptr};
 
         bool mVisible{false};                   // TRUE = subpage is visible

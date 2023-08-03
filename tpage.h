@@ -33,9 +33,11 @@ class TBitmap;
 
 typedef struct PAGECHAIN_T
 {
+    int pgNumber{0};
+    int zOrder{-1};
     TSubPage *subpage{nullptr}; // Ponter to subpage
-    PAGECHAIN_T *prev{nullptr}; // Pointer to previous element
-    PAGECHAIN_T *next{nullptr}; // Pointer to next element
+//    PAGECHAIN_T *prev{nullptr}; // Pointer to previous element
+//    PAGECHAIN_T *next{nullptr}; // Pointer to next element
 }PAGECHAIN_T;
 
 class TPage : public TValidateFile, public TPageInterface
@@ -58,7 +60,7 @@ class TPage : public TValidateFile, public TPageInterface
         std::string getFillColor() { return mPage.sr[0].cf; }
         SkBitmap& getBgImage();
 
-        PAGECHAIN_T *addSubPage(TSubPage *pg);
+        bool addSubPage(TSubPage *pg);
         TSubPage *getSubPage(int pageID);
         TSubPage *getSubPage(const std::string& name);
         TSubPage *getFirstSubPage();
@@ -78,12 +80,13 @@ class TPage : public TValidateFile, public TPageInterface
 #endif
         void registerCallbackDB(std::function<void(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough)> displayButton) { _displayButton = displayButton; }
         void regCallDropPage(std::function<void (ulong handle)> callDropPage) { _callDropPage = callDropPage; }
-        void regCallDropSubPage(std::function<void (ulong handle)> callDropSubPage) { _callDropSubPage = callDropSubPage; }
+        void regCallDropSubPage(std::function<void (ulong handle, ulong parent)> callDropSubPage) { _callDropSubPage = callDropSubPage; }
         void regCallPlayVideo(std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw)> playVideo) { _playVideo = playVideo; };
 
         void show();
         void drop();
         void sortSubpages();
+        std::map<int, TSubPage *>& getSortedSubpages(bool force=false);
 
     protected:
 //        bool sortButtons();
@@ -101,7 +104,7 @@ class TPage : public TValidateFile, public TPageInterface
 #endif
         std::function<void (ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough)> _displayButton{nullptr};
         std::function<void (ulong handle)> _callDropPage{nullptr};
-        std::function<void (ulong handle)> _callDropSubPage{nullptr};
+        std::function<void (ulong handle, ulong parent)> _callDropSubPage{nullptr};
         std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw)> _playVideo{nullptr};
 
         std::string mPath;              // Path and name of the XML file
@@ -111,7 +114,8 @@ class TPage : public TValidateFile, public TPageInterface
         bool mVisible{false};           // true = Page is visible
         TPalette *mPalette{nullptr};    // The color palette
 
-        PAGECHAIN_T *mSubPages{nullptr};// Subpages related to this page
+        std::map<int, TSubPage *> mSubPages;        // Subpages related to this page
+        std::map<int, TSubPage *> mSubPagesSorted;  // Sorted subpages with a Z-order >= 0
         int mLastSubPage{0};            // Stores the number of the last subpage
         int mZOrder{ZORDER_INVALID};    // The Z-Order of the subpages
         std::vector<LIST_t> mLists;     // Lists of page

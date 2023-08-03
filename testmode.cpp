@@ -48,6 +48,7 @@ bool __done{false};                 // TRUE marks a test case as done
 bool _test_screen{false};           // TRUE: The graphical part of a test case is done.
 bool _testmode{false};              // TRUE: Test mode is active. Activated by command line.
 bool _run_test_ready{false};        // TRUE: The test cases are allowd to start.
+bool _block_screen{false};          // TRUE: The _test_screen is not set.
 string gLastCommand;                // The last command to be tested.
 _TestMode *_gTestMode{nullptr};     // Pointer to class _TestMode. This class must exist only once!
 
@@ -219,6 +220,7 @@ void _TestMode::start()
                     __done = false;
                     __success = false;
                     _test_screen = false;
+                    _block_screen = false;
                     inject(port, tcmd.command);
 
                     if (!tcmd.nowait)

@@ -855,6 +855,7 @@ TPageManager::TPageManager()
                 if (pg)
                 {
                     TSubPage *spage = getSubPage(*iter);
+                    spage->setParent(pg->getHandle());
                     pg->addSubPage(spage);
                 }
             }
@@ -1284,6 +1285,7 @@ void TPageManager::initialize()
                 if (pg)
                 {
                     TSubPage *spage = getSubPage(*iter);
+                    spage->setParent(pg->getHandle());
                     pg->addSubPage(spage);
                 }
             }
@@ -2018,13 +2020,12 @@ TPage *TPageManager::getPage(int pageID)
 
     while (p)
     {
-        if (p->page->getNumber() == pageID)
+        if (p->page && p->page->getNumber() == pageID)
             return p->page;
 
         p = p->next;
     }
 
-    MSG_DEBUG("Page " << pageID << " not found!");
     return nullptr;
 }
 
@@ -2032,17 +2033,19 @@ TPage *TPageManager::getPage(const string& name)
 {
     DECL_TRACER("TPageManager::getPage(const string& name)");
 
+    if (name.empty())
+        return nullptr;
+
     PCHAIN_T *p = mPchain;
 
     while (p)
     {
-        if (p->page->getName().compare(name) == 0)
+        if (p->page && p->page->getName().compare(name) == 0)
             return p->page;
 
         p = p->next;
     }
 
-    MSG_DEBUG("Page " << name << " not found!");
     return nullptr;
 }
 
@@ -2319,6 +2322,8 @@ TSubPage *TPageManager::deliverSubPage(const string& name, TPage **pg)
             MSG_ERROR("Fatal: A page with name " << name << " does not exist!");
             return nullptr;
         }
+
+        subPage->setParent(page->getHandle());
     }
 
     return subPage;
@@ -2356,6 +2361,8 @@ TSubPage *TPageManager::deliverSubPage(int number, TPage **pg)
             MSG_ERROR("Fatal: A page with name " << number << " does not exist!");
             return nullptr;
         }
+
+        subPage->setParent(page->getHandle());
     }
 
     return subPage;
@@ -2400,7 +2407,7 @@ bool TPageManager::readPages()
         }
     }
 
-    vector<SUBPAGELIST_T> subPageList = mPageList->getSupPageList();
+    vector<SUBPAGELIST_T> subPageList = mPageList->getSubPageList();
 
     if (subPageList.size() > 0)
     {
@@ -2926,7 +2933,7 @@ SUBPAGELIST_T TPageManager::findSubPage(const std::string& name)
 {
     DECL_TRACER("TPageManager::findSubPage(const std::string& name)");
 
-    vector<SUBPAGELIST_T> pageList = (mSetupActive ? mPageList->getSystemSupPageList() : mPageList->getSupPageList());
+    vector<SUBPAGELIST_T> pageList = (mSetupActive ? mPageList->getSystemSupPageList() : mPageList->getSubPageList());
 
     if (pageList.size() > 0)
     {
@@ -2946,7 +2953,7 @@ SUBPAGELIST_T TPageManager::findSubPage(int ID)
 {
     DECL_TRACER("TPageManager::findSubPage(int ID)");
 
-    vector<SUBPAGELIST_T> pageList = (ID < SYSTEM_PAGE_START ? mPageList->getSupPageList() : mPageList->getSystemSupPageList());
+    vector<SUBPAGELIST_T> pageList = (ID < SYSTEM_PAGE_START ? mPageList->getSubPageList() : mPageList->getSystemSupPageList());
 
     if (pageList.size() > 0)
     {
@@ -3076,7 +3083,7 @@ void TPageManager::dropAllSubPages()
         if (spg->page)
         {
             if (_callDropSubPage)
-                _callDropSubPage((spg->page->getNumber() << 16) & 0xffff0000);
+                _callDropSubPage((spg->page->getNumber() << 16) & 0xffff0000, spg->page->getParent());
 
             delete spg->page;
         }
@@ -3251,12 +3258,22 @@ TSubPage *TPageManager::getFirstSubPage()
 {
     DECL_TRACER("TPageManager::getFirstSubPage()");
 
+    mLastSubPage = 0;
     TPage *pg = getPage(mActualPage);
 
     if (!pg)
         return nullptr;
 
-    return pg->getFirstSubPage();
+    map<int, TSubPage *> sp = pg->getSortedSubpages(true);
+
+    if (!sp.empty())
+    {
+        map<int, TSubPage *>::iterator iter = sp.begin();
+        mLastSubPage = iter->first;
+        return iter->second;
+    }
+
+    return nullptr;
 }
 
 TSubPage *TPageManager::getNextSubPage()
@@ -3266,8 +3283,32 @@ TSubPage *TPageManager::getNextSubPage()
     TPage *pg = getPage(mActualPage);
 
     if (pg)
-        return pg->getNextSubPage();
+    {
+        map<int, TSubPage *> sp = pg->getSortedSubpages();
 
+        if (sp.empty())
+        {
+            mLastSubPage = 0;
+            return nullptr;
+        }
+        else
+        {
+            map<int, TSubPage *>::iterator iter = sp.find(mLastSubPage);
+
+            if (iter != sp.end())
+            {
+                iter++;
+
+                if (iter != sp.end())
+                {
+                    mLastSubPage = iter->first;
+                    return iter->second;
+                }
+            }
+        }
+    }
+
+    mLastSubPage = 0;
     return nullptr;
 }
 
@@ -3278,8 +3319,30 @@ TSubPage *TPageManager::getPrevSubPage()
     TPage *pg = getPage(mActualPage);
 
     if (pg)
-        return pg->getPrevSubPage();
+    {
+        map<int, TSubPage *> sp = pg->getSortedSubpages();
 
+        if (sp.empty())
+        {
+            mLastSubPage = 0;
+            return nullptr;
+        }
+        else
+        {
+            map<int, TSubPage *>::iterator iter = sp.find(mLastSubPage);
+
+            if (iter != sp.end() && iter != sp.begin())
+            {
+                iter--;
+                mLastSubPage = iter->first;
+                return iter->second;
+            }
+
+            MSG_DEBUG("Page " << mLastSubPage << " not found!");
+        }
+    }
+
+    mLastSubPage = 0;
     return nullptr;
 }
 
@@ -3287,12 +3350,22 @@ TSubPage *TPageManager::getLastSubPage()
 {
     DECL_TRACER("TPageManager::getLastSubPage()");
 
+    mLastSubPage = 0;
     TPage *pg = getPage(mActualPage);
 
     if (pg)
     {
-        pg->sortSubpages();
-        return pg->getLastSubPage();
+        map<int, TSubPage *> sp = pg->getSortedSubpages(true);
+
+        if (sp.empty())
+            return nullptr;
+        else
+        {
+            map<int, TSubPage *>::iterator iter = sp.end();
+            iter--;
+            mLastSubPage = iter->first;
+            return iter->second;
+        }
     }
     else
     {
@@ -3678,16 +3751,29 @@ void TPageManager::showSubPage(const string& name)
     DECL_TRACER("TPageManager::showSubPage(const string& name)");
 
     if (name.empty())
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
+    }
 
     TPage *page = nullptr;
     TSubPage *pg = deliverSubPage(name, &page);
 
     if (!pg)
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return;
+    }
 
     if (page)
+    {
+        pg->setParent(page->getHandle());
         page->addSubPage(pg);
+    }
 
     string group = pg->getGroupName();
 
@@ -3729,7 +3815,7 @@ void TPageManager::showSubPage(const string& name)
         {
             _toFront((uint)pg->getHandle());
             pg->setZOrder(page->getNextZOrder());
-            page->sortSubpages();
+//            page->sortSubpages();
             MSG_DEBUG("Setting new Z-order " << page->getActZOrder() << " on subpage " << pg->getName());
         }
         else if (redraw && !_toFront)
@@ -3800,7 +3886,10 @@ void TPageManager::showSubPage(int number, bool force)
         return;
 
     if (page)
+    {
+        pg->setParent(page->getHandle());
         page->addSubPage(pg);
+    }
 
     string group = pg->getGroupName();
 
@@ -5330,6 +5419,9 @@ void TPageManager::doVER(int, vector<int>&, vector<string>&)
         gAmxNet->sendCommand(scmd);
 #if TESTMODE == 1
         __success = true;
+
+        if (_gTestMode)
+            _gTestMode->setResult(VERSION_STRING());
 #endif
     }
     else
@@ -5367,6 +5459,9 @@ void TPageManager::doWCN(int, vector<int>&, vector<string>&)
         gAmxNet->sendCommand(scmd);
 #if TESTMODE == 1
         __success = true;
+
+        if (_gTestMode)
+            _gTestMode->setResult(TConfig::getSIPuser());
 #endif
     }
     else
@@ -5462,6 +5557,9 @@ void TPageManager::doAPG(int, std::vector<int>&, std::vector<std::string>& pars)
     MSG_DEBUG("Setting new Z-order " << page->getActZOrder() << " on page " << page->getName());
     subPage->show();
 #if TESTMODE == 1
+    if (_gTestMode)
+        _gTestMode->setResult(subPage->getGroupName() + ":" + subPage->getName());
+
     setDone();
 #endif
 }
@@ -5483,7 +5581,7 @@ void TPageManager::doCPG(int, std::vector<int>&, std::vector<std::string>& pars)
     }
 
     TError::clear();
-    vector<SUBPAGELIST_T> pageList = mPageList->getSupPageList();
+    vector<SUBPAGELIST_T> pageList = mPageList->getSubPageList();
 
     if (pageList.size() > 0)
     {
@@ -5519,6 +5617,9 @@ void TPageManager::doDPG(int, std::vector<int>&, std::vector<std::string>& pars)
     if (pars.size() < 2)
     {
         MSG_ERROR("Less than 2 parameters!");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
@@ -5526,7 +5627,12 @@ void TPageManager::doDPG(int, std::vector<int>&, std::vector<std::string>& pars)
     SUBPAGELIST_T listPg = findSubPage(pars[0]);
 
     if (!listPg.isValid)
+    {
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
+    }
 
     if (listPg.group.compare(pars[1]) == 0)
     {
@@ -5535,7 +5641,13 @@ void TPageManager::doDPG(int, std::vector<int>&, std::vector<std::string>& pars)
 
         if (pg)
             pg->setGroup(listPg.group);
+#if TESTMODE == 1
+        __success = true;
+#endif
     }
+#if TESTMODE == 1
+    setDone();
+#endif
 }
 
 /**
@@ -5548,6 +5660,9 @@ void TPageManager::doPHE(int, vector<int>&, vector<string>& pars)
     if (pars.size() < 2)
     {
         MSG_ERROR("Less than 2 parameters!");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
@@ -5555,7 +5670,12 @@ void TPageManager::doPHE(int, vector<int>&, vector<string>& pars)
     TSubPage *pg = deliverSubPage(pars[0]);
 
     if (!pg)
+    {
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
+    }
 
     if (strCaseCompare(pars[1], "fade") == 0)
         pg->setHideEffect(SE_FADE);
@@ -5577,6 +5697,13 @@ void TPageManager::doPHE(int, vector<int>&, vector<string>& pars)
         pg->setHideEffect(SE_SLIDE_BOTTOM_FADE);
     else
         pg->setHideEffect(SE_NONE);
+#if TESTMODE == 1
+    if (_gTestMode)
+        _gTestMode->setResult(intToString(pg->getHideEffect()));
+
+    __success = true;
+    setAllDone();
+#endif
 }
 
 /**
@@ -5591,6 +5718,9 @@ void TPageManager::doPHP(int, vector<int>&, vector<string>& pars)
     if (pars.size() < 2)
     {
         MSG_ERROR("Less than 2 parameters!");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
@@ -5612,9 +5742,25 @@ void TPageManager::doPHP(int, vector<int>&, vector<string>& pars)
     TSubPage *pg = deliverSubPage(pars[0]);
 
     if (!pg)
+    {
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
+    }
 
     pg->setHideEndPosition(x, y);
+#if TESTMODE == 1
+    if (_gTestMode)
+    {
+        int x, y;
+        pg->getHideEndPosition(&x, &y);
+        _gTestMode->setResult(intToString(x) + "," + intToString(y));
+    }
+
+    __success = true;
+    setAllDone();
+#endif
 }
 
 /**
@@ -5627,6 +5773,9 @@ void TPageManager::doPHT(int, vector<int>&, vector<string>& pars)
     if (pars.size() < 2)
     {
         MSG_ERROR("Less than 2 parameters!");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
@@ -5634,9 +5783,21 @@ void TPageManager::doPHT(int, vector<int>&, vector<string>& pars)
     TSubPage *pg = deliverSubPage(pars[0]);
 
     if (!pg)
+    {
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
+    }
 
     pg->setHideTime(atoi(pars[1].c_str()));
+#if TESTMODE == 1
+    if (_gTestMode)
+        _gTestMode->setResult(intToString(pg->getHideTime()));
+
+    __success = true;
+    setAllDone();
+#endif
 }
 
 /**
@@ -5656,10 +5817,18 @@ void TPageManager::doPPA(int, std::vector<int>&, std::vector<std::string>& pars)
         pg = getPage(pars[0]);
 
     if (!pg)
+    {
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
+    }
 
     pg->drop();
     pg->resetZOrder();
+#if TESTMODE == 1
+    setDone();
+#endif
 }
 
 /**
@@ -5675,6 +5844,9 @@ void TPageManager::doPPF(int, std::vector<int>&, std::vector<std::string>& pars)
     if (pars.size() < 1)
     {
         MSG_ERROR("At least 1 parameter is expected!");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
@@ -5698,6 +5870,9 @@ void TPageManager::doPPG(int, std::vector<int>&, std::vector<std::string>& pars)
     if (pars.size() < 1)
     {
         MSG_ERROR("At least 1 parameter is expected!");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
@@ -5707,18 +5882,29 @@ void TPageManager::doPPG(int, std::vector<int>&, std::vector<std::string>& pars)
     if (!page)
     {
         MSG_ERROR("No active page found! Internal error.");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
     TSubPage *pg = getSubPage(pars[0]);
 
     if (!pg)
+    {
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
+    }
 
     if (pg->isVisible())
     {
         pg->drop();
         page->decZOrder();
+#if TESTMODE == 1
+        setDone();
+#endif
         return;
     }
 
@@ -5735,6 +5921,9 @@ void TPageManager::doPPG(int, std::vector<int>&, std::vector<std::string>& pars)
     pg->setZOrder(page->getNextZOrder());
     MSG_DEBUG("Setting new Z-order " << page->getActZOrder() << " on page " << page->getName());
     pg->show();
+#if TESTMODE == 1
+    setDone();
+#endif
 }
 
 /**
@@ -5749,6 +5938,9 @@ void TPageManager::doPPK(int, std::vector<int>&, std::vector<std::string>& pars)
     if (pars.size() < 1)
     {
         MSG_ERROR("At least 1 parameter is expected!");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
@@ -5758,6 +5950,9 @@ void TPageManager::doPPK(int, std::vector<int>&, std::vector<std::string>& pars)
     if (!page)
     {
         MSG_ERROR("No active page found! Internal error.");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
@@ -5768,6 +5963,9 @@ void TPageManager::doPPK(int, std::vector<int>&, std::vector<std::string>& pars)
         pg->drop();
         page->decZOrder();
     }
+#if TESTMODE == 1
+        setDone();
+#endif
 }
 
 /**
@@ -5783,6 +5981,9 @@ void TPageManager::doPPM(int, std::vector<int>&, std::vector<std::string>& pars)
     if (pars.size() < 2)
     {
         MSG_ERROR("Expecting 2 parameters!");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
@@ -5795,7 +5996,14 @@ void TPageManager::doPPM(int, std::vector<int>&, std::vector<std::string>& pars)
             pg->setModal(1);
         else
             pg->setModal(0);
+#if TESTMODE == 1
+        if (_gTestMode)
+            _gTestMode->setResult(pg->isModal() ? "TRUE" : "FALSE");
+#endif
     }
+#if TESTMODE == 1
+        setAllDone();
+#endif
 }
 
 /**
@@ -5811,11 +6019,17 @@ void TPageManager::doPPN(int, std::vector<int>&, std::vector<std::string>& pars)
     if (pars.size() < 1)
     {
         MSG_ERROR("At least 1 parameter is expected!");
+#if TESTMODE == 1
+        setAllDone();
+#endif
         return;
     }
 
     TError::clear();
     showSubPage(pars[0]);
+#if TESTMODE == 1
+    setDone();
+#endif
 }
 
 /**

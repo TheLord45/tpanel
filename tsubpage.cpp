@@ -726,7 +726,14 @@ void TSubPage::drop()
     stopTimer();
 
     if (mVisible && _callDropSubPage)
-        _callDropSubPage((mSubpage.pageID << 16) & 0xffff0000);
+        _callDropSubPage((mSubpage.pageID << 16) & 0xffff0000, mParent);
+#if TESTMODE == 1
+    else
+    {
+        __success = true;
+        setScreenDone();
+    }
+#endif
 
     // Set all elements of subpage invisible
     BUTTONS_T *bt = TPageInterface::getButtons();

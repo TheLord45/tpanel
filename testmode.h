@@ -33,7 +33,7 @@ extern bool __done;
 extern bool _test_screen;
 extern bool _testmode;
 extern bool _run_test_ready;
-
+extern bool _block_screen;
 class _TestMode
 {
     public:
@@ -87,7 +87,7 @@ class _TestMode
 extern _TestMode *_gTestMode;
 
 #define setDone()       if (_testmode) { __done = true; }
-#define setScreenDone() if (_testmode) { MSG_DEBUG("setScreenDone(); at module " << __FILE__ << ": " << __LINE__); _test_screen = true; }
+#define setScreenDone() if (_testmode && !_block_screen) { MSG_DEBUG("setScreenDone(); at module " << __FILE__ << ": " << __LINE__); _test_screen = true; }
 #define setAllDone()    if (_testmode) { MSG_DEBUG("setAllDone(); at module " << __FILE__ << ": " << __LINE__); _test_screen = true; __done = true; }
 
 #else

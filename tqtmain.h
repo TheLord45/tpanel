@@ -125,7 +125,7 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
         void sigSetBackground(ulong handle, TBitmap image, int width, int height, ulong color);
 #endif
         void sigDropPage(ulong handle);
-        void sigDropSubPage(ulong handle);
+        void sigDropSubPage(ulong handle, ulong parent);
         void sigDropButton(ulong handle);
         void sigPlayVideo(ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw);
         void sigInputText(Button::TButton *button, QByteArray buffer, int width, int height, int frame, size_t pixline);
@@ -191,7 +191,7 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
         void setBackground(ulong handle, TBitnap image, int width, int height, ulong color, int opacity=255);
 #endif  // _OPAQUE_SKIA_
         void dropPage(ulong handle);
-        void dropSubPage(ulong handle);
+        void dropSubPage(ulong handle, ulong parent);
         void dropButton(ulong handle);
         void playVideo(ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw);
         void inputText(Button::TButton *button, QByteArray buffer, int width, int height, int frame, size_t pixline);
@@ -286,7 +286,7 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
         void _setBackground(ulong handle, TBitmap image, int width, int height, ulong color, int opacity=255);
 #endif  // _OPAQUE_SKIA_
         void _dropPage(ulong handle);
-        void _dropSubPage(ulong handle);
+        void _dropSubPage(ulong handle, ulong parent);
         void _dropButton(ulong handle);
         void _playVideo(ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw);
         void _inputText(Button::TButton *button, Button::BITMAP_t& bm, int frame);

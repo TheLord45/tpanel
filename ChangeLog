@@ -3,6 +3,10 @@ ChangeLog
 
 Release: 1.4.0
 ===============================================================================
+2023-07-30 Changed the pointer chain for subpages into a std::map.
+
+2023-07-24 Fixed the sound playing with Qt6.x.
+
 2023-07-22 Fixed the drawing of buttons so that all elements are drawn.
            Optimized the rules to draw a button new what increased speed.
 

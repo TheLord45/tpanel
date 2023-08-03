@@ -110,7 +110,8 @@ TPage::~TPage()
     }
 
     setButtons(nullptr);
-
+    mSubPages.clear();
+/*
     PAGECHAIN_T *pc = mSubPages;
     PAGECHAIN_T *pc_next = nullptr;
 
@@ -124,6 +125,7 @@ TPage::~TPage()
     }
 
     mSubPages = nullptr;
+*/
 }
 
 void TPage::initialize(const string& nm)
@@ -262,7 +264,7 @@ void TPage::initialize(const string& nm)
     }
 
     setSR(sr);
-
+/*
     if (TStreamError::checkFilter(HLOG_DEBUG))
     {
         MSG_DEBUG("PageID: " << mPage.pageID);
@@ -286,7 +288,7 @@ void TPage::initialize(const string& nm)
             pos++;
         }
     }
-
+*/
     if (TPageInterface::getButtons())
         sortButtons();
 }
@@ -841,7 +843,7 @@ void TPage::show()
         gPageManager->getPageFinished()(handle);
 }
 
-PAGECHAIN_T *TPage::addSubPage(TSubPage* pg)
+bool TPage::addSubPage(TSubPage* pg)
 {
     DECL_TRACER("TPage::addSubPage(TSubPage* pg)");
 
@@ -849,82 +851,36 @@ PAGECHAIN_T *TPage::addSubPage(TSubPage* pg)
     {
         MSG_ERROR("Parameter is NULL!");
         TError::setError();
-        return nullptr;
+        return false;
     }
 
-    PAGECHAIN_T *chain = new PAGECHAIN_T;
-    chain->subpage = pg;
-    chain->next = nullptr;
-    chain->prev = nullptr;
-    PAGECHAIN_T *spg = mSubPages;
-
-    if (spg)
-    {
-        // First make sure that the new page is not already in the chain.
-        PAGECHAIN_T *p = spg;
-
-        while (p)
-        {
-            if (p->subpage->getNumber() == pg->getNumber())
-            {
-                MSG_TRACE("Page " << pg->getNumber() << " is already in chain. Don't add it again.");
-                delete chain;
-                return p;
-            }
-
-            p = p->next;
-        }
-
-        // The subpage is not in chain. So we add it now.
-        p = spg;
-        // Find the last element in chain
-        while (p && p->next)
-            p = p->next;
-
-        p->next = chain;
-        chain->prev = p;
-    }
-    else
-    {
+    if (mSubPages.empty())
         mZOrder = 0;
-        mSubPages = chain;
-    }
 
+#if __cplusplus < 201703L
+    map<int, TSubPage *>::iterator iter = mSubPages.find(pg->getNumber());
+
+    if (iter != mSubPages.end() && iter->second != pg)
+        iter->second = pg;
+    else
+        mSubPages.insert(pair<int, TSubPage *>(pg->getNumber(), pg));
+#else
+    mSubPages.insert_or_assign(pg->getNumber(), pg);
+#endif
     mLastSubPage = 0;
-    return chain;
+    return true;
 }
 
 bool TPage::removeSubPage(int ID)
 {
     DECL_TRACER("TPage::removeSubPage(int ID)");
 
-    PAGECHAIN_T *p = mSubPages;
-    PAGECHAIN_T *prev = nullptr;
+    map<int, TSubPage *>::iterator iter = mSubPages.find(ID);
 
-    while (p)
+    if (iter != mSubPages.end())
     {
-        if (p->subpage->getNumber() == ID)
-        {
-            PAGECHAIN_T *next = p->next;
-
-            if (prev)
-            {
-                prev->next = next;
-                next->prev = prev;
-            }
-            else
-            {
-                mSubPages = next;
-                mSubPages->prev = nullptr;
-            }
-
-            delete p;
-            mLastSubPage = 0;
-            return true;
-        }
-
-        prev = p;
-        p = p->next;
+        mSubPages.erase(iter);
+        return true;
     }
 
     return false;
@@ -934,33 +890,18 @@ bool TPage::removeSubPage(const std::string& nm)
 {
     DECL_TRACER("TPage::removeSubPage(const std::string& nm)");
 
-    PAGECHAIN_T *p = mSubPages;
-    PAGECHAIN_T *prev = nullptr;
+    if (mSubPages.empty())
+        return false;
 
-    while (p)
+    map<int, TSubPage *>::iterator iter;
+
+    for (iter = mSubPages.begin(); iter != mSubPages.end(); ++iter)
     {
-        if (p->subpage->getName().compare(nm) == 0)
+        if (iter->second->getName() == nm)
         {
-            PAGECHAIN_T *next = p->next;
-
-            if (prev)
-            {
-                prev->next = next;
-                next->prev = prev;
-            }
-            else
-            {
-                mSubPages = next;
-                mSubPages->prev = nullptr;
-            }
-
-            delete p;
-            mLastSubPage = 0;
+            mSubPages.erase(iter);
             return true;
         }
-
-        prev = p;
-        p = p->next;
     }
 
     return false;
@@ -970,18 +911,10 @@ TSubPage *TPage::getSubPage(int pageID)
 {
     DECL_TRACER("TPage::getSubPage(int pageID)");
 
-    PAGECHAIN_T *pg = mSubPages;
+    map<int, TSubPage *>::iterator iter = mSubPages.find(pageID);
 
-    while (pg)
-    {
-        if (pg->subpage->getNumber() == pageID)
-        {
-            mLastSubPage = pageID;
-            return pg->subpage;
-        }
-
-        pg = pg->next;
-    }
+    if (iter != mSubPages.end())
+        return iter->second;
 
     mLastSubPage = 0;
     return nullptr;
@@ -991,17 +924,15 @@ TSubPage *TPage::getSubPage(const std::string& name)
 {
     DECL_TRACER("TPage::getSubPage(const std::string& name)");
 
-    PAGECHAIN_T *pg = mSubPages;
+    if (mSubPages.empty())
+        return nullptr;
 
-    while (pg)
+    map<int, TSubPage *>::iterator iter;
+
+    for (iter = mSubPages.begin(); iter != mSubPages.end(); ++iter)
     {
-        if (pg->subpage->getName().compare(name) == 0)
-        {
-            mLastSubPage = pg->subpage->getNumber();
-            return pg->subpage;
-        }
-
-        pg = pg->next;
+        if (iter->second->getName() == name)
+            return iter->second;
     }
 
     mLastSubPage = 0;
@@ -1012,43 +943,57 @@ TSubPage *TPage::getFirstSubPage()
 {
     DECL_TRACER("TPage::getFirstSubPage()");
 
-    PAGECHAIN_T *pg = mSubPages;
-
-    if (pg && pg->subpage)
+    if (mSubPages.empty())
     {
-        mLastSubPage = pg->subpage->getNumber();
-        MSG_DEBUG("Subpage (Z: " << pg->subpage->getZOrder() << "): " << pg->subpage->getNumber() << ". " << pg->subpage->getName());
-        return pg->subpage;
+        MSG_DEBUG("No subpages in chain.");
+        mLastSubPage = 0;
+        return nullptr;
     }
 
-    MSG_DEBUG("No subpages in chain.");
-    mLastSubPage = 0;
-    return nullptr;
+    TSubPage *pg = mSubPages.begin()->second;
+
+    if (!pg)
+    {
+        MSG_ERROR("The pointer to the subpage " << mSubPages.begin()->first << " is NULL!");
+        return nullptr;
+    }
+
+    mLastSubPage = pg->getNumber();
+    MSG_DEBUG("Subpage (Z: " << pg->getZOrder() << "): " << pg->getNumber() << ". " << pg->getName());
+    return pg;
 }
 
 TSubPage *TPage::getNextSubPage()
 {
     DECL_TRACER("TPage::getNextSubPage()");
 
-    if (mLastSubPage > 0 && mSubPages)
+    if (mSubPages.empty())
     {
-        PAGECHAIN_T *p = mSubPages;
+        MSG_DEBUG("No subpages in chain.");
+        mLastSubPage = 0;
+        return nullptr;
+    }
 
-        while (p)
-        {
-            if (p->subpage && p->subpage->getNumber() == mLastSubPage)
-            {
-                if (p->next && p->next->subpage)
-                {
-                    TSubPage *page = p->next->subpage;
-                    mLastSubPage = page->getNumber();
-                    MSG_DEBUG("Subpage (Z: " << page->getZOrder() << "): " << page->getNumber() << ". " << page->getName());
-                    return page;
-                }
-            }
+    if (mLastSubPage <= 0)
+        mLastSubPage = mSubPages.begin()->second->getNumber();
 
-            p = p->next;
-        }
+    map<int, TSubPage *>::iterator iter = mSubPages.find(mLastSubPage);
+
+    if (iter != mSubPages.end())
+        iter++;
+    else
+    {
+        MSG_DEBUG("No more subpages in chain.");
+        mLastSubPage = 0;
+        return nullptr;
+    }
+
+    if (iter != mSubPages.end())
+    {
+        TSubPage *page = iter->second;
+        mLastSubPage = page->getNumber();
+        MSG_DEBUG("Subpage (Z: " << page->getZOrder() << "): " << page->getNumber() << ". " << page->getName());
+        return page;
     }
 
     MSG_DEBUG("No more subpages in chain.");
@@ -1060,71 +1005,77 @@ TSubPage *TPage::getPrevSubPage()
 {
     DECL_TRACER("TPage::getPrevSubPage()");
 
-    if (mLastSubPage < MAX_PAGE_ID || !mSubPages)
-        return nullptr;
-
-    PAGECHAIN_T *pg = mSubPages;
-
-    while (pg)
+    if (mSubPages.empty())
     {
-        if (pg->subpage->getNumber() == mLastSubPage)
-        {
-            if (!pg->prev)
-            {
-                mLastSubPage = 0;
-                MSG_DEBUG("No more subpages in chain.");
-                return nullptr;
-            }
-
-            mLastSubPage = pg->prev->subpage->getNumber();
-            return pg->prev->subpage;
-        }
-
-        pg = pg->next;
+        MSG_DEBUG("No last subpage or no subpages at all!");
+        mLastSubPage = 0;
+        return nullptr;
     }
 
-    MSG_DEBUG("No more subpages in chain.");
-    mLastSubPage = 0;
-    return nullptr;
+    if (mLastSubPage < MAX_PAGE_ID)
+    {
+        map<int, TSubPage *>::iterator iter = mSubPages.end();
+        iter--;
+        mLastSubPage = iter->first;
+    }
+
+    map<int, TSubPage *>::iterator iter = mSubPages.find(mLastSubPage);
+
+    if (iter != mSubPages.end() && iter != mSubPages.begin())
+        iter--;
+    else
+    {
+        MSG_DEBUG("No more subpages in chain.");
+        mLastSubPage = 0;
+        return nullptr;
+    }
+
+    TSubPage *page = iter->second;
+    mLastSubPage = page->getNumber();
+    MSG_DEBUG("Subpage (Z: " << page->getZOrder() << "): " << page->getNumber() << ". " << page->getName());
+    return page;
 }
 
 TSubPage *TPage::getLastSubPage()
 {
     DECL_TRACER("TPage::getLastSubPage()");
 
-    if (!mSubPages)
+    if (mSubPages.empty())
     {
         mLastSubPage = 0;
         MSG_DEBUG("No subpages in cache!");
         return nullptr;
     }
 
-    PAGECHAIN_T *pg = mSubPages;
-
-    while (pg && pg->next)
-        pg = pg->next;
-
-    mLastSubPage = pg->subpage->getNumber();
-    return pg->subpage;
+    map<int, TSubPage *>::iterator iter = mSubPages.end();
+    iter--;
+    TSubPage *pg = iter->second;
+    mLastSubPage = pg->getNumber();
+    MSG_DEBUG("Subpage (Z: " << pg->getZOrder() << "): " << pg->getNumber() << ". " << pg->getName());
+    return pg;
 }
 
 void TPage::drop()
 {
     DECL_TRACER("TPage::drop()");
 
-    PAGECHAIN_T *pc = mSubPages;
-
     // remove all subpages, if there are any
-    while (pc)
+#if TESTMODE == 1
+    _block_screen = true;
+#endif
+    if (!mSubPages.empty())
     {
-        if (pc->subpage)
-        {
-            MSG_DEBUG("Dropping popup " << pc->subpage->getNumber() << ": " << pc->subpage->getName());
-            pc->subpage->drop();
-        }
+        map<int, TSubPage *>::iterator iter;
 
-        pc = pc->next;
+        for (iter = mSubPages.begin(); iter != mSubPages.end(); ++iter)
+        {
+            if (iter->second)
+                iter->second->drop();
+        }
     }
+#if TESTMODE == 1
+    _block_screen = false;
+#endif
 
     // remove all buttons, if there are any
     BUTTONS_T *bt = TPageInterface::getButtons();
@@ -1132,7 +1083,6 @@ void TPage::drop()
     while (bt)
     {
         MSG_DEBUG("Dropping button " << handleToString(bt->button->getHandle()));
-//        bt->button->hide(true);
         bt->button->invalidate();
         bt = bt->next;
     }
@@ -1233,39 +1183,31 @@ void TPage::sortSubpages()
 {
     DECL_TRACER("TPage::sortSubpage()");
 
-    PAGECHAIN_T *pages = nullptr;
-    bool turned = false;
+    mSubPagesSorted.clear();
 
-    // Here we do a simple bubble sort to bring the subpages in ascending Z-order
-    do
+    if (mSubPages.empty())
+        return;
+
+    map<int, TSubPage *>::iterator iter;
+
+    for (iter = mSubPages.begin(); iter != mSubPages.end(); ++iter)
     {
-        turned = false;
-        pages = mSubPages;
-
-        while (pages && pages->next)
+        if (iter->second->getZOrder() >= 0)
         {
-            int actZ = 0;
-            int nextZ = 0;
-
-            if (pages->next->subpage && pages->subpage)
-            {
-                nextZ = pages->next->subpage->getZOrder();
-                actZ = pages->subpage->getZOrder();
-            }
-
-            if (actZ > nextZ)   // Turn?
-            {                   // Yes, then change only pointers to subpages
-                TSubPage *sp = pages->next->subpage;
-
-                pages->next->subpage = pages->subpage;
-                pages->subpage = sp;
-                turned = true;
-            }
-
-            pages = pages->next;
+            mSubPagesSorted.insert(pair<int, TSubPage *>(iter->second->getZOrder(), iter->second));
+            MSG_DEBUG("Page " << iter->second->getNumber() << " (" << iter->second->getName() << "): sorted in with Z-Order " << iter->second->getZOrder());
         }
     }
-    while (turned);
+}
+
+map<int, TSubPage *>& TPage::getSortedSubpages(bool force)
+{
+    DECL_TRACER("TPage::getSortedSubpages(bool force)");
+
+    if (mSubPagesSorted.empty() || force)
+        sortSubpages();
+
+    return mSubPagesSorted;
 }
 
 int TPage::getNextZOrder()
@@ -1273,18 +1215,18 @@ int TPage::getNextZOrder()
     DECL_TRACER("TPage::getNextZOrder()");
 
     // Find highest z-order number
-    PAGECHAIN_T *pages = mSubPages;
     int cnt = 0;
+    map<int, TSubPage *>::iterator iter;
 
-    while(pages)
+    for (iter = mSubPages.begin(); iter != mSubPages.end(); ++iter)
     {
-        if (pages->subpage->getZOrder() != ZORDER_INVALID)
-        {
-            cnt++;
-            pages->subpage->setZOrder(cnt);
-        }
+        int zo = iter->second->getZOrder();
 
-        pages = pages->next;
+        if (iter->second && zo != ZORDER_INVALID)
+        {
+            if (cnt < zo)
+                cnt = zo;
+        }
     }
 
     mZOrder = cnt + 1;
@@ -1297,20 +1239,20 @@ int TPage::decZOrder()
     DECL_TRACER("TPage::decZOrder()");
 
     // Find highest z-order number
-    PAGECHAIN_T *pages = mSubPages;
-    int z = 0;
+    int cnt = 0;
+    map<int, TSubPage *>::iterator iter;
 
-    while(pages)
+    for (iter = mSubPages.begin(); iter != mSubPages.end(); ++iter)
     {
-        if (pages->subpage->getZOrder() != ZORDER_INVALID)
-        {
-            z++;
-            pages->subpage->setZOrder(z);
-        }
+        int zo = iter->second->getZOrder();
 
-        pages = pages->next;
+        if (iter->second && zo != ZORDER_INVALID)
+        {
+            if (cnt < zo)
+                cnt = zo;
+        }
     }
 
-    mZOrder = z;
+    mZOrder = cnt;
     return mZOrder;
 }

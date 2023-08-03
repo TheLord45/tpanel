@@ -220,7 +220,7 @@ class TPageManager : public TAmxCommands
         void informTPanelNetwork(bool conn, int level, int type);
 #endif
         void regCallDropPage(std::function<void (ulong handle)> callDropPage) { _callDropPage = callDropPage; }
-        void regCallDropSubPage(std::function<void (ulong handle)> callDropSubPage) { _callDropSubPage = callDropSubPage; }
+        void regCallDropSubPage(std::function<void (ulong handle, ulong parent)> callDropSubPage) { _callDropSubPage = callDropSubPage; }
         void regCallPlayVideo(std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw)> callPlayVideo) { _callPlayVideo = callPlayVideo; };
         void regCallInputText(std::function<void (Button::TButton *button, Button::BITMAP_t& bm, int frame)> callInputText) { _callInputText = callInputText; }
         void regCallListBox(std::function<void (Button::TButton *button, Button::BITMAP_t& bm, int frame)> callListBox) { _callListBox = callListBox; }
@@ -517,7 +517,7 @@ class TPageManager : public TAmxCommands
         std::function<void (Button::TButton *button, Button::BITMAP_t& bm, int frame)> getCallbackListBox() { return _callListBox; }
         std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate)> getCallbackSetSubPage() { return _setSubPage; }
         std::function<void (ulong handle)> getCallDropPage() { return _callDropPage; }
-        std::function<void (ulong handle)> getCallDropSubPage() { return _callDropSubPage; }
+        std::function<void (ulong handle, ulong parent)> getCallDropSubPage() { return _callDropSubPage; }
         std::function<void (const std::string& file)> getCallPlaySound() { return _playSound; }
         std::function<void ()> getCallStopSound() { return _stopSound; }
         std::function<void (bool state)> getCallMuteSound() { return _muteSound; }
@@ -618,7 +618,7 @@ class TPageManager : public TAmxCommands
 #endif
         std::function<void (ulong handle, const std::string& text, const std::string& font, const std::string& family, int size, int x, int y, ulong color, ulong effectColor, FONT_STYLE style, Button::TEXT_ORIENTATION ori, Button::TEXT_EFFECT effect, bool ww)> _setText{nullptr};
         std::function<void (ulong handle)> _callDropPage{nullptr};
-        std::function<void (ulong handle)> _callDropSubPage{nullptr};
+        std::function<void (ulong handle, ulong parent)> _callDropSubPage{nullptr};
         std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw)> _callPlayVideo{nullptr};
         std::function<void (Button::TButton *button, Button::BITMAP_t& bm, int frame)> _callInputText{nullptr};
         std::function<void (Button::TButton *button, Button::BITMAP_t& bm, int frame)> _callListBox{nullptr};
@@ -878,6 +878,7 @@ class TPageManager : public TAmxCommands
         bool mRxOn{false};                              // TRUE = String changes are send to master
         int mActualPage{0};                             // The number of the actual visible page
         int mPreviousPage{0};                           // The number of the previous page
+        int mLastSubPage{0};                            // The last sorted subpage accessed
         int mSavedPage{0};                              // The number of the last normal page. This is set immediately before a setup page is shown
         int mFirstLeftPixel{0};                         // Pixels to add to left (x) mouse coordinate
         int mFirstTopPixel{0};                          // Pixels to add to top (y) mouse position
