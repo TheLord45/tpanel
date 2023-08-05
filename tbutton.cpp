@@ -1290,29 +1290,40 @@ bool TButton::setBorderColor(const string &color, int instance)
     if (instance >= 0 && (size_t)instance >= sr.size())
     {
         MSG_ERROR("Instance " << instance << " does not exist!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
         return false;
     }
 
-    int inst = instance;
-    int loop = 1;
-
-    if (inst < 0)
+    if (instance < 0)
     {
-        loop = (int)sr.size();
-        inst = 0;
+        for (size_t i = 0; i < sr.size(); ++i)
+        {
+            if (sr[i].cb.compare(color) == 0)
+                continue;
+
+            if ((int)i == mActInstance)
+                mChanged = true;
+
+            sr[i].cb = color;
+        }
+    }
+    else if (sr[instance].cb != color)
+    {
+        if (mActInstance != instance)
+            mChanged = true;
+
+        sr[instance].cb = color;
     }
 
-    for (int i = 0; i < loop; ++i)
+    if (!mChanged)
     {
-        if (sr[inst].cb.compare(color) == 0)
-        {
-            inst++;
-            continue;
-        }
-
-        sr[inst].cb = color;
-        mChanged = true;
-        inst++;
+#if TESTMODE == 1
+        __success = true;
+        setScreenDone();
+#endif
+        return true;
     }
 
     return makeElement(instance);
@@ -1341,26 +1352,34 @@ bool TButton::setFillColor(const string& color, int instance)
         return false;
     }
 
-    int inst = instance;
-    int loop = 1;
-
-    if (inst < 0)
+    if (instance < 0)
     {
-        loop = (int)sr.size();
-        inst = 0;
+        for (size_t i = 0; i < sr.size(); ++i)
+        {
+            if (sr[i].cf == color)
+                continue;
+
+            if ((int)i == mActInstance)
+                mChanged = true;
+
+            sr[i].cf = color;
+        }
+    }
+    else if (sr[instance].cf != color)
+    {
+        if (mActInstance != instance)
+            mChanged = true;
+
+        sr[instance].cf = color;
     }
 
-    for (int i = 0; i < loop; ++i)
+    if (!mChanged)
     {
-        if (sr[inst].cf.compare(color) == 0)
-        {
-            inst++;
-            continue;
-        }
-
-        sr[inst].cf = color;
-        mChanged = true;
-        inst++;
+#if TESTMODE == 1
+        __success = true;
+        setScreenDone();
+#endif
+        return true;
     }
 
     return makeElement(instance);
@@ -1372,6 +1391,15 @@ bool TButton::setTextColor(const string& color, int instance)
 
     if (!setTextColorOnly(color, instance))
         return false;
+
+    if (!mChanged)
+    {
+#if TESTMODE == 1
+        __success = true;
+        setScreenDone();
+#endif
+        return true;
+    }
 
     return makeElement(instance);
 }
@@ -1386,26 +1414,25 @@ bool TButton::setTextColorOnly(const string& color, int instance)
         return false;
     }
 
-    int inst = instance;
-    int loop = 1;
-
-    if (inst < 0)
+    if (instance < 0)
     {
-        loop = (int)sr.size();
-        inst = 0;
-    }
-
-    for (int i = 0; i < loop; ++i)
-    {
-        if (sr[inst].ct.compare(color) == 0)
+        for (size_t i = 0; i < sr.size(); ++i)
         {
-            inst++;
-            continue;
-        }
+            if (sr[i].ct == color)
+                continue;
 
-        sr[inst].ct = color;
-        inst++;
-        mChanged = true;
+            if ((int)i == mActInstance)
+                mChanged = true;
+
+            sr[i].ct = color;
+        }
+    }
+    else if (sr[instance].ct != color)
+    {
+        if (mActInstance == instance)
+            mChanged = true;
+
+        sr[instance].ct = color;
     }
 
     return true;
@@ -1421,26 +1448,34 @@ bool TButton::setDrawOrder(const string& order, int instance)
         return false;
     }
 
-    int inst = instance;
-    int loop = 1;
-
-    if (inst < 0)
+    if (instance < 0)
     {
-        loop = (int)sr.size();
-        inst = 0;
+        for (size_t i = 0; i < sr.size(); ++i)
+        {
+            if (sr[i]._do == order)
+                continue;
+
+            if ((int)i == mActInstance)
+                mChanged = true;
+
+            sr[i]._do = order;
+        }
+    }
+    else if (sr[instance]._do != order)
+    {
+        if (mActInstance == instance)
+            mChanged = true;
+
+        sr[instance]._do = order;
     }
 
-    for (int i = 0; i < loop; ++i)
+    if (!mChanged)
     {
-        if (sr[inst]._do.compare(order) == 0)
-        {
-            inst++;
-            continue;
-        }
-
-        sr[inst]._do = order;
-        inst++;
-        mChanged = true;
+#if TESTMODE == 1
+        __success = true;
+        setScreenDone();
+#endif
+        return true;
     }
 
     return makeElement(instance);
@@ -2008,11 +2043,18 @@ bool TButton::setInputMask(const std::string& mask)
         if (!found)
         {
             MSG_WARNING("The mask letter " << mask[i] << " is invalid!");
+#if TESTMODE == 1
+            setScreenDone();
+#endif
             return false;
         }
     }
 
     im = mask;
+#if TESTMODE == 1
+    __success = true;
+    setScreenDone();
+#endif
     return true;
 }
 
@@ -5592,7 +5634,7 @@ bool TButton::drawButton(int instance, bool show, bool subview)
     }
 
     // We create an empty (transparent) image here. Later it depends on the
-    // draw order of the elements. If, for example, the back ground fill is
+    // draw order of the elements. If, for example, the background fill is
     // not the first thing, we must be sure to not destroy already drawn
     // elemts of the button.
     imgButton.eraseColor(SkColors::kTransparent);

@@ -69,6 +69,7 @@ class TSubPage : public TValidateFile, public TPageInterface, public Border::TIn
         int getShowTime() { return mSubpage.showTime; }
         void setShowTime(int t) { mSubpage.showTime = t; }
         void setShowEndPosition(int x, int y) { mSubpage.showX = x; mSubpage.showY = y; }
+        void getShowEndPosition(int *x, int *y) { if (x) *x = mSubpage.showX; if (y) *y = mSubpage.showY; }
         SHOWEFFECT getHideEffect() { return mSubpage.hideEffect; }
         void setHideEffect(SHOWEFFECT he) { mSubpage.hideEffect = he; }
         void setHideEndPosition(int x, int y) { mSubpage.hideX = x; mSubpage.hideY = y; }

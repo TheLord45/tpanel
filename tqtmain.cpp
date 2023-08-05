@@ -3699,6 +3699,15 @@ void MainWindow::displayButton(ulong handle, ulong parent, TBitmap buffer, int w
 
     if (!obj)
     {
+        if (!par->object.widget)
+        {
+            MSG_ERROR("Object " << handleToString(parent) << " has no valid widget!");
+#if TESTMODE == 1
+            setScreenDone();
+#endif
+            return;
+        }
+
         MSG_DEBUG("Adding new object " << handleToString(handle) << " ...");
         OBJECT_t nobj;
 
@@ -3720,7 +3729,7 @@ void MainWindow::displayButton(ulong handle, ulong parent, TBitmap buffer, int w
             nobj.top = scale(top);
         }
 
-        nobj.object.label = new QLabel("", par->object.widget);
+        nobj.object.label = new QLabel(par->object.widget);
         nobj.object.label->setObjectName(QString("Label_") + handleToString(handle).c_str());
 
         if (mGestureFilter)
@@ -3890,6 +3899,14 @@ void MainWindow::displayViewButton(ulong handle, ulong parent, bool vertical, TB
 
     if (!obj)
     {
+        if (!par->object.widget)
+        {
+#if TESTMODE == 1
+            MSG_ERROR("Object " << handleToString(parent) << " has no valid object!");
+#endif
+            return;
+        }
+
         MSG_DEBUG("Adding new object " << handleToString(handle) << " ...");
         OBJECT_t nobj;
 
