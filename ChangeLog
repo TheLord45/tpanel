@@ -3,6 +3,8 @@ ChangeLog
 
 Release: 1.4.0
 ===============================================================================
+2023-08-14 Added a shell script to build an Android APK file on command line.
+
 2023-07-30 Changed the pointer chain for subpages into a std::map.
 
 2023-07-24 Fixed the sound playing with Qt6.x.
