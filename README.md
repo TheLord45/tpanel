@@ -24,7 +24,7 @@ For Linux and MacOS you need the following libraries installed:
 - Expat (part of your distribution)
 - Freetype (part of your distribution)
 
-To install Qt I recomend to download the open source version from [Open Source Development](https://www.qt.io/download-open-source). However: Some Linux distributions are coming with Qt included. If you want to use this version make sure, to install the Qt6 packages.
+To install Qt I recommend to download the open source version from [Open Source Development](https://www.qt.io/download-open-source). However: Some Linux distributions are coming with Qt included. If you want to use this version make sure, to install the Qt6 packages.
 
 ## Compile for Linux desktop
 First [download the source](https://github.com/TheLord45/tpanel) into a directory. Then enter the directory and type the following commands.
@@ -37,7 +37,7 @@ First [download the source](https://github.com/TheLord45/tpanel) into a director
 
 > Replace `<path>/<to>/` with the path to your Qt installation (usualy `/opt/Qt`).
 
-If everything compiled successfull and installed, you can start the application. There is a setup dialog included. It depends on the operating system of how this setup looks like.
+If everything compiled successful and installed, you can start the application. There is a setup dialog included. It depends on the operating system of how this setup looks like.
 
 ## Compile for other operating systems
 

@@ -4,7 +4,7 @@
 
 ## Prerequisits
 
-For IOS you need a Mac with *XCode* installed. You need also a developer accound and a signature of a developer team if you want to compile the code for a real iPhone or iPad. For details look at [Apple developer](https://developer.apple.com/tutorials/app-dev-training).
+For IOS you need a Mac with *XCode* installed. You need also a developer account and a signature of a developer team if you want to compile the code for a real iPhone or iPad. For details look at [Apple developer](https://developer.apple.com/tutorials/app-dev-training).
 
 To be able to build **TPanel** for IOS you need the following libraries compiled for IOS and MacOS. For MacOS you may need them for the architectures ARM as well as Intel. For IOS you may need versions for 64 bit and 32 bit. It depends on what devices you have.
 
@@ -40,7 +40,7 @@ SDKs
 - Download: [SDKs.tar.bz2](https://www.theosys.at/download/SDKs.tar.bz2)
 - SHA256 hash: `333a0bad139705c2b48c6e8ce37da959e9ce8e3284638f83d605464505463f98`
 
-## Build qith QtCreator
+## Build with QtCreator
 
 Start `QtCreator` and load the project file `tpanel.pro`. You must set some things to have the correct paths. Go to the build settings of the project. Expand the **Build steps** and enter into the line **Additional arguments** the following definitions:
 
