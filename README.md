@@ -41,5 +41,5 @@ If everything compiled successfull and installed, you can start the application.
 
 ## Compile for other operating systems
 
-- [Compile for Android](https://github.com/TheLord45/tpanel/documentation/build_android.md)
-- [Compile for iOS](https://github.com/TheLord45/tpanel/documentation/build_ios.md)
+- [Compile for Android](https://github.com/TheLord45/tpanel/blob/main/documentation/build_android.md)
+- [Compile for iOS](https://github.com/TheLord45/tpanel/blob/main/documentation/build_ios.md)
