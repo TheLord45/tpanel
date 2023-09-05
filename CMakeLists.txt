@@ -1,194 +1,406 @@
-cmake_minimum_required(VERSION 3.1.0)
-project(tpanel VERSION 1.3.3)
+cmake_minimum_required(VERSION 3.5)
 
-find_package(PkgConfig)
+project(tpanel VERSION 1.4.0 LANGUAGES CXX)
 
-if (APPLE)
-	# ATTENTION!!
-	# Correct this paths to your needs!
-    set(QTDIR $ENV{HOME}/Qt/6.4.2/macos)
-    set(CMAKE_PREFIX_PATH $ENV{HOME}/Qt/6.4.2/macos/lib/cmake)
-endif(APPLE)
+if(ANDROID)
+    message("** Current platform (${ANDROID_ABI}): ${ANDROID_PLATFORM}")
 
-find_package(Qt6Core)
-find_package(Qt6Gui)
-find_package(Qt6Widgets)
+    if(NOT "$ENV{ANDROID_PLATFORM}" STREQUAL "")
+        message("** Environment (${ANDROID_ABI}): $ENV{ANDROID_PLATFORM}")
 
-#if (NOT APPLE)
-    find_package(Qt6Multimedia)
-    find_package(Qt6MultimediaWidgets)
-#endif(NOT APPLE)
+        if(NOT (DEFINED ANDROID_PLATFORM) OR NOT (${ANDROID_PLATFORM} STREQUAL $ENV{ANDROID_PLATFORM}))
+            set(ANDROID_PLATFORM $ENV{ANDROID_PLATFORM})
+            message("++ Set ANDROID_PLATFORM to ${ANDROID_PLATFORM} for ${ANDROID_ABI}")
+        endif()
+    else()
+        if(NOT (DEFINED ANDROID_PLATFORM) OR NOT (${ANDROID_PLATFORM} STREQUAL "android-30"))
+            set(ANDROID_PLATFORM "android-30")
+            message("++ Set ANDROID_PLATFORM to ${ANDROID_PLATFORM} for ${ANDROID_ABI}")
+        endif()
+    endif()
+endif(ANDROID)
+
+set(CMAKE_AUTOUIC ON)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_STANDARD_REQUIRED ON)
-
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
-set(CMAKE_AUTOUIC ON)
-
-pkg_check_modules(ZLIB REQUIRED zlib)
-include_directories(${ZLIB_INCLUDE_DIRS})
-link_directories(${ZLIB_LIBRARY_DIRS})
-set(LIBS ${LIBS} ${ZLIB_LIBRARIES})
-
-pkg_check_modules(EXPAT REQUIRED expat)
-include_directories(${EXPAT_INCLUDE_DIRS})
-link_directories(${EXPAT_LIBRARY_DIRS})
-set(LIBS ${LIBS} ${EXPAT_LIBRARIES})
-
-# This is for telephone libraries PJSIP
-pkg_check_modules(PJSIP REQUIRED libpjproject)
-include_directories(${PJSIP_INCLUDE_DIRS})
-link_directories(${PJSIP_LIBRARY_DIRS})
-# Commented out to make sure no video is included (would require a lot more libs)
-#set(LIBS ${LIBS} ${PJSIP_LIBRARIES})
-# This are the phone libraries used/needed for PJSIP.
-if(APPLE)
-set(LIBS ${LIBS} -L/usr/local/lib
-                 pjsua2 pjsua pjsip-ua pjsip-simple
-                 pjsip pjmedia-codec pjmedia pjmedia-audiodev
-                 pjnath pjlib-util pj gsmcodec
-                 ilbccodec speex g7221codec
-                 srtp resample webrtc)
-else(APPLE)
-set(LIBS ${LIBS} -L/usr/local/lib
-                 pjsua2 pjsua pjsip-ua pjsip-simple pjsip
-                 pjmedia-codec pjmedia pjmedia-audiodev
-                 pjnath pjlib-util pj
-                 gsmcodec ilbccodec speex g7221codec
-                 srtp resample yuv webrtc
-                 opus asound)
-endif(APPLE)
-
-find_library(UUID_LIBRARY NAMES uuid)
-set(LIBS ${LIBS} ${UUID_LIBRARY})
-
-if (APPLE)
-	set(CMAKE_INSTALL_PREFIX /usr/local)
-else()
-	set(CMAKE_INSTALL_PREFIX /usr)
-endif(APPLE)
 
 set(QT_USE_QTMULTIMEDIA TRUE)
 set(QT_USE_QTMULTIMEDIAWIDGETS TRUE)
 
-if(CMAKE_VERSION VERSION_LESS "3.7.0")
-    set(CMAKE_INCLUDE_CURRENT_DIR ON)
-endif()
-
-find_package(Qt6 COMPONENTS Widgets REQUIRED)
-find_package(Qt6 COMPONENTS Multimedia REQUIRED)
-find_package(Qt6 COMPONENTS MultimediaWidgets REQUIRED)
-find_package(Qt6 COMPONENTS Positioning REQUIRED)
-
-if (APPLE)
-	# In case you've installed homebrew at another location adapt
-	# the following paths!
-	set(OSX_INCLUDE -I/opt/homebrew/include -I/usr/local/include)
-	add_definitions(${OSX_INCLUDE})
-	set(OSX_LIB -L/opt/homebrew/lib -L/usr/local/lib -liconv)
-	set(LIBS ${LIBS} ${OSX_LIB})
-endif(APPLE)
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning)
 
 add_subdirectory(ftplib)
 
-set(SOURCES tmain.cpp
-			tconfig.cpp
-			terror.cpp
-			tsocket.cpp
-			tnameformat.cpp
-			tsettings.cpp
-			tpagelist.cpp
-			tpagemanager.cpp
-			tpage.cpp
-			tsubpage.cpp
-			tpageinterface.cpp
-			tbutton.cpp
-			tsystembutton.cpp
-			tvalidatefile.cpp
-			tresources.cpp
-			tcolor.cpp
-			tpalette.cpp
-			tobject.cpp
-			tfont.cpp
-			ticons.cpp
-			tprjresources.cpp
-			thttpclient.cpp
-			timagerefresh.cpp
-			tqtmain.cpp
-			tqtsettings.cpp
-			tqkeyboard.cpp
-			tqkeypad.cpp
-			tqtphone.cpp
-			tqemitqueue.cpp
-			tqgesturefilter.cpp
-			tamxnet.cpp
-			tamxcommands.cpp
-			tmap.cpp
-			tdrawimage.cpp
-			tdirectory.cpp
-			texpand.cpp
-			ttimer.cpp
-			ttpinit.cpp
-			texternal.cpp
-			tsystemsound.cpp
-			tsystemdraw.cpp
-			timgcache.cpp
-			tfsfreader.cpp
-			readtp4.cpp
-			expand.cpp
-			tsipclient.cpp
-			texcept.cpp
-			tsystem.cpp
-			turl.cpp
-			base64.cpp
-			texpat++.cpp
-			tqdownload.cpp
-			tqeditline.cpp
-            tqsingleline.cpp
-            tqmultiline.cpp
-			tqtwait.cpp
-			tqscrollarea.cpp
-			tbitmap.cpp
-			tintborder.cpp
-			testmode.cpp
-			tpanel.qrc)
+if(ANDROID)
+    if(DEFINED $ENV{EXTRA_PATH})
+        set(EXTRA_PATH $ENV{EXTRA_PATH})
+    else()
+        set(EXTRA_PATH $ENV{HOME}/Android/extras)
+    endif()
 
-add_executable(tpanel ${SOURCES})
+    if(DEFINED $ENV{EXT_LIB_PATH})
+        set(EXT_LIB_PATH $ENV{EXT_LIB_PATH})
+    else()
+        set(EXT_LIB_PATH $ENV{HOME}/Android/distribution)
+    endif()
+
+    if(DEFINED $ENV{SSL_PATH})
+        set(SSL_PATH $ENV{SSL_PATH})
+    else()
+        set(SSL_PATH $ENV{HOME}/Android/android_openssl)
+    endif()
+
+    include_directories(${EXTRA_PATH}/expat/include)
+
+    set(SKIA_INCLUDE_DIRS ${EXT_LIB_PATH}/skia/include)
+    include_directories(${SKIA_INCLUDE_DIRS})
+    set(LIBSKIA_LIBRARY ${EXT_LIB_PATH}/skia/${ANDROID_ABI})
+    link_directories(${LIBSKIA_LIBRARY})
+    link_libraries(skia)
+
+    include_directories(${EXT_LIB_PATH}/pjsip/include)
+    include_directories(${SSL_PATH}/ssl_3/include)
+    link_directories(${SSL_PATH}/ssl_3/${ANDROID_ABI})
+    include(${SSL_PATH}/CMakeLists.txt)
+    link_libraries(z ssl_3 crypto_3 mediandk)
+
+    link_directories(${EXT_LIB_PATH}/pjsip/lib)
+
+    if(ANDROID_ABI STREQUAL "arm64-v8a")
+        link_libraries(
+            pj-aarch64-unknown-linux-android
+            pjlib-util-aarch64-unknown-linux-android
+            pjmedia-aarch64-unknown-linux-android
+            pjmedia-audiodev-aarch64-unknown-linux-android
+            pjmedia-codec-aarch64-unknown-linux-android
+            pjnath-aarch64-unknown-linux-android
+            pjsip-aarch64-unknown-linux-android
+            pjsip-simple-aarch64-unknown-linux-android
+            pjsip-ua-aarch64-unknown-linux-android
+            pjsua-aarch64-unknown-linux-android
+            resample-aarch64-unknown-linux-android
+            speex-aarch64-unknown-linux-android
+            srtp-aarch64-unknown-linux-android
+            gsmcodec-aarch64-unknown-linux-android
+            webrtc-aarch64-unknown-linux-android
+            ilbccodec-aarch64-unknown-linux-android
+        )
+    elseif(ANDROID_ABI STREQUAL "armeabi-v7a")
+        link_libraries(
+            pj-armv7-unknown-linux-android
+            pjlib-util-armv7-unknown-linux-android
+            pjmedia-armv7-unknown-linux-android
+            pjmedia-audiodev-armv7-unknown-linux-android
+            pjmedia-codec-armv7-unknown-linux-android
+            pjnath-armv7-unknown-linux-android
+            pjsip-armv7-unknown-linux-android
+            pjsip-simple-armv7-unknown-linux-android
+            pjsip-ua-armv7-unknown-linux-android
+            pjsua-armv7-unknown-linux-android
+            resample-armv7-unknown-linux-android
+            speex-armv7-unknown-linux-android
+            srtp-armv7-unknown-linux-android
+            gsmcodec-armv7-unknown-linux-android
+            webrtc-armv7-unknown-linux-android
+            ilbccodec-armv7-unknown-linux-android
+        )
+    elseif(ANDROID_ABI STREQUAL "x86_64")
+        link_libraries(
+            pj-x86_64-pc-linux-android
+            pjlib-util-x86_64-pc-linux-android
+            pjmedia-x86_64-pc-linux-android
+            pjmedia-audiodev-x86_64-pc-linux-android
+            pjmedia-codec-x86_64-pc-linux-android
+            pjnath-x86_64-pc-linux-android
+            pjsip-x86_64-pc-linux-android
+            pjsip-simple-x86_64-pc-linux-android
+            pjsip-ua-x86_64-pc-linux-android
+            pjsua-x86_64-pc-linux-android
+            resample-x86_64-pc-linux-android
+            speex-x86_64-pc-linux-android
+            srtp-x86_64-pc-linux-android
+            gsmcodec-x86_64-pc-linux-android
+            webrtc-x86_64-pc-linux-android
+            ilbccodec-x86_64-pc-linux-android
+        )
+    elseif(ANDROID_ABI STREQUAL "x86")
+        link_libraries(
+            pj-i686-pc-linux-android
+            pjlib-util-i686-pc-linux-android
+            pjmedia-i686-pc-linux-android
+            pjmedia-audiodev-i686-pc-linux-android
+            pjmedia-codec-i686-pc-linux-android
+            pjnath-i686-pc-linux-android
+            pjsip-i686-pc-linux-android
+            pjsip-simple-i686-pc-linux-android
+            pjsip-ua-i686-pc-linux-android
+            pjsua-i686-pc-linux-android
+            resample-i686-pc-linux-android
+            speex-i686-pc-linux-android
+            srtp-i686-pc-linux-android
+            gsmcodec-i686-pc-linux-android
+            webrtc-i686-pc-linux-android
+            ilbccodec-i686-pc-linux-android
+        )
+    endif()
+else()
+    find_library(LIBSKIA_LIBRARY NAMES skia HINTS /usr/local/lib/skia)
+    include_directories("/usr/local/include/skia")
+    link_directories("/usr/local/lib/skia")
+    link_libraries(skia)
+
+    pkg_check_modules(ZLIB REQUIRED zlib)
+    include_directories(${ZLIB_INCLUDE_DIRS})
+    link_directories(${ZLIB_LIBRARY_DIRS})
+    set(LIBS ${LIBS} ${ZLIB_LIBRARIES})
+
+    pkg_check_modules(EXPAT REQUIRED expat)
+    include_directories(${EXPAT_INCLUDE_DIRS})
+    link_directories(${EXPAT_LIBRARY_DIRS})
+    set(LIBS ${LIBS} ${EXPAT_LIBRARIES})
+
+    # This is for telephone libraries PJSIP
+    pkg_check_modules(PJSIP REQUIRED libpjproject)
+    include_directories(${PJSIP_INCLUDE_DIRS})
+    link_directories(${PJSIP_LIBRARY_DIRS})
+
+    if(APPLE)
+        set(LIBS ${LIBS} -L/usr/local/lib
+            pjsua2 pjsua pjsip-ua pjsip-simple
+            pjsip pjmedia-codec pjmedia pjmedia-audiodev
+            pjnath pjlib-util pj gsmcodec
+            ilbccodec speex g7221codec
+            srtp resample webrtc)
+    else(APPLE)
+        set(LIBS ${LIBS} -L/usr/local/lib
+            pjsua2 pjsua pjsip-ua pjsip-simple pjsip
+            pjmedia-codec pjmedia pjmedia-audiodev
+            pjnath pjlib-util pj
+            gsmcodec ilbccodec speex g7221codec
+            srtp resample yuv webrtc
+            opus asound)
+    endif(APPLE)
+
+    find_library(UUID_LIBRARY NAMES uuid)
+    set(LIBS ${LIBS} ${UUID_LIBRARY})
+
+    if (APPLE)
+        set(CMAKE_INSTALL_PREFIX /usr/local)
+        # In case you've installed homebrew at another location adapt
+        # the following paths!
+        set(OSX_INCLUDE -I/opt/homebrew/include -I/usr/local/include)
+        add_definitions(${OSX_INCLUDE})
+        set(OSX_LIB -L/opt/homebrew/lib -L/usr/local/lib -liconv)
+        set(LIBS ${LIBS} ${OSX_LIB})
+    else()
+        set(CMAKE_INSTALL_PREFIX /usr)
+    endif(APPLE)
+endif()
+
+set(PROJECT_SOURCES
+        tmain.cpp
+        tconfig.cpp
+        tconfig.h
+        terror.cpp
+        terror.h
+        tsocket.cpp
+        tsocket.h
+        tnameformat.cpp
+        tnameformat.h
+        tsettings.cpp
+        tsettings.h
+        tpagelist.cpp
+        tpagelist.h
+        tpagemanager.cpp
+        tpagemanager.h
+        tpage.cpp
+        tpage.h
+        tsubpage.cpp
+        tsubpage.h
+        tpageinterface.cpp
+        tpageinterface.h
+        tbutton.cpp
+        tbutton.h
+        tsystembutton.cpp
+        tsystembutton.h
+        tvalidatefile.cpp
+        tvalidatefile.h
+        tresources.cpp
+        tresources.h
+        tcolor.cpp
+        tcolor.h
+        tpalette.cpp
+        tpalette.h
+        tobject.cpp
+        tobject.h
+        tfont.cpp
+        tfont.h
+        ticons.cpp
+        ticons.h
+        tprjresources.cpp
+        tprjresources.h
+        thttpclient.cpp
+        thttpclient.h
+        timagerefresh.cpp
+        timagerefresh.h
+        tqtmain.cpp
+        tqtmain.h
+        tqtsettings.cpp
+        tqtsettings.h
+        tqtsettings.ui
+        tqkeyboard.cpp
+        tqkeyboard.h
+        keyboard.ui
+        tqkeypad.cpp
+        tqkeypad.h
+        keypad.ui
+        tqtphone.cpp
+        tqtphone.h
+        tqtphone.ui
+        tqemitqueue.cpp
+        tqemitqueue.h
+        tqgesturefilter.cpp
+        tqgesturefilter.h
+        tamxnet.cpp
+        tamxnet.h
+        tamxcommands.cpp
+        tamxcommands.h
+        tmap.cpp
+        tmap.h
+        tdrawimage.cpp
+        tdrawimage.h
+        tdirectory.cpp
+        tdirectory.h
+        texpand.cpp
+        texpand.h
+        ttimer.cpp
+        ttimer.h
+        ttpinit.cpp
+        ttpinit.h
+        texternal.cpp
+        texternal.h
+        tsystemsound.cpp
+        tsystemsound.h
+        tsystemdraw.cpp
+        tsystemdraw.h
+        timgcache.cpp
+        timgcache.h
+        tfsfreader.cpp
+        tfsfreader.h
+        readtp4.cpp
+        readtp4.h
+        expand.cpp
+        expand.h
+        tsipclient.cpp
+        tsipclient.h
+        texcept.cpp
+        texcept.h
+        tsystem.cpp
+        tsystem.h
+        turl.cpp
+        turl.h
+        base64.cpp
+        base64.h
+        texpat++.cpp
+        texpat++.h
+        tqdownload.cpp
+        tqdownload.h
+        download.ui
+        tqeditline.cpp
+        tqeditline.h
+        tqsingleline.cpp
+        tqsingleline.h
+        tqmultiline.cpp
+        tqmultiline.h
+        tqtwait.cpp
+        tqtwait.h
+        wait.ui
+        tqscrollarea.cpp
+        tqscrollarea.h
+        tbitmap.cpp
+        tbitmap.h
+        tintborder.cpp
+        tintborder.h
+        testmode.cpp
+        testmode.h
+        tpanel.qrc
+)
 
 add_definitions(-D_REENTRANT)
 add_definitions(-D_GNU_SOURCE)
 add_definitions(-DPJ_AUTOCONF)
 add_definitions(-D_OPAQUE_SKIA_)
-add_definitions(-DTESTMODE=1)
-add_definitions(${Qt6Widgets_DEFINITIONS})
-add_compile_definitions(QT_DISABLE_DEPRECATED_BEFORE=0x050F00)
-include_directories(/usr/local/include/skia)
 
-if (DEBUG)
-   add_definitions(-g)
-endif(DEBUG)
-
-add_definitions(-pedantic -fexceptions -Wextra -Wno-attributes)
-
-find_library(LIBSKIA_LIBRARY NAMES skia HINTS /usr/local/lib/skia)
-
-if(CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
-	target_link_libraries(tpanel stdc++fs)
+if(ANDROID)
+    add_definitions(-pedantic -fexceptions -Wextra -Wno-attributes -Wno-nested-anon-types -Wno-gnu-anonymous-struct -Wno-gnu-zero-variadic-macro-arguments)
+else()
+    add_definitions(-DTESTMODE=1)
+    add_definitions(-pedantic -fexceptions -Wextra -Wno-attributes)
 endif()
 
-target_link_libraries(tpanel m pthread ssl crypto ftp ${LIBS} ${LIBSKIA_LIBRARY} Qt6::Widgets Qt6::Multimedia Qt6::MultimediaWidgets Qt6::Positioning)
+if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
+    qt_add_executable(tpanel
+        MANUAL_FINALIZATION
+        ${PROJECT_SOURCES}
+    )
+# Define target properties for Android with Qt 6 as:
+    set_property(TARGET tpanel APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
+                 ${CMAKE_CURRENT_SOURCE_DIR}/android)
+# For more information, see https://doc.qt.io/qt-6/qt-add-executable.html#target-creation
+else()
+    if(ANDROID)
+        add_library(tpanel SHARED
+            ${PROJECT_SOURCES}
+        )
+# Define properties for Android with Qt 5 after find_package() calls as:
+        set(ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android")
+    else()
+        add_executable(tpanel
+            ${PROJECT_SOURCES}
+        )
+    endif()
+endif()
 
-if (APPLE)
-    add_definitions(-Wno-gnu-zero-variadic-macro-arguments -Wno-nested-anon-types -Wno-gnu-anonymous-struct)
-    set(DIRS ${CMAKE_BINARY_DIR})
-    set(APPS "\${CMAKE_INSTALL_PREFIX}/${APP_NAME}.app")
-    set(CPACK_BUNDLE_NAME "tpanel-\${VERSION}")
-    set(CPACK_BUNDLE_ICON "images/icon.png")
-    set(CPACK_GENERATOR "DragNDrop")
-endif(APPLE)
+if(ANDROID)
+    if(DEFINED SSL_PATH)
+        set_property(TARGET tpanel PROPERTY QT_ANDROID_EXTRA_LIBS
+            ${SSL_PATH}/ssl_3/${ANDROID_ABI}/libcrypto_3.so
+            ${SSL_PATH}/ssl_3/${ANDROID_ABI}/libssl_3.so
+        )
+        message("++ Added openSSL libraries from \"${SSL_PATH}/ssl_3/${ANDROID_ABI}.\"")
+    else()
+        message("## ERROR: Missing SSL_PATH variable!")
+    endif()
+endif()
 
-install(TARGETS tpanel RUNTIME DESTINATION bin)
-include(CPack)
+target_link_libraries(tpanel PRIVATE
+    Qt${QT_VERSION_MAJOR}::Widgets
+    Qt${QT_VERSION_MAJOR}::Core
+    Qt${QT_VERSION_MAJOR}::Gui
+    Qt${QT_VERSION_MAJOR}::Multimedia
+    Qt${QT_VERSION_MAJOR}::MultimediaWidgets
+    Qt${QT_VERSION_MAJOR}::Positioning
+    ftp ${LIBS}
+)
+
+set_target_properties(tpanel PROPERTIES
+    MACOSX_BUNDLE_GUI_IDENTIFIER org.qtproject.theosys
+    MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
+    MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
+    MACOSX_BUNDLE TRUE
+    WIN32_EXECUTABLE FALSE
+)
+
+install(TARGETS tpanel
+    BUNDLE DESTINATION .
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+if(QT_VERSION_MAJOR EQUAL 6)
+    qt_finalize_executable(tpanel)
+endif()

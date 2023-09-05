@@ -3,6 +3,9 @@ ChangeLog
 
 Release: 1.4.0
 ===============================================================================
+2023-09-05 New build scripts removing support for Qt5.
+           New documentation of how to build the program.
+
 2023-08-14 Added a shell script to build an Android APK file on command line.
 
 2023-07-30 Changed the pointer chain for subpages into a std::map.

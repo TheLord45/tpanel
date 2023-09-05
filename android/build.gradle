@@ -1,25 +1,24 @@
 buildscript {
     repositories {
         google()
-        jcenter()
+        mavenCentral()
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.6.0'    /* Qt 5.15.x */
-//        classpath 'com.android.tools.build:gradle:7.0.2'  /* Reserved for Qt 6.x */
+        classpath 'com.android.tools.build:gradle:7.4.1'
     }
 }
 
 repositories {
     google()
-    jcenter()
+    mavenCentral()
 }
 
 apply plugin: 'com.android.application'
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
-    implementation 'androidx.appcompat:appcompat:1.1.0'
+//    implementation 'com.google.android.material:material:1.0.0'
     implementation 'androidx.preference:preference:1.1.0'
 }
 
@@ -37,29 +36,20 @@ android {
      * Changing them manually might break the compilation!
      *******************************************************/
 
-    compileSdkVersion androidCompileSdkVersion.toInteger()
-//    buildToolsVersion androidBuildToolsVersion    /* Reserved for Qt 6.x */
-//    ndkVersion androidNdkVersion                  /* Reserved for Qt 6.x */
+    compileSdkVersion androidCompileSdkVersion
+    buildToolsVersion androidBuildToolsVersion    /* Reserved for Qt 6.x */
+    ndkVersion androidNdkVersion                  /* Reserved for Qt 6.x */
 
     // Extract native libraries from the APK
-//    packagingOptions.jniLibs.useLegacyPackaging true  /* Reserved for Qt 6.x */
-
-    buildToolsVersion '30.0.0'      /* Qt 5.15.x */
+    packagingOptions.jniLibs.useLegacyPackaging true  /* Reserved for Qt 6.x */
 
     sourceSets {
         main {
             manifest.srcFile 'AndroidManifest.xml'
-            // QT 5.15.x
-            java.srcDirs = [qt5AndroidDir + '/src', 'src', 'java']
-            aidl.srcDirs = [qt5AndroidDir + '/src', 'src', 'aidl']
-            res.srcDirs = [qt5AndroidDir + '/res', 'res']
-
-            // Reserved for Qt 6.x
-/*            java.srcDirs = [qtAndroidDir + '/src', 'src', 'java']
+            java.srcDirs = [qtAndroidDir + '/src', 'src', 'java']
             aidl.srcDirs = [qtAndroidDir + '/src', 'src', 'aidl']
             res.srcDirs = [qtAndroidDir + '/res', 'res']
-*/
-            resources.srcDirs = ['resources']
+            resources.srcDirs = ['resources', 'ressources', 'res']
             renderscript.srcDirs = ['src']
             assets.srcDirs = ['assets']
             jniLibs.srcDirs = ['libs']
@@ -88,7 +78,7 @@ android {
         resConfig "en"
         minSdkVersion = qtMinSdkVersion
         targetSdkVersion = qtTargetSdkVersion
-//        ndk.abiFilters = qtTargetAbiList.split(",")   /* Reserved for Qt 6.x */
+        ndk.abiFilters = qtTargetAbiList.split(",")
     }
 
     packagingOptions {

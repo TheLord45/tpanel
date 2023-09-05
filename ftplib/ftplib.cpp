@@ -1445,9 +1445,11 @@ int ftplib::FtpXfer(const char *localfile, const char *path, ftphandle *nControl
         }
 
         if (mode == ftplib::image) ac[1] = 'b';
-
+#ifdef __ANDROID__
+        local = fopen(localfile, ac);
+#else
         local = fopen64(localfile, ac);
-
+#endif
         if (local == NULL)
         {
             std::string msg = string("Opening local file ") + localfile;
@@ -1457,7 +1459,11 @@ int ftplib::FtpXfer(const char *localfile, const char *path, ftphandle *nControl
         }
 
         if (type == ftplib::filewriteappend)
+#ifdef __ANDROID__
+            fseek(local, mp_ftphandle->offset, SEEK_SET);
+#else
             fseeko64(local, mp_ftphandle->offset, SEEK_SET);
+#endif
     }
 
     if (local == NULL) local = ((type == ftplib::filewrite)

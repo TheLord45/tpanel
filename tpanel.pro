@@ -359,20 +359,31 @@ android: {
     INCLUDEPATH += $$(QTDIR)/include/QtGui/$$QT_VERSION/QtGui
     LIBS += -lEGL -landroid -lmediandk
 
+    if (versionAtLeast(QT_VERSION, 6.0.0)) {
+        DISTFILES += \
+            android/AndroidManifest.qt6.xml \
+            android/build.qt6.gradle \
+            android/gradle.properties \
+            android/gradle/wrapper/gradle-wrapper.jar \
+            android/gradle/wrapper/gradle-wrapper.properties.qt6
+    } else {
+        DISTFILES += \
+            android/AndroidManifest.xml \
+            android/build.gradle \
+            android/gradle.properties \
+            android/gradle/wrapper/gradle-wrapper.jar \
+            android/gradle/wrapper/gradle-wrapper.properties
+    }
+
     DISTFILES += \
-        android/AndroidManifest.xml \
-        android/build.gradle \
-        android/gradle.properties \
-        android/gradle/wrapper/gradle-wrapper.jar \
-        android/gradle/wrapper/gradle-wrapper.properties \
-        android/gradlew \
-        android/res/layout/settings_activity.xml \
-        android/res/xml/root_preferences.xml \
-        android/res/values/libs.xml \
-        android/res/values/arrays.xml \
-        android/res/values/strings.xml \
-        android/res/values/styles.xml \
-        android/res/values/themes.xml
+            android/gradlew \
+            android/res/layout/settings_activity.xml \
+            android/res/xml/root_preferences.xml \
+            android/res/values/libs.xml \
+            android/res/values/arrays.xml \
+            android/res/values/strings.xml \
+            android/res/values/styles.xml \
+            android/res/values/themes.xml
 
     ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
     CONFIG += sdk_no_version_check
