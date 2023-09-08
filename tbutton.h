@@ -788,6 +788,13 @@ namespace Button
              */
             bool setBargraphSliderColor(const std::string& color);
             /**
+             * Set the name of the bargraph slider name or the joystick cursor
+             * name.
+             * @param name  The name of the slider/cursor.
+             * @return TRUE on success.
+             */
+            bool setBargraphSliderName(const std::string& name);
+            /**
              * Sets the input mask for the text area. This method has no
              * effect on any non input button.
              * @param mask  The mask.

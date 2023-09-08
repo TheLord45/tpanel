@@ -8,18 +8,19 @@ Buttons
 * Add marquee function
 * Implement text area buttons completly
 * Add command ^BMF
-  - The border style must be setable by numbers also.
-  - Implement button style setting
   - Set video on off
   - Text area an input masks
+  - Bargraph control
 
 Missing features
 ================
-* Add more commands
-* Implement TP5 commands where possible.
+* Add more commands (as always)
 * Crack the encryption of TP5 internal file.
 * Crack the encryption of passwords in resources.
 * Implement panel to panel audio communication.
+* Implemet commands to control a view
+* Implement commands to control a list
+* Implement a joystick
 
 Known errors
 ============
@@ -27,9 +28,15 @@ Known errors
   suspended and loose network connection. In this case a new connection is
   established, which work, but the surface can't be drawn. This leads into loss
   of graphics. Seen this on a Samsung tablet Galaxy A7.
-* The setup dialog look bad on mobile devices. It must made sure that the size
-  of the input lines and the fonts has the correct size. This must be
-  independent of any device.
+
+* Sometimes the application crashes on mobile devices. It seems that the Qt
+  framework may be the course. But it could be that the handling of that
+  framework is wrong. This would be my fault.
+
+* While Views are working it is poosible that when another page is shown and
+  switched back to the previous page the view doesn't react any more. Here the
+  framework simply forgets to send mouse events to the widget. I found no way
+  to restore the internal event table to what it should be.
 
 Documentation
 =============

@@ -3,6 +3,9 @@ ChangeLog
 
 Release: 1.4.0
 ===============================================================================
+2023-09-08 Added command ^GSN.
+           Fixed the command ^UNI to expect Unicode.
+
 2023-09-05 New build scripts removing support for Qt5.
            New documentation of how to build the program.
 

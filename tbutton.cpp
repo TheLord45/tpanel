@@ -1799,6 +1799,31 @@ bool TButton::setBargraphSliderColor(const string& color)
     return true;
 }
 
+bool TButton::setBargraphSliderName(const string& name)
+{
+    DECL_TRACER("TButton::setBargraphSliderName(const string& name)");
+
+    if (name.empty())
+        return false;
+
+    if (!gPageManager || !gPageManager->getSystemDraw()->existSlider(name))
+    {
+        MSG_ERROR("The slider " << name << " doesn't exist!");
+        return false;
+    }
+
+    if (name == sd)
+        return true;
+
+    sd = name;
+    mChanged = true;
+
+    if (visible)
+        refresh();
+
+    return true;
+}
+
 bool TButton::setFontFileName(const string& name, int /*size*/, int instance)
 {
     DECL_TRACER("TButton::setFontFileName(const string& name, int size)");

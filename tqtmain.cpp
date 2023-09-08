@@ -1263,14 +1263,10 @@ void MainWindow::mousePressEvent(QMouseEvent* event)
             MSG_WARNING("Have no notch distances!");
         }
 #endif
-        int x = event->x() - nx;
-        int y = event->y() - ny;
-        MSG_DEBUG("Mouse press coordinates: x: " << event->x() << ", y: " << event->y() << " [new x: " << x << ", y: " << y << " -- \"notch\" nx: " << nx << ", ny: " << ny << "]");
-#ifdef Q_OS_IOS
-        MSG_DEBUG("Mouse press coords alt.: pos.x: " << event->position().x() << ", pos.y: " << event->position().y() << ", local.x: " << event->localPos().x() << ", local.y: " << event->localPos().y());
-#elif defined Q_OS_ANDROID
-        MSG_DEBUG("Mouse press coords alt.: pos.x: " << event->pos().x() << ", pos.y: " << event->pos().y() << ", local.x: " << event->localPos().x() << ", local.y: " << event->localPos().y());
-#endif
+        int x = event->position().x() - nx;
+        int y = event->position().y() - ny;
+        MSG_DEBUG("Mouse press coordinates: x: " << event->position().x() << ", y: " << event->position().y() << " [new x: " << x << ", y: " << y << " -- \"notch\" nx: " << nx << ", ny: " << ny << "]");
+
         mLastPressX = x;
         mLastPressY = y;
 /*
@@ -1355,9 +1351,9 @@ void MainWindow::mouseReleaseEvent(QMouseEvent* event)
             ny = mNotchLandscape.top();
         }
 #endif
-        int x = ((mLastPressX >= 0) ? mLastPressX : (event->x() - nx));
-        int y = ((mLastPressY >= 0) ? mLastPressY : (event->y() - ny));
-        MSG_DEBUG("Mouse press coordinates: x: " << event->x() << ", y: " << event->y());
+        int x = ((mLastPressX >= 0) ? mLastPressX : (event->position().x() - nx));
+        int y = ((mLastPressY >= 0) ? mLastPressY : (event->position().y() - ny));
+        MSG_DEBUG("Mouse press coordinates: x: " << event->position().x() << ", y: " << event->position().y());
         mLastPressX = mLastPressY = -1;
 /*
         QWidget *w = childAt(event->x(), event->y());
@@ -1412,8 +1408,8 @@ void MainWindow::mouseReleaseEvent(QMouseEvent* event)
             return;
         }
 
-        x = event->x();
-        y = event->y();
+        x = event->position().x();
+        y = event->position().y();
         bool setupActive = gPageManager->isSetupActive();
         int width = (setupActive ? scaleSetup(gPageManager->getSystemSettings()->getWidth()) : scale(gPageManager->getSettings()->getWidth()));
         int height = (setupActive ? scaleSetup(gPageManager->getSystemSettings()->getHeight()) : scale(gPageManager->getSettings()->getHeight()));

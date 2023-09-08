@@ -110,6 +110,7 @@ bool isUTF8(const std::string& str);
 size_t utf8Strlen(const std::string& str);
 uint16_t getUint16(const unsigned char *p, bool big_endian=false);
 uint32_t getUint32(const unsigned char *p, bool big_endian=false);
+std::string UnicodeToUTF8(const std::wstring& ws);
 bool endsWith (const std::string &src, const std::string &end);
 bool startsWith (const std::string &src, const std::string &start);
 std::string dirName (const std::string &path);

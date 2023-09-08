@@ -797,6 +797,7 @@ class TPageManager : public TAmxCommands
         void doGLH(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doGLL(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doGSC(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doGSN(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doICO(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void getICO(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doJSB(int port, std::vector<int>& channels, std::vector<std::string>& pars);

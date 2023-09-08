@@ -54,6 +54,7 @@ namespace fs = std::filesystem;
 #endif
 
 using std::string;
+using std::wstring;
 using std::endl;
 using std::vector;
 
@@ -901,6 +902,58 @@ uint32_t getUint32(const unsigned char *p, bool big_endian)
     }
 
     return num;
+}
+
+string UnicodeToUTF8(const wstring& ws)
+{
+    string s;
+
+    for(size_t i = 0; i < ws.size(); ++i)
+    {
+        wchar_t wc = ws[i];
+
+        if ( 0 <= wc && wc <= 0x7f )
+        {
+            s += (char)wc;
+        }
+        else if ( 0x80 <= wc && wc <= 0x7ff )
+        {
+            s += ( 0xc0 | (wc >> 6) );
+            s += ( 0x80 | (wc & 0x3f) );
+        }
+        else if ( 0x800 <= wc && wc <= 0xffff )
+        {
+            s += ( 0xe0 | (wc >> 12) );
+            s += ( 0x80 | ((wc >> 6) & 0x3f) );
+            s += ( 0x80 | (wc & 0x3f) );
+        }
+        else if ( 0x10000 <= wc && wc <= 0x1fffff )
+        {
+            s += ( 0xf0 | (wc >> 18) );
+            s += ( 0x80 | ((wc >> 12) & 0x3f) );
+            s += ( 0x80 | ((wc >> 6) & 0x3f) );
+            s += ( 0x80 | (wc & 0x3f) );
+        }
+        else if ( 0x200000 <= wc && wc <= 0x3ffffff )
+        {
+            s += ( 0xf8 | (wc >> 24) );
+            s += ( 0x80 | ((wc >> 18) & 0x3f) );
+            s += ( 0x80 | ((wc >> 12) & 0x3f) );
+            s += ( 0x80 | ((wc >> 6) & 0x3f) );
+            s += ( 0x80 | (wc & 0x3f) );
+        }
+        else if ( 0x4000000 <= wc && wc <= 0x7fffffff )
+        {
+            s += ( 0xfc | (wc >> 30) );
+            s += ( 0x80 | ((wc >> 24) & 0x3f) );
+            s += ( 0x80 | ((wc >> 18) & 0x3f) );
+            s += ( 0x80 | ((wc >> 12) & 0x3f) );
+            s += ( 0x80 | ((wc >> 6) & 0x3f) );
+            s += ( 0x80 | (wc & 0x3f) );
+        }
+    }
+
+    return s;
 }
 
 bool endsWith (const std::string &src, const std::string &end)

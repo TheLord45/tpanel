@@ -945,6 +945,7 @@ TPageManager::TPageManager()
 //    REG_CMD(doGDV, "^GDV");     // Invert the joystick axis to move the origin to another corner.
     REG_CMD(doGLH, "^GLH");     // Change the bargraph upper limit.
     REG_CMD(doGLL, "^GLL");     // Change the bargraph lower limit.
+    REG_CMD(doGSN, "^GSN");     // Set slider/cursor name.
     REG_CMD(doGSC, "^GSC");     // Change the bargraph slider color or joystick cursor color.
     REG_CMD(doICO, "^ICO");     // Set the icon to a button.
     REG_CMD(getICO, "?ICO");    // Get the current icon index.
@@ -7440,7 +7441,10 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
                 switch(cmd)
                 {
                     case 'B':   // Border style
-                        content = iter->substr(1);
+                        if (iter->at(1) == ',')
+                            content = iter->substr(2);
+                        else
+                            content = iter->substr(1);
 
                         if (!content.empty() && isdigit(content[0]))
                             bt->setBorderStyle(atoi(content.c_str()), btState);
@@ -7535,7 +7539,10 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
                     break;
 
                     case 'F':   // Set font file name
-                        content = iter->substr(1);
+                        if (iter->at(1) == ',')
+                            content = iter->substr(2);
+                        else
+                            content = iter->substr(1);
 
                         if (!isdigit(content[0]))
                             bt->setFontName(content, btState);
@@ -7578,7 +7585,7 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
                             break;
 
                             case 'N':   // Slider name
-                                // FIXME: Add function to set slider name
+                                bt->setBargraphSliderName(content);
                             break;
 
                             case 'R':   // Repeat interval
@@ -7607,7 +7614,7 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
                     case 'J':   // Set text justification
                         cmd2 = iter->at(1);
 
-                        if (cmd2 != 'T' && cmd2 != 'B' && cmd2 != 'I')
+                        if (cmd2 == ',')
                         {
                             content = iter->substr(1);
                             int just = atoi(content.c_str());
@@ -7634,7 +7641,7 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
                             }
 #endif
                         }
-                        else
+                        else if (cmd2 == 'T' || cmd2 == 'B' || cmd2 == 'I')
                         {
                             content = iter->substr(2);
                             int x = 0, y = 0;
@@ -9107,8 +9114,41 @@ void TPageManager::doGSC(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-//            setButtonCallbacks(bt);
             bt->setBargraphSliderColor(color);
+        }
+    }
+}
+
+/*
+ * Change the bargraph slider name or joystick cursor name.
+ */
+void TPageManager::doGSN(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doGSN(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Expecting 1 parameter but got " << pars.size() << "! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    string name = pars[0];
+    vector<TMap::MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+            bt->setBargraphSliderName(name);
         }
     }
 }
@@ -9851,21 +9891,25 @@ void TPageManager::doUNI(int port, vector<int>& channels, vector<string>& pars)
     int btState = atoi(pars[0].c_str()) - 1;
     string text;
 
-    // Because UTF8 is not supported out of the box from Windows and NetLinx
-    // Studio has no native support for it, any UTF8 text must be encoded in
-    // bytes. Because of this we must decode the bytes into real bytes here.
+    // Unicode is the stadard character set used by Windows internally. It
+    // consists of 16 bit unsiged numbers. This can't be transported into a
+    // standard character string because a NULL byte means end of string.
+    // Therefor we must convert it to UFT-8.
     if (pars.size() > 1)
     {
         string byte;
+        std::wstring uni;
         size_t pos = 0;
 
         while (pos < pars[1].length())
         {
-            byte = pars[1].substr(pos, 2);
-            char ch = (char)strtol(byte.c_str(), NULL, 16);
-            text += ch;
-            pos += 2;
+            byte = pars[1].substr(pos, 4);
+            wchar_t ch = (char)strtol(byte.c_str(), NULL, 16);
+            uni += ch;
+            pos += 4;
         }
+
+        text = UnicodeToUTF8(uni);
     }
 
     vector<TMap::MAP_T> map = findButtons(port, channels);
@@ -9944,12 +9988,10 @@ void TPageManager::doUTF(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-//            setButtonCallbacks(bt);
 
             if (btState == 0)       // All instances?
             {
                 int bst = bt->getNumberInstances();
-                MSG_DEBUG("Setting TXT on all " << bst << " instances...");
 
                 for (int i = 0; i < bst; i++)
                     bt->setText(text, i);
@@ -9960,6 +10002,12 @@ void TPageManager::doUTF(int port, vector<int>& channels, vector<string>& pars)
     }
 }
 
+/**
+ * Simulates a touch/release/pulse at the given coordinate. If the push event
+ * is less then 0 or grater than 2 the command is ignored. It is also ignored
+ * if the x and y coordinate is out of range. The range must be between 0 and
+ * the maximum with and height.
+ */
 void TPageManager::doVTP (int, vector<int>&, vector<string>& pars)
 {
     DECL_TRACER("TPageManager::doVTP (int, vector<int>&, vector<string>& pars)");
