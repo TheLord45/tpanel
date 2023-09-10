@@ -1261,8 +1261,11 @@ void TQScrollArea::mousePressEvent(QMouseEvent* event)
 #endif
     mLastMousePress.setX(x);
     mLastMousePress.setY(y);
-
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     MSG_DEBUG("Mouse press event at " << x << " x " << y << " // " << event->globalX() << " x " << event->globalY());
+#else
+    MSG_DEBUG("Mouse press event at " << x << " x " << y << " // " << event->globalPosition().x() << " x " << event->globalPosition().y());
+#endif
     /*
         * Here we're starting a timer with 200 ms. If after this time the
         * mouse button is still pressed and no scroll event was detected,

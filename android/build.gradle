@@ -39,6 +39,7 @@ android {
     compileSdkVersion androidCompileSdkVersion
     buildToolsVersion androidBuildToolsVersion    /* Reserved for Qt 6.x */
     ndkVersion androidNdkVersion                  /* Reserved for Qt 6.x */
+    // namespace 'org.qtproject.theosys'
 
     // Extract native libraries from the APK
     packagingOptions.jniLibs.useLegacyPackaging true  /* Reserved for Qt 6.x */
