@@ -1,6 +1,6 @@
 # Build Android APK
 
-There are 2 possibilities to create an Android APK file. You can use the ready script on the command line to build it, or use _QtCreator_. Both methods are base on _cmake_. The following description shows both methods and explain what you need and how to put the things together.
+There are 2 possibilities to create an Android APK file. You can use the ready script on the command line to build it, or use _QtCreator_. Both methods are based on _cmake_. The following description shows both methods and explain what you need and how to put the things together.
 
 Developing for another platform means to _cross compile_ code. This is necessary because there is no way (not that I know) to create the program directly on the target platform. And even if it would be a nightmere to develop a complex program like **TPanel** directly on an Android phone.
 
@@ -11,7 +11,7 @@ Developing for another platform means to _cross compile_ code. This is necessary
 We need the [Android SDK](https://developer.android.com/). In case you've not installed it, do it now. I recommend to install the SDK into your home directory. Usually this is installed in the directory `<home directory>/Android/Sdk`. Additionally you need the following libraries compiled for Android:
 
 - [Skia](https://skia.org)
-- [Qt 6.5.x](https://doc.qt.io/qt-6/)
+- [Qt 6.5.x](https://doc.qt.io/qt-6/) or newer
 - openssl (can easily be installed out of QtCreator)
 - [pjsip](https://www.pjsip.org)
 
@@ -22,7 +22,7 @@ I made an archive file containing _Skia_ and _PjSIP_ as precompiled versions for
 - [`android_dist.tar.bz2`](https://www.theosys.at/download/android_dist.tar.bz2)
 - SHA256: `eb7f474aec318bec4af6052ac23232296fa9a9c43f0bf2640f771781d6afb1fc`
 
-> The package does not include the Qt framework!
+> The package does **not** include the Qt framework!
 
 ## Build with script `build_android.sh`
 
@@ -75,10 +75,10 @@ With Qt 6.5.2 and older versions it is very likely that you can't compile the co
 Changing into build directory "tpanel-6-build" ...
 Compiling the source ...
 [1/72] Performing tpanel_build step for 'qt_internal_android_x86'
-FAILED: qt_internal_android_x86-prefix/src/qt_internal_android_x86-stamp/qt_internal_android_x86-tpanel_build /home/<user>/tpanel/tpanel-6-build/qt_internal_android_x86-prefix/src/qt_internal_android_x86-stamp/qt_internal_android_x86-tpanel_build 
+FAILED: qt_internal_android_x86-prefix/src/qt_internal_android_x86-stamp/qt_internal_android_x86-tpanel_build /home/<user>/tpanel/tpanel-6-build/qt_internal_android_x86-prefix/src/qt_internal_android_x86-stamp/qt_internal_android_x86-tpanel_build
 cd /home/<user>/tpanel/tpanel-6-build && /opt/Qt/Tools/CMake/bin/cmake --build /home/<user>/tpanel/tpanel-6-build/android_abi_builds/x86 --config Release --target tpanel
 [1/58] Building CXX object CMakeFiles/tpanel.dir/tnameformat.cpp.o
-FAILED: CMakeFiles/tpanel.dir/tnameformat.cpp.o 
+FAILED: CMakeFiles/tpanel.dir/tnameformat.cpp.o
 /home/<user>/Android/ndk/25.1.8937393/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=i686-none-linux-android23 --sysroot=/home/<user>/Android/ndk/25.1.8937393/toolchains/llvm/prebuilt/linux-x86_64/sysroot -DPJ_AUTOCONF -DQT_CORE_LIB -DQT_GUI_LIB -DQT_MULTIMEDIAWIDGETS_LIB -DQT_MULTIMEDIA_LIB -DQT_NETWORK_LIB -DQT_NO_DEBUG -DQT_POSITIONING_LIB -DQT_WIDGETS_LIB -D_GNU_SOURCE -D_OPAQUE_SKIA_ -D_REENTRANT -Dtpanel_EXPORTS -I/home/<user>/tpanel/tpanel-6-build/android_abi_builds/x86/tpanel_autogen/include -I/home/<user>/Android/extras/expat/include -I/home/<user>/Android/distribution/skia/include -I/home/<user>/Android/distribution/pjsip/include -I/home/<user>/Android/android_openssl/ssl_3/include -isystem /opt/Qt/6.5.2/android_x86/include/QtCore -isystem /opt/Qt/6.5.2/android_x86/include -isystem /opt/Qt/6.5.2/android_x86/mkspecs/android-clang -isystem /opt/Qt/6.5.2/android_x86/include/QtWidgets -isystem /opt/Qt/6.5.2/android_x86/include/QtGui -isystem /opt/Qt/6.5.2/android_x86/include/QtMultimedia -isystem /opt/Qt/6.5.2/android_x86/include/QtNetwork -isystem /opt/Qt/6.5.2/android_x86/include/QtMultimediaWidgets -isystem /opt/Qt/6.5.2/android_x86/include/QtPositioning -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -mstackrealign -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -O3 -DNDEBUG  -fPIC -fvisibility=default   -pedantic -fexceptions -Wextra -Wno-attributes -Wno-nested-anon-types -Wno-gnu-anonymous-struct -Wno-gnu-zero-variadic-macro-arguments -fPIC -pthread -std=gnu++17 -MD -MT CMakeFiles/tpanel.dir/tnameformat.cpp.o -MF CMakeFiles/tpanel.dir/tnameformat.cpp.o.d -o CMakeFiles/tpanel.dir/tnameformat.cpp.o -c /home/<user>/tpanel/tnameformat.cpp
 /home/<user>/tpanel/tnameformat.cpp:29:2: error: "This module needs Android API level 28 or newer!"
 #error "This module needs Android API level 28 or newer!"
