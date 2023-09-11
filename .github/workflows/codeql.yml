@@ -21,8 +21,12 @@ on:
     - cron: '37 18 * * 6'
 
 jobs:
-  build:
+  compile:
     runs-on: self-hosted
+    steps:
+      - id: tpanel-build
+        name: TPanel build
+        run: bash tbuild/compile_build.sh "${{github.ref}}"
   analyze:
     name: Analyze
     # Runner size impacts CodeQL analysis time. To learn more, please see:
