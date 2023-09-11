@@ -3079,7 +3079,7 @@ void MainWindow::_inputText(Button::TButton *button, Button::BITMAP_t& bm, int f
 
     if (bm.buffer && bm.rowBytes > 0)
     {
-        size_t size = bm.width * bm.height * (bm.rowBytes / bm.width);
+        size_t size = (size_t)bm.width * (size_t)bm.height * (size_t)(bm.rowBytes / bm.width);
         buf.insert(0, (const char *)bm.buffer, size);
     }
 
@@ -3106,7 +3106,7 @@ void MainWindow::_listBox(Button::TButton *button, Button::BITMAP_t& bm, int fra
 
     if (bm.buffer && bm.rowBytes > 0)
     {
-        size_t size = bm.width * bm.height * (bm.rowBytes / bm.width);
+        size_t size = (size_t)bm.width * (size_t)bm.height * (size_t)(bm.rowBytes / bm.width);
         buf.insert(0, (const char *)bm.buffer, size);
     }
 
@@ -5691,7 +5691,7 @@ void MainWindow::playShowList()
 
                     if (bm.buffer && bm.rowBytes > 0)
                     {
-                        size_t s = bm.width * bm.height * (bm.rowBytes / bm.width);
+                        size_t s = (size_t)bm.width * (size_t)bm.height * (size_t)(bm.rowBytes / bm.width);
                         buf.insert(0, (const char *)bm.buffer, s);
                     }
 

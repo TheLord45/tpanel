@@ -45,7 +45,7 @@ TBitmap::TBitmap(const unsigned char* data, int width, int height, int pixsize)
     if (!data || width <= 0 || height <= 0 || pixsize < 1)
         return;
 
-    mSize = (width * pixsize) * height;
+    mSize = ((size_t)width * (size_t)pixsize) * (size_t)height;
     mData = new unsigned char[mSize];
     memmove(mData, data, mSize);
     mPixelSize = pixsize;
@@ -126,7 +126,7 @@ void TBitmap::setBitmap(const unsigned char* data, int width, int height, int pi
     if (!data || width <= 0 || height <= 0 || pixsize < 1)
         return;
 
-    mSize = (width * pixsize) * height;
+    mSize = ((size_t)width * (size_t)pixsize) * (size_t)height;
     mData = new unsigned char[mSize];
     memmove(mData, data, mSize);
     mPixelSize = pixsize;
