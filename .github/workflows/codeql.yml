@@ -22,14 +22,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Check out repository code
-      uses: actions/checkout@v3
-    - name: Install Qt6 tool
-      run: |
-        sudo apt-get update
-        sudo apt-get install qt6-base-dev qt6-base-dev-tools qt6-base-private-dev qt6-connectivity-dev qt6-image-formats-plugins qt6-multimedia-dev qt6-positioning-dev
+    runs-on: self-hosted
   analyze:
     name: Analyze
     # Runner size impacts CodeQL analysis time. To learn more, please see:
