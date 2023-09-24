@@ -267,21 +267,21 @@ bool TPageInterface::drawFrame(PAGE_T& pinfo, SkBitmap* bm)
 
     paint.setBlendMode(SkBlendMode::kSrc);
     paint.setColor(color);
-    sk_sp<SkImage> _image = SkImage::MakeFromBitmap(imgB);                                                                              // Bottom
+    sk_sp<SkImage> _image = SkImages::RasterFromBitmap(imgB);                                                                              // Bottom
     canvas.drawImage(_image, imgBL.info().width(), pinfo.height - imgB.info().height(), SkSamplingOptions(), &paint);
-    _image = SkImage::MakeFromBitmap(imgBR);                                                                                            // Corner bottom right
+    _image = SkImages::RasterFromBitmap(imgBR);                                                                                            // Corner bottom right
     canvas.drawImage(_image, pinfo.width - imgBR.info().width(), pinfo.height - imgBR.info().height(), SkSamplingOptions(), &paint);
-    _image = SkImage::MakeFromBitmap(imgR);                                                                                             // Right
+    _image = SkImages::RasterFromBitmap(imgR);                                                                                             // Right
     canvas.drawImage(_image, pinfo.width - imgR.info().width(), imgTR.info().height(), SkSamplingOptions(), &paint);
-    _image = SkImage::MakeFromBitmap(imgTR);                                                                                            // Corner top right
+    _image = SkImages::RasterFromBitmap(imgTR);                                                                                            // Corner top right
     canvas.drawImage(_image, pinfo.width - imgTR.info().width(), 0, SkSamplingOptions(), &paint);
-    _image = SkImage::MakeFromBitmap(imgT);                                                                                             // Top
+    _image = SkImages::RasterFromBitmap(imgT);                                                                                             // Top
     canvas.drawImage(_image, imgTL.info().width(), 0, SkSamplingOptions(), &paint);
-    _image = SkImage::MakeFromBitmap(imgTL);                                                                                            // Corner top left
+    _image = SkImages::RasterFromBitmap(imgTL);                                                                                            // Corner top left
     canvas.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
-    _image = SkImage::MakeFromBitmap(imgL);                                                                                             // Left
+    _image = SkImages::RasterFromBitmap(imgL);                                                                                             // Left
     canvas.drawImage(_image, 0, imgTL.info().height(), SkSamplingOptions(), &paint);
-    _image = SkImage::MakeFromBitmap(imgBL);                                                                                            // Corner bottom left
+    _image = SkImages::RasterFromBitmap(imgBL);                                                                                            // Corner bottom left
     canvas.drawImage(_image, 0, pinfo.height - imgBL.info().height(), SkSamplingOptions(), &paint);
     return true;
 }
@@ -1249,7 +1249,7 @@ SkBitmap TPageInterface::colorImage(SkBitmap& base, SkBitmap& alpha, SkColor col
         SkPaint paint;
         paint.setBlendMode(SkBlendMode::kSrcOver);
         SkCanvas can(maskBm);
-        sk_sp<SkImage> _image = SkImage::MakeFromBitmap(base);
+        sk_sp<SkImage> _image = SkImages::RasterFromBitmap(base);
         can.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
     }
 
@@ -1268,7 +1268,7 @@ bool TPageInterface::stretchImageWidth(SkBitmap *bm, int width)
     paint.setBlendMode(SkBlendMode::kSrc);
 
     SkImageInfo info = bm->info();
-    sk_sp<SkImage> im = SkImage::MakeFromBitmap(*bm);
+    sk_sp<SkImage> im = SkImages::RasterFromBitmap(*bm);
 
     if (width <= 0)
         rwidth = info.width() + width;
@@ -1307,7 +1307,7 @@ bool TPageInterface::stretchImageHeight(SkBitmap *bm, int height)
     if (rheight <= 0)
         rheight = 1;
 
-    sk_sp<SkImage> im = SkImage::MakeFromBitmap(*bm);
+    sk_sp<SkImage> im = SkImages::RasterFromBitmap(*bm);
     MSG_DEBUG("Width: " << info.width() << ", Height: " << rheight);
 
     if (!allocPixels(info.width(), rheight, bm))
@@ -1345,7 +1345,7 @@ bool TPageInterface::setOpacity(SkBitmap *bm, int oo)
     MSG_DEBUG("Calculated alpha value: " << alpha << " (oo=" << oo << ")");
     SkPaint paint;
     paint.setAlphaf(alpha);
-    sk_sp<SkImage> _image = SkImage::MakeFromBitmap(*bm);
+    sk_sp<SkImage> _image = SkImages::RasterFromBitmap(*bm);
     canvas.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
     bm->erase(SK_ColorTRANSPARENT, {0, 0, w, h});
     *bm = ooButton;

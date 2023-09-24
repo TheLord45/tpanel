@@ -24,6 +24,7 @@
 #include <include/core/SkFont.h>
 #include <include/core/SkTypeface.h>
 #include <include/core/SkColorSpace.h>
+#include <include/codec/SkCodec.h>
 
 #include <iconv.h>
 #include <libgen.h>
@@ -232,12 +233,30 @@ SkString GetResourcePath(const char* resource, _RESOURCE_TYPE rs)
 
 bool DecodeDataToBitmap(sk_sp<SkData> data, SkBitmap* dst)
 {
+    DECL_TRACER("DecodeDataToBitmap(sk_sp<SkData> data, SkBitmap* dst)");
+
     if (!data || !dst)
         return false;
 
-    std::unique_ptr<SkImageGenerator> gen(SkImageGenerator::MakeFromEncoded(std::move(data)));
-    return gen && dst->tryAllocPixels(gen->getInfo()) &&
-            gen->getPixels(gen->getInfo().makeColorSpace(nullptr), dst->getPixels(), dst->rowBytes());
+//    std::unique_ptr<SkImageGenerator> gen(SkImageGenerators::MakeFromEncoded(std::move(data)));
+//    return gen && dst->tryAllocPixels(gen->getInfo()) &&
+//           gen->getPixels(gen->getInfo().makeColorSpace(nullptr), dst->getPixels(), dst->rowBytes());
+
+
+    std::unique_ptr<SkCodec> codec = SkCodec::MakeFromData(std::move(data));
+
+    if (!codec)
+        return false;
+
+    SkImageInfo info = codec->getInfo();
+
+    if(dst->tryAllocPixels(info))
+    {
+        if(codec->getPixels(info, dst->getPixels(), dst->rowBytes()) == SkCodec::kSuccess)
+            return true;
+    }
+
+    return false;
 }
 
 std::unique_ptr<SkStreamAsset> GetResourceAsStream(const char* resource, _RESOURCE_TYPE rs)
@@ -249,6 +268,8 @@ std::unique_ptr<SkStreamAsset> GetResourceAsStream(const char* resource, _RESOUR
 
 sk_sp<SkData> GetResourceAsData(const char* resource, _RESOURCE_TYPE rs)
 {
+    DECL_TRACER("GetResourceAsData(const char* resource, _RESOURCE_TYPE rs)");
+
     SkString str = GetResourcePath(resource, rs);
 
     sk_sp<SkData> data = SkData::MakeFromFileName(str.c_str());
@@ -275,6 +296,8 @@ sk_sp<SkTypeface> MakeResourceAsTypeface(const char* resource, int ttcIndex, _RE
  */
 sk_sp<SkData> readImage(const string& fname)
 {
+    DECL_TRACER("readImage(const string& fname)");
+
     sk_sp<SkData> data = GetResourceAsData(fname.c_str());
 
     if (!data)

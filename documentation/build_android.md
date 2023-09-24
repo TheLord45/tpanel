@@ -20,7 +20,7 @@ We need the [Android SDK](https://developer.android.com/). In case you've not in
 I made an archive file containing _Skia_ and _PjSIP_ as precompiled versions for all 4 possible Android architectures (arm64-v8a, armeabi-v7a, x86_64, x86) You can download it from my [server](https://www.theosys.at/download/android_dist.tar.bz2) (~ 1Gb!). After you've downloaded this hugh file, unpack it into any directory. The file details are:
 
 - [`android_dist.tar.bz2`](https://www.theosys.at/download/android_dist.tar.bz2)
-- SHA256: `eb7f474aec318bec4af6052ac23232296fa9a9c43f0bf2640f771781d6afb1fc`
+- SHA256: `a79b313d03aa630f9574e5d9652fa1c28ef8d766a7cbb270d406838260c8c2b2`
 
 > The package does **not** include the Qt framework!
 

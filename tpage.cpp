@@ -24,6 +24,7 @@
 #include <include/core/SkFontMetrics.h>
 #include <include/core/SkTextBlob.h>
 
+#include "tlock.h"
 #include "tresources.h"
 #include "tpagemanager.h"
 #include "tpage.h"
@@ -612,6 +613,7 @@ SkBitmap& TPage::getBgImage()
 void TPage::show()
 {
     DECL_TRACER("TPage::show()");
+    TLOCKER(mutex_init);
 
     if (!_setBackground)
     {
@@ -654,7 +656,7 @@ void TPage::show()
             sk_sp<SkData> rawImage = readImage(sr[0].bm);
             SkBitmap bm;
 
-            if (rawImage)
+            if (rawImage && !rawImage->isEmpty())
             {
                 MSG_DEBUG("Decoding image BM ...");
 
@@ -662,7 +664,7 @@ void TPage::show()
                 {
                     MSG_WARNING("Problem while decoding image " << sr[0].bm);
                 }
-                else if (!bm.empty())
+                else if (!bm.isNull() && !bm.empty())
                 {
                     dImage.setImageBm(bm);
                     SkImageInfo info = bm.info();
@@ -683,7 +685,7 @@ void TPage::show()
             sk_sp<SkData> rawImage = readImage(sr[0].mi);
             SkBitmap mi;
 
-            if (rawImage)
+            if (rawImage && !rawImage->isEmpty())
             {
                 MSG_DEBUG("Decoding image MI ...");
 
@@ -691,7 +693,7 @@ void TPage::show()
                 {
                     MSG_WARNING("Problem while decoding image " << sr[0].mi);
                 }
-                else if (!mi.empty())
+                else if (!mi.isNull() && !mi.empty())
                 {
                     dImage.setImageMi(mi);
                     SkImageInfo info = mi.info();

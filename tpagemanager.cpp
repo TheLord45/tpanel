@@ -106,6 +106,7 @@ extern std::atomic<bool> _netRunning;
 extern bool _restart_;                          //!< If this is set to true then the whole program will start over.
 
 bool prg_stopped = false;
+std::mutex mutex_init;
 
 #ifdef __ANDROID__
 string javaJStringToString(JNIEnv *env, jstring str)
@@ -139,8 +140,9 @@ JNIEXPORT void JNICALL Java_org_qtproject_theosys_BatteryState_informBatteryStat
 JNIEXPORT void JNICALL Java_org_qtproject_theosys_NetworkStatus_informTPanelNetwork(JNIEnv */*env*/, jclass /*clazz*/, jboolean conn, jint level, jint type)
 {
     DECL_TRACER("JNICALL Java_org_qtproject_theosys_NetworkStatus_informTPanelNetwork(JNIEnv */*env*/, jclass /*clazz*/, jboolean conn, jint level, jint type)");
-   //Call native side conterpart
-   if (gPageManager)
+
+    //Call native side conterpart
+    if (gPageManager)
         gPageManager->informTPanelNetwork(conn, level, type);
 }
 
@@ -4431,6 +4433,7 @@ vector<Button::TButton *> TPageManager::collectButtons(vector<TMap::MAP_T>& map)
 void TPageManager::initNetworkState()
 {
     DECL_TRACER("TPageManager::initNetworkState()");
+    TLOCKER(mutex_init);
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QAndroidJniObject activity = QtAndroid::androidActivity();
     QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/NetworkStatus", "Init", "(Landroid/app/Activity;)V", activity.object());

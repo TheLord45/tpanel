@@ -91,7 +91,7 @@ bool TDrawImage::drawImage(SkBitmap* bm)
         SkImageInfo info = img.info();
         SkPaint paint;
         paint.setBlendMode(SkBlendMode::kSrcOver);
-        sk_sp<SkImage> _image = SkImage::MakeFromBitmap(imgMask);
+        sk_sp<SkImage> _image = SkImages::RasterFromBitmap(imgMask);
         ctx.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
 
         Button::POSITION_t position = calcImagePosition(mSr[instance].mi_width, mSr[instance].mi_height, instance);
@@ -108,13 +108,13 @@ bool TDrawImage::drawImage(SkBitmap* bm)
 
         if (mSr[instance].sb == 0)
         {
-            sk_sp<SkImage> _image = SkImage::MakeFromBitmap(img);
+            sk_sp<SkImage> _image = SkImages::RasterFromBitmap(img);
             can.drawImage(_image, position.left, position.top, SkSamplingOptions(), &paint);
         }
         else    // Scale to fit
         {
             SkRect rect = SkRect::MakeXYWH(position.left, position.top, position.width, position.height);
-            sk_sp<SkImage> im = SkImage::MakeFromBitmap(img);
+            sk_sp<SkImage> im = SkImages::RasterFromBitmap(img);
             can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
         }
     }
@@ -149,7 +149,7 @@ bool TDrawImage::drawImage(SkBitmap* bm)
             if ((mSr[instance].jb == 0 && mSr[instance].bx >= 0 && mSr[instance].by >= 0) || mSr[instance].jb != 0)  // Draw the full image
             {
                 MSG_DEBUG("Drawing full image ...");
-                sk_sp<SkImage> _image = SkImage::MakeFromBitmap(image);
+                sk_sp<SkImage> _image = SkImages::RasterFromBitmap(image);
                 can.drawImage(_image, position.left, position.top, SkSamplingOptions(), &paint);
             }
             else    // We need only a subset of the image
@@ -171,7 +171,7 @@ bool TDrawImage::drawImage(SkBitmap* bm)
                 SkBitmap part;      // Bitmap receiving the wanted part from the whole image
                 SkIRect irect = SkIRect::MakeXYWH(position.left, position.top, position.width, position.height);
                 image.extractSubset(&part, irect);  // Extract the part of the image containg the pixels we want
-                sk_sp<SkImage> _image = SkImage::MakeFromBitmap(part);
+                sk_sp<SkImage> _image = SkImages::RasterFromBitmap(part);
                 can.drawImage(_image, 0, 0, SkSamplingOptions(), &paint); // Draw the image
             }
         }
@@ -179,7 +179,7 @@ bool TDrawImage::drawImage(SkBitmap* bm)
         {
             MSG_DEBUG("Scaling image to fit.");
             SkRect rect = SkRect::MakeXYWH(position.left, position.top, position.width, position.height);
-            sk_sp<SkImage> im = SkImage::MakeFromBitmap(image);
+            sk_sp<SkImage> im = SkImages::RasterFromBitmap(image);
             can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
         }
     }

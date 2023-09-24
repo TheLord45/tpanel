@@ -80,6 +80,9 @@ android {
         minSdkVersion = qtMinSdkVersion
         targetSdkVersion = qtTargetSdkVersion
         ndk.abiFilters = qtTargetAbiList.split(",")
+        qtMinSdkVersion = 29
+        qtTargetSdkVersion = 30
+        qtTargetAbiList = [ 'arm64-v8a', 'x86_64', 'armeabi-v7a', 'x86' ]
     }
 
     packagingOptions {

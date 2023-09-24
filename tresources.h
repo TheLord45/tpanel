@@ -34,10 +34,12 @@
 #include <skia/core/SkImage.h>
 #include <skia/core/SkString.h>
 #include <skia/core/SkData.h>
+#include <skia/core/SkColor.h>
 #else
 #include <include/core/SkImage.h>
 #include <include/core/SkString.h>
 #include <include/core/SkData.h>
+#include <include/core/SkColor.h>
 #endif
 
 //#include "terror.h"
@@ -80,7 +82,7 @@ inline bool GetResourceAsBitmap(const char* resource, SkBitmap* dst)
 
 inline sk_sp<SkImage> GetResourceAsImage(const char* resource)
 {
-    return SkImage::MakeFromEncoded(GetResourceAsData(resource));
+    return SkImages::DeferredFromEncodedData(GetResourceAsData(resource));
 }
 
 std::unique_ptr<SkStreamAsset> GetResourceAsStream(const char* resource, _RESOURCE_TYPE rs = RESTYPE_IMAGE);

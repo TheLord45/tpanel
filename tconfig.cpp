@@ -1508,8 +1508,8 @@ TConfig::SIP_FIREWALL_t TConfig::sipFirewallStrToEnum(const std::string& str)
 string TConfig::makeConfigDefault(const std::string& log, const std::string& project)
 {
     string content = "LogFile=" + log + "\n";
-#if defined(QT_DEBUG) || defined(DEBUG)
-    content += "LogLevel=INFO|WARNING|ERROR|DEBUG\n";
+#ifndef NDEBUG
+    content += "LogLevel=ALL\n";
 #else
     content += "LogLevel=NONE\n";
 #endif
@@ -2125,6 +2125,7 @@ bool TConfig::readConfig()
     mInitialized = true;
     TStreamError::setLogLevel(localSettings.logLevel);
 //    TStreamError::setLogLevel("INFO|WARNING|ERROR|DEBUG");
+//    TStreamError::setLogLevel("ALL");
     TStreamError::setLogFile(localSettings.logFile);
 
     if (localSettings.uuid.empty())

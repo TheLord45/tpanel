@@ -191,6 +191,7 @@ then
         -DQT_HOST_PATH:PATH=${QTBASE}/gcc_64 \
         -DANDROID_SDK_ROOT:PATH=${ANDROID_HOME} \
         -DQT_ANDROID_BUILD_ALL_ABIS:BOOL=ON \
+        -DQT_ANDROID_ABIS:STRING="arm64-v8a;armeabi-v7a;x86;x86_64" \
         2>&1 | tee -a ${LOGFILE}
 
     if [ $? -ne 0 ]
@@ -203,7 +204,7 @@ else
     cd "$BUILDDIR"
 fi
 
-log "Compiling the source ..."
+log "Compiling the source and using ${CPUS} cpus..."
 
 if [ $OPT_VERBOSE -eq 1 ]
 then

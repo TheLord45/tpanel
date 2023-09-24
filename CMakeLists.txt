@@ -56,17 +56,14 @@ if(ANDROID)
 
     include_directories(${EXTRA_PATH}/expat/include)
 
-    set(SKIA_INCLUDE_DIRS ${EXT_LIB_PATH}/skia/include)
-    include_directories(${SKIA_INCLUDE_DIRS})
-    set(LIBSKIA_LIBRARY ${EXT_LIB_PATH}/skia/${ANDROID_ABI})
-    link_directories(${LIBSKIA_LIBRARY})
-    link_libraries(skia)
+    include_directories(${EXT_LIB_PATH}/skia/include)
+    link_directories(${EXT_LIB_PATH}/skia/${ANDROID_ABI})
 
     include_directories(${EXT_LIB_PATH}/pjsip/include)
     include_directories(${SSL_PATH}/ssl_3/include)
     link_directories(${SSL_PATH}/ssl_3/${ANDROID_ABI})
     include(${SSL_PATH}/CMakeLists.txt)
-    link_libraries(z ssl_3 crypto_3 mediandk)
+    link_libraries(z ssl_3 crypto_3 mediandk expat libskia.a)
 
     link_directories(${EXT_LIB_PATH}/pjsip/lib)
 
@@ -329,6 +326,10 @@ set(PROJECT_SOURCES
         testmode.h
         tpanel.qrc
 )
+
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    add_definitions(-DNDEBUG)
+endif()
 
 add_definitions(-D_REENTRANT)
 add_definitions(-D_GNU_SOURCE)
