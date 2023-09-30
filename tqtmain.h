@@ -329,7 +329,11 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
         void doReleaseButton();
         void repaintObjects();
         void refresh(ulong handle);
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
         int calcVolume(int value);
+#else
+        double calcVolume(int value);
+#endif
         std::string convertMask(const std::string& mask);
 #ifdef Q_OS_ANDROID
         void hideAndroidBars();

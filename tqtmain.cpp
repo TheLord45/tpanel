@@ -3412,20 +3412,25 @@ void MainWindow::refresh(ulong handle)
     }
 }
 
+
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 int MainWindow::calcVolume(int value)
+#else
+double MainWindow::calcVolume(int value)
+#endif
 {
-    DECL_TRACER("TQtSettings::calcVolume(int value)");
+    DECL_TRACER("MainWindow::calcVolume(int value)");
 
     // volumeSliderValue is in the range [0..100]
-//#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     qreal linearVolume = QAudio::convertVolume(value / qreal(100.0),
                                                QAudio::LogarithmicVolumeScale,
                                                QAudio::LinearVolumeScale);
 
     return qRound(linearVolume * 100);
-//#else
-//    return value;
-//#endif
+#else
+    return (double)value / 100.0;
+#endif
 }
 
 /**
@@ -5609,21 +5614,20 @@ void MainWindow::setVolume(int volume)
 
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     mMediaPlayer->setVolume(calcVolume(volume));
-#else
+#else   // QT_VERSION
     if (!mMediaPlayer || !mAudioOutput)
     {
 #if TESTMODE == 1
         setAllDone();
-#endif
+#endif  // TESTMODE
         return;
     }
 
     mAudioOutput->setVolume(calcVolume(volume));
 #if TESTMODE == 1
-    MSG_DEBUG("Volume was set to " << volume);
     __success = true;
     setAllDone();
-#endif
+#endif  // TESTMODE
 #endif  // QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 }
 

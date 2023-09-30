@@ -3,6 +3,8 @@ ChangeLog
 
 Release: 1.4.0
 ===============================================================================
+2023-09-30 Fixed volume control with Qt6.
+
 2023-09-24 Compiled latest version of Skia library and adapted the source to
            work with the changes of this library.
 
