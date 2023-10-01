@@ -19,12 +19,14 @@ package org.qtproject.theosys;
 
 public class Logger
 {
-    static final int HLOG_NONE =    0x0000;
-    static final int HLOG_INFO =    0x0001;
-    static final int HLOG_WARNING = 0x0002;
-    static final int HLOG_ERROR =   0x0004;
-    static final int HLOG_TRACE =   0x0008;
-    static final int HLOG_DEBUG =   0x0010;
+    static final int HLOG_NONE =     0x0000;
+    static final int HLOG_INFO =     0x0001;
+    static final int HLOG_WARNING =  0x0002;
+    static final int HLOG_ERROR =    0x0004;
+    static final int HLOG_TRACE =    0x0008;
+    static final int HLOG_DEBUG =    0x0010;
+    static final int HLOG_PROTOCOL = (HLOG_INFO | HLOG_WARNING | HLOG_ERROR);
+    static final int HLOG_ALL =      (HLOG_INFO | HLOG_WARNING | HLOG_ERROR | HLOG_TRACE | HLOG_DEBUG);
 
     public static void log(int mode, String msg)
     {

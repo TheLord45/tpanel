@@ -79,8 +79,18 @@ struct SETTINGS
     string ptype;               //!< The type of the panel (android, ipad, iphone, ...)
     string version;             //!< The "firmware" version
     string logFile;             //!< Optional path and name of a logfile
-    string logLevel;            //!< The log level(s).
-    uint logLevelBits;          //!< The numeric bit field of the loglevel
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+#ifdef QT_DEBUG
+    string logLevel{"INFO|WARNING|ERROR|DEBUG"};   //!< The log level(s).
+    uint logLevelBits{HLOG_INFO|HLOG_WARNING|HLOG_ERROR|HLOG_DEBUG};//!< The numeric bit field of the loglevel
+#else
+    string logLevel{"NONE"};   //!< The log level(s).
+    uint logLevelBits{HLOG_NONE};//!< The numeric bit field of the loglevel
+#endif
+#else
+    string logLevel{"PROTOCOL"};//!< The log level(s).
+    uint logLevelBits{HLOG_PROTOCOL};//!< The numeric bit field of the loglevel
+#endif
     bool longformat{false};     //!< TRUE = long format
     bool noBanner{false};       //!< Startup without showing a banner on the command line.
     bool certCheck{false};      //!< TRUE = Check certificate for SSL connection
@@ -493,6 +503,7 @@ bool TConfig::saveLogLevel(uint level)
     {
         localSettings.logLevelBits = level;
         localSettings.logLevel = logLevelBitsToString(level);
+        TStreamError::setLogLevel(level);
         MSG_INFO("New log level from bits: " << localSettings.logLevel);
     }
 
@@ -2124,8 +2135,6 @@ bool TConfig::readConfig()
     fs.close();
     mInitialized = true;
     TStreamError::setLogLevel(localSettings.logLevel);
-//    TStreamError::setLogLevel("INFO|WARNING|ERROR|DEBUG");
-//    TStreamError::setLogLevel("ALL");
     TStreamError::setLogFile(localSettings.logFile);
 
     if (localSettings.uuid.empty())

@@ -33,6 +33,11 @@ public class Settings extends Logger
     static private Activity m_ActivityInstance = null;
     static private Intent m_intent = null;
     static private List<String> mSurfaces = null;
+    static private boolean mLogInfo = false;
+    static private boolean mLogWarning = false;
+    static private boolean mLogError = false;
+    static private boolean mLogDebug = false;
+    static private boolean mLogTrace = false;
 
     static public void callSettings(Activity act)
     {
@@ -60,12 +65,30 @@ public class Settings extends Logger
         mSurfaces.add(sf);
     }
 
+    static public void setLogLevel(int level)
+    {
+        mLogInfo = (level & HLOG_INFO) == HLOG_INFO;
+        mLogWarning = (level & HLOG_WARNING) == HLOG_WARNING;
+        mLogError = (level & HLOG_ERROR) == HLOG_ERROR;
+        mLogTrace = (level & HLOG_TRACE) == HLOG_TRACE;
+        mLogDebug = (level & HLOG_DEBUG) == HLOG_DEBUG;
+    }
+
     static public void deploySurfaces()
     {
-        if (mSurfaces == null || m_ActivityInstance == null || m_intent == null)
+        if (m_ActivityInstance == null || m_intent == null)
             return;
 
-        if (m_ActivityInstance.isDestroyed() || mSurfaces.isEmpty())
+        if (m_ActivityInstance.isDestroyed())
+            return;
+
+        m_intent.putExtra("log_info", mLogInfo);
+        m_intent.putExtra("log_warning", mLogWarning);
+        m_intent.putExtra("log_error", mLogError);
+        m_intent.putExtra("log_trace", mLogTrace);
+        m_intent.putExtra("log_debug", mLogDebug);
+
+        if (mSurfaces == null || mSurfaces.isEmpty())
             return;
 
         // Transfer list

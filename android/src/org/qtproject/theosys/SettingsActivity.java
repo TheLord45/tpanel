@@ -96,45 +96,86 @@ public class SettingsActivity extends AppCompatActivity
 
             CharSequence[] values = m_intent.getCharSequenceArrayExtra("surfaces");
 
-            if (values == null)
+            if (values != null)
             {
-                Logger.log(Logger.HLOG_WARNING, "SettingsActivity.SettingsFragment.onViewCreated: No extra data found!");
-                return;
-            }
+                DropDownPreference surfaces = findPreference("netlinx_surface");
 
-            DropDownPreference surfaces = findPreference("netlinx_surface");
-
-            if (surfaces == null)
-            {
-                Logger.log(Logger.HLOG_ERROR, "SettingsActivity.SettingsFragment.onViewCreated: The surface preference \"netlinx_surface\" was not found!");
-                return;
-            }
-
-            CharSequence[] entries = new String[values.length];
-
-            for (int i = 0; i < values.length; i++)
-            {
-                if (values[i] == null)
+                if (surfaces == null)
                 {
-                    Logger.log(Logger.HLOG_WARNING, "SettingsActivity.SettingsFragment.onViewCreated: Index " + String.valueOf(i) + " is not initialized!");
-                    continue;
+                    Logger.log(Logger.HLOG_ERROR, "SettingsActivity.SettingsFragment.onViewCreated: The surface preference \"netlinx_surface\" was not found!");
+                    return;
                 }
 
-                String sf = values[i].toString();
-                int pos = sf.lastIndexOf(".");
-                String name;
+                CharSequence[] entries = new String[values.length];
 
-                if (pos >= 0)
-                    name = sf.substring(0, pos);
-                else
-                    name = sf;
+                for (int i = 0; i < values.length; i++)
+                {
+                    if (values[i] == null)
+                    {
+                        Logger.log(Logger.HLOG_WARNING, "SettingsActivity.SettingsFragment.onViewCreated: Index " + String.valueOf(i) + " is not initialized!");
+                        continue;
+                    }
 
-                entries[i] = name;
+                    String sf = values[i].toString();
+                    int pos = sf.lastIndexOf(".");
+                    String name;
+
+                    if (pos >= 0)
+                        name = sf.substring(0, pos);
+                    else
+                        name = sf;
+
+                    entries[i] = name;
+                }
+
+                surfaces.setEntries(entries);
+                surfaces.setEntryValues(values);
+                surfaces.setDefaultValue(values[0]);
             }
+            else
+                Logger.log(Logger.HLOG_WARNING, "SettingsActivity.SettingsFragment.onViewCreated: No extra data found!");
 
-            surfaces.setEntries(entries);
-            surfaces.setEntryValues(values);
-            surfaces.setDefaultValue(values[0]);
+            // Set the logging states
+            Boolean log_info = m_intent.getBooleanExtra("log_info", false);
+            Boolean log_warning = m_intent.getBooleanExtra("log_warning", false);
+            Boolean log_error = m_intent.getBooleanExtra("log_error", false);
+            Boolean log_trace = m_intent.getBooleanExtra("log_trace", false);
+            Boolean log_debug = m_intent.getBooleanExtra("log_debug", false);
+
+            SwitchPreference logInfo = findPreference("logging_info");
+
+            if (logInfo != null)
+                logInfo.setChecked(log_info);
+            else
+                Logger.log(Logger.HLOG_ERROR, "SettingsActivity.SettingsFragment.onViewCreated: The surface preference \"logging_info\" was not found!");
+
+            SwitchPreference logWarning = findPreference("logging_warning");
+
+            if (logWarning != null)
+                logWarning.setChecked(log_warning);
+            else
+                Logger.log(Logger.HLOG_ERROR, "SettingsActivity.SettingsFragment.onViewCreated: The surface preference \"logging_warning\" was not found!");
+
+            SwitchPreference logError = findPreference("logging_error");
+
+            if (logError != null)
+                logError.setChecked(log_error);
+            else
+                Logger.log(Logger.HLOG_ERROR, "SettingsActivity.SettingsFragment.onViewCreated: The surface preference \"logging_error\" was not found!");
+
+            SwitchPreference logTrace = findPreference("logging_trace");
+
+            if (logTrace != null)
+                logTrace.setChecked(log_trace);
+            else
+                Logger.log(Logger.HLOG_ERROR, "SettingsActivity.SettingsFragment.onViewCreated: The surface preference \"logging_trace\" was not found!");
+
+            SwitchPreference logDebug = findPreference("logging_debug");
+
+            if (logDebug != null)
+                logDebug.setChecked(log_debug);
+            else
+                Logger.log(Logger.HLOG_ERROR, "SettingsActivity.SettingsFragment.onViewCreated: The surface preference \"logging_debug\" was not found!");
         }
 
         @Override

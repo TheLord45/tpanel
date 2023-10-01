@@ -3,7 +3,10 @@ ChangeLog
 
 Release: 1.4.0
 ===============================================================================
+2023-10-01 Improved sound playing.
+
 2023-09-30 Fixed volume control with Qt6.
+           Fixed size of toolbar on Android with Qt6.
 
 2023-09-24 Compiled latest version of Skia library and adapted the source to
            work with the changes of this library.

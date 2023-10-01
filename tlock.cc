@@ -30,7 +30,7 @@ template<typename _TMutex>
 TLock<_TMutex>::TLock(TLock::mutex_type& __m)
     : _M_device(__m)
 {
-    DECL_TRACER("TLock<_TMutex>::TLock(TLock::mutex_type& __m)");
+//    DECL_TRACER("TLock<_TMutex>::TLock(TLock::mutex_type& __m)");
 
     bool death = false;
     bool l = addLock(&death);
@@ -47,7 +47,7 @@ TLock<_TMutex>::TLock(TLock::mutex_type& __m, char *file, int line)
       mFilename(file),
       mLineNumber(line)
 {
-    DECL_TRACER("TLock<_TMutex>::TLock(TLock::mutex_type& __m)");
+//    DECL_TRACER("TLock<_TMutex>::TLock(TLock::mutex_type& __m)");
 
     stripFileName();
     bool death = false;
@@ -74,7 +74,7 @@ TLock<_TMutex>::TLock(mutex_type& __m, bool tryit, char *file, int line)
       mFilename(file),
       mLineNumber(line)
 {
-    DECL_TRACER("TLock<_TMutex>::TLock(mutex_type& __m, bool tryit, char *file, int line)");
+//    DECL_TRACER("TLock<_TMutex>::TLock(mutex_type& __m, bool tryit, char *file, int line)");
 
     stripFileName();
     bool death = false;
@@ -98,13 +98,13 @@ template<typename _TMutex>
 TLock<_TMutex>::TLock(TLock::mutex_type& __m, std::adopt_lock_t) noexcept
     : _M_device(__m)
 {
-    DECL_TRACER("TLock<_TMutex>::TLock(TLock::mutex_type& __m, std::adopt_lock_t) noexcept");
+//    DECL_TRACER("TLock<_TMutex>::TLock(TLock::mutex_type& __m, std::adopt_lock_t) noexcept");
 }
 
 template<typename _TMutex>
 TLock<_TMutex>::~TLock()
 {
-    DECL_TRACER("TLock<_TMutex>::~TLock()");
+//    DECL_TRACER("TLock<_TMutex>::~TLock()");
 
     if (removeLock())
         _M_device.unlock();
@@ -113,7 +113,7 @@ TLock<_TMutex>::~TLock()
 template<typename _TMutex>
 void TLock<_TMutex>::unlock()
 {
-    DECL_TRACER("TLock<_TMutex>::unlock()");
+//    DECL_TRACER("TLock<_TMutex>::unlock()");
 
     if (_locks.empty())
         return;
@@ -131,11 +131,11 @@ void TLock<_TMutex>::unlock()
 
             if (mFilename.empty())
             {
-                MSG_DEBUG("The mutex handle " << iter->native_handle << " was released!");
+                MSG_PROTOCOL("The mutex handle " << iter->native_handle << " was released!");
             }
             else
             {
-                MSG_DEBUG("The mutex handle " << iter->native_handle << " was released on file " << mFilename << " at line " << mLineNumber << "!");
+                MSG_PROTOCOL("The mutex handle " << iter->native_handle << " was released on file " << mFilename << " at line " << mLineNumber << "!");
             }
 
             return;
@@ -146,7 +146,7 @@ void TLock<_TMutex>::unlock()
 template<typename _TMutex>
 void TLock<_TMutex>::unlock(char* file, int line)
 {
-    DECL_TRACER("TLock<_TMutex>::unlock(char* file, int line)");
+//    DECL_TRACER("TLock<_TMutex>::unlock(char* file, int line)");
 
     mFilename = file;
     mLineNumber = line;
@@ -158,7 +158,7 @@ void TLock<_TMutex>::unlock(char* file, int line)
 template<typename _TMutex>
 void TLock<_TMutex>::relock()
 {
-    DECL_TRACER("TLock<_TMutex>::relock(TLock::mutex_type& __m)");
+//    DECL_TRACER("TLock<_TMutex>::relock(TLock::mutex_type& __m)");
 
     if (_locks.empty())
         return;
@@ -198,7 +198,7 @@ bool TLock<_TMutex>::isLocked()
 template<typename _TMutex>
 void TLock<_TMutex>::setNoDeathLock(bool l)
 {
-    DECL_TRACER("TLock<_TMutex>::setNoDeathLock(bool l)");
+//    DECL_TRACER("TLock<_TMutex>::setNoDeathLock(bool l)");
 
     mNoDeathLock = l;
     vector<__LOCKLIST_t>::iterator iter;
@@ -218,7 +218,7 @@ void TLock<_TMutex>::setNoDeathLock(bool l)
 template<typename _TMutex>
 bool TLock<_TMutex>::addLock(bool *death)
 {
-    DECL_TRACER("TLock<_TMutex>::addLock(bool *death)");
+//    DECL_TRACER("TLock<_TMutex>::addLock(bool *death)");
 
     __LOCKLIST_t lc;
     lc.state = true;
@@ -231,11 +231,11 @@ bool TLock<_TMutex>::addLock(bool *death)
 
         if (mFilename.empty())
         {
-            MSG_DEBUG("Lock for mutex handle " << lc.native_handle << " was added.");
+            MSG_PROTOCOL("Lock for mutex handle " << lc.native_handle << " was added.");
         }
         else
         {
-            MSG_DEBUG("Lock for mutex handle " << lc.native_handle << " was added on file " << mFilename << " at line " << mLineNumber << ".");
+            MSG_PROTOCOL("Lock for mutex handle " << lc.native_handle << " was added on file " << mFilename << " at line " << mLineNumber << ".");
         }
 
         if (death)
@@ -286,11 +286,11 @@ bool TLock<_TMutex>::addLock(bool *death)
 
                 if (mFilename.empty())
                 {
-                    MSG_DEBUG("Lock for mutex handle " << iter->native_handle << " was reactivated.");
+                    MSG_PROTOCOL("Lock for mutex handle " << iter->native_handle << " was reactivated.");
                 }
                 else
                 {
-                    MSG_DEBUG("Lock for mutex handle " << iter->native_handle << " was reactivated on file " << mFilename << " at line " << mLineNumber << ".");
+                    MSG_PROTOCOL("Lock for mutex handle " << iter->native_handle << " was reactivated on file " << mFilename << " at line " << mLineNumber << ".");
                 }
 
                 return true;
@@ -302,11 +302,11 @@ bool TLock<_TMutex>::addLock(bool *death)
 
     if (mFilename.empty())
     {
-        MSG_DEBUG("Lock for mutex handle " << lc.native_handle << " was added.");
+        MSG_PROTOCOL("Lock for mutex handle " << lc.native_handle << " was added.");
     }
     else
     {
-        MSG_DEBUG("Lock for mutex handle " << lc.native_handle << " was added on file " << mFilename << " at line " << mLineNumber << ".");
+        MSG_PROTOCOL("Lock for mutex handle " << lc.native_handle << " was added on file " << mFilename << " at line " << mLineNumber << ".");
     }
 
     if (death)
@@ -318,7 +318,7 @@ bool TLock<_TMutex>::addLock(bool *death)
 template<typename _TMutex>
 void TLock<_TMutex>::wait()
 {
-    DECL_TRACER("TLock<_TMutex>::wait()");
+//    DECL_TRACER("TLock<_TMutex>::wait()");
 
     int loops = 100;
 
@@ -335,7 +335,7 @@ void TLock<_TMutex>::wait()
 template<typename _TMutex>
 bool TLock<_TMutex>::removeLock()
 {
-    DECL_TRACER("TLock<_TMutex>::removeLock(__LOCKLIST_t& e)");
+//    DECL_TRACER("TLock<_TMutex>::removeLock(__LOCKLIST_t& e)");
 
     if (_locks.empty())
         return false;
@@ -349,11 +349,11 @@ bool TLock<_TMutex>::removeLock()
         {
             if (mFilename.empty())
             {
-                MSG_DEBUG("Lock for mutex handle " << iter->native_handle << " will be removed.");
+                MSG_PROTOCOL("Lock for mutex handle " << iter->native_handle << " will be removed.");
             }
             else
             {
-                MSG_DEBUG("Lock for mutex handle " << iter->native_handle << " will be removed on file " << mFilename << " at line " << mLineNumber << ".");
+                MSG_PROTOCOL("Lock for mutex handle " << iter->native_handle << " will be removed on file " << mFilename << " at line " << mLineNumber << ".");
             }
 
             bool ret = iter->state;
@@ -368,7 +368,7 @@ bool TLock<_TMutex>::removeLock()
 template<typename _TMutex>
 void TLock<_TMutex>::stripFileName()
 {
-    DECL_TRACER("TLock<_TMutex>::stripFileName()");
+//    DECL_TRACER("TLock<_TMutex>::stripFileName()");
 
     if (mFilename.empty())
         return;

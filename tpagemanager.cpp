@@ -1430,6 +1430,12 @@ void TPageManager::showSetup()
             _stopWait();
     }
 
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "setLogLevel", "(Ljava/lang/Integer;)V", TConfig::getLogLevelBits());
+#else
+    QJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "setLogLevel", "(I)V", TConfig::getLogLevelBits());
+#endif
+
     enterSetup();
 /*    if (mSetupActive)
         return;

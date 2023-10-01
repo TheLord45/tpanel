@@ -1715,7 +1715,7 @@ void MainWindow::createActions()
     mToolbar->setAllowedAreas(Qt::RightToolBarArea);
     mToolbar->setFloatable(false);
     mToolbar->setMovable(false);
-#ifdef Q_OS_ANDROID
+#if defined(Q_OS_ANDROID) && QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     if (isScaled())
     {
         int width = (int)((double)gPageManager->getSettings()->getWidth() * gScale);
@@ -1733,7 +1733,21 @@ void MainWindow::createActions()
         QSize iSize(icWidth, icWidth);
         mToolbar->setIconSize(iSize);
     }
-#endif  // Q_OS_ANDROID
+#endif  // QT_VERSION
+#if (defined(Q_OS_ANDROID) || defined(Q_OS_IOS)) && QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    if (isScaled())
+    {
+        int panwidth = (int)((double)gPageManager->getSettings()->getWidth() * gScale);
+        int toolwidth = mToolbar->width();
+
+        if ((gFullWidth - panwidth) < toolwidth && !TConfig::getToolbarForce())
+        {
+            delete mToolbar;
+            mToolbar = nullptr;
+            return;
+        }
+    }
+#endif
 #else
     mToolbar->setFloatable(true);
     mToolbar->setMovable(true);
@@ -5531,6 +5545,11 @@ void MainWindow::playSound(const string& file)
         mAudioOutput = new QAudioOutput;
         mMediaPlayer->setAudioOutput(mAudioOutput);
 #endif
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+        connect(mMediaPlayer, &QMediaPlayer::playingChanged, this, &MainWindow::onPlayingChanged);
+#endif
+        connect(mMediaPlayer, &QMediaPlayer::mediaStatusChanged, this, &MainWindow::onMediaStatusChanged);
+        connect(mMediaPlayer, &QMediaPlayer::errorOccurred, this, &MainWindow::onPlayerError);
     }
 
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
@@ -5553,12 +5572,15 @@ void MainWindow::playSound(const string& file)
     }
 #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
     if (mMediaPlayer->isPlaying())
-        mMediaPlayer->stop();
+        mMediaPlayer->setPosition(0);
+//        mMediaPlayer->stop();
 #else
     if (mMediaPlayer->playbackState() != QMediaPlayer::StoppedState)
         mMediaPlayer->stop();
-#endif  // #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+
     mMediaPlayer->setPosition(0);
+#endif  // #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+
 #endif  // QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     mMediaPlayer->play();
 #if TESTMODE == 1
@@ -5629,6 +5651,47 @@ void MainWindow::setVolume(int volume)
     setAllDone();
 #endif  // TESTMODE
 #endif  // QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+}
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+void MainWindow::onPlayingChanged(bool playing)
+{
+    DECL_TRACER("MainWindow::onPlayingChanged(bool playing)");
+
+    // If playing stopped for whatever reason, we rewind the track
+    if (!playing && mMediaPlayer)
+    {
+        mMediaPlayer->setPosition(0);
+        MSG_DEBUG("Track was rewound.");
+    }
+}
+#endif
+
+void MainWindow::onMediaStatusChanged(QMediaPlayer::MediaStatus status)
+{
+    DECL_TRACER("MainWindow::onMediaStatusChanged(QMediaPlayer::MediaStatus status)");
+
+    switch(status)
+    {
+        case QMediaPlayer::NoMedia:         MSG_WARNING("The is no current media."); break;
+        case QMediaPlayer::LoadingMedia:    MSG_INFO("The current media is being loaded."); break;
+        case QMediaPlayer::LoadedMedia:     MSG_INFO("The current media has been loaded."); break;
+        case QMediaPlayer::StalledMedia:    MSG_WARNING("Playback of the current media has stalled due to insufficient buffering or some other temporary interruption."); break;
+        case QMediaPlayer::BufferingMedia:  MSG_INFO("The player is buffering data but has enough data buffered for playback to continue for the immediate future."); break;
+        case QMediaPlayer::BufferedMedia:   MSG_INFO("The player has fully buffered the current media."); break;
+        case QMediaPlayer::EndOfMedia:      MSG_INFO("Playback has reached the end of the current media."); break;
+        case QMediaPlayer::InvalidMedia:    MSG_WARNING("The current media cannot be played.");
+    }
+}
+
+void MainWindow::onPlayerError(QMediaPlayer::Error error, const QString &errorString)
+{
+    DECL_TRACER("MainWindow::onPlayerError(QMediaPlayer::Error error, const QString &errorString)");
+
+    if (error == QMediaPlayer::NoError)
+        return;
+
+    MSG_ERROR("Media player error (" << error << "): " << errorString.toStdString());
 }
 
 void MainWindow::playShowList()

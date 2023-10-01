@@ -23,6 +23,8 @@
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 #include <QGeoPositionInfoSource>
 #endif
+#include "QMediaPlayer"
+
 #include "tpagemanager.h"
 #include "tobject.h"
 #include "tqemitqueue.h"
@@ -44,7 +46,7 @@ class QMoveEvent;
 class QGestureEvent;
 class QEvent;
 class QSound;
-class QMediaPlayer;
+//class QMediaPlayer;
 class QOrientationSensor;
 class QStackedWidget;
 class QListWidgetItem;
@@ -246,6 +248,11 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
         void startWait(const std::string& text);
         void stopWait();
         void pageFinished(ulong handle);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+        void onPlayingChanged(bool plying);
+#endif
+        void onPlayerError(QMediaPlayer::Error error, const QString &errorString);
+        void onMediaStatusChanged(QMediaPlayer::MediaStatus status);
 
     private:
         bool gestureEvent(QGestureEvent *event);
