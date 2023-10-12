@@ -68,7 +68,7 @@ TQKeypad::TQKeypad(const std::string& init, const std::string& prompt, QWidget *
     if (!mPrivate)
         ui->label_TextLine->setText(init.c_str());
     else
-        ui->label_TextLine->setText(fillString('*', mText.length()).c_str());
+        ui->label_TextLine->setText(fillString('*', (int)mText.length()).c_str());
 
     MSG_DEBUG("Dialog was initialized.");
 }
@@ -162,7 +162,7 @@ void TQKeypad::setKey(Ui::KEYSP_t key)
     if (!mPrivate)
         ui->label_TextLine->setText(mText.c_str());
     else
-        ui->label_TextLine->setText(fillString('*', mText.length()).c_str());
+        ui->label_TextLine->setText(fillString('*', (int)mText.length()).c_str());
 
     if (getSystemSoundState())
     {
@@ -201,7 +201,7 @@ void TQKeypad::setString(const std::string& str)
     if (!mPrivate)
         ui->label_TextLine->setText(mText.c_str());
     else
-        ui->label_TextLine->setText(fillString('*', mText.length()).c_str());
+        ui->label_TextLine->setText(fillString('*', (int)mText.length()).c_str());
 }
 
 int TQKeypad::scale(int value)

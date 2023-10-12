@@ -107,7 +107,7 @@ TQKeyboard::TQKeyboard(const std::string& init, const std::string& prompt, QWidg
     if (!mPrivate)
         ui->label_TextLine->setText(init.c_str());
     else
-        ui->label_TextLine->setText(fillString('*', mText.length()).c_str());
+        ui->label_TextLine->setText(fillString('*', (int)mText.length()).c_str());
 }
 
 TQKeyboard::~TQKeyboard()
@@ -240,7 +240,7 @@ void TQKeyboard::setKey(Ui::KEYS_t key)
     if (!mPrivate)
         ui->label_TextLine->setText(mText.c_str());
     else
-        ui->label_TextLine->setText(fillString('*', mText.length()).c_str());
+        ui->label_TextLine->setText(fillString('*', (int)mText.length()).c_str());
 
     if (getSystemSoundState())
     {
@@ -281,7 +281,7 @@ void TQKeyboard::setString(const std::string& str)
     if (!mPrivate)
         ui->label_TextLine->setText(mText.c_str());
     else
-        ui->label_TextLine->setText(fillString('*', mText.length()).c_str());
+        ui->label_TextLine->setText(fillString('*', (int)mText.length()).c_str());
 }
 
 int TQKeyboard::scale(int value)

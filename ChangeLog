@@ -3,6 +3,10 @@ ChangeLog
 
 Release: 1.4.0
 ===============================================================================
+2023-10-10 Fixed compiling for iOS.
+           Fixed compiling for Android.
+           Fixed compiling for Linux.
+
 2023-10-01 Improved sound playing.
 
 2023-09-30 Fixed volume control with Qt6.

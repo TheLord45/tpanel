@@ -85,7 +85,7 @@ class TStreamError
         static unsigned int getLogLevel() { return mLogLevel; }
 //        static void logMsg(std::ostream& str);
         static bool checkFilter(terrtype_t err);
-        static bool checkFilter(int lv);
+        static bool checkFilter(unsigned int lv);
         friend std::ostream& indent(std::ostream& os);
         static void incIndent() { mIndent++; }
         static void decIndent();

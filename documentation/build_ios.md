@@ -1,12 +1,14 @@
 # Build for IOS
 
-**TPanel** can be build also for IOS (iPad, iPhone). There exists a file called `tpanel.pro`. This file contains the instructions for the `qmake` tool. It is meant to be used out of _QtCreator_. Start the _QtCreator_ and open this file as a project.
+**TPanel** can be build also for IOS (iPad, iPhone). The _cmake_ configuration contains the necessary options. The easiest way to do this is to use _QtCreator_. Start the _QtCreator_ and open the _cmake_ file `CMakeLists.txt` as a project.
+
+On a Mac with Apple silicon, set _arm64_ as the base architecture (x86_64 is default).
 
 ## Prerequisits
 
 For IOS you need a Mac with *XCode* installed. You need also a developer account and a signature of a developer team if you want to compile the code for a real iPhone or iPad. For details look at [Apple developer](https://developer.apple.com/tutorials/app-dev-training).
 
-To be able to build **TPanel** for IOS you need the following libraries compiled for IOS and MacOS. For MacOS you may need them for the architectures ARM as well as Intel. For IOS you may need versions for 64 bit and 32 bit. It depends on what devices you have.
+To be able to build **TPanel** for IOS you need the following libraries compiled for IOS and MacOS. For MacOS you may need them for the architectures ARM as well as Intel. For IOS you may need versions for 64 bit and 32 bit (from iOS version 17.0 on the 32Bit is no longer supported). It depends on what devices you have.
 
 - Skia
 - PjSIP
@@ -42,17 +44,25 @@ SDKs
 
 ## Build with QtCreator
 
-Start `QtCreator` and load the project file `tpanel.pro`. You must set some things to have the correct paths. Go to the build settings of the project. Expand the **Build steps** and enter into the line **Additional arguments** the following definitions:
+Start `QtCreator` and load the project file `CMakeLists.txt`. If you're on a Mac with Apple silicon (arm64 M1, M2 or newer) then you must set `CMAKE_OSX_ARCHITECTURES` to `arm64` (default: `x86_64`).
 
-- `OS=[IOS|IOSsim|macos]`
-- `EXT_LIB_PATH=<path/to/precompiled/files>`
-
-To make clear what this means I give you an example. We assume that the precompiled libraries (Skia, PjSIP) are installed in your home directory (`/Users/<user>/SDKs`). We want to create an executable for the IOS simulator. Then we must set the _Additional arguments_ to:
-
-`OS=IOS EXT_LIB_PATH=/Users/<user>/SDKs`
-
-Now check the _ABIs_ you want to compile for (only IOS). With this settings you should be able to compile **TPanel** for IOS.
-In case you're building for a real iPhone or iPad you must select in the section **iOS settings** the **development team**.
-In the section **Build environment** check **Clear system environment**. Then append to line **PATH**: `:/usr/bin`
+In case you have unzipped the file `SDKs.tar.bz2` in another directory then the _HOME_-directory, you must specify the path. Add the variable `EXT_LIB_PATH` to the _Current configurations_ of _cmake_. Set it to the path where you've unzipped it.
 
 Now you should be able to compile **TPanel** for IOS.
+
+## Using the script `build_ios.sh`
+
+The repository comes with a shell script called `build_ios.sh`. With it you can compile **TPanel** on the command line. The script offers some parameters:
+```
+build_ios.sh [clean] [debug] [sign] [id <ID>] [help|--help|-h]
+   clean     Delete old build, if there is one, and start a new clean build.
+   debug     Create a binary with debugging enabled.
+   sign      Sign the resulting app.
+   id <ID>   The signing identity (team ID)
+```
+
+For example, start the script as follows:
+
+`./build_ios.sh clean sign`
+
+to build **TPanel** for an iPhone of iPad. If you've problems and get errors, open the script with an editor and adapt the paths and settings according to your needs.

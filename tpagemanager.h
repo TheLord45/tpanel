@@ -56,8 +56,6 @@ extern TPageManager *gPageManager;
 #define NETSTATE_CELL   2
 #endif
 
-extern std::mutex mutex_init;
-
 /**
  * @brief PGSUBVIEWATOM_T
  * This struct contains the elements of an item inside a subview list.

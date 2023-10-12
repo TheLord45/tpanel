@@ -1,8 +1,9 @@
 #!/bin/bash
+set -o pipefail
 #
 # Set the following paths according to your installation.
 #
-QT_VERSION="6.5.2"
+QT_VERSION="6.6.0"
 QT_VERSION_MAJOR=6
 QT_PATH="/opt/Qt"
 QT_ABI="x86_64"
@@ -15,7 +16,14 @@ ANDROID_NDK_PLATFORM="30"
 ANDROID_NDK_ROOT="${ANDROID_HOME}/ndk/25.2.9519653"
 ANDROID_SDK_ROOT="${ANDROID_HOME}"
 ANDROID_PLATFORM="android-$ANDROID_NDK_PLATFORM"
-QTMACROS="${QT_PATH}/Tools/QtCreator/share/qtcreator/package-manager"
+
+if [ ! -z $OSTYPE ] && [[ "$OSTYPE" == *darwin* ]]
+then
+    QTMACROS="${QT_PATH}/Qt?Creator.app/Contents/Resources/package-manager"
+else
+    QTMACROS="${QT_PATH}/Tools/QtCreator/share/qtcreator/package-manager"
+fi
+
 JAVA_HOME="/usr/lib/jvm/java-17-openjdk-amd64"
 
 export PATH="${QT}/Tools/Ninja:${QT}/Tools/CMake/bin:${QTDIR}/bin:$PATH"
@@ -32,12 +40,20 @@ export EXTRA_PATH="$HOME/Android/extras"
 export SSL_PATH="$HOME/Android/openssl"
 #export ANDROID_ABIS="arm64-v8a armeabi-v7a x86_64 x86"
 
-# This programs must be taken from the Qt framework and the Android SDK
+# This programs must be taken from the Qt framework
 QMAKE="$QTDIR/bin/qmake"
-CMAKE="${QT_PATH}/Tools/CMake/bin/cmake"
+
+if [ ! -z $OSTYPE ] && [[ "$OSTYPE" == *darwin* ]]
+then
+    CMAKE="${QT_PATH}/Tools/CMake/CMake.app/Contents/bin/cmake"
+    ANDROIDDEPLOYQT="$QTBASE/macos/bin/androiddeployqt"
+else
+    CMAKE="${QT_PATH}/Tools/CMake/bin/cmake"
+    ANDROIDDEPLOYQT="$QTBASE/gcc_64/bin/androiddeployqt"
+fi
+
 GREP="/usr/bin/grep"
 SED="/usr/bin/sed"
-ANDROIDDEPLOYQT="$QTBASE/gcc_64/bin/androiddeployqt"
 
 #------------------------------------------------------------------------------
 # DO NOT CHANGE ANYTHING BEYOND THIS LINE UNLESS YOU KNOW WHAT YOU'RE DOING!!
@@ -145,7 +161,7 @@ then
             exit 1
         fi
 
-        log "Copiing cmake macros from $QTMACROS ..."
+        log "Copying cmake macros from $QTMACROS ..."
         cp ${QTMACROS}/* ${BUILDDIR}/.qtc/package-manager > /dev/null 2>&1
 
         if [ $? -ne 0 ]

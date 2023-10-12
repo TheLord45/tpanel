@@ -54,7 +54,7 @@
 #include <QUrl>
 #include <QThread>
 #ifdef Q_OS_IOS
-#include <QOrientationSensor>
+#include <QtSensors/QOrientationSensor>
 #endif
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 #   include <QSound>
@@ -902,6 +902,9 @@ void MainWindow::_activateSettings(const std::string& oldNetlinx, int oldPort, i
 {
     DECL_TRACER("MainWindow::_activateSettings(const std::string& oldNetlinx, int oldPort, int oldChannelID, const std::string& oldSurface, bool oldToolbarSuppress, bool oldToolbarForce)");
 
+    if (!mHasFocus)
+        return;
+
     emit sigActivateSettings(oldNetlinx, oldPort, oldChannelID, oldSurface, oldToolbarSuppress, oldToolbarForce);
 }
 
@@ -1079,21 +1082,24 @@ void MainWindow::_repaintWindows()
 {
     DECL_TRACER("MainWindow::_repaintWindows()");
 
-    emit sigRepaintWindows();
+    if (mHasFocus)
+        emit sigRepaintWindows();
 }
 
 void MainWindow::_toFront(ulong handle)
 {
     DECL_TRACER("MainWindow::_toFront(ulong handle)");
 
-    emit sigToFront(handle);
+    if (mHasFocus)
+        emit sigToFront(handle);
 }
 
 void MainWindow::_downloadSurface(const string &file, size_t size)
 {
     DECL_TRACER("MainWindow::_downloadSurface(const string &file, size_t size)");
 
-    emit sigDownloadSurface(file, size);
+    if (mHasFocus)
+        emit sigDownloadSurface(file, size);
 }
 
 void MainWindow::_startWait(const string& text)
@@ -2103,7 +2109,7 @@ void MainWindow::animationInFinished()
         return;
     }
 
-    TLOCKER(anim_mutex);
+//    TLOCKER(anim_mutex);
     map<ulong, OBJECT_t *>::iterator iter;
 
     for (iter = mAnimObjects.begin(); iter != mAnimObjects.end(); ++iter)
@@ -2162,7 +2168,7 @@ void MainWindow::animationFinished()
         return;
     }
 
-    TLOCKER(anim_mutex);
+//    TLOCKER(anim_mutex);
     map<ulong, OBJECT_t *>::iterator iter;
 
     for (iter = mAnimObjects.begin(); iter != mAnimObjects.end(); ++iter)
@@ -2626,9 +2632,6 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
 #else
             QJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
 #endif
-//#elif defined(Q_OS_IOS)
-//            if (mIosRotate)
-//                mIosRotate->automaticRotation(false);
 #endif
         break;
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)      // On a normal desktop we can ignore this signals
@@ -2659,6 +2662,14 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
 #endif
         case Qt::ApplicationActive:
             MSG_INFO("Switched to mode ACTIVE");
+/*
+#ifdef Q_OS_ANDROID
+            // On Android we must give the surface some time to recover.
+            // Otherwise it may freeze or stay black and the app doesn't
+            // react any more.
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+#endif
+*/
             mHasFocus = true;
 
             if (!isRunning && gPageManager)
@@ -2718,10 +2729,10 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0) && defined(Q_OS_ANDROID)
                 _freezeWorkaround();
 #endif
-                playShowList();
+//                playShowList();
 
-                if (mDoRepaint && mWasInactive)
-                    repaintObjects();
+//                if (mDoRepaint && mWasInactive)
+//                    repaintObjects();
 
                 mDoRepaint = false;
                 mWasInactive = false;
@@ -2733,7 +2744,7 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
             QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "resumeOrientationListener", "()V");
 #else
             QJniObject activity = QNativeInterface::QAndroidApplication::context();
-            QJniObject::callStaticMethod<void>("org/qtproject/theosys/HideToolbar", "hide", "(Landroid/app/Activity;Z)V", activity.object(), true);
+//            QJniObject::callStaticMethod<void>("org/qtproject/theosys/HideToolbar", "hide", "(Landroid/app/Activity;Z)V", activity.object(), true);
             QJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "resumeOrientationListener", "()V");
 #endif
 #endif
@@ -2805,15 +2816,15 @@ void MainWindow::_displayButton(ulong handle, ulong parent, TBitmap buffer, int 
 {
     DECL_TRACER("MainWindow::_displayButton(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough)");
 
-    if (prg_stopped)
+    if (prg_stopped || ! mHasFocus)
         return;
-
+/*
     if (!mHasFocus)     // Suspended?
     {
         addButton(handle, parent, buffer, left, top, width, height, passthrough);
         return;
     }
-
+*/
     emit sigDisplayButton(handle, parent, buffer, width, height, left, top, passthrough);
 }
 
@@ -2821,15 +2832,15 @@ void MainWindow::_displayViewButton(ulong handle, ulong parent, bool vertical, T
 {
     DECL_TRACER("MainWindow::_displayViewButton(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top)");
 
-    if (prg_stopped)
+    if (prg_stopped || !mHasFocus)
         return;
-
+/*
     if (!mHasFocus)     // Suspended?
     {
         addViewButton(handle, parent, vertical, buffer, left, top, width, height, space, fillColor);
         return;
     }
-
+*/
     emit sigDisplayViewButton(handle, parent, vertical, buffer, width, height, left, top, space, fillColor);
 }
 
@@ -2837,75 +2848,68 @@ void MainWindow::_addViewButtonItems(ulong parent, vector<PGSUBVIEWITEM_T> items
 {
     DECL_TRACER("MainWindow::_addViewButtonItems(ulong parent, vector<PGSUBVIEWITEM_T> items)");
 
-    if (prg_stopped)
+    if (prg_stopped || !mHasFocus)
         return;
 
-    try
-    {
-        emit sigAddViewButtonItems(parent, items);
-    }
-    catch(std::exception& e)
-    {
-        MSG_ERROR("Error triggering function \"addViewButtonItems()\": " << e.what());
-    }
+    emit sigAddViewButtonItems(parent, items);
 }
 
 void MainWindow::_updateViewButton(ulong handle, ulong parent, TBitmap buffer, TColor::COLOR_T fillColor)
 {
     DECL_TRACER("MainWindow::_updateViewButton(ulong handle, ulong parent, TBitmap buffer, TColor::COLOR_T fillColor)");
 
-    if (prg_stopped)
+    if (prg_stopped || !mHasFocus)
         return;
 
-    try
-    {
+//    try
+//    {
         emit sigUpdateViewButton(handle, parent, buffer, fillColor);
-    }
-    catch (std::exception& e)
-    {
-        MSG_ERROR("Error triggering function \"updateViewButton()\": " << e.what());
-    }
+//    }
+//    catch (std::exception& e)
+//    {
+//        MSG_ERROR("Error triggering function \"updateViewButton()\": " << e.what());
+//    }
 }
 
 void MainWindow::_updateViewButtonItem(PGSUBVIEWITEM_T& item, ulong parent)
 {
     DECL_TRACER("MainWindow::_updateViewButtonItem(PGSUBVIEWITEM_T& item, ulong parent)");
 
-    if (prg_stopped)
+    if (prg_stopped || !mHasFocus)
         return;
 
-    try
-    {
+//    try
+//    {
         emit sigUpdateViewButtonItem(item, parent);
-    }
-    catch (std::exception& e)
-    {
-        MSG_ERROR("Error triggering function \"updateViewButtonItem()\": " << e.what());
-    }
+//    }
+//    catch (std::exception& e)
+//    {
+//        MSG_ERROR("Error triggering function \"updateViewButtonItem()\": " << e.what());
+//    }
 }
 
 void MainWindow::_showViewButtonItem(ulong handle, ulong parent, int position, int timer)
 {
     DECL_TRACER("MainWindow::_showViewButtonItem(ulong handle, ulong parent, int position, int timer)");
 
-    if (prg_stopped)
+    if (prg_stopped || !mHasFocus)
         return;
 
-    try
-    {
+//    try
+//    {
         emit sigShowViewButtonItem(handle, parent, position, timer);
-    }
-    catch (std::exception& e)
-    {
-        MSG_ERROR("Error triggering function \"showViewButtonItem()\": " << e.what());
-    }
+//    }
+//    catch (std::exception& e)
+//    {
+//        MSG_ERROR("Error triggering function \"showViewButtonItem()\": " << e.what());
+//    }
 }
 
 void MainWindow::_hideAllViewItems(ulong handle)
 {
     DECL_TRACER("MainWindow::_hideAllViewItems(ulong handle)");
 
-    if (prg_stopped)
+    if (prg_stopped || !mHasFocus)
         return;
 
     emit sigHideAllViewItems(handle);
@@ -2915,7 +2919,7 @@ void MainWindow::_toggleViewButtonItem(ulong handle, ulong parent, int position,
 {
     DECL_TRACER("MainWindow::_toggleViewButtonItem(ulong handle, ulong parent, int position, int timer)");
 
-    if (prg_stopped)
+    if (prg_stopped || !mHasFocus)
         return;
 
     emit sigToggleViewButtonItem(handle, parent, position, timer);
@@ -2925,7 +2929,7 @@ void MainWindow::_hideViewItem(ulong handle, ulong parent)
 {
     DECL_TRACER("MainWindow::_hideViewItem(ulong handle, ulong parent)");
 
-    if (prg_stopped)
+    if (prg_stopped || !mHasFocus)
         return;
 
     emit sigHideViewItem(handle, parent);
@@ -2935,7 +2939,7 @@ void MainWindow::_setVisible(ulong handle, bool state)
 {
     DECL_TRACER("MainWindow::_setVisible(ulong handle, bool state)");
 
-    if (prg_stopped)
+    if (prg_stopped || !mHasFocus)
         return;
 
     emit sigSetVisible(handle, state);
@@ -2945,7 +2949,7 @@ void MainWindow::_setSubViewPadding(ulong handle, int padding)
 {
     DECL_TRACER("MainWindow::_setSubViewPadding(ulong handle, int padding)");
 
-    if (prg_stopped)
+    if (prg_stopped || !mHasFocus)
         return;
 
     emit sigSetSubViewPadding(handle, padding);
@@ -2955,15 +2959,15 @@ void MainWindow::_setPage(ulong handle, int width, int height)
 {
     DECL_TRACER("MainWindow::_setPage(ulong handle, int width, int height)");
 
-    if (prg_stopped)
+    if (prg_stopped || !mHasFocus)
         return;
-
+/*
     if (!mHasFocus)
     {
         addPage(handle, width, height);
         return;
     }
-
+*/
     emit sigSetPage(handle, width, height);
 }
 
@@ -2971,19 +2975,16 @@ void MainWindow::_setSubPage(ulong handle, ulong parent, int left, int top, int 
 {
     DECL_TRACER("MainWindow::_setSubPage(ulong handle, ulong parent, int left, int top, int width, int height)");
 
-    if (prg_stopped)
+    if (prg_stopped || !mHasFocus)
         return;
-
+/*
     if (!mHasFocus)
     {
         addSubPage(handle, parent, left, top, width, height, animate);
         return;
     }
-
+*/
     emit sigSetSubPage(handle, parent, left, top, width, height, animate);
-//#ifndef Q_OS_ANDROID
-//    std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT));
-//#endif
 }
 
 #ifdef _OPAQUE_SKIA_
@@ -2994,9 +2995,9 @@ void MainWindow::_setBackground(ulong handle, TBitmap image, int width, int heig
 {
     DECL_TRACER("MainWindow::_setBackground(ulong handle, TBitmap image, int width, int height, ulong color [, int opacity])");
 
-    if (prg_stopped)
+    if (prg_stopped || !mHasFocus)
         return;
-
+/*
     if (!mHasFocus)
     {
 #ifdef _OPAQUE_SKIA_
@@ -3006,7 +3007,7 @@ void MainWindow::_setBackground(ulong handle, TBitmap image, int width, int heig
 #endif
         return;
     }
-
+*/
 #ifdef _OPAQUE_SKIA_
     emit sigSetBackground(handle, image, width, height, color);
 #else
@@ -3018,14 +3019,17 @@ void MainWindow::_dropPage(ulong handle)
 {
     DECL_TRACER("MainWindow::_dropPage(ulong handle)");
 
-    doReleaseButton();
+    if (!mHasFocus)
+        return;
 
+    doReleaseButton();
+/*
     if (!mHasFocus)
     {
         markDrop(handle);
         return;
     }
-
+*/
     emit sigDropPage(handle);
 }
 
@@ -3033,62 +3037,63 @@ void MainWindow::_dropSubPage(ulong handle, ulong parent)
 {
     DECL_TRACER("MainWindow::_dropSubPage(ulong handle, ulong parent)");
 
-    doReleaseButton();
+    if (!mHasFocus)
+        return;
 
+    doReleaseButton();
+/*
     if (!mHasFocus)
     {
         markDrop(handle);
         return;
     }
-
+*/
     emit sigDropSubPage(handle, parent);
 }
 
 void MainWindow::_dropButton(ulong handle)
 {
     DECL_TRACER("MainWindow::_dropButton(ulong handle)");
-
+/*
     if (!mHasFocus)
     {
         markDrop(handle);
         return;
     }
-
-    emit sigDropButton(handle);
+*/
+    if (mHasFocus)
+        emit sigDropButton(handle);
 }
 
 void MainWindow::_playVideo(ulong handle, ulong parent, int left, int top, int width, int height, const string& url, const string& user, const string& pw)
 {
     DECL_TRACER("MainWindow::_playVideo(ulong handle, const string& url)");
 
-    if (prg_stopped)
+    if (prg_stopped || !mHasFocus)
         return;
-
+/*
     if (!mHasFocus)
     {
         addVideo(handle, parent, left, top, width, height, url, user, pw);
         return;
     }
-
+*/
     emit sigPlayVideo(handle, parent, left, top, width, height, url, user, pw);
-//#ifndef Q_OS_ANDROID
-//    std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT));
-//#endif
 }
 
 void MainWindow::_inputText(Button::TButton *button, Button::BITMAP_t& bm, int frame)
 {
     DECL_TRACER("MainWindow::_inputText(Button::TButton *button, Button::BITMAP_t& bm, int frame)");
 
-    if (prg_stopped || !button)
+    if (prg_stopped || !button || !mHasFocus)
         return;
-
+/*
     if (!mHasFocus)
     {
         addInText(button->getHandle(), button, bm, frame);
         return;
     }
-
+*/
     QByteArray buf;
 
     if (bm.buffer && bm.rowBytes > 0)
@@ -3098,24 +3103,21 @@ void MainWindow::_inputText(Button::TButton *button, Button::BITMAP_t& bm, int f
     }
 
     emit sigInputText(button, buf, bm.width, bm.height, frame, bm.rowBytes);
-//#ifndef Q_OS_ANDROID
-//    std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT));
-//#endif
 }
 
 void MainWindow::_listBox(Button::TButton *button, Button::BITMAP_t& bm, int frame)
 {
     DECL_TRACER("MainWindow::_listBox(Button::TButton& button, Button::BITMAP_t& bm, int frame)");
 
-    if (prg_stopped)
+    if (prg_stopped || !mHasFocus)
         return;
-
+/*
     if (!mHasFocus)
     {
         addListBox(button, bm, frame);
         return;
     }
-
+*/
     QByteArray buf;
 
     if (bm.buffer && bm.rowBytes > 0)
@@ -3131,7 +3133,7 @@ void MainWindow::_showKeyboard(const std::string& init, const std::string& promp
 {
     DECL_TRACER("MainWindow::_showKeyboard(std::string &init, std::string &prompt, bool priv)");
 
-    if (prg_stopped)
+    if (prg_stopped || !mHasFocus)
         return;
 
     doReleaseButton();
@@ -3142,7 +3144,7 @@ void MainWindow::_showKeypad(const std::string& init, const std::string& prompt,
 {
     DECL_TRACER("MainWindow::_showKeypad(std::string &init, std::string &prompt, bool priv)");
 
-    if (prg_stopped)
+    if (prg_stopped || mHasFocus)
         return;
 
     doReleaseButton();
@@ -3153,42 +3155,48 @@ void MainWindow::_resetKeyboard()
 {
     DECL_TRACER("MainWindow::_resetKeyboard()");
 
-    emit sigResetKeyboard();
+    if (mHasFocus)
+        emit sigResetKeyboard();
 }
 
 void MainWindow::_showSetup()
 {
     DECL_TRACER("MainWindow::_showSetup()");
 
-    emit sigShowSetup();
+    if (mHasFocus)
+        emit sigShowSetup();
 }
 
 void MainWindow::_playSound(const string& file)
 {
     DECL_TRACER("MainWindow::_playSound(const string& file)");
 
-    emit sigPlaySound(file);
+    if (mHasFocus)
+        emit sigPlaySound(file);
 }
 
 void MainWindow::_stopSound()
 {
     DECL_TRACER("MainWindow::_stopSound()");
 
-    emit sigStopSound();
+    if (mHasFocus)
+        emit sigStopSound();
 }
 
 void MainWindow::_muteSound(bool state)
 {
     DECL_TRACER("MainWindow::_muteSound(bool state)");
 
-    emit sigMuteSound(state);
+    if (mHasFocus)
+        emit sigMuteSound(state);
 }
 
 void MainWindow::_setVolume(int volume)
 {
     DECL_TRACER("MainWindow::_setVolume(int volume)");
 
-    emit sigSetVolume(volume);
+    if (mHasFocus)
+        emit sigSetVolume(volume);
 }
 
 void MainWindow::_setOrientation(J_ORIENTATION ori)
@@ -3250,49 +3258,56 @@ void MainWindow::_sendVirtualKeys(const string& str)
 {
     DECL_TRACER("MainWindow::_sendVirtualKeys(const string& str)");
 
-    emit sigSendVirtualKeys(str);
+    if (mHasFocus)
+        emit sigSendVirtualKeys(str);
 }
 
 void MainWindow::_showPhoneDialog(bool state)
 {
     DECL_TRACER("MainWindow::_showPhoneDialog(bool state)");
 
-    emit sigShowPhoneDialog(state);
+    if (mHasFocus)
+        emit sigShowPhoneDialog(state);
 }
 
 void MainWindow::_setPhoneNumber(const std::string& number)
 {
     DECL_TRACER("MainWindow::_setPhoneNumber(const std::string& number)");
 
-    emit sigSetPhoneNumber(number);
+    if (mHasFocus)
+        emit sigSetPhoneNumber(number);
 }
 
 void MainWindow::_setPhoneStatus(const std::string& msg)
 {
     DECL_TRACER("MainWindow::_setPhoneStatus(const std::string& msg)");
 
-    emit sigSetPhoneStatus(msg);
+    if (mHasFocus)
+        emit sigSetPhoneStatus(msg);
 }
 
 void MainWindow::_setPhoneState(int state, int id)
 {
     DECL_TRACER("MainWindow::_setPhoneState(int state, int id)");
 
-    emit sigSetPhoneState(state, id);
+    if (mHasFocus)
+        emit sigSetPhoneState(state, id);
 }
 
 void MainWindow::_onProgressChanged(int percent)
 {
     DECL_TRACER("MainWindow::_onProgressChanged(int percent)");
 
-    emit sigOnProgressChanged(percent);
+    if (mHasFocus)
+        emit sigOnProgressChanged(percent);
 }
 
 void MainWindow::_displayMessage(const string &msg, const string &title)
 {
     DECL_TRACER("MainWindow::_displayMessage(const string &msg, const string &title)");
 
-    emit sigDisplayMessage(msg, title);
+    if (mHasFocus)
+        emit sigDisplayMessage(msg, title);
 }
 
 void MainWindow::_fileDialog(ulong handle, const string &path, const std::string& extension, const std::string& suffix)
@@ -3330,14 +3345,15 @@ void MainWindow::_listViewArea(ulong handle, ulong parent, Button::TButton& butt
         return;
     }
 
-    emit sigListViewArea(handle, parent, button, list);
+    if (mHasFocus)
+        emit sigListViewArea(handle, parent, button, list);
 }
 
 void MainWindow::doReleaseButton()
 {
     DECL_TRACER("MainWindow::doReleaseButton()");
 
-    if (mLastPressX >= 0 && mLastPressX >= 0 && gPageManager)
+    if (mLastPressX >= 0 && mLastPressY >= 0 && gPageManager)
     {
         MSG_DEBUG("Sending outstanding mouse release event for coordinates x" << mLastPressX << ", y" << mLastPressY);
         int x = mLastPressX;
@@ -3368,7 +3384,7 @@ void MainWindow::repaintObjects()
 {
     DECL_TRACER("MainWindow::repaintObjects()");
 
-    TLOCKER(draw_mutex);
+//    TLOCKER(draw_mutex);
 #ifdef Q_OS_ANDROID
     std::this_thread::sleep_for(std::chrono::milliseconds(200));    // Necessary for slow devices
 #endif
@@ -4254,7 +4270,7 @@ void MainWindow::setPage(ulong handle, int width, int height)
         return;
     }
 
-    TLOCKER(draw_mutex);
+//    TLOCKER(draw_mutex);
     QWidget *wBackground = centralWidget();
 
     if (!wBackground)
@@ -4501,7 +4517,7 @@ void MainWindow::setBackground(ulong handle, TBitmap image, int width, int heigh
 void MainWindow::setBackground(ulong handle, TBitmap image, int width, int height, ulong color, int opacity)
 #endif
 {
-    TLOCKER(draw_mutex);
+//    TLOCKER(draw_mutex);
     DECL_TRACER("MainWindow::setBackground(ulong handle, TBitmap image, ulong color [, int opacity])");
 
     if (!mCentralWidget)
@@ -5887,7 +5903,7 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
         return false;
     }
 
-    TLOCKER(anim_mutex);
+//    TLOCKER(anim_mutex);
     int scLeft = obj->left;
     int scTop = obj->top;
     int scWidth = obj->width;

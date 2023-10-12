@@ -29,13 +29,22 @@ To install Qt I recommend to download the open source version from [Open Source 
 ## Compile for Linux desktop
 First [download the source](https://github.com/TheLord45/tpanel) into a directory. Then enter the directory and type the following commands.
 
-    $ mkdir build
-    $ cmake -B build -DCMAKE_PREFIX_PATH="/<path>/<to>/Qt/6.5.2/gcc_64/lib/cmake"
+    $ cmake -B build -DCMAKE_PREFIX_PATH="/<path>/<to>/Qt/6.x.x/gcc_64/lib/cmake"
     $ cd build
     $ make
     $ sudo make install
 
 > Replace `<path>/<to>/` with the path to your Qt installation (usualy `/opt/Qt`).
+
+## Compile on MacOSX
+First [download the source](https://github.com/TheLord45/tpanel) into a directory. Then enter the directory and type the following commands.
+
+    $ cmake -B build -DCMAKE_PREFIX_PATH="/<path>/<to>/Qt/6.x.x/macos/lib/cmake:/<path>/<to>/homebrew/lib/cmake"
+    $ cd build
+    $ ninja
+    $ sudo ninja --target install
+
+> Replace `<path>/<to>/` with the path to your Qt installation and to homebrew (usualy `$HOME/Qt`, `/opt/homebrew`).
 
 If everything compiled successful and installed, you can start the application. There is a setup dialog included. It depends on the operating system of how this setup looks like.
 

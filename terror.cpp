@@ -264,12 +264,18 @@ bool TStreamError::checkFilter(terrtype_t err)
     return false;
 }
 
-bool TStreamError::checkFilter(int lv)
+bool TStreamError::checkFilter(unsigned int lv)
 {
     if (!TConfig::isInitialized())
         return false;
 
-    if ((mLogLevel & lv) != 0)
+    if ((mLogLevel & HLOG_INFO) != 0 &&
+        (mLogLevel & HLOG_WARNING) != 0 &&
+        (mLogLevel & HLOG_ERROR) != 0 &&
+        lv == HLOG_PROTOCOL)
+        return true;
+
+    if ((mLogLevel & lv) != 0 && lv != HLOG_PROTOCOL)
         return true;
 
     return false;

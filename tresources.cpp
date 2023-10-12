@@ -492,7 +492,7 @@ string cp1250ToUTF8(const string& str)
 string UTF8ToCp1250(const string& str)
 {
     DECL_TRACER("UTF8ToCp1250(const string& str)");
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || (defined(__APPLE__) && (TARGET_OS_IOS || TARGET_OS_SIMULATOR))
     string out;
     string::const_iterator iter;
     bool three = false;
@@ -633,7 +633,7 @@ string toUpper(string& str)
 {
     string::iterator iter;
 
-    for (iter = str.begin(); iter != str.end(); iter++)
+    for (iter = str.begin(); iter != str.end(); ++iter)
         *iter = std::toupper(*iter);
 
     return str;
@@ -643,7 +643,7 @@ string toLower(string& str)
 {
     string::iterator iter;
 
-    for (iter = str.begin(); iter != str.end(); iter++)
+    for (iter = str.begin(); iter != str.end(); ++iter)
         *iter = std::tolower(*iter);
 
     return str;
@@ -660,7 +660,7 @@ vector<string> splitLine(const string& str)
     if (str.empty())
         return lines;
 
-    for (iter = str.begin(); iter != str.end(); iter++)
+    for (iter = str.begin(); iter != str.end(); ++iter)
     {
         if (*iter == '\r')  // ignore bloating byte coming from brain death windows
             continue;
@@ -732,11 +732,11 @@ vector<string> splitLine(const string& str, int width, int height, SkFont& font,
             {
                 string sample;
                 size_t len = part.length();
-                size_t pos = 1, start = 0;
+                size_t p = 1, start = 0;
 
                 for (size_t i = 0; i < len; i++)
                 {
-                    sample = part.substr(start, pos);
+                    sample = part.substr(start, p);
                     font.measureText(sample.c_str(), sample.length(), SkTextEncoding::kUTF8, &rect, &paint);
 
                     if (rect.width() > (width - 8))
@@ -744,14 +744,14 @@ vector<string> splitLine(const string& str, int width, int height, SkFont& font,
                         lines.push_back(sample.substr(0, sample.length() - 1)); // Cut off the last character because it is already out of bounds.
                         start = i;                                              // Set the new start of the string
                         i--;                                                    // We must repeat the last character
-                        pos = 0;                                                // Reset the position counter
+                        p = 0;                                                // Reset the pition counter
                         sample = sample.substr(sample.length() - 1);            // Put the last character into the part.
 
                         if (lines.size() >= (size_t)maxLines)                   // Break if we've reached the maximum of lines
                             return lines;
                     }
 
-                    pos++;
+                    p++;
                 }
 
                 oldPart.clear();

@@ -30,10 +30,19 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(QT_USE_QTMULTIMEDIA TRUE)
 set(QT_USE_QTMULTIMEDIAWIDGETS TRUE)
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning)
+if(IOS)
+    find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning Sensors)
+    find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning Sensors)
+else(IOS)
+    find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning)
+    find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning)
+endif(IOS)
 
-add_subdirectory(ftplib)
+if(IOS)
+    add_library(ftp STATIC ftplib/ftplib.cpp)
+else()
+    add_subdirectory(ftplib)
+endif()
 
 if(ANDROID)
     if(DEFINED $ENV{EXTRA_PATH})
@@ -62,7 +71,6 @@ if(ANDROID)
     include_directories(${EXT_LIB_PATH}/pjsip/include)
     include_directories(${SSL_PATH}/ssl_3/include)
     link_directories(${SSL_PATH}/ssl_3/${ANDROID_ABI})
-    include(${SSL_PATH}/CMakeLists.txt)
     link_libraries(z ssl_3 crypto_3 mediandk expat libskia.a)
 
     link_directories(${EXT_LIB_PATH}/pjsip/lib)
@@ -144,21 +152,81 @@ if(ANDROID)
             ilbccodec-i686-pc-linux-android
         )
     endif()
-else()
+elseif(IOS)
+    if(DEFINED $ENV{EXT_LIB_PATH})
+        set(EXT_LIB_PATH $ENV{EXT_LIB_PATH})
+    else()
+        set(EXT_LIB_PATH $ENV{HOME}/SDKs)
+    endif()
+
+    if(${CMAKE_OSX_SYSROOT} MATCHES "iphonesimulator")
+        link_directories(${EXT_LIB_PATH}/openssl/ssl_3/iossim/lib
+                ${EXT_LIB_PATH}/pjsip/lib
+                ${EXT_LIB_PATH}/skia/iossim-apple)
+        include_directories(${EXT_LIB_PATH}/openssl/ssl_3/iossim/include
+                ${EXT_LIB_PATH}/pjsip/include
+                ${EXT_LIB_PATH}/skia)
+    else()
+        link_directories(${EXT_LIB_PATH}/openssl/ssl_3/ios64/lib
+                ${EXT_LIB_PATH}/pjsip/lib
+                ${EXT_LIB_PATH}/skia/ios64)
+        include_directories(${EXT_LIB_PATH}/openssl/ssl_3/ios64/include
+                ${EXT_LIB_PATH}/pjsip/include
+                ${EXT_LIB_PATH}/skia)
+    endif()
+
+    link_libraries(z ssl crypto expat libskia.a)
+    link_directories(${EXT_LIB_PATH}/pjsip/lib)
+
+    link_libraries(pj pjlib-util
+                   pjmedia pjmedia-audiodev
+                   pjmedia-codec pjnath
+                   pjsip pjsip-simple
+                   pjsip-ua pjsua pjsua2
+                   resample speex
+                   srtp gsmcodec
+                   webrtc ilbccodec
+    )
+
+    set(OBJECTIVE_HEADERS
+        ios/QASettings.h
+        ios/tiosrotate.h
+        ios/tiosbattery.h
+    )
+    set(OBJECTIVE_SOURCES
+        ios/QASettings.mm
+        ios/tiosrotate.mm
+        ios/tiosbattery.mm
+    )
+
+    include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+    add_link_options(-framework CFNetwork)
+ else()
     find_library(LIBSKIA_LIBRARY NAMES skia HINTS /usr/local/lib/skia)
     include_directories("/usr/local/include/skia")
-    link_directories("/usr/local/lib/skia")
+
+    if(APPLE)
+        link_directories("/usr/local/lib")
+    else(APPLE)
+        link_directories("/usr/local/lib/skia")
+    endif(APPLE)
+
     link_libraries(skia)
 
-    pkg_check_modules(ZLIB REQUIRED zlib)
-    include_directories(${ZLIB_INCLUDE_DIRS})
-    link_directories(${ZLIB_LIBRARY_DIRS})
-    set(LIBS ${LIBS} ${ZLIB_LIBRARIES})
+    if(APPLE)
+        find_package(ZLIB)
+        find_package(EXPAT)
+    else(APPLE)
+        pkg_check_modules(ZLIB REQUIRED zlib)
+        include_directories(${ZLIB_INCLUDE_DIRS})
+        link_directories(${ZLIB_LIBRARY_DIRS})
+        set(LIBS ${LIBS} ${ZLIB_LIBRARIES})
 
-    pkg_check_modules(EXPAT REQUIRED expat)
-    include_directories(${EXPAT_INCLUDE_DIRS})
-    link_directories(${EXPAT_LIBRARY_DIRS})
-    set(LIBS ${LIBS} ${EXPAT_LIBRARIES})
+        pkg_check_modules(EXPAT REQUIRED expat)
+        include_directories(${EXPAT_INCLUDE_DIRS})
+        link_directories(${EXPAT_LIBRARY_DIRS})
+        set(LIBS ${LIBS} ${EXPAT_LIBRARIES})
+    endif(APPLE)
 
     # This is for telephone libraries PJSIP
     pkg_check_modules(PJSIP REQUIRED libpjproject)
@@ -166,14 +234,15 @@ else()
     link_directories(${PJSIP_LIBRARY_DIRS})
 
     if(APPLE)
-        set(LIBS ${LIBS} -L/usr/local/lib
-            pjsua2 pjsua pjsip-ua pjsip-simple
-            pjsip pjmedia-codec pjmedia pjmedia-audiodev
-            pjnath pjlib-util pj gsmcodec
-            ilbccodec speex g7221codec
+        link_libraries(
+            pjsua2 pjsua pjsip-ua pjsip-simple pjsip
+            pjmedia-codec pjmedia pjmedia-audiodev
+            pjnath pjlib-util pj
+            gsmcodec ilbccodec speex g7221codec
             srtp resample webrtc)
     else(APPLE)
-        set(LIBS ${LIBS} -L/usr/local/lib
+        set(LIBS ${LIBS} -L/usr/local/lib)
+        link_libraries(
             pjsua2 pjsua pjsip-ua pjsip-simple pjsip
             pjmedia-codec pjmedia pjmedia-audiodev
             pjnath pjlib-util pj
@@ -184,6 +253,7 @@ else()
 
     find_library(UUID_LIBRARY NAMES uuid)
     set(LIBS ${LIBS} ${UUID_LIBRARY})
+    find_package(OpenSSL REQUIRED)
 
     if (APPLE)
         set(CMAKE_INSTALL_PREFIX /usr/local)
@@ -191,9 +261,30 @@ else()
         # the following paths!
         set(OSX_INCLUDE -I/opt/homebrew/include -I/usr/local/include)
         add_definitions(${OSX_INCLUDE})
-        set(OSX_LIB -L/opt/homebrew/lib -L/usr/local/lib -liconv)
+        link_libraries(
+            /usr/local/lib/libpjsua2.dylib.2
+            /usr/local/lib/libpjsua.dylib.2
+            /usr/local/lib/libpjsip-ua.dylib.2
+            /usr/local/lib/libpjsip-simple.dylib.2
+            /usr/local/lib/libpjsip.dylib.2
+            /usr/local/lib/libpjmedia-codec.dylib.2
+            /usr/local/lib/libpjmedia.dylib.2
+            /usr/local/lib/libpjmedia-audiodev.dylib.2
+            /usr/local/lib/libpjnath.dylib.2
+            /usr/local/lib/libpjlib-util.dylib.2
+            /usr/local/lib/libpj.dylib.2
+            /usr/local/lib/libgsmcodec.dylib.2
+            /usr/local/lib/libilbccodec.dylib.2
+            /usr/local/lib/libspeex.dylib.2
+            /usr/local/lib/libg7221codec.dylib.2
+            /usr/local/lib/libsrtp.dylib.2
+            /usr/local/lib/libresample.dylib.2
+            /usr/local/lib/libwebrtc.dylib.2
+        )
+
+        set(OSX_LIB -L/opt/homebrew/lib -L/usr/local/lib -liconv -lexpat -lz)
         set(LIBS ${LIBS} ${OSX_LIB})
-    else()
+    else(APPLE)
         set(CMAKE_INSTALL_PREFIX /usr)
     endif(APPLE)
 endif()
@@ -338,6 +429,12 @@ add_definitions(-D_OPAQUE_SKIA_)
 
 if(ANDROID)
     add_definitions(-pedantic -fexceptions -Wextra -Wno-attributes -Wno-nested-anon-types -Wno-gnu-anonymous-struct -Wno-gnu-zero-variadic-macro-arguments)
+elseif(IOS)
+    set(PROJECT_SOURCES ${PROJECT_SOURCES}
+        ${OBJECTIVE_HEADERS}
+        ${OBJECTIVE_SOURCES}
+    )
+    add_definitions(-Wno-gnu-zero-variadic-macro-arguments)
 else()
     add_definitions(-DTESTMODE=1)
     add_definitions(-pedantic -fexceptions -Wextra -Wno-attributes)
@@ -348,10 +445,12 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
     )
-# Define target properties for Android with Qt 6 as:
-    set_property(TARGET tpanel APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
-                 ${CMAKE_CURRENT_SOURCE_DIR}/android)
-# For more information, see https://doc.qt.io/qt-6/qt-add-executable.html#target-creation
+    if(ANDROID)
+    # Define target properties for Android with Qt 6 as:
+        set_property(TARGET tpanel APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
+                     ${CMAKE_CURRENT_SOURCE_DIR}/android)
+    # For more information, see https://doc.qt.io/qt-6/qt-add-executable.html#target-creation
+    endif()
 else()
     if(ANDROID)
         add_library(tpanel SHARED
@@ -378,23 +477,62 @@ if(ANDROID)
     endif()
 endif()
 
-target_link_libraries(tpanel PRIVATE
-    Qt${QT_VERSION_MAJOR}::Widgets
-    Qt${QT_VERSION_MAJOR}::Core
-    Qt${QT_VERSION_MAJOR}::Gui
-    Qt${QT_VERSION_MAJOR}::Multimedia
-    Qt${QT_VERSION_MAJOR}::MultimediaWidgets
-    Qt${QT_VERSION_MAJOR}::Positioning
-    ftp ${LIBS}
-)
+if(IOS)
+    target_link_libraries(tpanel PRIVATE
+        Qt${QT_VERSION_MAJOR}::Widgets
+        Qt${QT_VERSION_MAJOR}::Core
+        Qt${QT_VERSION_MAJOR}::Gui
+        Qt${QT_VERSION_MAJOR}::Multimedia
+        Qt${QT_VERSION_MAJOR}::MultimediaWidgets
+        Qt${QT_VERSION_MAJOR}::Positioning
+        Qt${QT_VERSION_MAJOR}::Sensors
+        ftp ${LIBS}
+    )
+elseif(ANDROID)
+    target_link_libraries(tpanel PRIVATE
+        Qt${QT_VERSION_MAJOR}::Widgets
+        Qt${QT_VERSION_MAJOR}::Core
+        Qt${QT_VERSION_MAJOR}::Gui
+        Qt${QT_VERSION_MAJOR}::Multimedia
+        Qt${QT_VERSION_MAJOR}::MultimediaWidgets
+        Qt${QT_VERSION_MAJOR}::Positioning
+        ftp ${LIBS}
+    )
+else()
+    target_link_libraries(tpanel PRIVATE
+        Qt${QT_VERSION_MAJOR}::Widgets
+        Qt${QT_VERSION_MAJOR}::Core
+        Qt${QT_VERSION_MAJOR}::Gui
+        Qt${QT_VERSION_MAJOR}::Multimedia
+        Qt${QT_VERSION_MAJOR}::MultimediaWidgets
+        Qt${QT_VERSION_MAJOR}::Positioning
+        OpenSSL::applink
+        ftp ${LIBS}
+    )
+endif()
 
-set_target_properties(tpanel PROPERTIES
-    MACOSX_BUNDLE_GUI_IDENTIFIER org.qtproject.theosys
-    MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
-    MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
-    MACOSX_BUNDLE TRUE
-    WIN32_EXECUTABLE FALSE
-)
+if(IOS)
+    file(GLOB_RECURSE app_icon_files CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}images/icon*.png")
+    set(asset_catalog_path "Assets.xcassets")
+    target_sources(tpanel PRIVATE ${app_icon_files} "${asset_catalog_path}")
+    set_source_files_properties(${app_icon_files} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+    set_target_properties(tpanel PROPERTIES
+        MACOSX_BUNDLE_GUI_IDENTIFIER org.qtproject.theosys
+        MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
+        MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/ios/Info.plist"
+        WIN32_EXECUTABLE FALSE
+    )
+else()
+    set_target_properties(tpanel PROPERTIES
+        MACOSX_BUNDLE_GUI_IDENTIFIER org.qtproject.theosys
+        MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
+        MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
+        MACOSX_BUNDLE TRUE
+        WIN32_EXECUTABLE FALSE
+    )
+endif()
 
 install(TARGETS tpanel
     BUNDLE DESTINATION .

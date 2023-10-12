@@ -50,7 +50,7 @@ Without parameters the source is compiled, if there were changes, and then
 an Android package is created. This package will be an unsigned release APK.
 ```
 
-> This script does currently not work on MacOS!
+> This script should run on a Mac too, but was not well tested on this platform!
 
 ## Build with _QtCreator_
 

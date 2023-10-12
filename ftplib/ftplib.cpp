@@ -173,7 +173,7 @@ int ftplib::readline(char *buf, int max, ftphandle *ctl)
             end = static_cast<char*>(memccpy(bp, ctl->cget, '\n', x));
 
             if (end != NULL)
-                x = end - bp;
+                x = (int)(end - bp);
 
             retval += x;
             bp += x;
@@ -229,7 +229,7 @@ int ftplib::readline(char *buf, int max, ftphandle *ctl)
             if (ctl->tlsctrl)
                 x = SSL_read(ctl->ssl, ctl->cput, ctl->cleft);
             else
-                x = read(ctl->handle, ctl->cput, ctl->cleft);
+                x = (int)read(ctl->handle, ctl->cput, ctl->cleft);
         }
 
 #else
@@ -293,7 +293,7 @@ int ftplib::writeline(char *buf, int len, ftphandle *nData)
                 if (nData->tlsctrl)
                     w = SSL_write(nData->ssl, nbp, FTPLIB_BUFSIZ);
                 else
-                    w = write(nData->handle, nbp, FTPLIB_BUFSIZ);
+                    w = (int)write(nData->handle, nbp, FTPLIB_BUFSIZ);
 
 #else
                 w = write(nData->handle, nbp, FTPLIB_BUFSIZ);
@@ -322,7 +322,7 @@ int ftplib::writeline(char *buf, int len, ftphandle *nData)
             if (nData->tlsctrl)
                 w = SSL_write(nData->ssl, nbp, FTPLIB_BUFSIZ);
             else
-                w = write(nData->handle, nbp, FTPLIB_BUFSIZ);
+                w = (int)write(nData->handle, nbp, FTPLIB_BUFSIZ);
 
 #else
             w = write(nData->handle, nbp, FTPLIB_BUFSIZ);
@@ -348,8 +348,10 @@ int ftplib::writeline(char *buf, int len, ftphandle *nData)
 
 #ifndef NOSSL
 
-        if (nData->tlsctrl) w = SSL_write(nData->ssl, nbp, nb);
-        else w = write(nData->handle, nbp, nb);
+        if (nData->tlsctrl)
+            w = SSL_write(nData->ssl, nbp, nb);
+        else
+            w = (int)write(nData->handle, nbp, nb);
 
 #else
         w = write(nData->handle, nbp, nb);
@@ -543,9 +545,9 @@ int ftplib::FtpSendCmd(const char *cmd, char expresp, ftphandle *nControl)
 
 #ifndef NOSSL
     if (nControl->tlsctrl)
-        x = SSL_write(nControl->ssl, buf, strlen(buf));
+        x = SSL_write(nControl->ssl, buf, (int)strlen(buf));
     else
-        x = write(nControl->handle, buf, strlen(buf));
+        x = (int)write(nControl->handle, buf, (int)strlen(buf));
 
 #else
     x = write(nControl->handle, buf, strlen(buf));
@@ -731,7 +733,7 @@ int ftplib::FtpAccess(const char *path, accesstype type, transfermode mode, ftph
         if ((strlen(path) + i) >= sizeof(buf))
             return 0;
 
-        strcpy(&buf[i], path);
+        strncpy(&buf[i], path, sizeof(buf));
     }
 
     if (nControl->cmode == ftplib::pasv)
@@ -1034,9 +1036,9 @@ int ftplib::FtpOpenPasv(ftphandle *nControl, ftphandle **nData, transfermode mod
 #ifndef NOSSL
 
     if (nControl->tlsctrl)
-        ret = SSL_write(nControl->ssl, cmd, strlen(cmd));
+        ret = SSL_write(nControl->ssl, cmd, (int)strlen(cmd));
     else
-        ret = write(nControl->handle, cmd, strlen(cmd));
+        ret = (int)write(nControl->handle, cmd, (int)strlen(cmd));
 
 #else
     ret = write(nControl->handle, cmd, strlen(cmd));
@@ -1109,6 +1111,9 @@ int ftplib::FtpClose(ftphandle *nData)
 {
     ftphandle *ctrl;
 
+    if (!nData)
+        return 0;
+
     if (nData->dir == FTPLIB_WRITE)
     {
         if (nData->buf != NULL)
@@ -1158,7 +1163,7 @@ int ftplib::FtpRead(void *buf, int max, ftphandle *nData)
         if (nData->tlsdata)
             i = SSL_read(nData->ssl, buf, max);
         else
-            i = read(nData->handle, buf, max);
+            i = (int)read(nData->handle, buf, max);
 
 #else
         i = read(nData->handle, buf, max);
@@ -1205,7 +1210,7 @@ int ftplib::FtpWrite(void *buf, int len, ftphandle *nData)
         if (nData->tlsdata)
             i = SSL_write(nData->ssl, buf, len);
         else
-            i = write(nData->handle, buf, len);
+            i = (int)write(nData->handle, buf, len);
 
 #else
         i = write(nData->handle, buf, len);
@@ -1481,7 +1486,7 @@ int ftplib::FtpXfer(const char *localfile, const char *path, ftphandle *nControl
 
     if ((type == ftplib::filewrite) || (type == ftplib::filewriteappend))
     {
-        while ((l = fread(dbuf, 1, FTPLIB_BUFSIZ, local)) > 0)
+        while ((l = (int)fread(dbuf, 1, FTPLIB_BUFSIZ, local)) > 0)
         {
             if ((c = FtpWrite(dbuf, l, nData)) < l)
             {
@@ -1732,7 +1737,7 @@ int ftplib::Fxp(ftplib* src, ftplib* dst, const char *pathSrc, const char *pathD
 
         if (pathSrc != NULL)
         {
-            int i = strlen(buf);
+            int i = (int)strlen(buf);
             buf[i++] = ' ';
 
             if ((strlen(pathSrc) + i) >= sizeof(buf))

@@ -106,7 +106,6 @@ extern std::atomic<bool> _netRunning;
 extern bool _restart_;                          //!< If this is set to true then the whole program will start over.
 
 bool prg_stopped = false;
-std::mutex mutex_init;
 
 #ifdef __ANDROID__
 string javaJStringToString(JNIEnv *env, jstring str)
@@ -4276,7 +4275,7 @@ void TPageManager::inputCursorPositionChanged(ulong handle, int oldPos, int newP
 
     if (pageID < REGULAR_SUBPAGE_START)
     {
-        TPage *pg = getPage(pageID);
+        TPage *pg = getPage((int)pageID);
 
         if (!pg)
             return;
@@ -4285,7 +4284,7 @@ void TPageManager::inputCursorPositionChanged(ulong handle, int oldPos, int newP
     }
     else
     {
-        TSubPage *pg = getSubPage(pageID);
+        TSubPage *pg = getSubPage((int)pageID);
 
         if (!pg)
             return;
@@ -4311,7 +4310,7 @@ void TPageManager::inputFocusChanged(ulong handle, bool in)
 
     if (pageID < REGULAR_SUBPAGE_START)
     {
-        TPage *pg = getPage(pageID);
+        TPage *pg = getPage((int)pageID);
 
         if (!pg)
             return;
@@ -4320,7 +4319,7 @@ void TPageManager::inputFocusChanged(ulong handle, bool in)
     }
     else
     {
-        TSubPage *pg = getSubPage(pageID);
+        TSubPage *pg = getSubPage((int)pageID);
 
         if (!pg)
             return;
@@ -4439,7 +4438,6 @@ vector<Button::TButton *> TPageManager::collectButtons(vector<TMap::MAP_T>& map)
 void TPageManager::initNetworkState()
 {
     DECL_TRACER("TPageManager::initNetworkState()");
-    TLOCKER(mutex_init);
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QAndroidJniObject activity = QtAndroid::androidActivity();
     QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/NetworkStatus", "Init", "(Landroid/app/Activity;)V", activity.object());

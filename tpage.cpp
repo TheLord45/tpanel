@@ -19,6 +19,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#ifdef __ANDROID__
+#include <android/log.h>
+#endif
 
 #include <include/core/SkFont.h>
 #include <include/core/SkFontMetrics.h>
@@ -613,7 +616,6 @@ SkBitmap& TPage::getBgImage()
 void TPage::show()
 {
     DECL_TRACER("TPage::show()");
-    TLOCKER(mutex_init);
 
     if (!_setBackground)
     {
@@ -671,6 +673,7 @@ void TPage::show()
                     sr[0].bm_width = info.width();
                     sr[0].bm_height = info.height();
                     haveImage = true;
+                    MSG_DEBUG("Image " << sr[0].bm << " has dimension " << sr[0].bm_width << " x " << sr[0].bm_height);
                 }
                 else
                 {
@@ -678,6 +681,8 @@ void TPage::show()
                 }
             }
         }
+
+        MSG_DEBUG("haveImage: " << (haveImage ? "TRUE" : "FALSE"));
 
         if (!sr[0].mi.empty())
         {

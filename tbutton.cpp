@@ -3978,34 +3978,22 @@ bool TButton::drawAlongOrder(SkBitmap *imgButton, int instance)
         if (mDOrder[i] == ORD_ELEM_FILL)
         {
             if (!buttonFill(imgButton, instance))
-            {
-                mutex_button.unlock();
                 return false;
-            }
         }
         else if (mDOrder[i] == ORD_ELEM_ICON)
         {
             if (!buttonIcon(imgButton, instance))
-            {
-                mutex_button.unlock();
                 return false;
-            }
         }
         else if (mDOrder[i] == ORD_ELEM_TEXT)
         {
             if (!buttonText(imgButton, instance))
-            {
-                mutex_button.unlock();
                 return false;
-            }
         }
         else if (mDOrder[i] == ORD_ELEM_BORDER)
         {
             if (!buttonBorder(imgButton, instance))
-            {
-                mutex_button.unlock();
                 return false;
-            }
         }
     }
 
@@ -6045,7 +6033,6 @@ bool TButton::drawTextArea(int instance)
 
 bool TButton::drawMultistateBargraph(int level, bool show)
 {
-    mutex_button.lock();
     DECL_TRACER("TButton::drawMultistateBargraph(int level, bool show)");
 
     if (prg_stopped)
@@ -6053,7 +6040,6 @@ bool TButton::drawMultistateBargraph(int level, bool show)
 #if TESTMODE == 1
         setScreenDone();
 #endif
-        mutex_button.unlock();
         return false;
     }
 
@@ -6068,7 +6054,6 @@ bool TButton::drawMultistateBargraph(int level, bool show)
 #if TESTMODE == 1
         setScreenDone();
 #endif
-        mutex_button.unlock();
         return true;
     }
 
@@ -6090,7 +6075,6 @@ bool TButton::drawMultistateBargraph(int level, bool show)
 #if TESTMODE == 1
         setScreenDone();
 #endif
-        mutex_button.unlock();
         return false;
     }
 
@@ -6113,7 +6097,6 @@ bool TButton::drawMultistateBargraph(int level, bool show)
 #if TESTMODE == 1
                 setScreenDone();
 #endif
-                mutex_button.unlock();
                 return false;
             }
         }
@@ -6124,7 +6107,6 @@ bool TButton::drawMultistateBargraph(int level, bool show)
 #if TESTMODE == 1
                 setScreenDone();
 #endif
-                mutex_button.unlock();
                 return false;
             }
         }
@@ -6135,7 +6117,6 @@ bool TButton::drawMultistateBargraph(int level, bool show)
 #if TESTMODE == 1
                 setScreenDone();
 #endif
-                mutex_button.unlock();
                 return false;
             }
         }
@@ -6146,7 +6127,6 @@ bool TButton::drawMultistateBargraph(int level, bool show)
 #if TESTMODE == 1
                 setScreenDone();
 #endif
-                mutex_button.unlock();
                 return false;
             }
         }
@@ -6157,7 +6137,6 @@ bool TButton::drawMultistateBargraph(int level, bool show)
 #if TESTMODE == 1
                 setScreenDone();
 #endif
-                mutex_button.unlock();
                 return false;
             }
         }
@@ -6259,7 +6238,6 @@ bool TButton::drawMultistateBargraph(int level, bool show)
 #endif
     }
 
-    mutex_button.unlock();
     return true;
 }
 
@@ -6423,8 +6401,6 @@ bool TButton::drawBargraph(int instance, int level, bool show)
         showLastButton();
         return true;
     }
-
-    TTRYLOCK(mutex_bargraph);
 
     if (level < rl)
         mLastLevel = rl;
@@ -7369,7 +7345,6 @@ bool TButton::isClickable(int x, int y)
  */
 void TButton::funcNetwork(int state)
 {
-    mutex_sysdraw.lock();
     DECL_TRACER("TButton::funcNetwork(int state)");
 
     mLastLevel = state;
@@ -7378,8 +7353,6 @@ void TButton::funcNetwork(int state)
 
     if (visible)
         makeElement(state);
-
-    mutex_sysdraw.unlock();
 }
 
 /**
@@ -7388,7 +7361,6 @@ void TButton::funcNetwork(int state)
  */
 void TButton::funcTimer(const amx::ANET_BLINK& blink)
 {
-    mutex_sysdraw.lock();
     DECL_TRACER("TButton::funcTimer(const amx::ANET_BLINK& blink)");
 
     string tm;
@@ -7500,7 +7472,6 @@ void TButton::funcTimer(const amx::ANET_BLINK& blink)
         break;
 
         default:
-            mutex_sysdraw.unlock();
             return;
     }
 
@@ -7514,8 +7485,6 @@ void TButton::funcTimer(const amx::ANET_BLINK& blink)
 
     if (visible)
         makeElement(mActInstance);
-
-    mutex_sysdraw.unlock();
 }
 
 bool TButton::isPixelTransparent(int x, int y)
@@ -8961,12 +8930,9 @@ void TButton::addToBitmapCache(BITMAP_CACHE& bc)
 {
     DECL_TRACER("TButton::addToBitmapCache(BITMAP_CACHE& bc)");
 
-    mutex_bmCache.lock();
-
     if (nBitmapCache.size() == 0)
     {
         nBitmapCache.push_back(bc);
-        mutex_bmCache.unlock();
         return;
     }
 
@@ -8978,39 +8944,28 @@ void TButton::addToBitmapCache(BITMAP_CACHE& bc)
         {
             nBitmapCache.erase(iter);
             nBitmapCache.push_back(bc);
-            mutex_bmCache.unlock();
             return;
         }
     }
 
     nBitmapCache.push_back(bc);
-    mutex_bmCache.unlock();
 }
 
 BITMAP_CACHE& TButton::getBCentryByHandle(ulong handle, ulong parent)
 {
     DECL_TRACER("TButton::getBCentryByHandle(ulong handle, ulong parent)");
 
-    mutex_bmCache.lock();
-
     if (nBitmapCache.size() == 0)
-    {
-        mutex_bmCache.unlock();
         return mBCDummy;
-    }
 
     vector<BITMAP_CACHE>::iterator iter;
 
     for (iter = nBitmapCache.begin(); iter != nBitmapCache.end(); ++iter)
     {
         if (iter->handle == handle && iter->parent == parent)
-        {
-            mutex_bmCache.unlock();
             return *iter;
-        }
     }
 
-    mutex_bmCache.unlock();
     return mBCDummy;
 }
 
@@ -9018,27 +8973,18 @@ BITMAP_CACHE& TButton::getBCentryByBI(int bIdx)
 {
     DECL_TRACER("TButton::getBCentryByBI(int bIdx)");
 
-    mutex_bmCache.lock();
-
     if (nBitmapCache.size() == 0)
-    {
-        mutex_bmCache.unlock();
         return mBCDummy;
-    }
 
     vector<BITMAP_CACHE>::iterator iter;
 
     for (iter = nBitmapCache.begin(); iter != nBitmapCache.end(); ++iter)
     {
         if (iter->bi == bIdx)
-        {
-            mutex_bmCache.unlock();
             return *iter;
-        }
     }
 
-    mutex_bmCache.unlock();
-    return mBCDummy;
+        return mBCDummy;
 }
 
 void TButton::removeBCentry(std::vector<BITMAP_CACHE>::iterator *elem)
@@ -9048,7 +8994,6 @@ void TButton::removeBCentry(std::vector<BITMAP_CACHE>::iterator *elem)
     if (nBitmapCache.size() == 0 || !elem)
         return;
 
-    mutex_bmCache.lock();
     vector<BITMAP_CACHE>::iterator iter;
 
     for (iter = nBitmapCache.begin(); iter != nBitmapCache.end(); ++iter)
@@ -9056,12 +9001,9 @@ void TButton::removeBCentry(std::vector<BITMAP_CACHE>::iterator *elem)
         if (iter == *elem)
         {
             nBitmapCache.erase(iter);
-            mutex_bmCache.unlock();
             return;
         }
     }
-
-    mutex_bmCache.unlock();
 }
 
 void TButton::setReady(ulong handle)
@@ -9071,7 +9013,6 @@ void TButton::setReady(ulong handle)
     if (nBitmapCache.size() == 0)
         return;
 
-    mutex_bmCache.lock();
     vector<BITMAP_CACHE>::iterator iter;
 
     for (iter = nBitmapCache.begin(); iter != nBitmapCache.end(); ++iter)
@@ -9079,12 +9020,9 @@ void TButton::setReady(ulong handle)
         if (iter->handle == handle)
         {
             iter->ready = true;
-            mutex_bmCache.unlock();
             return;
         }
     }
-
-    mutex_bmCache.unlock();
 }
 
 void TButton::setInvalid(ulong handle)
@@ -9094,7 +9032,6 @@ void TButton::setInvalid(ulong handle)
     if (nBitmapCache.size() == 0)
         return;
 
-    mutex_bmCache.lock();
     vector<BITMAP_CACHE>::iterator iter;
 
     for (iter = nBitmapCache.begin(); iter != nBitmapCache.end(); ++iter)
@@ -9102,12 +9039,9 @@ void TButton::setInvalid(ulong handle)
         if (iter->handle == handle)
         {
             nBitmapCache.erase(iter);
-            mutex_bmCache.unlock();
             return;
         }
     }
-
-    mutex_bmCache.unlock();
 }
 
 void TButton::setBCBitmap(ulong handle, SkBitmap& bm)
@@ -9117,7 +9051,6 @@ void TButton::setBCBitmap(ulong handle, SkBitmap& bm)
     if (nBitmapCache.size() == 0)
         return;
 
-    mutex_bmCache.lock();
     vector<BITMAP_CACHE>::iterator iter;
 
     for (iter = nBitmapCache.begin(); iter != nBitmapCache.end(); ++iter)
@@ -9125,19 +9058,15 @@ void TButton::setBCBitmap(ulong handle, SkBitmap& bm)
         if (iter->handle == handle)
         {
             iter->bitmap = bm;
-            mutex_bmCache.unlock();
             return;
         }
     }
-
-    mutex_bmCache.unlock();
 }
 
 void TButton::showBitmapCache()
 {
     DECL_TRACER("TButton::showBitmapCache()");
 
-    mutex_bmCache.lock();
     vector<BITMAP_CACHE>::iterator iter;
     bool found;
 
@@ -9165,8 +9094,6 @@ void TButton::showBitmapCache()
         if (!found)
             break;
     }
-
-    mutex_bmCache.unlock();
 }
 
 uint32_t TButton::pixelMix(uint32_t s, uint32_t d, uint32_t a, PMIX mix)

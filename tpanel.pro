@@ -1,30 +1,9 @@
 # Created by and for Qt Creator This file was created for editing the project sources only.
 # You may attempt to use it for building too, by modifying this file here.
 
-# Define the following to either 5 or 6. It defines for which Qt major
-# version the code should be compiled and linked.
-# As of writing this lines, it was not possible to build a running
-# Android version with Qt6. Up to version Qt 6.4 it's possible to compile
-# an Android version for a particular processor type, but the resulting
-# binary doesn't run. But it is up to you to try with any newer version.
-#
-
-# ------------------------------------------------------------------------
-#       DO NOT EDIT ANYTHING BELOW THIS LINE UNTIL YOU KNOW WHAT
-#                            YOU ARE DOING!!
-# ------------------------------------------------------------------------
-
 TARGET = tpanel
 
-ios: {
 QT = core gui widgets multimedia multimediawidgets sensors positioning
-}
-android: {
-versionAtMost(QT_VERSION, 5.15.2) {
-QT = core gui widgets multimedia multimediawidgets sensors androidextras
-} else {
-QT = core gui widgets multimedia multimediawidgets sensors positioning
-}}
 
 # The main application
 HEADERS = \
@@ -157,31 +136,16 @@ SOURCES = \
    $$PWD/tqgesturefilter.cpp \
    $$PWD/tqmultiline.cpp
 
-android: {
-OTHER_FILES += \
-        $$PWD/android/src/org/qtproject/theosys/BatteryState.java \
-        $$PWD/android/src/org/qtproject/theosys/NetworkStatus.java \
-        $$PWD/android/src/org/qtproject/theosys/PhoneCallState.java \
-        $$PWD/android/src/org/qtproject/theosys/UriToPath.java \
-        $$PWD/android/src/org/qtproject/theosys/Logger.java \
-        $$PWD/android/src/org/qtproject/theosys/Orientation.java \
-        $$PWD/android/src/org/qtproject/theosys/Settings.java \
-        $$PWD/android/src/org/qtproject/theosys/SettingsActivity.java \
-        $$PWD/android/src/org/qtpeoject/theosys/HideToolbar.java
-
-INCLUDEPATH = \
-    $$PWD/. \
-    $$PWD/ftplib \
-    $$EXT_LIB_PATH/skia \
-    $$EXT_LIB_PATH/pjsip/include \
-    $$EXTRA_PATH/expat/include
-}
 ios: {
     INCLUDEPATH += $$PWD/. \
                    $$PWD/ftplib \
                    /usr/local/include/skia \
-                   $$EXT_LIB_PATH/pjsip/include \
-                   $$EXT_LIB_PATH/openssl/include
+                   $$EXT_LIB_PATH/pjsip/include
+    versionAtMost(QT_VERSION, 6.5.0) {
+        INCLUDEPATH += $$EXT_LIB_PATH/openssl/ssl_3/ios64/include
+    } else {
+        INCLUDEPATH += $$EXT_LIB_PATH/openssl/ssl_1.1/include
+    }
 
     QMAKE_IOS_DEPLOYMENT_TARGET=16.1
 }
@@ -190,108 +154,27 @@ CONFIG += c++17
 QMAKE_CXXFLAGS += -std=c++17 -DPJ_AUTOCONF
 QMAKE_LFLAGS += -std=c++17
 
-equals(ANDROID_TARGET_ARCH,arm64-v8a) {
-#    INCLUDEPATH += $$EXT_LIB_PATH/openssl/arm64-v8a/include
-
-    LIBS += $$EXT_LIB_PATH/skia/arm64/libskia.a \
-    -L$$SDK_PATH/android_openssl/no-asm/latest/arm64 \
-    $$EXT_LIB_PATH/pjsip/lib/libpj-aarch64-unknown-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjlib-util-aarch64-unknown-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjmedia-aarch64-unknown-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjmedia-audiodev-aarch64-unknown-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjmedia-codec-aarch64-unknown-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjnath-aarch64-unknown-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjsip-aarch64-unknown-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjsip-simple-aarch64-unknown-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjsip-ua-aarch64-unknown-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjsua-aarch64-unknown-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libresample-aarch64-unknown-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libspeex-aarch64-unknown-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libsrtp-aarch64-unknown-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libgsmcodec-aarch64-unknown-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libwebrtc-aarch64-unknown-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libilbccodec-aarch64-unknown-linux-android.a
-}
-
-equals(ANDROID_TARGET_ARCH,armeabi-v7a) {
-#    INCLUDEPATH += $$EXT_LIB_PATH/openssl/armeabi-v7a/include
-
-    LIBS += $$EXT_LIB_PATH/skia/arm/libskia.a \
-    -L$$SDK_PATH/android_openssl/no-asm/latest/arm \
-    $$EXT_LIB_PATH/pjsip/lib/libpj-armv7-unknown-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjlib-util-armv7-unknown-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjmedia-armv7-unknown-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjmedia-audiodev-armv7-unknown-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjmedia-codec-armv7-unknown-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjnath-armv7-unknown-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjsip-armv7-unknown-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjsip-simple-armv7-unknown-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjsip-ua-armv7-unknown-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjsua-armv7-unknown-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libresample-armv7-unknown-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libspeex-armv7-unknown-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libsrtp-armv7-unknown-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libgsmcodec-armv7-unknown-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libwebrtc-armv7-unknown-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libilbccodec-armv7-unknown-linux-android.a
-}
-
-equals(ANDROID_TARGET_ARCH,x86) {
-#    INCLUDEPATH += $$EXT_LIB_PATH/openssl/x86/include
-
-    LIBS += $$EXT_LIB_PATH/skia/x86/libskia.a \
-    -L$$SDK_PATH/android_openssl/no-asm/latest/x86 \
-    $$EXT_LIB_PATH/pjsip/lib/libpj-i686-pc-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjlib-util-i686-pc-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjmedia-i686-pc-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjmedia-audiodev-i686-pc-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjmedia-codec-i686-pc-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjnath-i686-pc-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjsip-i686-pc-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjsip-simple-i686-pc-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjsip-ua-i686-pc-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjsua-i686-pc-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libresample-i686-pc-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libspeex-i686-pc-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libsrtp-i686-pc-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libgsmcodec-i686-pc-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libwebrtc-i686-pc-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libilbccodec-i686-pc-linux-android.a
-}
-
-equals(ANDROID_TARGET_ARCH,x86_64) {
-#    INCLUDEPATH += $$EXT_LIB_PATH/openssl/x86_64/include
-
-    LIBS += $$EXT_LIB_PATH/skia/x86_64/libskia.a \
-    -L$$SDK_PATH/android_openssl/no-asm/latest/x86_64 \
-    $$EXT_LIB_PATH/pjsip/lib/libpj-x86_64-pc-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjlib-util-x86_64-pc-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjmedia-x86_64-pc-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjmedia-audiodev-x86_64-pc-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjmedia-codec-x86_64-pc-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjnath-x86_64-pc-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjsip-x86_64-pc-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjsip-simple-x86_64-pc-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjsip-ua-x86_64-pc-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libpjsua-x86_64-pc-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libresample-x86_64-pc-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libspeex-x86_64-pc-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libsrtp-x86_64-pc-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libgsmcodec-x86_64-pc-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libwebrtc-x86_64-pc-linux-android.a \
-    $$EXT_LIB_PATH/pjsip/lib/libilbccodec-x86_64-pc-linux-android.a
-}
-
 ios: {
-equals(OS,iossim) {
-    LIBS += -L$$EXT_LIB_PATH/pjsip/lib \
-            -L$$EXT_LIB_PATH/skia/iossim \
-            -L$$EXT_LIB_PATH/openssl/iossim
- } else {
-    LIBS += -L$$EXT_LIB_PATH/pjsip/lib \
-            -L$$EXT_LIB_PATH/skia/ios64 \
-            -L$$EXT_LIB_PATH/openssl/ios
-}
+    equals(OS,iossim) {
+        LIBS += -L$$EXT_LIB_PATH/pjsip/lib \
+                -L$$EXT_LIB_PATH/skia/iossim
+
+        versionAtMost(QT_VERSION, 6.5.0) {
+            LIBS += -L$$EXT_LIB_PATH/openssl/ssl_3/iossim/lib
+        } else {
+            LIBS += -L$$EXT_LIB_PATH/openssl/ssl_1.1/iossim
+        }
+    } else {
+        LIBS += -L$$EXT_LIB_PATH/pjsip/lib \
+                -L$$EXT_LIB_PATH/skia/ios64
+
+        versionAtMost(QT_VERSION, 6.5.0) {
+            LIBS += -L$$EXT_LIB_PATH/openssl/ssl_3/ios64/lib
+        } else {
+            LIBS += -L$$EXT_LIB_PATH/openssl/ssl_1.1/ios
+        }
+    }
+
     LIBS += -lskia -lpj -lpjlib-util \
             -lpjmedia -lpjmedia-audiodev \
             -lpjmedia-codec -lpjnath \
@@ -331,17 +214,6 @@ equals(OS,iossim) {
 #                   The Qt calculation is currently not working!
 #                   THIS IS DEPRECATED AND WILL BE REMOVED!
 #
-#  * QTSETTINGS     If this is set a Qt dialog is used for the settings. This
-#                   dialog is scaled depending on the size of the screen. It
-#                   is possible that the text is not readable or the fonts are
-#                   not well sized. Beside this on Android the ComboBoxes may
-#                   have wrong colors like black text on black background!
-#                   NOTE: On Android as well as on IOS (iPhone and iPad) exists
-#                   a platform specific setup. For all other platforms the
-#                   Qt dialog settings are used and it is not necessary to set
-#                   this variable!
-#                   THIS IS DEPRECATED AND WILL BE REMOVED!
-#
 DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x050F00 _OPAQUE_SKIA_
 
 RESOURCES += \
@@ -355,55 +227,7 @@ FORMS += \
     download.ui \
     wait.ui
 
-android: {
-    INCLUDEPATH += $$(QTDIR)/include/QtGui/$$QT_VERSION/QtGui
-    LIBS += -lEGL -landroid -lmediandk
-
-    if (versionAtLeast(QT_VERSION, 6.0.0)) {
-        DISTFILES += \
-            android/AndroidManifest.qt6.xml \
-            android/build.qt6.gradle \
-            android/gradle.properties \
-            android/gradle/wrapper/gradle-wrapper.jar \
-            android/gradle/wrapper/gradle-wrapper.properties.qt6
-    } else {
-        DISTFILES += \
-            android/AndroidManifest.xml \
-            android/build.gradle \
-            android/gradle.properties \
-            android/gradle/wrapper/gradle-wrapper.jar \
-            android/gradle/wrapper/gradle-wrapper.properties
-    }
-
-    DISTFILES += \
-            android/gradlew \
-            android/res/layout/settings_activity.xml \
-            android/res/xml/root_preferences.xml \
-            android/res/values/libs.xml \
-            android/res/values/arrays.xml \
-            android/res/values/strings.xml \
-            android/res/values/styles.xml \
-            android/res/values/themes.xml
-
-    ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
-    CONFIG += sdk_no_version_check
-    # Add openSSL library for Android
-    if (versionAtLeast(QT_VERSION, 6.5.0)) {
-        ANDROID_EXTRA_LIBS += \
-            $$SSL_PATH/ssl_3/$$ANDROID_TARGET_ARCH/libcrypto_3.so \
-            $$SSL_PATH/ssl_3/$$ANDROID_TARGET_ARCH/libssl_3.so
-        INCLUDEPATH += $$SSL_PATH/ssl_3/include
-        LIBS += -L$$SSL_PATH/ssl_3/$$ANDROID_TARGET_ARCH -lcrypto -lssl
-    } else {
-        ANDROID_EXTRA_LIBS += \
-            $$SSL_PATH/ssl_1.1/$$ANDROID_TARGET_ARCH/libcrypto_1_1.so \
-            $$SSL_PATH/ssl_1.1/$$ANDROID_TARGET_ARCH/libssl_1_1.so
-        INCLUDEPATH += $$SSL_PATH/ssl_1.1/include
-        LIBS += -L$$SSL_PATH/ssl_1.1/$$ANDROID_TARGET_ARCH -lcrypto -lssl
-    }
-} else {
-    LIBS += -lcrypto -lssl -liconv
-}
+LIBS += -lcrypto -lssl -liconv
 
 # Add the ftp library
 DEPENDPATH += $$PWD/ftplib
