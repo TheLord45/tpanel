@@ -5,7 +5,7 @@ set -o pipefail
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 ROOT_DIR="${SCRIPT_DIR}/.."
 LOG_FILE="${ROOT_DIR}/workflow.log"
-export QT_DIR="/opt/Qt/6.5.2/gcc_64"
+export QT_DIR="/opt/Qt/6.6.0/gcc_64"
 export CMAKE_PREFIX_PATH="${QT_DIR}/lib/cmake"
 
 # the first parameter is the branch, that is currently being built
