@@ -28,7 +28,11 @@ I made an archive file containing _Skia_ and _PjSIP_ as precompiled versions for
 
 This is a shell script to create an Android APK file. Such files can be deployed to any Android device running Android 11 or newer. This is API level 30.
 
-First open the file `build_android.sh` with a text editor. The first lines defining some paths. Adapt the settings to the paths of your installation. Then simply start the script on the command line. If everything was installed and all paths were set correct, it should compile the code and produce an APK file. The last line will give you the path and name of the produced file.
+First copy the file `build_android.sh` to another name e.g.:
+
+    cp build_android.sh buildAndroid.sh
+
+Now open the copy with a text editor. The first lines defining some paths. Adapt the settings to the paths of your installation. Then simply start the script on the command line. If everything was installed and all paths were set correct, it should compile the code and produce an APK file. The last line will give you the path and name of the produced file.
 
 The script contains a help function (`build_android.sh --help`). It shows the possible parameters and their meaning:
 ```
@@ -50,13 +54,11 @@ Without parameters the source is compiled, if there were changes, and then
 an Android package is created. This package will be an unsigned release APK.
 ```
 
-> This script should run on a Mac too, but was not well tested on this platform!
-
 ## Build with _QtCreator_
 
 There are some reasons why it is better to use [QtCreator](https://www.qt.io/product/development-tools) then using the command line. The most important reason is if you want to be able to flexible deploy the application to different Android devices. And if you want to participate in developing you should use this IDE also.
 
-After starting _QtCreator_ click on `Open project` and open the file `CMakeLists.txt` in the source folder of **TPanel**. When the project is open, click on `Projects` on left panel. Select `Android Qt 6.5.2 CLang x86_64` from the list and click on `Build` (hammer symbol). Now you see the _Build Settings_. Under `CMake` set in the _Initial Configuration_ the value of `ANDROID_PLATFORM` to `android-30`. Make sure the NDK version `25.2.9519653` is set. If not, hit `Manage Kits...` and make this version the default or install it and make it then the default. I will not explain how to install the Android SDK or an NDK, which is part of the Android SDK. This is subject to the Google documentation of Android Studio.
+After starting _QtCreator_ click on `Open project` and open the file `CMakeLists.txt` in the source folder of **TPanel**. When the project is open, click on `Projects` on left panel. Select `Android Qt 6.x.x CLang x86_64` from the list and click on `Build` (hammer symbol). Now you see the _Build Settings_. Under `CMake` set in the _Initial Configuration_ the value of `ANDROID_PLATFORM` to `android-30`. Make sure the NDK version `25.2.9519653` is set. If not, hit `Manage Kits...` and make this version the default or install it and make it then the default. I will not explain how to install the Android SDK or an NDK, which is part of the Android SDK. This is subject to the Google documentation of Android Studio.
 
 Click now on `Re-configure with Initial Parameters` (on the bottom of the `Cmake` box.). If everything went well, the tab should jump to `Current Configuration`. If you want to build Android for all ABIs you must set `QT_ANDROID_BUILD_ALL_ABIS` to `ON`. Leave the rest as it is.
 

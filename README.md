@@ -41,10 +41,13 @@ First [download the source](https://github.com/TheLord45/tpanel) into a director
 
     $ cmake -B build -DCMAKE_PREFIX_PATH="/<path>/<to>/Qt/6.x.x/macos/lib/cmake:/<path>/<to>/homebrew/lib/cmake"
     $ cd build
-    $ ninja
-    $ sudo ninja --target install
+    $ make
 
 > Replace `<path>/<to>/` with the path to your Qt installation and to homebrew (usualy `$HOME/Qt`, `/opt/homebrew`).
+
+You'll find the application in `build/tpanel.app/Contents/MacOS/tpanel`. Start it from the command line like:
+
+    build/tpanel.app/Contents/MacOS/tpanel -c <configuration file>
 
 If everything compiled successful and installed, you can start the application. There is a setup dialog included. It depends on the operating system of how this setup looks like.
 

@@ -1,3 +1,26 @@
+/***************************************************************************
+ *                    ftplib.cpp  -  description
+ *                       -------------------
+ b e*gin                : Son Jul 27 2003
+ copyright            : (C) 2013 by magnus kulke
+ email                : mkulke@gmail.com
+ ***************************************************************************/
+
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU Lesser General Public License as        *
+ *   published by the Free Software Foundation; either version 2.1 of the  *
+ *   License, or (at your option) any later version.                       *
+ *                                                                         *
+ ***************************************************************************/
+
+/***************************************************************************
+ * Note: ftplib, on which ftplibpp was originally based upon used to be    *
+ * licensed as GPL 2.0 software, as of Jan. 26th 2013 its author Thomas    *
+ * Pfau allowed the distribution of ftplib via LGPL. Thus the license of   *
+ * ftplibpp changed aswell.                                                *
+ ***************************************************************************/
 #ifndef NOLFS
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -173,7 +196,7 @@ int ftplib::readline(char *buf, int max, ftphandle *ctl)
             end = static_cast<char*>(memccpy(bp, ctl->cget, '\n', x));
 
             if (end != NULL)
-                x = (int)(end - bp);
+                x = end - bp;
 
             retval += x;
             bp += x;
@@ -229,7 +252,7 @@ int ftplib::readline(char *buf, int max, ftphandle *ctl)
             if (ctl->tlsctrl)
                 x = SSL_read(ctl->ssl, ctl->cput, ctl->cleft);
             else
-                x = (int)read(ctl->handle, ctl->cput, ctl->cleft);
+                x = read(ctl->handle, ctl->cput, ctl->cleft);
         }
 
 #else
@@ -293,7 +316,7 @@ int ftplib::writeline(char *buf, int len, ftphandle *nData)
                 if (nData->tlsctrl)
                     w = SSL_write(nData->ssl, nbp, FTPLIB_BUFSIZ);
                 else
-                    w = (int)write(nData->handle, nbp, FTPLIB_BUFSIZ);
+                    w = write(nData->handle, nbp, FTPLIB_BUFSIZ);
 
 #else
                 w = write(nData->handle, nbp, FTPLIB_BUFSIZ);
@@ -322,7 +345,7 @@ int ftplib::writeline(char *buf, int len, ftphandle *nData)
             if (nData->tlsctrl)
                 w = SSL_write(nData->ssl, nbp, FTPLIB_BUFSIZ);
             else
-                w = (int)write(nData->handle, nbp, FTPLIB_BUFSIZ);
+                w = write(nData->handle, nbp, FTPLIB_BUFSIZ);
 
 #else
             w = write(nData->handle, nbp, FTPLIB_BUFSIZ);
@@ -348,10 +371,8 @@ int ftplib::writeline(char *buf, int len, ftphandle *nData)
 
 #ifndef NOSSL
 
-        if (nData->tlsctrl)
-            w = SSL_write(nData->ssl, nbp, nb);
-        else
-            w = (int)write(nData->handle, nbp, nb);
+        if (nData->tlsctrl) w = SSL_write(nData->ssl, nbp, nb);
+        else w = write(nData->handle, nbp, nb);
 
 #else
         w = write(nData->handle, nbp, nb);
@@ -545,9 +566,9 @@ int ftplib::FtpSendCmd(const char *cmd, char expresp, ftphandle *nControl)
 
 #ifndef NOSSL
     if (nControl->tlsctrl)
-        x = SSL_write(nControl->ssl, buf, (int)strlen(buf));
+        x = SSL_write(nControl->ssl, buf, strlen(buf));
     else
-        x = (int)write(nControl->handle, buf, (int)strlen(buf));
+        x = write(nControl->handle, buf, strlen(buf));
 
 #else
     x = write(nControl->handle, buf, strlen(buf));
@@ -733,7 +754,7 @@ int ftplib::FtpAccess(const char *path, accesstype type, transfermode mode, ftph
         if ((strlen(path) + i) >= sizeof(buf))
             return 0;
 
-        strncpy(&buf[i], path, sizeof(buf));
+        strcpy(&buf[i], path);
     }
 
     if (nControl->cmode == ftplib::pasv)
@@ -1036,9 +1057,9 @@ int ftplib::FtpOpenPasv(ftphandle *nControl, ftphandle **nData, transfermode mod
 #ifndef NOSSL
 
     if (nControl->tlsctrl)
-        ret = SSL_write(nControl->ssl, cmd, (int)strlen(cmd));
+        ret = SSL_write(nControl->ssl, cmd, strlen(cmd));
     else
-        ret = (int)write(nControl->handle, cmd, (int)strlen(cmd));
+        ret = write(nControl->handle, cmd, strlen(cmd));
 
 #else
     ret = write(nControl->handle, cmd, strlen(cmd));
@@ -1111,9 +1132,6 @@ int ftplib::FtpClose(ftphandle *nData)
 {
     ftphandle *ctrl;
 
-    if (!nData)
-        return 0;
-
     if (nData->dir == FTPLIB_WRITE)
     {
         if (nData->buf != NULL)
@@ -1163,7 +1181,7 @@ int ftplib::FtpRead(void *buf, int max, ftphandle *nData)
         if (nData->tlsdata)
             i = SSL_read(nData->ssl, buf, max);
         else
-            i = (int)read(nData->handle, buf, max);
+            i = read(nData->handle, buf, max);
 
 #else
         i = read(nData->handle, buf, max);
@@ -1210,7 +1228,7 @@ int ftplib::FtpWrite(void *buf, int len, ftphandle *nData)
         if (nData->tlsdata)
             i = SSL_write(nData->ssl, buf, len);
         else
-            i = (int)write(nData->handle, buf, len);
+            i = write(nData->handle, buf, len);
 
 #else
         i = write(nData->handle, buf, len);
@@ -1486,7 +1504,7 @@ int ftplib::FtpXfer(const char *localfile, const char *path, ftphandle *nControl
 
     if ((type == ftplib::filewrite) || (type == ftplib::filewriteappend))
     {
-        while ((l = (int)fread(dbuf, 1, FTPLIB_BUFSIZ, local)) > 0)
+        while ((l = fread(dbuf, 1, FTPLIB_BUFSIZ, local)) > 0)
         {
             if ((c = FtpWrite(dbuf, l, nData)) < l)
             {
@@ -1737,7 +1755,7 @@ int ftplib::Fxp(ftplib* src, ftplib* dst, const char *pathSrc, const char *pathD
 
         if (pathSrc != NULL)
         {
-            int i = (int)strlen(buf);
+            int i = strlen(buf);
             buf[i++] = ' ';
 
             if ((strlen(pathSrc) + i) >= sizeof(buf))

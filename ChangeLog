@@ -3,6 +3,9 @@ ChangeLog
 
 Release: 1.4.0
 ===============================================================================
+2023-10-15 Fixed compiling on Mac for OSX and Android. The build script for
+           Android works now on Mac too.
+
 2023-10-10 Fixed compiling for iOS.
            Fixed compiling for Android.
            Fixed compiling for Linux.

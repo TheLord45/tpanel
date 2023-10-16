@@ -65,4 +65,4 @@ For example, start the script as follows:
 
 `./build_ios.sh clean sign`
 
-to build **TPanel** for an iPhone of iPad. If you've problems and get errors, open the script with an editor and adapt the paths and settings according to your needs.
+to build **TPanel** for an iPhone or iPad. If you've problems and get errors, open the script with an editor and adapt the paths and settings according to your needs.

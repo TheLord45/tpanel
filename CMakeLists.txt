@@ -175,6 +175,10 @@ elseif(IOS)
                 ${EXT_LIB_PATH}/skia)
     endif()
 
+    if(NOT DEFINED IPHONEOS_DEPLOYMENT_TARGET)
+        set(IPHONEOS_DEPLOYMENT_TARGET "15.0")
+    endif()
+
     link_libraries(z ssl crypto expat libskia.a)
     link_directories(${EXT_LIB_PATH}/pjsip/lib)
 
@@ -199,6 +203,7 @@ elseif(IOS)
         ios/tiosbattery.mm
     )
 
+    set(settings_bundle "Settings.bundle")
     include_directories(${CMAKE_CURRENT_SOURCE_DIR})
     add_link_options(-framework CFNetwork)
  else()
@@ -230,17 +235,19 @@ elseif(IOS)
 
     # This is for telephone libraries PJSIP
     pkg_check_modules(PJSIP REQUIRED libpjproject)
+    message(STATUS "PJSIP: Includes: ${PJSIP_INCLUDE_DIRS}")
+    message(STATUS "PJSIP: Libraries: ${PJSIP_LIBRARY_DIRS}")
     include_directories(${PJSIP_INCLUDE_DIRS})
     link_directories(${PJSIP_LIBRARY_DIRS})
 
-    if(APPLE)
-        link_libraries(
-            pjsua2 pjsua pjsip-ua pjsip-simple pjsip
-            pjmedia-codec pjmedia pjmedia-audiodev
-            pjnath pjlib-util pj
-            gsmcodec ilbccodec speex g7221codec
-            srtp resample webrtc)
-    else(APPLE)
+    if(NOT APPLE)
+#        link_libraries(
+#            pjsua2 pjsua pjsip-ua pjsip-simple pjsip
+#            pjmedia-codec pjmedia pjmedia-audiodev
+#            pjnath pjlib-util pj
+#            gsmcodec ilbccodec speex g7221codec
+#            srtp resample webrtc)
+#    else(APPLE)
         set(LIBS ${LIBS} -L/usr/local/lib)
         link_libraries(
             pjsua2 pjsua pjsip-ua pjsip-simple pjsip
@@ -249,7 +256,7 @@ elseif(IOS)
             gsmcodec ilbccodec speex g7221codec
             srtp resample yuv webrtc
             opus asound)
-    endif(APPLE)
+    endif()
 
     find_library(UUID_LIBRARY NAMES uuid)
     set(LIBS ${LIBS} ${UUID_LIBRARY})
@@ -262,24 +269,43 @@ elseif(IOS)
         set(OSX_INCLUDE -I/opt/homebrew/include -I/usr/local/include)
         add_definitions(${OSX_INCLUDE})
         link_libraries(
-            /usr/local/lib/libpjsua2.dylib.2
-            /usr/local/lib/libpjsua.dylib.2
-            /usr/local/lib/libpjsip-ua.dylib.2
-            /usr/local/lib/libpjsip-simple.dylib.2
-            /usr/local/lib/libpjsip.dylib.2
-            /usr/local/lib/libpjmedia-codec.dylib.2
-            /usr/local/lib/libpjmedia.dylib.2
-            /usr/local/lib/libpjmedia-audiodev.dylib.2
-            /usr/local/lib/libpjnath.dylib.2
-            /usr/local/lib/libpjlib-util.dylib.2
-            /usr/local/lib/libpj.dylib.2
-            /usr/local/lib/libgsmcodec.dylib.2
-            /usr/local/lib/libilbccodec.dylib.2
-            /usr/local/lib/libspeex.dylib.2
-            /usr/local/lib/libg7221codec.dylib.2
-            /usr/local/lib/libsrtp.dylib.2
-            /usr/local/lib/libresample.dylib.2
-            /usr/local/lib/libwebrtc.dylib.2
+#            /usr/local/lib/libpjsua2-arm-apple-darwin22.1.0.a
+#            /usr/local/lib/libpjsua-arm-apple-darwin22.1.0.a
+#            /usr/local/lib/libpjsip-ua-arm-apple-darwin22.1.0.a
+#            /usr/local/lib/libpjsip-simple-arm-apple-darwin22.1.0.a
+#            /usr/local/lib/libpjsip-arm-apple-darwin22.1.0.a
+#            /usr/local/lib/libpjmedia-codec-arm-apple-darwin22.1.0.a
+#            /usr/local/lib/libpjmedia-arm-apple-darwin22.1.0.a
+#            /usr/local/lib/libpjmedia-audiodev-arm-apple-darwin22.1.0.a
+#            /usr/local/lib/libpjnath-arm-apple-darwin22.1.0.a
+#            /usr/local/lib/libpjlib-util-arm-apple-darwin22.1.0.a
+#            /usr/local/lib/libpj-arm-apple-darwin22.1.0.a
+#            /usr/local/lib/libgsmcodec-arm-apple-darwin22.1.0.a
+#            /usr/local/lib/libilbccodec-arm-apple-darwin22.1.0.a
+#            /usr/local/lib/libspeex-arm-apple-darwin22.1.0.a
+#            /usr/local/lib/libg7221codec-arm-apple-darwin22.1.0.a
+#            /usr/local/lib/libsrtp-arm-apple-darwin22.1.0.a
+#            /usr/local/lib/libresample-arm-apple-darwin22.1.0.a
+#            /usr/local/lib/libyuv-arm-apple-darwin22.1.0.a
+#            /usr/local/lib/libwebrtc-arm-apple-darwin22.1.0.a
+            pjsua2
+            pjsua
+            pjsip-ua
+            pjsip-simple
+            pjsip
+            pjmedia-codec
+            pjmedia
+            pjmedia-audiodev
+            pjnath
+            pjlib-util
+            pj
+            gsmcodec
+            ilbccodec
+            speex
+            g7221codec
+            srtp
+            resample
+            webrtc
         )
 
         set(OSX_LIB -L/opt/homebrew/lib -L/usr/local/lib -liconv -lexpat -lz)
@@ -434,17 +460,26 @@ elseif(IOS)
         ${OBJECTIVE_HEADERS}
         ${OBJECTIVE_SOURCES}
     )
-    add_definitions(-Wno-gnu-zero-variadic-macro-arguments)
+    add_definitions(-Wno-gnu-zero-variadic-macro-arguments -Wshorten-64-to-32)
 else()
     add_definitions(-DTESTMODE=1)
-    add_definitions(-pedantic -fexceptions -Wextra -Wno-attributes)
+    add_definitions(-pedantic -fexceptions -Wextra -Wno-gnu-zero-variadic-macro-arguments -Wno-attributes -Wno-nested-anon-types)
 endif()
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
-    qt_add_executable(tpanel
-        MANUAL_FINALIZATION
-        ${PROJECT_SOURCES}
-    )
+    if(IOS)
+        qt_add_executable(tpanel
+            MANUAL_FINALIZATION
+            ${PROJECT_SOURCES}
+            "${settings_bundle}"
+        )
+    else()
+        qt_add_executable(tpanel
+            MANUAL_FINALIZATION
+            ${PROJECT_SOURCES}
+        )
+    endif()
+
     if(ANDROID)
     # Define target properties for Android with Qt 6 as:
         set_property(TARGET tpanel APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
@@ -498,6 +533,16 @@ elseif(ANDROID)
         Qt${QT_VERSION_MAJOR}::Positioning
         ftp ${LIBS}
     )
+elseif(APPLE)
+    target_link_libraries(tpanel PRIVATE
+        Qt${QT_VERSION_MAJOR}::Widgets
+        Qt${QT_VERSION_MAJOR}::Core
+        Qt${QT_VERSION_MAJOR}::Gui
+        Qt${QT_VERSION_MAJOR}::Multimedia
+        Qt${QT_VERSION_MAJOR}::MultimediaWidgets
+        Qt${QT_VERSION_MAJOR}::Positioning
+        ftp ssl crypto ${LIBS}
+    )
 else()
     target_link_libraries(tpanel PRIVATE
         Qt${QT_VERSION_MAJOR}::Widgets
@@ -512,10 +557,31 @@ else()
 endif()
 
 if(IOS)
-    file(GLOB_RECURSE app_icon_files CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}images/icon*.png")
+    # Icons
     set(asset_catalog_path "Assets.xcassets")
-    target_sources(tpanel PRIVATE ${app_icon_files} "${asset_catalog_path}")
+    file(GLOB_RECURSE app_icon_files CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/images/AppIcon*.png")
+    file(GLOB_RECURSE bgimages_files CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/images/LaunchImage-*.png")
+    list(APPEND app_icon_files "${CMAKE_CURRENT_SOURCE_DIR}/${asset_catalog_path}/AppIcon.appiconset/Contents.json")
+    list(APPEND bgimages_portrait "${CMAKE_CURRENT_SOURCE_DIR}/${asset_catalog_path}/Images-portrait.imageset")
+    list(APPEND bgimages_portrait "${CMAKE_CURRENT_SOURCE_DIR}/${asset_catalog_path}/Images-portrait.imageset/Contents.json")
+    list(APPEND bgimages_landscape "${CMAKE_CURRENT_SOURCE_DIR}/${asset_catalog_path}/Images-landscape.imageset")
+    list(APPEND bgimages_landscape "${CMAKE_CURRENT_SOURCE_DIR}/${asset_catalog_path}/Images-landscape.imageset/Contents.json")
+    target_sources(tpanel PRIVATE ${app_icon_files} "${asset_catalog_path}" "${bgimages_files}")
+    list(APPEND app_icon_set "${CMAKE_CURRENT_SOURCE_DIR}/${asset_catalog_path}/AppIcon.appiconset")
+    list(APPEND app_icon_set "${CMAKE_CURRENT_SOURCE_DIR}/${asset_catalog_path}/Contents.json")
     set_source_files_properties(${app_icon_files} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+    set_source_files_properties(${app_icon_set} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources/${asset_catalog_path}/AppIcon.appiconset")
+    set_source_files_properties(${bgimages_files} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+    set_source_files_properties(${bgimages_portrait} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources/${asset_catalog_path}/Images-portrait.imageset")
+    set_source_files_properties(${bgimages_landscape} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources/${asset_catalog_path}/Images-landscape.imageset")
+    # Settings bundle
+    target_sources(tpanel PRIVATE "${settings_bundle}")
+    set_source_files_properties(${settings_bundle} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+    # Launch screen
+    set(launch_screen "ios/LaunchScreen.storyboard")
+    target_sources(tpanel PRIVATE ${launch_screen})
+    set_source_files_properties(${launch_screen} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources/${launch_screen}")
+
     set_target_properties(tpanel PROPERTIES
         MACOSX_BUNDLE_GUI_IDENTIFIER org.qtproject.theosys
         MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
@@ -523,6 +589,9 @@ if(IOS)
         MACOSX_BUNDLE TRUE
         MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/ios/Info.plist"
         WIN32_EXECUTABLE FALSE
+        XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME AppIcon
+        QT_NO_SET_IOS_LAUNCH_SCREEN TRUE
+        QT_IOS_LAUNCH_SCREEN "${CMAKE_CURRENT_SOURCE_DIR}/${launch_screen}"
     )
 else()
     set_target_properties(tpanel PROPERTIES

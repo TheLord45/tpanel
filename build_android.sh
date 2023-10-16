@@ -7,6 +7,7 @@ QT_VERSION="6.6.0"
 QT_VERSION_MAJOR=6
 QT_PATH="/opt/Qt"
 QT_ABI="x86_64"
+QT_HOST="macos"
 
 QTBASE="${QT_PATH}/$QT_VERSION"
 QTDIR="${QTBASE}/android_${QT_ABI}"
@@ -26,7 +27,7 @@ fi
 
 JAVA_HOME="/usr/lib/jvm/java-17-openjdk-amd64"
 
-export PATH="${QT}/Tools/Ninja:${QT}/Tools/CMake/bin:${QTDIR}/bin:$PATH"
+export PATH="${QT_PATH}/Tools/Ninja:${QT_PATH}/Tools/CMake/bin:${QTDIR}/bin:$PATH"
 ANDROID_TOOLCHAIN="${ANDROID_NDK_ROOT}/build/cmake/android.toolchain.cmake"
 
 KEYSTORE="$HOME/projects/tpanel/android/android_release.keystore"
@@ -42,14 +43,15 @@ export SSL_PATH="$HOME/Android/openssl"
 
 # This programs must be taken from the Qt framework
 QMAKE="$QTDIR/bin/qmake"
+ANDROIDDEPLOYQT="$QTBASE/${QT_HOST}/bin/androiddeployqt"
 
 if [ ! -z $OSTYPE ] && [[ "$OSTYPE" == *darwin* ]]
 then
     CMAKE="${QT_PATH}/Tools/CMake/CMake.app/Contents/bin/cmake"
-    ANDROIDDEPLOYQT="$QTBASE/macos/bin/androiddeployqt"
+    C_COMPILER_CLANG="${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang"
+    CXX_COMPILER_CLANG="${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++"
 else
     CMAKE="${QT_PATH}/Tools/CMake/bin/cmake"
-    ANDROIDDEPLOYQT="$QTBASE/gcc_64/bin/androiddeployqt"
 fi
 
 GREP="/usr/bin/grep"
@@ -194,8 +196,8 @@ then
         -DCMAKE_PROJECT_INCLUDE_BEFORE:FILEPATH=${CURDIR}/${BUILDDIR}/.qtc/package-manager/auto-setup.cmake \
         -DQT_QMAKE_EXECUTABLE:FILEPATH=${QMAKE} \
         -DCMAKE_PREFIX_PATH:PATH=${QTDIR} \
-        -DCMAKE_C_COMPILER:FILEPATH=${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64/bin/clang \
-        -DCMAKE_CXX_COMPILER:FILEPATH=${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ \
+        -DCMAKE_C_COMPILER:FILEPATH=${C_COMPILER_CLANG} \
+        -DCMAKE_CXX_COMPILER:FILEPATH=${CXX_COMPILER_CLANG} \
         -DANDROID_PLATFORM:STRING=${ANDROID_PLATFORM} \
         -DANDROID_NDK:PATH=${ANDROID_NDK_ROOT} \
         -DCMAKE_TOOLCHAIN_FILE:FILEPATH=${ANDROID_TOOLCHAIN} \
@@ -204,7 +206,7 @@ then
         -DANDROID_STL:STRING=c++_shared \
         -DCMAKE_FIND_ROOT_PATH:PATH=${QTDIR} \
         -DQT_NO_GLOBAL_APK_TARGET_PART_OF_ALL:BOOL=ON \
-        -DQT_HOST_PATH:PATH=${QTBASE}/gcc_64 \
+        -DQT_HOST_PATH:PATH=${QTBASE}/${QT_HOST} \
         -DANDROID_SDK_ROOT:PATH=${ANDROID_HOME} \
         -DQT_ANDROID_BUILD_ALL_ABIS:BOOL=ON \
         -DQT_ANDROID_ABIS:STRING="arm64-v8a;armeabi-v7a;x86;x86_64" \
