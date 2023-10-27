@@ -82,6 +82,7 @@ class TObject
             WId wid{0};                     // Used to identify a QTextEdit or QLineEdit
             bool remove{false};             // Object is marked for remove. Used with animation.
             bool connected{false};          // TRUE = there is a connection.
+            bool dirty{false};              // TRUE = Object was changed during surface was suspended.
         }OBJECT_t;
 
         TObject();
@@ -96,6 +97,8 @@ class TObject
         OBJECT_t *findNextChild(ulong handle);
         OBJECT_t *getMarkedRemove();
         OBJECT_t *getNextMarkedRemove(OBJECT_t *obj);
+        OBJECT_t *getFirstDirty();
+        OBJECT_t *getNextDirty(OBJECT_t *obj);
         OBJECT_t *findFirstWindow();
         OBJECT_t *findNextWindow(OBJECT_t *obj);
         void cleanMarked();

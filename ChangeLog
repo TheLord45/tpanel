@@ -3,6 +3,13 @@ ChangeLog
 
 Release: 1.4.0
 ===============================================================================
+2023-10-27 Added support for logfiles on Android.
+
+2023-10-26 Added new refresh function for objects drawn during display was
+           suspended.
+
+2023-10-25 Changed behavior of bars on Android to appear only for a short time.
+
 2023-10-15 Fixed compiling on Mac for OSX and Android. The build script for
            Android works now on Mac too.
 

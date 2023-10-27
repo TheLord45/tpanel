@@ -32,6 +32,7 @@ import org.qtproject.theosys.Logger;
 public class HideToolbar extends Logger
 {
     static private boolean mBusy = false;
+    static private boolean mInit = false;
 
     static public void hide(Activity act, boolean h)
     {
@@ -60,6 +61,12 @@ public class HideToolbar extends Logger
                         else
                         {
                             WindowInsetsController wic = window.getInsetsController();
+
+                            if (!mInit)
+                            {
+                                wic.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                                mInit = true;
+                            }
 
                             if (wic != null)
                             {

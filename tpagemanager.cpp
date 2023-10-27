@@ -684,8 +684,12 @@ JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setLogEnableF
     Q_UNUSED(env);
     Q_UNUSED(clazz);
 
-    if (TConfig::getLogFileEnabled() != log)
-        TConfig::setLogFileEnabled(log);
+    TConfig::setLogFileEnabled(log);
+
+    if (log && !TConfig::getLogFile().empty())
+        TStreamError::setLogFile(TConfig::getLogFile());
+
+    MSG_DEBUG("Logfile was " << (log ? "ENABLED" : "DISABLED"));
 }
 
 JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setLogFile(JNIEnv *env, jclass clazz, jstring log)
@@ -1431,8 +1435,14 @@ void TPageManager::showSetup()
 
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "setLogLevel", "(Ljava/lang/Integer;)V", TConfig::getLogLevelBits());
+    QAndroidJniObject strPath = QAndroidJniObject::fromString(TConfig::getLogFile().c_str());
+    QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "setLogFileEnabled", "(Z)V", TConfig::getLogFileEnabled());
+    QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "setLogPath", "(Ljava/lang/String;)V", strPath.object<jstring>());
 #else
     QJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "setLogLevel", "(I)V", TConfig::getLogLevelBits());
+    QJniObject strPath = QJniObject::fromString(TConfig::getLogFile().c_str());
+    QJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "setLogFileEnabled", "(Z)V", TConfig::getLogFileEnabled());
+    QJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "setLogPath", "(Ljava/lang/String;)V", strPath.object<jstring>());
 #endif
 
     enterSetup();
@@ -1654,6 +1664,77 @@ void TPageManager::setSelectedRow(ulong handle, int row, const std::string& text
             // Close the list subpage
             subPg->drop();
         }
+    }
+}
+
+void TPageManager::redrawObject(ulong handle)
+{
+    DECL_TRACER("TPageManager::redrawObject(ulong handle)");
+
+    int pnumber = (int)((handle >> 16) & 0x0000ffff);
+    int btnumber = (int)(handle & 0x0000ffff);
+
+    if (pnumber < REGULAR_SUBPAGE_START)    // Is it a page?
+    {
+        TPage *page = getPage(pnumber);
+
+        if (!page)
+        {
+            MSG_WARNING("Page " << pnumber << " not found!");
+            return;
+        }
+
+        if (!page->isVisilble())
+            return;
+
+        if (btnumber == 0)
+        {
+            page->show();
+            return;
+        }
+
+        Button::TButton *button = page->getButton(btnumber);
+
+        if (!button)
+        {
+            MSG_WARNING("Button " << btnumber << " on page " << pnumber << " not found!");
+            return;
+        }
+
+        button->showLastButton();
+    }
+    else if (pnumber >= REGULAR_SUBPAGE_START && pnumber < SYSTEM_PAGE_START)
+    {
+        TSubPage *spage = getSubPage(pnumber);
+
+        if (!spage)
+        {
+            MSG_WARNING("Subpage " << pnumber << " not found!");
+            return;
+        }
+
+        if (!spage->isVisible())
+            return;
+
+        if (btnumber == 0)
+        {
+            spage->show();
+            return;
+        }
+
+        Button::TButton *button = spage->getButton(btnumber);
+
+        if (!button)
+        {
+            MSG_WARNING("Button " << btnumber << " on subpage " << pnumber << " not found!");
+            return;
+        }
+
+        button->showLastButton();
+    }
+    else
+    {
+        MSG_WARNING("System pages are not handled by redraw method! Ignoring page " << pnumber << ".");
     }
 }
 

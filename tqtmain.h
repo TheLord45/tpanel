@@ -336,6 +336,7 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
         void doReleaseButton();
         void repaintObjects();
         void refresh(ulong handle);
+        void markDirty(ulong handle);
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
         int calcVolume(int value);
 #else

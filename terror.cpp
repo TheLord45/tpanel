@@ -210,9 +210,10 @@ void TStreamError::setLogFile(const std::string &lf)
     if (!mInitialized)
         _init();
 #else
+#ifndef __ANDROID__
     if (mInitialized && mLogfile.compare(lf) == 0)
         return;
-
+#endif
     mLogfile = lf;
     mInitialized = false;
     _init();
@@ -316,9 +317,14 @@ void TStreamError::_init(bool reinit)
         return;
 
     mInitialized = true;
+    bool lfile = true;
 
+#ifdef __ANDROID__
+    lfile = TConfig::getLogFileEnabled();
+    __android_log_print(ANDROID_LOG_DEBUG, "tpanel", "TStreamError::_init: Logfile is %s", (TConfig::getLogFileEnabled() ? "ENABLED" : "DISABLED"));
+#endif
 #if LOGPATH == LPATH_FILE
-    if (!mLogfile.empty())
+    if (lfile && !mLogfile.empty())
     {
         try
         {

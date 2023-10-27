@@ -38,6 +38,8 @@ public class Settings extends Logger
     static private boolean mLogError = false;
     static private boolean mLogDebug = false;
     static private boolean mLogTrace = false;
+    static private boolean mLogFileEnabled = false;
+    static private String mLogPath;
 
     static public void callSettings(Activity act)
     {
@@ -74,6 +76,16 @@ public class Settings extends Logger
         mLogDebug = (level & HLOG_DEBUG) == HLOG_DEBUG;
     }
 
+    static public void setLogFileEnabled(Boolean set)
+    {
+        mLogFileEnabled = set;
+    }
+
+    static public void setLogPath(String path)
+    {
+        mLogPath = path;
+    }
+
     static public void deploySurfaces()
     {
         if (m_ActivityInstance == null || m_intent == null)
@@ -87,6 +99,8 @@ public class Settings extends Logger
         m_intent.putExtra("log_error", mLogError);
         m_intent.putExtra("log_trace", mLogTrace);
         m_intent.putExtra("log_debug", mLogDebug);
+        m_intent.putExtra("log_path", mLogPath);
+        m_intent.putExtra("log_file_enabled", mLogFileEnabled);
 
         if (mSurfaces == null || mSurfaces.isEmpty())
             return;

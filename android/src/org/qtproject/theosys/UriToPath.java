@@ -66,19 +66,32 @@ public class UriToPath
         // DocumentProvider
         if (isKitKat && DocumentsContract.isDocumentUri(context, uri))
         {
+            Log.d("UriToPath", "Found document URI ...");
             // ExternalStorageProvider
             if (isExternalStorageDocument(uri))
             {
                 final String docId = DocumentsContract.getDocumentId(uri);
                 final String[] split = docId.split(":");
                 final String type = split[0];
+                String storageDefinition;
 
+                // content://com.android.externalstorage.documents/document/primary%3ADocuments%2Ftpanel.log
                 if ("primary".equalsIgnoreCase(type))
-                {
                     return Environment.getExternalStorageDirectory() + "/" + split[1];
+
+                // content://com.android.externalstorage.documents/document/17ED-280E%3ADocuments%2Ftpanel.log
+                if(Environment.isExternalStorageRemovable())
+                    storageDefinition = "EXTERNAL_STORAGE";
+                else
+                {
+                    storageDefinition = "SECONDARY_STORAGE";
+
+                    if (System.getenv(storageDefinition) == null)
+                        storageDefinition = "EXTERNAL_STORAGE";
                 }
 
-                // TODO handle non-primary volumes
+                Log.d("UriToPath", "Trying environment " + storageDefinition);
+                return System.getenv(storageDefinition) + "/" + split[1];
             }
             // DownloadsProvider
             else if (isDownloadsDocument(uri))
@@ -140,6 +153,7 @@ public class UriToPath
         }
         else if ("content".equalsIgnoreCase(uri.getScheme()))   // MediaStore (and general)
         {
+            Log.d("UriToPath", "Found media store or general ...");
             // Return the remote address
             if (isGooglePhotosUri(uri))
                 return uri.getLastPathSegment();

@@ -551,7 +551,7 @@ else()
         Qt${QT_VERSION_MAJOR}::Multimedia
         Qt${QT_VERSION_MAJOR}::MultimediaWidgets
         Qt${QT_VERSION_MAJOR}::Positioning
-        OpenSSL::applink
+	OpenSSL::SSL
         ftp ${LIBS}
     )
 endif()

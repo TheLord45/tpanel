@@ -484,6 +484,15 @@ class TPageManager : public TAmxCommands
          * @param row       The number of the selected row.
          */
         void setSelectedRow(ulong handle, int row, const std::string& text);
+        /**
+         * @brief redrawObject - redraws an object
+         * The method sends the last stored graphic to the surface where it is
+         * drawn.
+         * If the object is not visible, it is not redrawn.
+         *
+         * @param handle    The handle of the object.
+         */
+        void redrawObject(ulong handle);
 #ifdef Q_OS_IOS
         void setBattery(int level, int state) { mLastBatteryLevel = level; mLastBatteryState = state; }
 #endif

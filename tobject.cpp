@@ -312,6 +312,48 @@ TObject::OBJECT_t * TObject::getNextMarkedRemove(TObject::OBJECT_t* object)
     return nullptr;
 }
 
+TObject::OBJECT_t *TObject::getFirstDirty()
+{
+    DECL_TRACER("TObject::getFirstDirty()");
+
+    if (mObjects.empty())
+        return nullptr;
+
+    map<ulong, OBJECT_t>::iterator iter;
+
+    for (iter = mObjects.begin(); iter != mObjects.end(); ++iter)
+    {
+        if (iter->second.dirty)
+            return &iter->second;
+    }
+
+    return nullptr;
+}
+
+TObject::OBJECT_t *TObject::getNextDirty(OBJECT_t *obj)
+{
+    DECL_TRACER("TObject::getNextDirty(OBJECT_t *obj)");
+
+    if (!obj || mObjects.empty())
+        return nullptr;
+
+    map<ulong, OBJECT_t>::iterator iter;
+    bool next = true;
+
+    for (iter = mObjects.find(obj->handle); iter != mObjects.end(); ++iter)
+    {
+        if (next)
+        {
+            next = false;
+            continue;
+        }
+
+        if (iter->second.dirty)
+            return &iter->second;
+    }
+
+    return nullptr;
+}
 TObject::OBJECT_t *TObject::findFirstWindow()
 {
     DECL_TRACER("TObject::getFirstWindow()");

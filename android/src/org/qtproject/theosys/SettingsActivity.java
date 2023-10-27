@@ -20,12 +20,14 @@ package org.qtproject.theosys;
 import java.util.*;
 
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.InputType;
 import android.view.View;
 
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.preference.Preference;
 import androidx.preference.DropDownPreference;
 import androidx.preference.EditTextPreference;
 import androidx.preference.ListPreference;
@@ -34,10 +36,15 @@ import androidx.preference.SeekBarPreference;
 import androidx.preference.SwitchPreference;
 
 import org.qtproject.theosys.Logger;
+import org.qtproject.theosys.UriToPath;
 
 public class SettingsActivity extends AppCompatActivity
 {
     static private Intent m_intent = null;
+    static private Intent m_intLogFile = null;
+    static private EditTextPreference logFilePref = null;
+    static private String logFilePath;
+    private static final int CREATE_FILE = 1988;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -141,6 +148,8 @@ public class SettingsActivity extends AppCompatActivity
             Boolean log_error = m_intent.getBooleanExtra("log_error", false);
             Boolean log_trace = m_intent.getBooleanExtra("log_trace", false);
             Boolean log_debug = m_intent.getBooleanExtra("log_debug", false);
+            Boolean log_file_enabled = m_intent.getBooleanExtra("log_file_enabled", false);
+            logFilePath = m_intent.getStringExtra("log_path");
 
             SwitchPreference logInfo = findPreference("logging_info");
 
@@ -170,12 +179,22 @@ public class SettingsActivity extends AppCompatActivity
             else
                 Logger.log(Logger.HLOG_ERROR, "SettingsActivity.SettingsFragment.onViewCreated: The surface preference \"logging_trace\" was not found!");
 
-            SwitchPreference logDebug = findPreference("logging_debug");
+            SwitchPreference logDebugging = findPreference("logging_debug");
 
-            if (logDebug != null)
-                logDebug.setChecked(log_debug);
+            if (logDebugging != null)
+                logDebugging.setChecked(log_debug);
             else
                 Logger.log(Logger.HLOG_ERROR, "SettingsActivity.SettingsFragment.onViewCreated: The surface preference \"logging_debug\" was not found!");
+
+            SwitchPreference logFileEnable = findPreference("logging_logfile_enabled");
+
+            if (logFileEnable != null)
+                logFileEnable.setChecked(log_file_enabled);
+
+            EditTextPreference logFileText = findPreference("logging_logfile");
+
+            if (logFileText != null)
+                logFileText.setText(logFilePath);
         }
 
         @Override
@@ -630,14 +649,33 @@ public class SettingsActivity extends AppCompatActivity
 
             if (logFile != null)
             {
+                logFilePref = logFile;
                 logFile.setOnBindEditTextListener(editText -> editText.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS));
                 logFile.setOnPreferenceChangeListener((preference, value) -> {
                     Logger.log(Logger.HLOG_DEBUG, "Log file: " + value);
-                    setLogFile(value.toString());
+
+                    if (logFilePath.length() == 0)
+                        setLogFile(value.toString());
+                    else
+                        logFile.setText(logFilePath);
+
                     return true;
+                });
+                logFile.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+                    @Override
+                    public boolean onPreferenceClick(Preference preference) {
+                        m_intLogFile = new Intent(Intent.ACTION_CREATE_DOCUMENT); //Intent to start File Manager
+                        m_intLogFile.addCategory(Intent.CATEGORY_OPENABLE);
+                        m_intLogFile.setType("text/*");
+                        m_intLogFile.putExtra(Intent.EXTRA_TITLE, logFile.getText());
+                        startActivityForResult(m_intLogFile, CREATE_FILE);
+                        Logger.log(Logger.HLOG_DEBUG, "File dialog activity started ...");
+                        return true;
+                    }
                 });
             }
         }
+
         //return the password in asterisks
         private String setAsterisks(int length)
         {
@@ -647,6 +685,27 @@ public class SettingsActivity extends AppCompatActivity
                 sb.append("*");
 
             return sb.toString();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        Logger.log(Logger.HLOG_DEBUG, "SettingsActivity::onActivityResult() [requestCode=" + Integer.toString(requestCode) + ", resultCode=" + Integer.toString(resultCode) + "]");
+        //get the new value from Intent data
+        if (resultCode == RESULT_OK && data != null)
+        {
+            Uri uri = data.getData();
+            String value = UriToPath.getFileName(uri, getApplicationContext());
+            Logger.log(Logger.HLOG_DEBUG, "Transfered file to: " + value);
+
+            if (logFilePref != null)
+            {
+                logFilePref.setText(value);
+                Logger.log(Logger.HLOG_DEBUG, "Stored file name to input line.");
+            }
+
+            setLogFile(value.toString());
         }
     }
 

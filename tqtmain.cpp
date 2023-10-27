@@ -1585,6 +1585,7 @@ void MainWindow::onCurrentOrientationChanged(int currentOrientation)
     Q_UNUSED(currentOrientation);
 #endif
 }
+
 /**
  * @brief MainWindow::onPositionUpdated
  * This method is a callback function for the Qt framework. It is called
@@ -1624,7 +1625,7 @@ void MainWindow::onErrorOccurred(QGeoPositionInfoSource::Error positioningError)
  * @brief Displays or hides a phone dialog window.
  * This method creates and displays a phone dialog window containing everything
  * a simple phone needs. Depending on the parameter \p state the dialog is
- * created or an exeisting dialog is closed.
+ * created or an existing dialog is closed.
  * @param state     If TRUE the dialog is created or if it is not visible
  * brought to front and is made visible.
  * If this is FALSE an existing dialog window is destroid and disappears. If
@@ -2662,14 +2663,6 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
 #endif
         case Qt::ApplicationActive:
             MSG_INFO("Switched to mode ACTIVE");
-/*
-#ifdef Q_OS_ANDROID
-            // On Android we must give the surface some time to recover.
-            // Otherwise it may freeze or stay black and the app doesn't
-            // react any more.
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-#endif
-*/
             mHasFocus = true;
 
             if (!isRunning && gPageManager)
@@ -2731,8 +2724,8 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
 #endif
 //                playShowList();
 
-//                if (mDoRepaint && mWasInactive)
-//                    repaintObjects();
+                if (mDoRepaint || mWasInactive)
+                    repaintObjects();
 
                 mDoRepaint = false;
                 mWasInactive = false;
@@ -2816,8 +2809,15 @@ void MainWindow::_displayButton(ulong handle, ulong parent, TBitmap buffer, int 
 {
     DECL_TRACER("MainWindow::_displayButton(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough)");
 
-    if (prg_stopped || ! mHasFocus)
+    if (prg_stopped)
         return;
+
+    if (!mHasFocus)
+    {
+        markDirty(handle);
+        return;
+    }
+
 /*
     if (!mHasFocus)     // Suspended?
     {
@@ -2832,8 +2832,15 @@ void MainWindow::_displayViewButton(ulong handle, ulong parent, bool vertical, T
 {
     DECL_TRACER("MainWindow::_displayViewButton(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top)");
 
-    if (prg_stopped || !mHasFocus)
+    if (prg_stopped)
         return;
+
+    if (!mHasFocus)
+    {
+        markDirty(handle);
+        return;
+    }
+
 /*
     if (!mHasFocus)     // Suspended?
     {
@@ -2848,7 +2855,7 @@ void MainWindow::_addViewButtonItems(ulong parent, vector<PGSUBVIEWITEM_T> items
 {
     DECL_TRACER("MainWindow::_addViewButtonItems(ulong parent, vector<PGSUBVIEWITEM_T> items)");
 
-    if (prg_stopped || !mHasFocus)
+    if (prg_stopped)
         return;
 
     emit sigAddViewButtonItems(parent, items);
@@ -2861,14 +2868,13 @@ void MainWindow::_updateViewButton(ulong handle, ulong parent, TBitmap buffer, T
     if (prg_stopped || !mHasFocus)
         return;
 
-//    try
-//    {
-        emit sigUpdateViewButton(handle, parent, buffer, fillColor);
-//    }
-//    catch (std::exception& e)
-//    {
-//        MSG_ERROR("Error triggering function \"updateViewButton()\": " << e.what());
-//    }
+    if (!mHasFocus)
+    {
+        markDirty(handle);
+        return;
+    }
+
+    emit sigUpdateViewButton(handle, parent, buffer, fillColor);
 }
 
 void MainWindow::_updateViewButtonItem(PGSUBVIEWITEM_T& item, ulong parent)
@@ -2878,31 +2884,23 @@ void MainWindow::_updateViewButtonItem(PGSUBVIEWITEM_T& item, ulong parent)
     if (prg_stopped || !mHasFocus)
         return;
 
-//    try
-//    {
-        emit sigUpdateViewButtonItem(item, parent);
-//    }
-//    catch (std::exception& e)
-//    {
-//        MSG_ERROR("Error triggering function \"updateViewButtonItem()\": " << e.what());
-//    }
+    emit sigUpdateViewButtonItem(item, parent);
 }
 
 void MainWindow::_showViewButtonItem(ulong handle, ulong parent, int position, int timer)
 {
     DECL_TRACER("MainWindow::_showViewButtonItem(ulong handle, ulong parent, int position, int timer)");
 
-    if (prg_stopped || !mHasFocus)
+    if (prg_stopped)
         return;
 
-//    try
-//    {
-        emit sigShowViewButtonItem(handle, parent, position, timer);
-//    }
-//    catch (std::exception& e)
-//    {
-//        MSG_ERROR("Error triggering function \"showViewButtonItem()\": " << e.what());
-//    }
+    if (!mHasFocus)
+    {
+        markDirty(handle);
+        return;
+    }
+
+    emit sigShowViewButtonItem(handle, parent, position, timer);
 }
 
 void MainWindow::_hideAllViewItems(ulong handle)
@@ -2919,8 +2917,14 @@ void MainWindow::_toggleViewButtonItem(ulong handle, ulong parent, int position,
 {
     DECL_TRACER("MainWindow::_toggleViewButtonItem(ulong handle, ulong parent, int position, int timer)");
 
-    if (prg_stopped || !mHasFocus)
+    if (prg_stopped)
         return;
+
+    if (!mHasFocus)
+    {
+        markDirty(handle);
+        return;
+    }
 
     emit sigToggleViewButtonItem(handle, parent, position, timer);
 }
@@ -2995,8 +2999,15 @@ void MainWindow::_setBackground(ulong handle, TBitmap image, int width, int heig
 {
     DECL_TRACER("MainWindow::_setBackground(ulong handle, TBitmap image, int width, int height, ulong color [, int opacity])");
 
-    if (prg_stopped || !mHasFocus)
+    if (prg_stopped)
         return;
+
+    if (!mHasFocus)
+    {
+        markDirty(handle);
+        return;
+    }
+
 /*
     if (!mHasFocus)
     {
@@ -3054,15 +3065,14 @@ void MainWindow::_dropSubPage(ulong handle, ulong parent)
 void MainWindow::_dropButton(ulong handle)
 {
     DECL_TRACER("MainWindow::_dropButton(ulong handle)");
-/*
+
     if (!mHasFocus)
     {
         markDrop(handle);
         return;
     }
-*/
-    if (mHasFocus)
-        emit sigDropButton(handle);
+
+    emit sigDropButton(handle);
 }
 
 void MainWindow::_playVideo(ulong handle, ulong parent, int left, int top, int width, int height, const string& url, const string& user, const string& pw)
@@ -3144,7 +3154,7 @@ void MainWindow::_showKeypad(const std::string& init, const std::string& prompt,
 {
     DECL_TRACER("MainWindow::_showKeypad(std::string &init, std::string &prompt, bool priv)");
 
-    if (prg_stopped || mHasFocus)
+    if (prg_stopped || !mHasFocus)
         return;
 
     doReleaseButton();
@@ -3345,8 +3355,13 @@ void MainWindow::_listViewArea(ulong handle, ulong parent, Button::TButton& butt
         return;
     }
 
-    if (mHasFocus)
-        emit sigListViewArea(handle, parent, button, list);
+    if (!mHasFocus)
+    {
+        markDirty(handle);
+        return;
+    }
+
+    emit sigListViewArea(handle, parent, button, list);
 }
 
 void MainWindow::doReleaseButton()
@@ -3372,33 +3387,32 @@ void MainWindow::doReleaseButton()
 
 /**
  * @brief MainWindow::repaintObjects
- * On a mobile device it is possible that the content, mostly the background, of
- * a window becomes destroyed and it is not repainted. This may be the case at
- * the moment where the device was disconnected from the controller and
- * reconnected while the application was inactive. In such a case usualy the
- * surface is completely repainted. But because of inactivity this was not
- * possible and some components may look destroyed. They are still functional
- * allthough.
+ * If the application was suspended, which is only on mobile devices possible,
+ * the surface can't be drawn. If there was a change on a visible object it
+ * was marked "dirty". This methos searches for all dirty marked objects and
+ * asks the TPageManager to resend the last drawn graphic of the object. If the
+ * object was a page or subpage, the whole page or subpage is redrawn. Otherwise
+ * only the changed object.
  */
 void MainWindow::repaintObjects()
 {
     DECL_TRACER("MainWindow::repaintObjects()");
 
-//    TLOCKER(draw_mutex);
-#ifdef Q_OS_ANDROID
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));    // Necessary for slow devices
-#endif
-    TObject::OBJECT_t *obj = findFirstWindow();
+    TObject::OBJECT_t *obj = getFirstDirty();
 
     while (obj)
     {
-        if (!obj->remove && !obj->invalid && obj->object.widget)
+        if (!obj->remove && !obj->invalid && obj->dirty)
         {
             MSG_PROTOCOL("Refreshing widget " << handleToString (obj->handle));
-            obj->object.widget->repaint();
+
+            if (gPageManager)
+                gPageManager->redrawObject(obj->handle);
+
+            obj->dirty = false;
         }
 
-        obj = findNextWindow(obj);
+        obj = getNextDirty(obj);
     }
 }
 
@@ -3442,6 +3456,18 @@ void MainWindow::refresh(ulong handle)
     }
 }
 
+void MainWindow::markDirty(ulong handle)
+{
+    DECL_TRACER("MainWindow::markDirty(ulong handle)");
+
+    OBJECT_t *obj = findObject(handle);
+
+    if (!obj)
+        return;
+
+    MSG_DEBUG("Object " << handleToString(handle) << " marked dirty.");
+    obj->dirty = true;
+}
 
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 int MainWindow::calcVolume(int value)

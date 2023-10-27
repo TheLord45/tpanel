@@ -455,7 +455,10 @@ bool TConfig::saveLogFile(const string &file)
     if (mTemporary)
         localSettings_temp.logFile = file;
     else
+    {
         localSettings.logFile = file;
+        TStreamError::setLogFile(file);
+    }
 
     mTemporary = false;
     return true;
@@ -1988,6 +1991,12 @@ bool TConfig::readConfig()
             {
                 localSettings.logFile = right;
                 TStreamError::setLogFileOnly(right);
+#ifdef __ANDROID__
+                if (std::filesystem::is_regular_file(right))
+                    mLogFileEnabled = true;
+#else
+                mLogFileEnabled = true;
+#endif
             }
             else if (caseCompare(left, "LOGLEVEL") == 0 && !right.empty())
             {
@@ -2159,11 +2168,16 @@ bool TConfig::readConfig()
         MSG_INFO("Selected Parameters:");
         MSG_INFO("    Path to cfg.: " << localSettings.path);
         MSG_INFO("    Name of cfg.: " << localSettings.name);
-#ifndef __ANDROID__
+        MSG_INFO("    Logf. enabled:" << (mLogFileEnabled ? "ENABLED" : "DISABLED"));
+#ifdef __ANDROID__
+        if (mLogFileEnabled)
+            MSG_INFO("    Logfile:      " << localSettings.logFile);
+#else
         MSG_INFO("    Logfile:      " << localSettings.logFile);
 #endif
         MSG_INFO("    LogLevel:     " << localSettings.logLevel);
         MSG_INFO("    Long format:  " << (localSettings.longformat ? "YES" : "NO"));
+        MSG_INFO("    Logf. enabled:" << (localSettings.logFile))
         MSG_INFO("    Project path: " << localSettings.project);
 #ifndef __ANDROID__
         MSG_INFO("    Show banner:  " << (localSettings.noBanner ? "NO" : "YES"));
@@ -2221,7 +2235,7 @@ bool TConfig::readConfig()
  */
 vector<string> TConfig::split(const string& str, const string& seps, const bool trimEmpty)
 {
-    DECL_TRACER("TConfig::split(const string& str, const string& seps, const bool trimEmpty)");
+//    DECL_TRACER("TConfig::split(const string& str, const string& seps, const bool trimEmpty)");
 
 	size_t pos = 0, mark = 0;
 	vector<string> parts;
@@ -2283,7 +2297,7 @@ vector<string> TConfig::split(const string& str, const string& seps, const bool 
  */
 int TConfig::caseCompare(const string& str1, const string& str2)
 {
-    DECL_TRACER("TConfig::caseCompare(const string& str1, const string& str2)");
+//    DECL_TRACER("TConfig::caseCompare(const string& str1, const string& str2)");
 
 	size_t i = 0;
 
