@@ -3,6 +3,9 @@ ChangeLog
 
 Release: 1.4.0
 ===============================================================================
+2023-10-28 Fixed bug: When there is no "sr" section on a page it doesn't crash
+           any more.
+
 2023-10-27 Added support for logfiles on Android.
 
 2023-10-26 Added new refresh function for objects drawn during display was

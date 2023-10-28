@@ -68,6 +68,11 @@ bool TStreamError::mInitialized{false};
 unsigned int TStreamError::mLogLevel{HLOG_PROTOCOL};
 unsigned int TStreamError::mLogLevelOld{HLOG_NONE};
 bool TStreamError::haveTemporaryLogLevel{false};
+#ifdef __ANDROID__
+bool TStreamError::mLogFileEnabled{false};
+#else
+bool TStreamError::mLogFileEnabled{true};
+#endif
 
 string _threadIDtoStr(threadID_t tid)
 {
@@ -317,14 +322,13 @@ void TStreamError::_init(bool reinit)
         return;
 
     mInitialized = true;
-    bool lfile = true;
 
 #ifdef __ANDROID__
-    lfile = TConfig::getLogFileEnabled();
-    __android_log_print(ANDROID_LOG_DEBUG, "tpanel", "TStreamError::_init: Logfile is %s", (TConfig::getLogFileEnabled() ? "ENABLED" : "DISABLED"));
+//    mLogFileEnabled = TConfig::getLogFileEnabled();
+    __android_log_print(ANDROID_LOG_DEBUG, "tpanel", "TStreamError::_init: Logfile is %s", (mLogFileEnabled ? "ENABLED" : "DISABLED"));
 #endif
 #if LOGPATH == LPATH_FILE
-    if (lfile && !mLogfile.empty())
+    if (mLogFileEnabled && !mLogfile.empty())
     {
         try
         {

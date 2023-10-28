@@ -457,7 +457,14 @@ bool TConfig::saveLogFile(const string &file)
     else
     {
         localSettings.logFile = file;
+#ifdef __ANDROID__
+        if (mLogFileEnabled)
+            TStreamError::setLogFile(file);
+        else
+            TStreamError::setLogFile("");
+#else
         TStreamError::setLogFile(file);
+#endif
     }
 
     mTemporary = false;
@@ -1991,12 +1998,6 @@ bool TConfig::readConfig()
             {
                 localSettings.logFile = right;
                 TStreamError::setLogFileOnly(right);
-#ifdef __ANDROID__
-                if (std::filesystem::is_regular_file(right))
-                    mLogFileEnabled = true;
-#else
-                mLogFileEnabled = true;
-#endif
             }
             else if (caseCompare(left, "LOGLEVEL") == 0 && !right.empty())
             {
@@ -2177,7 +2178,6 @@ bool TConfig::readConfig()
 #endif
         MSG_INFO("    LogLevel:     " << localSettings.logLevel);
         MSG_INFO("    Long format:  " << (localSettings.longformat ? "YES" : "NO"));
-        MSG_INFO("    Logf. enabled:" << (localSettings.logFile))
         MSG_INFO("    Project path: " << localSettings.project);
 #ifndef __ANDROID__
         MSG_INFO("    Show banner:  " << (localSettings.noBanner ? "NO" : "YES"));

@@ -194,7 +194,12 @@ public class SettingsActivity extends AppCompatActivity
             EditTextPreference logFileText = findPreference("logging_logfile");
 
             if (logFileText != null)
+            {
                 logFileText.setText(logFilePath);
+
+                if (logFileEnable != null && !logFileEnable.isChecked())
+                    logFileText.setVisible(false);
+            }
         }
 
         @Override
@@ -635,17 +640,22 @@ public class SettingsActivity extends AppCompatActivity
             }
 
             SwitchPreference logFileEnable = findPreference("logging_logfile_enabled");
+            EditTextPreference logFile = findPreference("logging_logfile");
 
             if (logFileEnable != null)
             {
                 logFileEnable.setOnPreferenceChangeListener((preference, value) -> {
                     Logger.log(Logger.HLOG_DEBUG, "Log file enabled: " + value);
                     setLogEnableFile((Boolean)value);
+
+                    if ((Boolean)value == true && logFile != null)
+                        logFile.setVisible(true);
+                    else if (logFile != null)
+                        logFile.setVisible(false);
+
                     return true;
                 });
             }
-
-            EditTextPreference logFile = findPreference("logging_logfile");
 
             if (logFile != null)
             {
@@ -664,10 +674,17 @@ public class SettingsActivity extends AppCompatActivity
                 logFile.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
                     @Override
                     public boolean onPreferenceClick(Preference preference) {
-                        m_intLogFile = new Intent(Intent.ACTION_CREATE_DOCUMENT); //Intent to start File Manager
+                        // Filter filename only, if there is a path also
+                        String path = logFile.getText();
+                        int index = path.lastIndexOf("/");
+
+                        if (index >= 0)
+                            path = path.substring(index + 1);
+
+                        m_intLogFile = new Intent(Intent.ACTION_CREATE_DOCUMENT); // Intent to start File Manager
                         m_intLogFile.addCategory(Intent.CATEGORY_OPENABLE);
                         m_intLogFile.setType("text/*");
-                        m_intLogFile.putExtra(Intent.EXTRA_TITLE, logFile.getText());
+                        m_intLogFile.putExtra(Intent.EXTRA_TITLE, path);
                         startActivityForResult(m_intLogFile, CREATE_FILE);
                         Logger.log(Logger.HLOG_DEBUG, "File dialog activity started ...");
                         return true;

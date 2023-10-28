@@ -41,7 +41,7 @@ bool TPageInterface::drawText(PAGE_T& pinfo, SkBitmap *img)
 {
     MSG_TRACE("TPageInterface::drawText(PAGE_T& pinfo, SkImage& img)");
 
-    if (pinfo.sr[0].te.empty())
+    if (pinfo.sr.empty() || pinfo.sr[0].te.empty())
         return true;
 
     MSG_DEBUG("Searching for font number " << pinfo.sr[0].fi << " with text " << pinfo.sr[0].te);

@@ -67,6 +67,11 @@ public class Settings extends Logger
         mSurfaces.add(sf);
     }
 
+    static public void setLogEnableFile(int s)
+    {
+        mLogFileEnabled = (s == 1 ? true : false);
+    }
+
     static public void setLogLevel(int level)
     {
         mLogInfo = (level & HLOG_INFO) == HLOG_INFO;
@@ -74,11 +79,6 @@ public class Settings extends Logger
         mLogError = (level & HLOG_ERROR) == HLOG_ERROR;
         mLogTrace = (level & HLOG_TRACE) == HLOG_TRACE;
         mLogDebug = (level & HLOG_DEBUG) == HLOG_DEBUG;
-    }
-
-    static public void setLogFileEnabled(Boolean set)
-    {
-        mLogFileEnabled = set;
     }
 
     static public void setLogPath(String path)

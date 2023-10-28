@@ -211,7 +211,7 @@
             android:key="logging_logfile_enabled"
             android:title="Enable logfile" />
         <EditTextPreference
-            android:defaultValue="tpanel.log"
+            android:defaultValue="tpanel_log.txt"
             android:key="logging_logfile"
             android:title="Logfile"
             app:useSimpleSummaryProvider="true" />

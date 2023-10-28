@@ -685,11 +685,15 @@ JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setLogEnableF
     Q_UNUSED(clazz);
 
     TConfig::setLogFileEnabled(log);
+    TStreamError::setLogFileEnabled(log);
+    string logFile = TConfig::getLogFile();
 
-    if (log && !TConfig::getLogFile().empty())
-        TStreamError::setLogFile(TConfig::getLogFile());
+    if (log && !logFile.empty() && fs::is_regular_file(logFile))
+        TStreamError::setLogFile(logFile);
+    else if (!log)
+        TStreamError::setLogFile("");
 
-    MSG_DEBUG("Logfile was " << (log ? "ENABLED" : "DISABLED"));
+    __android_log_print(ANDROID_LOG_DEBUG, "tpanel", "JAVA::setLogEnableFile: Logfile was %s", (log ? "ENABLED" : "DISABLED"));
 }
 
 JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setLogFile(JNIEnv *env, jclass clazz, jstring log)
@@ -701,7 +705,18 @@ JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setLogFile(JN
     string logStr = javaJStringToString(env, log);
 
     if (TConfig::getLogFile() != logStr)
+    {
         TConfig::saveLogFile(logStr);
+        __android_log_print(ANDROID_LOG_DEBUG, "tpanel", "JAVA::setLogFile: Logfile set to: %s", logStr.c_str());
+
+        if (fs::is_regular_file(logStr))
+            TStreamError::setLogFile(logStr);
+        else
+        {
+            TStreamError::setLogFile("");
+            __android_log_print(ANDROID_LOG_WARN, "tpanel", "JAVA::setLogFile: Logfile \"%s\" is not accessible!", logStr.c_str());
+        }
+    }
 }
 #endif
 
@@ -1436,12 +1451,12 @@ void TPageManager::showSetup()
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "setLogLevel", "(Ljava/lang/Integer;)V", TConfig::getLogLevelBits());
     QAndroidJniObject strPath = QAndroidJniObject::fromString(TConfig::getLogFile().c_str());
-    QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "setLogFileEnabled", "(Z)V", TConfig::getLogFileEnabled());
+    QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "setLogEnableFile", "(Z)V", TConfig::getLogFileEnabled());
     QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "setLogPath", "(Ljava/lang/String;)V", strPath.object<jstring>());
 #else
     QJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "setLogLevel", "(I)V", TConfig::getLogLevelBits());
+    QJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "setLogEnableFile", "(I)V", (TConfig::getLogFileEnabled() ? 1 : 0));
     QJniObject strPath = QJniObject::fromString(TConfig::getLogFile().c_str());
-    QJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "setLogFileEnabled", "(Z)V", TConfig::getLogFileEnabled());
     QJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "setLogPath", "(Ljava/lang/String;)V", strPath.object<jstring>());
 #endif
 
