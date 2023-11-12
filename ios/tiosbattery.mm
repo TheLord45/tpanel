@@ -107,7 +107,7 @@ void TIOSBattery::update()
     if (mLeft < 0)
         mLeft = mLeft * -1;
 
-    int status = [myDevice batteryState];
+    long status = [myDevice batteryState];
 
     switch (status)
     {

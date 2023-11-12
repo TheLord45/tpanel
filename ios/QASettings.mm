@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2022, 2023 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,6 +21,8 @@
 #include "QASettings.h"
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
+#import <CoreLocation/CoreLocation.h>
+#import <OSLog/OSLog.h>
 #include <QtCore>
 
 #include "tconfig.h"
@@ -94,8 +96,8 @@
     str = [[ NSUserDefaults standardUserDefaults] stringForKey:@"sound_double"];
     TConfig::saveDoubleBeepFile(QString::fromNSString(str).toStdString());
     TConfig::saveSystemSoundState([[ NSUserDefaults standardUserDefaults] boolForKey:@"sound_enable"]);
-    TConfig::saveSystemVolume([[ NSUserDefaults standardUserDefaults] integerForKey:@"sound_volume"]);
-    TConfig::saveSystemGain([[ NSUserDefaults standardUserDefaults] integerForKey:@"sound_gain"]);
+    TConfig::saveSystemVolume((int)[[ NSUserDefaults standardUserDefaults] integerForKey:@"sound_volume"]);
+    TConfig::saveSystemGain((int)[[ NSUserDefaults standardUserDefaults] integerForKey:@"sound_gain"]);
 }
 
 - (void)registerDefaults
@@ -257,7 +259,7 @@ int QASettings::getSipNetworkPort(void)
 int QASettings::getSipNetworkTlsPort(void)
 {
     NSInteger number = [[ NSUserDefaults standardUserDefaults] integerForKey:@"sip_tsl_port"];
-    return number;
+    return (int)number;
 }
 
 QString QASettings::getSipStun(void)
@@ -453,7 +455,22 @@ QString QASettings::getDocumentPath()
 
 QMargins QASettings::getNotchSize()
 {
-    UIWindow* window = [[UIApplication sharedApplication] keyWindow];
+    NSArray<UIWindow *> *windows = [[UIApplication sharedApplication] windows];
+    UIWindow* window = nil;
+
+    for (UIWindow *w in windows)
+    {
+        if (w.isKeyWindow)
+        {
+            window = w;
+            break;
+        }
+    }
+
+    if (window == nil)
+        return QMargins();
+
+//    UIWindow* window = [[UIApplication sharedApplication] keyWindow];
     QMargins rect;
 
     float reservedTop = window.safeAreaInsets.top;
@@ -501,9 +518,9 @@ int QASettings::getDefaultNumber(char *key, int def)
 
     if (dataExists != nil)
     {
-        int ret = [[NSUserDefaults standardUserDefaults] integerForKey:nsKey];
+        long ret = [[NSUserDefaults standardUserDefaults] integerForKey:nsKey];
         [nsKey release];
-        return ret;
+        return (int)ret;
     }
 
     [nsKey release];
@@ -525,5 +542,26 @@ void QASettings::openSettings()
     oldToolbarSuppress = TConfig::getToolbarSuppress();
     oldToolbarForce = TConfig::getToolbarForce();
     // Launch the setup
-    [[UIApplication sharedApplication] openURL:url];
+    UIApplication *application = [UIApplication sharedApplication];
+    [application openURL:url options:@{} completionHandler:nil];
+}
+
+void QASettings::writeLog(int type, const std::string& msg)
+{
+    int dbType = OS_LOG_TYPE_DEBUG;
+
+    switch (type)
+    {
+        case TERRINFO:      dbType = OS_LOG_TYPE_INFO; break;
+        case TERRWARNING:   dbType = OS_LOG_TYPE_FAULT; break;
+        case TERRERROR:     dbType = OS_LOG_TYPE_ERROR; break;
+        case TERRDEBUG:     dbType = OS_LOG_TYPE_DEBUG; break;
+        default:
+            dbType = OS_LOG_TYPE_DEFAULT;
+    }
+
+
+//        os_log_with_type(OS_LOG_DEFAULT, dbType, "%s", msg.c_str());
+    NSLog(@"(tpanel) %s", msg.c_str());
+
 }

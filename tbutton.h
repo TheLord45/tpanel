@@ -953,6 +953,31 @@ namespace Button
              */
             bool drawMultistateBargraph(int level, bool show=true);
             /**
+             * @brief Invert bargraph
+             * This method sets or unsets inverting bargraphs.
+             *
+             * @param invert    TRUE: Invert the bargraph.
+             */
+            void setBargraphInvert(bool invert);
+            /**
+             * @brief Change ramp down time
+             *
+             * @param t     Time in 1/10 seconds
+             */
+            void setBargraphRampDownTime(int t);
+            /**
+             * @brief Change ramp up time
+             *
+             * @param t     Time in 1/10 seconds
+             */
+            void setBargraphRampUpTime(int t);
+            /**
+             * @brief Set the increment step factor
+             *
+             * @param inc   Step increment.
+             */
+            void setBargraphDragIncrement(int inc);
+            /**
              * Draws the background and the frame, if any, of the box. It takes
              * the number of rows in account.
              *
@@ -1274,7 +1299,7 @@ namespace Button
             int rd{0};              // Animate time down (bargraph)
             int lu{0};              // Animate time up (Bargraph)
             int ld{0};              // Animate time down (Bargraph)
-            int rv{0};
+            int rv{0};              // Bargraph: repeat interval?
             int rl{0};              // Range low
             int rh{0};              // Range high
             int ri{0};              // Bargraph inverted (0 = normal, 1 = inverted)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -112,6 +112,7 @@ class TObject
 
         static std::string objectToString(OBJECT_TYPE o);
         void dropContent(OBJECT_t *obj, bool lock=true);
+        void markDroped(ulong handle);
 
     private:
         std::mutex mutex_obj;

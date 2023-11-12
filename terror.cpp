@@ -27,17 +27,21 @@
 //#include <sys/syscall.h>
 //#endif
 
+#include <QMessageBox>
+#include <QTimer>
+
 #include "terror.h"
 #include "tconfig.h"
 
-#include <QMessageBox>
-#include <QTimer>
 
 #if LOGPATH == LPATH_SYSLOG || defined(__ANDROID__)
 #   ifdef __ANDROID__
 #       include <android/log.h>
 #   else
 #       include <syslog.h>
+#       ifdef __ENVIRONMENT_IPHONE_OS_VERSION_MIN_REQUIRED__
+#           include "ios/QASettings.h"
+#       endif
 #   endif
 #endif
 
@@ -145,19 +149,23 @@ class androidbuf : public std::streambuf
 
                 rc = __android_log_print(eType, "tpanel", "%s", writebuf) > 0;
 #else
+#ifdef Q_OS_IOS
+                QASettings::writeLog(TError::getErrorType(), writebuf);
+#else
                 switch(TError::getErrorType())
                 {
                     case TERRINFO:      eType = LOG_INFO; break;
-                    case TERRWARNING:   eType = LOG_WARN; break;
-                    case TERRERROR:     eType = LOG_ERROR; break;
+                    case TERRWARNING:   eType = LOG_WARNING; break;
+                    case TERRERROR:     eType = LOG_ERR; break;
                     case TERRTRACE:     eType = LOG_INFO; break;
                     case TERRDEBUG:     eType = LOG_DEBUG; break;
                     case TERRNONE:      eType = LOG_INFO; break;
                 }
 
-                syslog(eType, writebuf);
+                syslog(eType, "(tpanel) %s", writebuf);
                 rc = 1;
-#endif
+#endif  // Q_OS_IOS
+#endif  // __ANDROID__
                 this->setp(buffer, buffer + bufsize - 1);
             }
 
@@ -632,21 +640,11 @@ TTracer::TTracer(const std::string msg, int line, char *file, threadID_t tid)
     TError::setErrorType(TERRTRACE);
     std::lock_guard<mutex> guardm(message_mutex);
 
-#if LOGPATH == LPATH_FILE
     if (!TConfig::isLongFormat())
         *TError::Current()->getStream() << "TRC " << std::setw(5) << std::right << line << ", " << _threadIDtoStr(mThreadID) << " " << indent << "{entry " << msg << std::endl;
     else
         *TError::Current()->getStream() << TStreamError::getTime() <<  " TRC " << std::setw(5) << std::right << line << ", " << std::setw(20) << std::left << mFile << ", " << _threadIDtoStr(mThreadID) << " " << indent << "{entry " << msg << std::endl;
-#else
-    std::stringstream s;
 
-    if (!TConfig::isLongFormat())
-        s  << "TRC " << std::setw(5) << std::right << line << ", " << &indents << "{entry " << msg << std::endl;
-    else
-        s << TStreamError::getTime() <<  " TRC " << std::setw(5) << std::right << line << ", " << std::setw(20) << std::left << mFile << ", " << _threadIDtoStr(mThreadID) << &indents << "{entry " << msg << std::endl;
-
-    TError::Current()->logMsg(s);
-#endif
     TError::Current()->incIndent();
     mHeadMsg = msg;
     mLine = line;
@@ -677,7 +675,7 @@ TTracer::~TTracer()
     }
 
     std::lock_guard<mutex> guardm(message_mutex);
-#if LOGPATH == LPATH_FILE
+
     if (TConfig::getProfiling())
     {
         if (!TConfig::isLongFormat())
@@ -692,21 +690,7 @@ TTracer::~TTracer()
         else
             *TError::Current()->getStream() << TStreamError::getTime() << " TRC      , " << std::setw(20) << std::left << mFile << ", " << _threadIDtoStr(mThreadID) << " " << indent << "}exit " << mHeadMsg << std::endl;
     }
-#else
-    std::stringstream s;
 
-    if (!TConfig::isLongFormat())
-        s << "TRC      , " << &indents << "}exit " << mHeadMsg;
-    else
-        s << TStreamError::getTime() << " TRC      , " << std::setw(20) << std::left << mFile << ", " << _threadIDtoStr(mThreadID) << " " << &indents << "}exit " << mHeadMsg;
-
-    if (TConfig::getProfiling())
-        s  << " Elapsed time: " << nanosecs << std::endl;
-    else
-        s << std::endl;
-
-    TError::Current()->logMsg(s);
-#endif
     mHeadMsg.clear();
 }
 

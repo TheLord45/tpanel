@@ -3,7 +3,7 @@ set -o pipefail
 #
 # Set the following paths according to your installation.
 #
-QT_VERSION="6.5.3"
+QT_VERSION="6.6.0"
 QT_VERSION_MAJOR=6
 QT_PATH="/opt/Qt"
 QT_ABI="x86_64"

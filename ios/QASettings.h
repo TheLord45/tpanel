@@ -94,6 +94,8 @@ class QASettings
         static bool getOldToolbarSuppress() { return oldToolbarSuppress; }
         static bool getOldToolbarForce() { return oldToolbarForce; }
 
+        static void writeLog(int type, const std::string& msg);
+
     private:        /// methods
         bool getDefaultBool(char *key, bool def);
         int getDefaultNumber(char *key, int def);

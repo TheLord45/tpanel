@@ -961,10 +961,12 @@ TPageManager::TPageManager()
     REG_CMD(doENA, "^ENA");     // Enable or disable buttons with a set variable text range.
     REG_CMD(doFON, "^FON");     // Set a font to a specific Font ID value for those buttons with a range.
     REG_CMD(getFON, "?FON");    // Get the current font index.
-//    REG_CMD(doGDI, "^GDI");     // Change the bargraph drag increment.
+    REG_CMD(doGDI, "^GDI");     // Change the bargraph drag increment.
 //    REG_CMD(doGDV, "^GDV");     // Invert the joystick axis to move the origin to another corner.
     REG_CMD(doGLH, "^GLH");     // Change the bargraph upper limit.
     REG_CMD(doGLL, "^GLL");     // Change the bargraph lower limit.
+    REG_CMD(doGRD, "^GRD");     // Change the bargraph ramp down time.
+    REG_CMD(doGRU, "^GRU");     // Change the bargraph ramp up time.
     REG_CMD(doGSN, "^GSN");     // Set slider/cursor name.
     REG_CMD(doGSC, "^GSC");     // Change the bargraph slider color or joystick cursor color.
     REG_CMD(doICO, "^ICO");     // Set the icon to a button.
@@ -7668,11 +7670,11 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
                             break;
 
                             case 'D':   // Ramp down time
-                                // FIXME: Add function to set ramp time
+                                bt->setBargraphRampDownTime(atoi(content.c_str()));
                             break;
 
                             case 'G':   // Drag increment
-                                // FIXME: Add function to set drag increment
+                                bt->setBargraphDragIncrement(atoi(content.c_str()));
                             break;
 
                             case 'H':   // Upper limit
@@ -7680,7 +7682,8 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
                             break;
 
                             case 'I':   // Invert/noninvert
-                                // FIXME: Add function to set inverting
+                                if (bt->getButtonType() == BARGRAPH || bt->getButtonType() == MULTISTATE_BARGRAPH)
+                                    bt->setBargraphInvert(atoi(content.c_str()) > 0 ? true : false);
                             break;
 
                             case 'L':   // Lower limit
@@ -7696,11 +7699,11 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
                             break;
 
                             case 'U':   // Ramp up time
-                                // FIXME: Add function to set ramp up time
+                                bt->setBargraphRampUpTime(atoi(content.c_str()));
                             break;
 
                             case 'V':   // Bargraph value
-                                // FIXME: Add function to set level value
+                                bt->setBargraphLevel(atoi(content.c_str()));
                             break;
                         }
                     break;
@@ -9107,6 +9110,49 @@ void TPageManager::getFON(int port, vector<int>& channels, vector<string>& pars)
 #endif
 }
 
+void TPageManager::doGDI(int port, vector<int>& channels, vector<std::string>& pars)
+{
+    DECL_TRACER("TPageManager::doGDI(int port, vector<int>& channels, vector<std::string>& pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Expecting 1 parameter but got " << pars.size() << "! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    int inc = atoi(pars[0].c_str());
+
+    if (inc < 0)
+    {
+        MSG_ERROR("Invalid drag increment of " << inc << "!");
+        return;
+    }
+
+    vector<TMap::MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+            bt->setBargraphDragIncrement(inc);
+        }
+    }
+}
+/* Currently not implemented
+void TPageManager::doGDV(int port, vector<int>& channels, vector<std::string>& pars)
+{
+    DECL_TRACER("TPageManager::doGDV(int port, vector<int>& channels, vector<std::string>& pars)");
+}
+*/
 /**
  * Change the bargraph upper limit.
  */
@@ -9218,6 +9264,88 @@ void TPageManager::doGSC(int port, vector<int>& channels, vector<string>& pars)
         {
             Button::TButton *bt = *mapIter;
             bt->setBargraphSliderColor(color);
+        }
+    }
+}
+
+/*
+ * Set bargraph ramp down time in 1/10 seconds.
+ */
+void TPageManager::doGRD(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doGRD(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Expecting 1 parameter but got " << pars.size() << "! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    int t = atoi(pars[0].c_str());
+
+    if (t < 0)
+    {
+        MSG_ERROR("Invalid ramp down time limit " << t << "!");
+        return;
+    }
+
+    vector<TMap::MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+            bt->setBargraphRampDownTime(t);
+        }
+    }
+}
+
+/*
+ * Set bargraph ramp up time in 1/10 seconds.
+ */
+void TPageManager::doGRU(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doGRU(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Expecting 1 parameter but got " << pars.size() << "! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    int t = atoi(pars[0].c_str());
+
+    if (t < 0)
+    {
+        MSG_ERROR("Invalid ramp up time limit " << t << "!");
+        return;
+    }
+
+    vector<TMap::MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+            bt->setBargraphRampUpTime(t);
         }
     }
 }

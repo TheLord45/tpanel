@@ -27,7 +27,7 @@
 
 #include "tpagemanager.h"
 #include "tobject.h"
-#include "tqemitqueue.h"
+//#include "tqemitqueue.h"
 #include "tpagelist.h"
 #include "tqgesturefilter.h"
 
@@ -75,7 +75,8 @@ Q_DECLARE_METATYPE(size_t)
 
 int qtmain(int argc, char **argv, TPageManager *pmanager);
 
-class MainWindow : public QMainWindow, TQManageQueue, public TObject
+//class MainWindow : public QMainWindow, TQManageQueue, public TObject
+class MainWindow : public QMainWindow, public TObject
 {
     Q_OBJECT
 
@@ -103,10 +104,9 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
         void disconnectList(QListWidget *list);
         void reconnectArea(TQScrollArea *area);
         void reconnectList(QListWidget *list);
-#if defined(QT_DEBUG) && (defined(Q_OS_IOS) || defined(Q_OS_ANDROID))
+#ifdef Q_OS_IOS
         static std::string orientationToString(Qt::ScreenOrientation ori);
 #endif
-
     signals:
         void sigDisplayButton(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough);
         void sigDisplayViewButton(ulong handle, ulong parent, bool vertical, TBitmap buffer, int width, int height, int left, int top, int space, TColor::COLOR_T fillColor);
@@ -209,7 +209,6 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
         void setVolume(int volume);
         void onAppStateChanged(Qt::ApplicationState state);
         void onScreenOrientationChanged(Qt::ScreenOrientation ori);
-        void onCurrentOrientationChanged(int currentOrientation);
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         void activateSettings(const std::string& oldNetlinx, int oldPort, int oldChannelID, const std::string& oldSurface, bool oldToolbarSuppress, bool oldToolbarForce);
 #ifdef Q_OS_IOS
@@ -258,7 +257,7 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
         bool gestureEvent(QGestureEvent *event);
         void createActions();
         void writeSettings();
-        void playShowList();
+//        void playShowList();
         int scale(int value);
         int scaleSetup(int value);
         bool isScaled();
@@ -399,6 +398,7 @@ class MainWindow : public QMainWindow, TQManageQueue, public TObject
         QMargins mNotchLandscape;           // The margins (notch, if any) for landscape orientation
         bool mHaveNotchPortrait{false};     // TRUE = Notch was already fetched for portrait orientation
         bool mHaveNotchLandscape{false};    // TRUE = Notch was already fetched for landscape orientation
+        bool mGeoHavePermission{false};     // TRUE = The app has permission for geo location
 #endif
         std::chrono::steady_clock::time_point mTouchStart;  // Time in micro seconds of the start of a touch event
         int mTouchX{0};                        // The X coordinate of the mouse pointer

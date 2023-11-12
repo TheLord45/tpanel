@@ -29,8 +29,11 @@
 
 #define LPATH_FILE          1   //!< Creates a log file and protocolls there
 #define LPATH_SYSLOG        2   //!< Writes to the syslog.
+#ifdef __ENVIRONMENT_IPHONE_OS_VERSION_MIN_REQUIRED__
+#define LOGPATH             LPATH_SYSLOG
+#else
 #define LOGPATH             LPATH_FILE
-
+#endif
 #define HLOG_NONE           0x0000
 #define HLOG_INFO           0x0001
 #define HLOG_WARNING        0x0002

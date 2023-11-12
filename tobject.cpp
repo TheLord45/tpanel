@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -175,6 +175,18 @@ void TObject::dropContent(OBJECT_t* obj, bool lock)
     {
         MSG_ERROR("Error freeing an object: " << e.what());
     }
+}
+
+void TObject::markDroped(ulong handle)
+{
+    DECL_TRACER("TObject::markDroped(ulong handle)");
+
+    OBJECT_t *obj = findObject(handle);
+
+    if (!obj)
+        return;
+
+    obj->remove = true;
 }
 
 bool TObject::addObject(OBJECT_t& obj)

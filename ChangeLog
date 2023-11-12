@@ -3,6 +3,9 @@ ChangeLog
 
 Release: 1.4.0
 ===============================================================================
+2023-11-12 Added the commands ^GDI, ^GRD and ^GRU. Although this commands exist
+           now, the TButton class does not honor them.
+
 2023-10-28 Fixed bug: When there is no "sr" section on a page it doesn't crash
            any more.
 

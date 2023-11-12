@@ -375,8 +375,8 @@ set(PROJECT_SOURCES
         tqtphone.cpp
         tqtphone.h
         tqtphone.ui
-        tqemitqueue.cpp
-        tqemitqueue.h
+#        tqemitqueue.cpp
+#        tqemitqueue.h
         tqgesturefilter.cpp
         tqgesturefilter.h
         tamxnet.cpp

@@ -95,11 +95,11 @@ FAILED: CMakeFiles/tpanel.dir/tnameformat.cpp.o
 ```
 You can see the line `#error "This module needs Android API level 28 or newer!"`. This happens when you try to make a multi architecture APK file. There is a bug in the cmake macros used for Android. Here is how you can fix this.
 
-- Go to the directory where Qt is installed (e.g. `/opt/Qt/6.5.2`)
+- Go to the directory where Qt is installed (e.g. `/opt/Qt/6.6.0`)
 - Make sure you have the right to write all files and directories.
 - With a text editor open the file `android_x86_64/lib/cmake/Qt6Core/Qt6AndroidMacros.cmake`.
 - Search for a function called `_qt_internal_configure_android_multiabi_target`.
-- Scroll down to (about line 1180)
+- Scroll down to (about line 1216)
 ```
 ...
     if(DEFINED QT_HOST_PATH_CMAKE_DIR)

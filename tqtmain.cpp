@@ -67,6 +67,7 @@
 #if defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
 #   include <QGeoPositionInfoSource>
 #   include <QtSensors/QOrientationReading>
+#   include <QPermissions>
 #endif
 #endif
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0) && defined(Q_OS_ANDROID)
@@ -108,29 +109,21 @@
 
 #if __cplusplus < 201402L
 #   error "This module requires at least C++14 standard!"
-#else
+#else   // __cplusplus < 201402L
 #   if __cplusplus < 201703L
 #       include <experimental/filesystem>
 namespace fs = std::experimental::filesystem;
 #       warning "Support for C++14 and experimental filesystem will be removed in a future version!"
-#   else
+#   else    // __cplusplus < 201703L
 #       include <filesystem>
 #       ifdef __ANDROID__
 namespace fs = std::__fs::filesystem;
-#       else
+#       else    // __ANDROID__
 namespace fs = std::filesystem;
-#       endif
-#   endif
-#endif
+#       endif   // __ANDROID__
+#   endif   // __cplusplus < 201703L
+#endif  // __cplusplus < 201402L
 
-/**
- * @def THREAD_WAIT
- * This defines a time in milliseconds. It is used in the callbacks for the
- * functions to draw the elements. Qt need a little time to do it's work.
- * Therefore we're waiting a little bit. Otherwise it may result in missing
- * elements or black areas on the screen.
- */
-#define THREAD_WAIT     1
 
 extern amx::TAmxNet *gAmxNet;                   //!< Pointer to the class running the thread which handles the communication with the controller.
 extern bool _restart_;                          //!< If this is set to true then the whole program will start over.
@@ -399,9 +392,9 @@ MainWindow::MainWindow()
     grabGesture(Qt::SwipeGesture);                  // We support swiping also
 
 #ifdef Q_OS_IOS                                     // Block autorotate on IOS
-    initGeoLocation();
+//    initGeoLocation();
     mIosRotate = new TIOSRotate;
-    mIosRotate->automaticRotation(false);           // FIXME: This doesn't work!
+//    mIosRotate->automaticRotation(false);           // FIXME: This doesn't work!
 
     if (!mSensor)
     {
@@ -409,9 +402,7 @@ MainWindow::MainWindow()
 
         if (mSensor)
         {
-            connect(mSensor, &QSensor::currentOrientationChanged, this, &MainWindow::onCurrentOrientationChanged);
-            mSensor->setAxesOrientationMode(QSensor::UserOrientation);
-            mSensor->setUserOrientation(180);
+            mSensor->setAxesOrientationMode(QSensor::AutomaticOrientation);
 
             if (gPageManager && gPageManager->getSettings()->isPortrait())
                 mSensor->setCurrentOrientation(Qt::PortraitOrientation);
@@ -734,6 +725,7 @@ MainWindow::MainWindow()
         }
     }
 #endif
+/*
 #ifdef Q_OS_IOS
     // To get the battery level periodicaly we setup a timer.
     if (!mIosBattery)
@@ -755,7 +747,7 @@ MainWindow::MainWindow()
         QGuiApplication::primaryScreen()->setOrientationUpdateMask(Qt::LandscapeOrientation | Qt::InvertedLandscapeOrientation);
 #endif  // QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 #endif  // Q_OS_IOS
-
+*/
     _restart_ = false;
 }
 
@@ -1575,17 +1567,7 @@ void MainWindow::onScreenOrientationChanged(Qt::ScreenOrientation ori)
     setNotch();
 #endif
 }
-
-void MainWindow::onCurrentOrientationChanged(int currentOrientation)
-{
-    DECL_TRACER("MainWindow::onCurrentOrientationChanged(int currentOrientation)");
-#if defined(QT_DEBUG) && (defined(Q_OS_IOS) || defined(Q_OS_ANDROID))
-    MSG_DEBUG("User orientation: " << orientationToString((Qt::ScreenOrientation)currentOrientation));
-#else
-    Q_UNUSED(currentOrientation);
-#endif
-}
-
+#ifdef Q_OS_IOS
 /**
  * @brief MainWindow::onPositionUpdated
  * This method is a callback function for the Qt framework. It is called
@@ -1595,7 +1577,7 @@ void MainWindow::onCurrentOrientationChanged(int currentOrientation)
  *
  * @param update    A structure containing the geo position information.
  */
-#ifdef Q_OS_IOS
+
 void MainWindow::onPositionUpdated(const QGeoPositionInfo &update)
 {
     DECL_TRACER("MainWindow::onPositionUpdated(const QGeoPositionInfo &update)");
@@ -1610,7 +1592,11 @@ void MainWindow::onErrorOccurred(QGeoPositionInfoSource::Error positioningError)
 
     switch(positioningError)
     {
-        case QGeoPositionInfoSource::AccessError:   MSG_ERROR("The connection setup to the remote positioning backend failed because the application lacked the required privileges."); break;
+        case QGeoPositionInfoSource::AccessError:
+            MSG_ERROR("The connection setup to the remote positioning backend failed because the application lacked the required privileges.");
+            mGeoHavePermission = false;
+        break;
+
         case QGeoPositionInfoSource::ClosedError:   MSG_ERROR("The remote positioning backend closed the connection, which happens for example in case the user is switching location services to off. As soon as the location service is re-enabled regular updates will resume."); break;
         case QGeoPositionInfoSource::UnknownSourceError: MSG_ERROR("An unidentified error occurred."); break;
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
@@ -1620,7 +1606,7 @@ void MainWindow::onErrorOccurred(QGeoPositionInfoSource::Error positioningError)
             return;
     }
 }
-#endif
+#endif  // Q_OS_IOS
 /**
  * @brief Displays or hides a phone dialog window.
  * This method creates and displays a phone dialog window containing everything
@@ -2664,7 +2650,9 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
         case Qt::ApplicationActive:
             MSG_INFO("Switched to mode ACTIVE");
             mHasFocus = true;
-
+#ifdef Q_OS_IOS
+            initGeoLocation();
+#endif
             if (!isRunning && gPageManager)
             {
                 // Start the core application
@@ -2673,18 +2661,18 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
                 isRunning = true;
                 mWasInactive = false;
 #ifdef Q_OS_IOS
-                if (!mSource)
-                    initGeoLocation();
+                // To get the battery level periodicaly we setup a timer.
+                if (!mIosBattery)
+                mIosBattery = new TIOSBattery;
 
-                if (mSource)
-                {
-                    mSource->startUpdates();
-                    MSG_DEBUG("Geo location updates started.");
-                }
-                else
-                {
-                    MSG_WARNING("Geo location is not available!");
-                }
+                mIosBattery->update();
+
+                int left = mIosBattery->getBatteryLeft();
+                int state = mIosBattery->getBatteryState();
+                // At this point no buttons are registered and therefore the battery
+                // state will not be visible. To have the state at the moment a button
+                // is registered, we tell the page manager to store the values.
+                gPageManager->setBattery(left, state);
 
                 if (mSensor)
                 {
@@ -2698,19 +2686,21 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
                             case O_LANDSCAPE:           mOrientation = Qt::LandscapeOrientation; break;
                         }
                     }
-#ifdef QT_DEBUG
+
                     MSG_DEBUG("Orientation after activate: " << orientationToString(mOrientation));
-#endif
-                    if (gPageManager && mIosRotate && gPageManager->getSettings()->isPortrait() &&
-                        mOrientation != Qt::PortraitOrientation)
+
+                    if (gPageManager && mIosRotate)
                     {
-                        mIosRotate->rotate(O_PORTRAIT);
-                        mOrientation = Qt::PortraitOrientation;
-                    }
-                    else if (gPageManager && mIosRotate && mOrientation != Qt::LandscapeOrientation)
-                    {
-                        mIosRotate->rotate(O_LANDSCAPE);
-                        mOrientation = Qt::LandscapeOrientation;
+                        if (gPageManager->getSettings()->isPortrait() && mOrientation != Qt::PortraitOrientation)
+                        {
+                            mIosRotate->rotate(O_PORTRAIT);
+                            mOrientation = Qt::PortraitOrientation;
+                        }
+                        else if (mOrientation != Qt::LandscapeOrientation)
+                        {
+                            mIosRotate->rotate(O_LANDSCAPE);
+                            mOrientation = Qt::LandscapeOrientation;
+                        }
                     }
 
                     setNotch();
@@ -2722,8 +2712,6 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0) && defined(Q_OS_ANDROID)
                 _freezeWorkaround();
 #endif
-//                playShowList();
-
                 if (mDoRepaint || mWasInactive)
                     repaintObjects();
 
@@ -2818,13 +2806,6 @@ void MainWindow::_displayButton(ulong handle, ulong parent, TBitmap buffer, int 
         return;
     }
 
-/*
-    if (!mHasFocus)     // Suspended?
-    {
-        addButton(handle, parent, buffer, left, top, width, height, passthrough);
-        return;
-    }
-*/
     emit sigDisplayButton(handle, parent, buffer, width, height, left, top, passthrough);
 }
 
@@ -2841,13 +2822,6 @@ void MainWindow::_displayViewButton(ulong handle, ulong parent, bool vertical, T
         return;
     }
 
-/*
-    if (!mHasFocus)     // Suspended?
-    {
-        addViewButton(handle, parent, vertical, buffer, left, top, width, height, space, fillColor);
-        return;
-    }
-*/
     emit sigDisplayViewButton(handle, parent, vertical, buffer, width, height, left, top, space, fillColor);
 }
 
@@ -2965,13 +2939,7 @@ void MainWindow::_setPage(ulong handle, int width, int height)
 
     if (prg_stopped || !mHasFocus)
         return;
-/*
-    if (!mHasFocus)
-    {
-        addPage(handle, width, height);
-        return;
-    }
-*/
+
     emit sigSetPage(handle, width, height);
 }
 
@@ -2981,13 +2949,7 @@ void MainWindow::_setSubPage(ulong handle, ulong parent, int left, int top, int 
 
     if (prg_stopped || !mHasFocus)
         return;
-/*
-    if (!mHasFocus)
-    {
-        addSubPage(handle, parent, left, top, width, height, animate);
-        return;
-    }
-*/
+
     emit sigSetSubPage(handle, parent, left, top, width, height, animate);
 }
 
@@ -3008,17 +2970,6 @@ void MainWindow::_setBackground(ulong handle, TBitmap image, int width, int heig
         return;
     }
 
-/*
-    if (!mHasFocus)
-    {
-#ifdef _OPAQUE_SKIA_
-        addBackground(handle, image, width, height, color);
-#else
-        addBackground(handle, image, width, height, color, opacity);
-#endif
-        return;
-    }
-*/
 #ifdef _OPAQUE_SKIA_
     emit sigSetBackground(handle, image, width, height, color);
 #else
@@ -3034,13 +2985,13 @@ void MainWindow::_dropPage(ulong handle)
         return;
 
     doReleaseButton();
-/*
+
     if (!mHasFocus)
     {
-        markDrop(handle);
+        markDroped(handle);
         return;
     }
-*/
+
     emit sigDropPage(handle);
 }
 
@@ -3052,13 +3003,13 @@ void MainWindow::_dropSubPage(ulong handle, ulong parent)
         return;
 
     doReleaseButton();
-/*
+
     if (!mHasFocus)
     {
-        markDrop(handle);
+        markDroped(handle);
         return;
     }
-*/
+
     emit sigDropSubPage(handle, parent);
 }
 
@@ -3068,7 +3019,7 @@ void MainWindow::_dropButton(ulong handle)
 
     if (!mHasFocus)
     {
-        markDrop(handle);
+        markDroped(handle);
         return;
     }
 
@@ -3081,13 +3032,7 @@ void MainWindow::_playVideo(ulong handle, ulong parent, int left, int top, int w
 
     if (prg_stopped || !mHasFocus)
         return;
-/*
-    if (!mHasFocus)
-    {
-        addVideo(handle, parent, left, top, width, height, url, user, pw);
-        return;
-    }
-*/
+
     emit sigPlayVideo(handle, parent, left, top, width, height, url, user, pw);
 }
 
@@ -3097,13 +3042,7 @@ void MainWindow::_inputText(Button::TButton *button, Button::BITMAP_t& bm, int f
 
     if (prg_stopped || !button || !mHasFocus)
         return;
-/*
-    if (!mHasFocus)
-    {
-        addInText(button->getHandle(), button, bm, frame);
-        return;
-    }
-*/
+
     QByteArray buf;
 
     if (bm.buffer && bm.rowBytes > 0)
@@ -3121,13 +3060,7 @@ void MainWindow::_listBox(Button::TButton *button, Button::BITMAP_t& bm, int fra
 
     if (prg_stopped || !mHasFocus)
         return;
-/*
-    if (!mHasFocus)
-    {
-        addListBox(button, bm, frame);
-        return;
-    }
-*/
+
     QByteArray buf;
 
     if (bm.buffer && bm.rowBytes > 0)
@@ -3632,23 +3565,61 @@ void MainWindow::initGeoLocation()
 {
     DECL_TRACER("MainWindow::initGeoLocation()");
 
-    if (mSource)
+    if (mSource && mGeoHavePermission)
         return;
 
-    mSource = QGeoPositionInfoSource::createDefaultSource(this);
-
-    if (mSource)
+    if (!mSource)
     {
+        mGeoHavePermission = true;
+        mSource = QGeoPositionInfoSource::createDefaultSource(this);
+
+        if (!mSource)
+        {
+            MSG_WARNING("Error creating geo positioning source!");
+            mGeoHavePermission = false;
+            return;
+        }
+
+        mSource->setPreferredPositioningMethods(QGeoPositionInfoSource::AllPositioningMethods);
+        mSource->setUpdateInterval(800);    // milli seconds
+        // Connecting some callbacks to the class
         connect(mSource, &QGeoPositionInfoSource::positionUpdated, this, &MainWindow::onPositionUpdated);
         connect(mSource, &QGeoPositionInfoSource::errorOccurred, this, &MainWindow::onErrorOccurred);
-    }
-    else
-    {
-        MSG_WARNING("Error creating geo positioning source!");
+#ifdef Q_OS_IOS
+        QLocationPermission perm;
+        perm.setAccuracy(QLocationPermission::Approximate);
+        perm.setAvailability(QLocationPermission::Always);
+        mGeoHavePermission = false;
+
+        switch (qApp->checkPermission(perm))
+        {
+            case Qt::PermissionStatus::Undetermined:
+                qApp->requestPermission(perm, [this] (const QPermission& permission)
+                {
+                    if (permission.status() == Qt::PermissionStatus::Granted)
+                    {
+                        mGeoHavePermission = true;
+                        mSource->startUpdates();
+                    }
+                    else
+                        onErrorOccurred(QGeoPositionInfoSource::AccessError);
+                });
+            break;
+
+            case Qt::PermissionStatus::Denied:
+                MSG_WARNING("Location permission is denied");
+                onErrorOccurred(QGeoPositionInfoSource::AccessError);
+            break;
+
+            case Qt::PermissionStatus::Granted:
+                mSource->startUpdates();
+                mGeoHavePermission = true;
+            break;
+        }
+#endif
     }
 }
 
-#ifdef Q_OS_IOS
 Qt::ScreenOrientation MainWindow::getRealOrientation()
 {
     DECL_TRACER("MainWindow::getRealOrientation()");
@@ -3668,10 +3639,7 @@ Qt::ScreenOrientation MainWindow::getRealOrientation()
 
     return Qt::PortraitOrientation;
 }
-#endif
-#endif
 
-#if defined(QT_DEBUG) && (defined(Q_OS_IOS) || defined(Q_OS_ANDROID))
 string MainWindow::orientationToString(Qt::ScreenOrientation ori)
 {
     string sori;
@@ -3689,7 +3657,7 @@ string MainWindow::orientationToString(Qt::ScreenOrientation ori)
 
     return sori;
 }
-#endif
+#endif  // Q_OS_IOS
 
 /******************* Draw elements *************************/
 
@@ -5735,7 +5703,7 @@ void MainWindow::onPlayerError(QMediaPlayer::Error error, const QString &errorSt
 
     MSG_ERROR("Media player error (" << error << "): " << errorString.toStdString());
 }
-
+/*
 void MainWindow::playShowList()
 {
     DECL_TRACER("MainWindow::playShowList()");
@@ -5805,7 +5773,7 @@ void MainWindow::playShowList()
                     }
 
                     MSG_PROTOCOL("Replay: INTEXT object " << handleToString(handle));
-                    emit sigInputText(button, buf, bm.width, bm.height, bm.rowBytes, frame);
+                    emit sigInputText(button, buf, bm.width, bm.height, (int)bm.rowBytes, frame);
                 }
             break;
 
@@ -5856,21 +5824,8 @@ void MainWindow::playShowList()
         dropType(etype);
         etype = getNextType();
     }
-/*
-    std::map<ulong, QWidget *>::iterator iter;
-
-    for (iter = mToShow.begin(); iter != mToShow.end(); ++iter)
-    {
-        OBJECT_t *obj = findObject(iter->first);
-
-        if (obj)
-            iter->second->show();
-    }
-
-    mToShow.clear();
-*/
 }
-
+*/
 
 int MainWindow::scale(int value)
 {

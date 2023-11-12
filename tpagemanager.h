@@ -803,9 +803,13 @@ class TPageManager : public TAmxCommands
         void doENA(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doFON(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void getFON(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doGDI(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+//        void doGDV(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doGLH(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doGLL(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doGSC(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doGRD(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doGRU(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doGSN(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doICO(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void getICO(int port, std::vector<int>& channels, std::vector<std::string>& pars);

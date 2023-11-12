@@ -311,7 +311,7 @@ size_t TButton::initialize(TExpat *xml, size_t index)
             lu = xml->convertElementToInt(content);
         else if (ename.compare("ld") == 0)          // Animate time down (bargraph)
             ld = xml->convertElementToInt(content);
-        else if (ename.compare("rv") == 0)          // ?
+        else if (ename.compare("rv") == 0)          // Bargraph repeat interval?
             rv = xml->convertElementToInt(content);
         else if (ename.compare("rl") == 0)          // Bargraph range low
             rl = xml->convertElementToInt(content);
@@ -6239,6 +6239,55 @@ bool TButton::drawMultistateBargraph(int level, bool show)
     }
 
     return true;
+}
+
+void TButton::setBargraphInvert(bool invert)
+{
+    DECL_TRACER("TButton::setBargraphInvert(bool invert)");
+
+    if (invert && !ri)
+    {
+        ri = 1;
+        mChanged = true;
+    }
+    else if (!invert && ri)
+    {
+        ri = 0;
+        mChanged = true;
+    }
+
+    if (mChanged)
+        makeElement(mActInstance);
+}
+
+void TButton::setBargraphRampDownTime(int t)
+{
+    DECL_TRACER("TButton::setBargraphRampDownTime(int t)");
+
+    if (t < 0)
+        return;
+
+    rd = t;
+}
+
+void TButton::setBargraphRampUpTime(int t)
+{
+    DECL_TRACER("Button::TButton::setBargraphRampUpTime(int t)");
+
+    if (t < 0)
+        return;
+
+    ru = t;
+}
+
+void TButton::setBargraphDragIncrement(int inc)
+{
+    DECL_TRACER("TButton::setBargraphDragIncrement(int inc)");
+
+    if (inc < 0 || inc > (rh - rl))
+        return;
+
+    rn = inc;
 }
 
 bool TButton::drawList(bool show)
