@@ -28,6 +28,7 @@ class QASettings
 {
     public:
         QASettings();
+        ~QASettings();
 
         // register default preferences from plist file
         void registerDefaultPrefs(void);

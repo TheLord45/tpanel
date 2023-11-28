@@ -262,6 +262,13 @@ TQtSettings::TQtSettings(QWidget *parent)
     ui->tabSIP->setPalette(qt_fusionPalette());
     ui->tabView->setPalette(qt_fusionPalette());
 #endif
+
+    // Passwords
+    ui->lineEdit_Password1->setText(TConfig::getPassword1().c_str());
+    ui->lineEdit_Password2->setText(TConfig::getPassword2().c_str());
+    ui->lineEdit_Password3->setText(TConfig::getPassword3().c_str());
+    ui->lineEdit_Password4->setText(TConfig::getPassword4().c_str());
+
     mInitRun = false;
     mSetChanged = false;
 }
@@ -518,6 +525,8 @@ void TQtSettings::doResize()
 
                             if (n.startsWith("kiconbutton") || n.startsWith("toolButton"))
                                 scaleObject(dynamic_cast<QToolButton *>(on));
+                            else if (n.startsWith("pushButton"))
+                                scaleObject(dynamic_cast<QPushButton *>(on));
                             else if (n.startsWith("checkBox"))
                             {
                                 QCheckBox *cb = dynamic_cast<QCheckBox *>(on);
@@ -1377,4 +1386,88 @@ void TQtSettings::on_horizontalSlider_Gain_valueChanged(int value)
         return;
 
     TConfig::saveSystemGain(value);
+}
+
+void TQtSettings::on_lineEdit_Password1_textChanged(const QString& arg)
+{
+    DECL_TRACER("TQtSettings::on_lineEdit_Password1_textChanged(const QString& arg)");
+
+    if (arg.compare(TConfig::getPassword1().c_str()) == 0)
+        return;
+
+    mSetChanged = true;
+    TConfig::savePassword1(arg.toStdString());
+}
+
+void TQtSettings::on_lineEdit_Password2_textChanged(const QString& arg)
+{
+    DECL_TRACER("TQtSettings::on_lineEdit_Password2_textChanged(const QString& arg)");
+
+    if (arg.compare(TConfig::getPassword2().c_str()) == 0)
+        return;
+
+    mSetChanged = true;
+    TConfig::savePassword2(arg.toStdString());
+}
+
+void TQtSettings::on_lineEdit_Password3_textChanged(const QString& arg)
+{
+    DECL_TRACER("TQtSettings::on_lineEdit_Password3_textChanged(const QString& arg)");
+
+    if (arg.compare(TConfig::getPassword3().c_str()) == 0)
+        return;
+
+    mSetChanged = true;
+    TConfig::savePassword3(arg.toStdString());
+}
+
+void TQtSettings::on_lineEdit_Password4_textChanged(const QString& arg)
+{
+    DECL_TRACER("TQtSettings::on_lineEdit_Password4_textChanged(const QString& arg)");
+
+    if (arg.compare(TConfig::getPassword4().c_str()) == 0)
+        return;
+
+    mSetChanged = true;
+    TConfig::savePassword4(arg.toStdString());
+}
+
+void TQtSettings::on_pushButton_ViewPW1_clicked()
+{
+    DECL_TRACER("TQtSettings::on_pushButton_ViewPW1_clicked()");
+
+    if (ui->lineEdit_Password1->echoMode() == QLineEdit::Password)
+        ui->lineEdit_Password1->setEchoMode(QLineEdit::Normal);
+    else
+        ui->lineEdit_Password1->setEchoMode(QLineEdit::Password);
+}
+
+void TQtSettings::on_pushButton_ViewPW2_clicked()
+{
+    DECL_TRACER("TQtSettings::on_pushButton_ViewPW2_clicked()");
+
+    if (ui->lineEdit_Password2->echoMode() == QLineEdit::Password)
+        ui->lineEdit_Password2->setEchoMode(QLineEdit::Normal);
+    else
+        ui->lineEdit_Password2->setEchoMode(QLineEdit::Password);
+}
+
+void TQtSettings::on_pushButton_ViewPW3_clicked()
+{
+    DECL_TRACER("TQtSettings::on_pushButton_ViewPW3_clicked()");
+
+    if (ui->lineEdit_Password3->echoMode() == QLineEdit::Password)
+        ui->lineEdit_Password3->setEchoMode(QLineEdit::Normal);
+    else
+        ui->lineEdit_Password3->setEchoMode(QLineEdit::Password);
+}
+
+void TQtSettings::on_pushButton_ViewPW4_clicked()
+{
+    DECL_TRACER("TQtSettings::on_pushButton_ViewPW4_clicked()");
+
+    if (ui->lineEdit_Password4->echoMode() == QLineEdit::Password)
+        ui->lineEdit_Password4->setEchoMode(QLineEdit::Normal);
+    else
+        ui->lineEdit_Password4->setEchoMode(QLineEdit::Password);
 }

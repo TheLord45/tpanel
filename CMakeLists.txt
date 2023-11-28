@@ -269,25 +269,6 @@ elseif(IOS)
         set(OSX_INCLUDE -I/opt/homebrew/include -I/usr/local/include)
         add_definitions(${OSX_INCLUDE})
         link_libraries(
-#            /usr/local/lib/libpjsua2-arm-apple-darwin22.1.0.a
-#            /usr/local/lib/libpjsua-arm-apple-darwin22.1.0.a
-#            /usr/local/lib/libpjsip-ua-arm-apple-darwin22.1.0.a
-#            /usr/local/lib/libpjsip-simple-arm-apple-darwin22.1.0.a
-#            /usr/local/lib/libpjsip-arm-apple-darwin22.1.0.a
-#            /usr/local/lib/libpjmedia-codec-arm-apple-darwin22.1.0.a
-#            /usr/local/lib/libpjmedia-arm-apple-darwin22.1.0.a
-#            /usr/local/lib/libpjmedia-audiodev-arm-apple-darwin22.1.0.a
-#            /usr/local/lib/libpjnath-arm-apple-darwin22.1.0.a
-#            /usr/local/lib/libpjlib-util-arm-apple-darwin22.1.0.a
-#            /usr/local/lib/libpj-arm-apple-darwin22.1.0.a
-#            /usr/local/lib/libgsmcodec-arm-apple-darwin22.1.0.a
-#            /usr/local/lib/libilbccodec-arm-apple-darwin22.1.0.a
-#            /usr/local/lib/libspeex-arm-apple-darwin22.1.0.a
-#            /usr/local/lib/libg7221codec-arm-apple-darwin22.1.0.a
-#            /usr/local/lib/libsrtp-arm-apple-darwin22.1.0.a
-#            /usr/local/lib/libresample-arm-apple-darwin22.1.0.a
-#            /usr/local/lib/libyuv-arm-apple-darwin22.1.0.a
-#            /usr/local/lib/libwebrtc-arm-apple-darwin22.1.0.a
             pjsua2
             pjsua
             pjsip-ua
@@ -375,8 +356,11 @@ set(PROJECT_SOURCES
         tqtphone.cpp
         tqtphone.h
         tqtphone.ui
-#        tqemitqueue.cpp
-#        tqemitqueue.h
+        tqtinputline.cpp
+        tqtinputline.h
+        tqtinputline.ui
+        tqmarquee.cpp
+        tqmarquee.h
         tqgesturefilter.cpp
         tqgesturefilter.h
         tamxnet.cpp
@@ -477,6 +461,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         qt_add_executable(tpanel
             MANUAL_FINALIZATION
             ${PROJECT_SOURCES}
+
         )
     endif()
 

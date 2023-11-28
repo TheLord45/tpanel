@@ -977,6 +977,7 @@ TPageManager::TPageManager()
     REG_CMD(getJSI, "?JSI");    // Get the current icon justification.
     REG_CMD(doJST, "^JST");     // Set text alignment using a numeric keypad layout for those buttons with a defined address range.
     REG_CMD(getJST, "?JST");    // Get the current text justification.
+    REG_CMD(doMSP, "^MSP");     // Set marquee line speed.
     REG_CMD(doSHO, "^SHO");     // Show or hide a button with a set variable text range.
     REG_CMD(doTEC, "^TEC");     // Set the text effect color for the specified addresses/states to the specified color.
     REG_CMD(getTEC, "?TEC");    // Get the current text effect color.
@@ -5000,6 +5001,28 @@ void TPageManager::sendOrientation()
     }
 
     sendGlobalString("TPCACC-" + ori);
+}
+
+void TPageManager::callSetPassword(ulong handle, const string& pw)
+{
+    DECL_TRACER("TPageManager::callSetPassword(ulong handle, const string& pw)");
+
+    Button::TButton *bt = findButton(handle);
+
+    if (!bt)
+    {
+        MSG_WARNING("callSetPassword: Button " << handleToString(handle) << " not found!");
+        return;
+    }
+
+    string pass = pw;
+
+    if (pass.empty())
+        pass = "\x01";
+
+    bt->setPassword(pass);
+    bt->doClick(1, 1, true);
+    bt->doClick(1, 1, false);
 }
 
 void TPageManager::onSwipeEvent(TPageManager::SWIPES sw)
@@ -9742,6 +9765,54 @@ void TPageManager::getJST(int port, vector<int>& channels, vector<string>& pars)
         {
             j = bt->getTextJustification(&x, &y, btState-1);
             sendCustomEvent(btState, j, 0, "", 1004, bt->getChannelPort(), bt->getChannelNumber());
+        }
+    }
+}
+
+/**
+ * @brief TPageManager::getMSP
+ * Sets the speed of a marquee line. Allowed range is from 1 to 10, where 10 is
+ * the fastest speed.
+ *
+ * @param port      The port number
+ * @param channels  The channels
+ * @param pars      Parameters
+ */
+void TPageManager::doMSP(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::getMSP(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.size() < 2)
+    {
+        MSG_ERROR("Expecting at least 2 parameter but got less! Command ignored.");
+        return;
+    }
+
+    TError::clear();
+    int btState = atoi(pars[0].c_str()) - 1;
+    int speed = atoi(pars[1].c_str());
+
+    if (speed < 1 || speed > 10)
+    {
+        MSG_ERROR("Speed for marquee line is out of range!");
+        return;
+    }
+
+    vector<TMap::MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator iter;
+
+        for (iter = buttons.begin(); iter != buttons.end(); ++iter)
+        {
+            Button::TButton *bt = buttons[0];
+            bt->setMarqueeSpeed(speed, btState);
         }
     }
 }

@@ -104,6 +104,15 @@ class TQtSettings : public QDialog
         void on_toolButton_TestSound_clicked();
         void on_horizontalSlider_Volume_valueChanged(int value);
         void on_horizontalSlider_Gain_valueChanged(int value);
+        // Passwords
+        void on_lineEdit_Password1_textChanged(const QString& arg);
+        void on_lineEdit_Password2_textChanged(const QString& arg);
+        void on_lineEdit_Password3_textChanged(const QString& arg);
+        void on_lineEdit_Password4_textChanged(const QString& arg);
+        void on_pushButton_ViewPW1_clicked();
+        void on_pushButton_ViewPW2_clicked();
+        void on_pushButton_ViewPW3_clicked();
+        void on_pushButton_ViewPW4_clicked();
 
     private:
         int scale(int value);

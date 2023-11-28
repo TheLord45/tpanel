@@ -35,6 +35,7 @@ class QPropertyAnimation;
 class QListWidget;
 class TQScrollArea;
 class MainWindow;
+class TQMarquee;
 QT_END_NAMESPACE
 
 class TObject
@@ -46,6 +47,7 @@ class TObject
             OBJ_PAGE,
             OBJ_SUBPAGE,
             OBJ_BUTTON,
+            OBJ_MARQUEE,
             OBJ_TEXT,
             OBJ_INPUT,
             OBJ_LIST,
@@ -57,6 +59,7 @@ class TObject
         {
             QVideoWidget *vwidget{nullptr}; // A video window
             QLabel *label;                  // For buttons
+            TQMarquee *marquee;             // For marquee lines
             QWidget *widget;                // For subpage
             TQEditLine *plaintext;          // For text input
             QListWidget *list;              // For lists

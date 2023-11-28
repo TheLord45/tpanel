@@ -1,6 +1,18 @@
 ChangeLog
 =========
 
+Release: 1.4.1
+===============================================================================
+2013-11-28 Added support for password protection.
+
+2023-11-25 Implemented Marquee lines completely.
+           Added command ^MSP to set the speed of a marquee line.
+
+2023-11-21 Fixed the battery state for iOS.
+
+2023-11-19 Added marquee lines. Currently only left to right and vice versa is
+           supported.
+
 Release: 1.4.0
 ===============================================================================
 2023-11-12 Added the commands ^GDI, ^GRD and ^GRU. Although this commands exist

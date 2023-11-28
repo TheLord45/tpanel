@@ -75,7 +75,6 @@ Q_DECLARE_METATYPE(size_t)
 
 int qtmain(int argc, char **argv, TPageManager *pmanager);
 
-//class MainWindow : public QMainWindow, TQManageQueue, public TObject
 class MainWindow : public QMainWindow, public TObject
 {
     Q_OBJECT
@@ -104,11 +103,12 @@ class MainWindow : public QMainWindow, public TObject
         void disconnectList(QListWidget *list);
         void reconnectArea(TQScrollArea *area);
         void reconnectList(QListWidget *list);
-#ifdef Q_OS_IOS
+#if defined(QT_DEBUG) && (defined(Q_OS_IOS) || defined(Q_OS_ANDROID))
         static std::string orientationToString(Qt::ScreenOrientation ori);
 #endif
     signals:
-        void sigDisplayButton(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough);
+        void sigDisplayButton(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough, int marqtype, int marq);
+        void sigSetMarqueeText(Button::TButton* button);
         void sigDisplayViewButton(ulong handle, ulong parent, bool vertical, TBitmap buffer, int width, int height, int left, int top, int space, TColor::COLOR_T fillColor);
         void sigAddViewButtonItems(ulong parent, std::vector<PGSUBVIEWITEM_T> items);
         void sigUpdateViewButton(ulong handle, ulong parent, TBitmap buffer, TColor::COLOR_T fillColor);
@@ -150,6 +150,7 @@ class MainWindow : public QMainWindow, public TObject
         void sigDownloadSurface(const std::string& file, size_t size);
         void sigOnProgressChanged(int percent);
         void sigDisplayMessage(const std::string& msg, const std::string& title);
+        void sigAskPassword(ulong handle, const std::string& msg, const std::string& title);
         void sigFileDialog(ulong handle, const std::string& path, const std::string& extension, const std::string& suffix);
         void sigSetSizeMainWindow(int width, int height);
         void sigStartWait(const std::string& text);
@@ -174,7 +175,8 @@ class MainWindow : public QMainWindow, public TObject
 #ifndef QT_NO_SESSIONMANAGER
         void commitData(QSessionManager &);
 #endif
-        void displayButton(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough);
+        void displayButton(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough, int marqtype, int marq);
+        void setMarqueeText(Button::TButton *button);
         void displayViewButton(ulong handle, ulong parent, bool vertical, TBitmap buffer, int width, int height, int left, int top, int space, TColor::COLOR_T fillColor);
         void addViewButtonItems(ulong parent, std::vector<PGSUBVIEWITEM_T> items);
         void updateViewButton(ulong handle, ulong parent, TBitmap buffer, TColor::COLOR_T fillColor);
@@ -241,6 +243,7 @@ class MainWindow : public QMainWindow, public TObject
         void toFront(ulong handle);
         void downloadSurface(const std::string& file, size_t size);
         void displayMessage(const std::string& msg, const std::string& title);
+        void askPassword(ulong handle, const std::string msg, const std::string& title);
         void fileDialog(ulong handle, const std::string& path, const std::string& extension, const std::string& suffix);
         // Progress bar (busy indicator)
         void onProgressChanged(int percent);
@@ -273,7 +276,8 @@ class MainWindow : public QMainWindow, public TObject
         QPixmap scaleImage(QPixmap& pix);
         QPixmap scaleImage(unsigned char *buffer, int width, int height, int pixline);
 
-        void _displayButton(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough);
+        void _displayButton(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough, int marqtype, int marq);
+        void _setMarqueeText(Button::TButton *button);
         void _displayViewButton(ulong handle, ulong parent, bool vertical, TBitmap buffer, int width, int height, int left, int top, int space, TColor::COLOR_T fillColor);
         void _addViewButtonItems(ulong parent, std::vector<PGSUBVIEWITEM_T> items);
         void _updateViewButton(ulong handle, ulong parent, TBitmap buffer, TColor::COLOR_T fillColor);
@@ -315,6 +319,7 @@ class MainWindow : public QMainWindow, public TObject
         void _setPhoneState(int state, int id);
         void _onProgressChanged(int percent);
         void _displayMessage(const std::string& msg, const std::string& title);
+        void _askPassword(ulong handle, const std::string& msg, const std::string& title);
         void _fileDialog(ulong handle, const std::string& path, const std::string& extension, const std::string& suffix);
         void _setSizeMainWindow(int width, int height);
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
@@ -336,6 +341,7 @@ class MainWindow : public QMainWindow, public TObject
         void repaintObjects();
         void refresh(ulong handle);
         void markDirty(ulong handle);
+        QFont loadFont(int number, const FONT_T& f, const FONT_STYLE fs);
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
         int calcVolume(int value);
 #else

@@ -34,6 +34,7 @@
 #include "tobject.h"
 #include "terror.h"
 #include "tqscrollarea.h"
+#include "tqmarquee.h"
 #include "tlock.h"
 #include "tqtmain.h"
 #include "tresources.h"
@@ -101,6 +102,13 @@ void TObject::dropContent(OBJECT_t* obj, bool lock)
             case OBJ_BUTTON:
                 if (obj->object.label)
                     obj->object.label = nullptr;
+
+                obj->invalid = true;
+            break;
+
+            case OBJ_MARQUEE:
+                if (obj->object.marquee)
+                    obj->object.marquee = nullptr;
 
                 obj->invalid = true;
             break;
@@ -654,6 +662,7 @@ string TObject::objectToString(TObject::OBJECT_TYPE o)
     switch(o)
     {
         case OBJ_BUTTON:  return "BUTTON"; break;
+        case OBJ_MARQUEE: return "MARQUEE"; break;
         case OBJ_INPUT:   return "INPUT"; break;
         case OBJ_NONE:    return "undefined"; break;
         case OBJ_PAGE:    return "PAGE"; break;

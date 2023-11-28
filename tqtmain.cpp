@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -93,6 +93,8 @@
 #include "tqdownload.h"
 #include "tqtphone.h"
 #include "tqeditline.h"
+#include "tqtinputline.h"
+#include "tqmarquee.h"
 #include "tqtwait.h"
 #include "terror.h"
 #include "tresources.h"
@@ -494,7 +496,11 @@ MainWindow::MainWindow()
                                        std::placeholders::_5,
                                        std::placeholders::_6,
                                        std::placeholders::_7,
-                                       std::placeholders::_8));
+                                       std::placeholders::_8,
+                                       std::placeholders::_9,
+                                       std::placeholders::_10));
+
+    gPageManager->registerSetMarqueeText(bind(&MainWindow::_setMarqueeText, this, std::placeholders::_1));
 
     gPageManager->regDisplayViewButton(bind(&MainWindow::_displayViewButton, this,
                                           std::placeholders::_1,
@@ -604,6 +610,9 @@ MainWindow::MainWindow()
 #endif
     gPageManager->regDownloadSurface(bind(&MainWindow::_downloadSurface, this, std::placeholders::_1, std::placeholders::_2));
     gPageManager->regDisplayMessage(bind(&MainWindow::_displayMessage, this, std::placeholders::_1, std::placeholders::_2));
+    gPageManager->regAskPassword(bind(&MainWindow::_askPassword, this, std::placeholders::_1,
+                                      std::placeholders::_2,
+                                      std::placeholders::_3));
     gPageManager->regFileDialogFunction(bind(&MainWindow::_fileDialog, this,
                                              std::placeholders::_1,
                                              std::placeholders::_2,
@@ -643,6 +652,7 @@ MainWindow::MainWindow()
     try
     {
         connect(this, &MainWindow::sigDisplayButton, this, &MainWindow::displayButton);
+        connect(this, &MainWindow::sigSetMarqueeText, this, &MainWindow::setMarqueeText);
         connect(this, &MainWindow::sigDisplayViewButton, this, &MainWindow::displayViewButton);
         connect(this, &MainWindow::sigAddViewButtonItems, this, &MainWindow::addViewButtonItems);
         connect(this, &MainWindow::sigShowViewButtonItem, this, &MainWindow::showViewButtonItem);
@@ -676,6 +686,7 @@ MainWindow::MainWindow()
 #endif
         connect(this, &MainWindow::sigDownloadSurface, this, &MainWindow::downloadSurface);
         connect(this, &MainWindow::sigDisplayMessage, this, &MainWindow::displayMessage);
+        connect(this, &MainWindow::sigAskPassword, this, &MainWindow::askPassword);
         connect(this, &MainWindow::sigFileDialog, this, &MainWindow::fileDialog);
         connect(this, &MainWindow::sigStartWait, this, &MainWindow::startWait);
         connect(this, &MainWindow::sigStopWait, this, &MainWindow::stopWait);
@@ -725,7 +736,7 @@ MainWindow::MainWindow()
         }
     }
 #endif
-/*
+
 #ifdef Q_OS_IOS
     // To get the battery level periodicaly we setup a timer.
     if (!mIosBattery)
@@ -740,14 +751,8 @@ MainWindow::MainWindow()
     // is registered, we tell the page manager to store the values.
     gPageManager->setBattery(left, state);
     MSG_DEBUG("Battery state was set to " << left << "% and state " << state);
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    if (gPageManager->getSettings()->isPortrait())
-        QGuiApplication::primaryScreen()->setOrientationUpdateMask(Qt::PortraitOrientation | Qt::InvertedPortraitOrientation);
-    else
-        QGuiApplication::primaryScreen()->setOrientationUpdateMask(Qt::LandscapeOrientation | Qt::InvertedLandscapeOrientation);
-#endif  // QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 #endif  // Q_OS_IOS
-*/
+
     _restart_ = false;
 }
 
@@ -2315,6 +2320,32 @@ void MainWindow::displayMessage(const string &msg, const string &title)
     msgBox.exec();
 }
 
+void MainWindow::askPassword(ulong handle, const string msg, const string& title)
+{
+    DECL_TRACER("MainWindow::askPassword(const string msg, const string& title)");
+
+    TQtInputLine *inputLine = new TQtInputLine(this);
+    inputLine->setMessage(msg);
+    inputLine->setWindowTitle(title.c_str());
+    inputLine->setWindowModality(Qt::WindowModality::ApplicationModal);
+    inputLine->setPassword(true);
+    int bt = inputLine->exec();
+
+    if (bt == QDialog::Rejected)
+    {
+        if (gPageManager)
+            gPageManager->callSetPassword(handle, "");
+
+        delete inputLine;
+        return;
+    }
+
+    if (gPageManager)
+        gPageManager->callSetPassword(handle, inputLine->getText());
+
+    delete inputLine;
+}
+
 void MainWindow::fileDialog(ulong handle, const string &path, const std::string& extension, const std::string& suffix)
 {
     DECL_TRACER("MainWindow::fileDialog(ulong handle, const string &path, const std::string& extension, const std::string& suffix)");
@@ -2533,6 +2564,11 @@ void MainWindow::pageFinished(ulong handle)
                                 obj->object.label->show();
                         break;
 
+                        case OBJ_MARQUEE:
+                            if (obj->object.marquee && obj->object.marquee->isHidden())
+                                obj->object.marquee->show();
+                        break;
+
                         case OBJ_INPUT:
                         case OBJ_TEXT:
                             if (obj->object.plaintext && obj->object.plaintext->isHidden())
@@ -2663,16 +2699,18 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
 #ifdef Q_OS_IOS
                 // To get the battery level periodicaly we setup a timer.
                 if (!mIosBattery)
-                mIosBattery = new TIOSBattery;
+                    mIosBattery = new TIOSBattery;
 
                 mIosBattery->update();
 
                 int left = mIosBattery->getBatteryLeft();
-                int state = mIosBattery->getBatteryState();
+                int stat = mIosBattery->getBatteryState();
+                MSG_DEBUG("iOS battery state: " << left << "%, State: " << stat);
                 // At this point no buttons are registered and therefore the battery
                 // state will not be visible. To have the state at the moment a button
                 // is registered, we tell the page manager to store the values.
-                gPageManager->setBattery(left, state);
+                gPageManager->setBattery(left, stat);
+                gPageManager->informBatteryStatus(left, stat);
 
                 if (mSensor)
                 {
@@ -2730,6 +2768,12 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
 #endif
 #endif
 #ifdef Q_OS_IOS
+            // We do this to make sure the battery state is up to date after the
+            // screen was reactivated.
+            int left = mIosBattery->getBatteryLeft();
+            int stat = mIosBattery->getBatteryState();
+            gPageManager->informBatteryStatus(left, stat);
+
             if (mIOSSettingsActive)
             {
                 mIOSSettingsActive = false;
@@ -2793,9 +2837,9 @@ void MainWindow::_resetSurface()
     close();
 }
 
-void MainWindow::_displayButton(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough)
+void MainWindow::_displayButton(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough, int marqtype, int marq)
 {
-    DECL_TRACER("MainWindow::_displayButton(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough)");
+    DECL_TRACER("MainWindow::_displayButton(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough, int marqtype, int marq)");
 
     if (prg_stopped)
         return;
@@ -2806,7 +2850,17 @@ void MainWindow::_displayButton(ulong handle, ulong parent, TBitmap buffer, int 
         return;
     }
 
-    emit sigDisplayButton(handle, parent, buffer, width, height, left, top, passthrough);
+    emit sigDisplayButton(handle, parent, buffer, width, height, left, top, passthrough, marqtype, marq);
+}
+
+void MainWindow::_setMarqueeText(Button::TButton* button)
+{
+    DECL_TRACER("MainWindow::_setMarqueeText(Button::TButton* button)");
+
+    if (prg_stopped)
+        return;
+
+    emit sigSetMarqueeText(button);
 }
 
 void MainWindow::_displayViewButton(ulong handle, ulong parent, bool vertical, TBitmap buffer, int width, int height, int left, int top, int space, TColor::COLOR_T fillColor)
@@ -3253,6 +3307,14 @@ void MainWindow::_displayMessage(const string &msg, const string &title)
         emit sigDisplayMessage(msg, title);
 }
 
+void MainWindow::_askPassword(ulong handle, const string& msg, const string& title)
+{
+    DECL_TRACER("MainWindow::_askPassword(ulong handle, const string& msg, const string& title)");
+
+    if (mHasFocus)
+        emit sigAskPassword(handle, msg, title);
+}
+
 void MainWindow::_fileDialog(ulong handle, const string &path, const std::string& extension, const std::string& suffix)
 {
     DECL_TRACER("MainWindow::_fileDialog(ulong handle, const string &path, const std::string& extension, const std::string& suffix)");
@@ -3379,6 +3441,11 @@ void MainWindow::refresh(ulong handle)
             if (!obj->object.label->isEnabled())
                 obj->object.label->setEnabled(true);
         }
+        else if (obj->type == OBJ_MARQUEE && !obj->invalid && obj->object.marquee)
+        {
+            if (!obj->object.marquee->isEnabled())
+                obj->object.marquee->setEnabled(true);
+        }
         else if ((obj->type == OBJ_SUBPAGE || obj->type == OBJ_PAGE) && !obj->invalid && obj->object.widget)
         {
             if (!obj->object.widget->isEnabled())
@@ -3420,6 +3487,98 @@ double MainWindow::calcVolume(int value)
 #else
     return (double)value / 100.0;
 #endif
+}
+
+QFont MainWindow::loadFont(int number, const FONT_T& f, const FONT_STYLE style)
+{
+    DECL_TRACER("MainWindow::loadFont(int number, const FONT_t& f, const FONT_STYLE style)");
+
+    QString path;
+    string prjPath= TConfig::getProjectPath();
+
+    if (number < 32)    // System font?
+    {
+        path.append(prjPath).append("/__system/graphics/fonts/").append(f.file);
+
+        if (!fs::is_regular_file(path.toStdString()))
+        {
+            MSG_WARNING("Seem to miss system fonts ...");
+            path.clear();
+            path.append(prjPath).append("/fonts/").append(f.file);
+        }
+    }
+    else
+    {
+        path.append(prjPath).append("/fonts/").append(f.file);
+
+        if (!fs::exists(path.toStdString()))
+        {
+            string pth = prjPath + "/__system/fonts/" + f.file;
+
+            if (fs::exists(pth))
+                path.assign(pth);
+        }
+    }
+
+    const QStringList ffamilies = QFontDatabase::families();
+    bool haveFont = false;
+
+    for (const QString &family : ffamilies)
+    {
+        if (family.compare(f.name.c_str()) == 0)
+        {
+            haveFont = true;
+            break;
+        }
+    }
+
+    QFont font;
+    // Scale the font size
+    int pix = f.size;
+
+    if (mScaleFactor > 0.0 && mScaleFactor != 1.0)
+        pix = (int)((double)f.size / mScaleFactor);
+
+    QString qstyle;
+
+    switch (style)
+    {
+        case FONT_BOLD:         qstyle.assign("Bold"); break;
+        case FONT_ITALIC:       qstyle.assign("Italic"); break;
+        case FONT_BOLD_ITALIC:  qstyle.assign("Bold Italic"); break;
+
+        default:
+            qstyle.assign("Normal");
+    }
+
+    if (!haveFont)  // Did we found the font?
+    {               // No, then load it
+        QFontDatabase::addApplicationFont(path);
+        font = QFontDatabase::font(f.name.c_str(), qstyle, pix);
+        MSG_DEBUG("Font \"" << path.toStdString() << "\" was loaded");
+    }
+    else
+    {
+        font.setFamily(f.name.c_str());
+        font.setPointSize(pix);
+        font.setStyleName(qstyle);
+    }
+
+    string family = font.family().toStdString();
+
+    if (!font.exactMatch() && (family != f.name || font.styleName() != qstyle || font.pointSize() != pix))
+    {
+        MSG_WARNING("Using font "
+                    << family << "|" << font.styleName().toStdString() << "|" << font.pointSize()
+                    << " but requested font "
+                    << f.name << "|" << qstyle.toStdString() << "|" << pix << "!");
+    }
+    else
+    {
+        MSG_DEBUG("Font was set to " << f.name << "|" << qstyle.toStdString() << "|" << pix << "! " << (font.exactMatch() ? "[original]" : "[replacement]"));
+    }
+
+    return font;
 }
 
 /**
@@ -3639,7 +3798,8 @@ Qt::ScreenOrientation MainWindow::getRealOrientation()
 
     return Qt::PortraitOrientation;
 }
-
+#endif  // Q_OS_IOS
+#if defined(QT_DEBUG) && (defined(Q_OS_IOS) || defined(Q_OS_ANDROID))
 string MainWindow::orientationToString(Qt::ScreenOrientation ori)
 {
     string sori;
@@ -3657,7 +3817,7 @@ string MainWindow::orientationToString(Qt::ScreenOrientation ori)
 
     return sori;
 }
-#endif  // Q_OS_IOS
+#endif
 
 /******************* Draw elements *************************/
 
@@ -3675,12 +3835,12 @@ string MainWindow::orientationToString(Qt::ScreenOrientation ori)
  * @param pixline   The number of pixels in one line of the image.
  * @param left      The prosition from the left.
  * @param top       The position from the top.
+ * @param marqtype  The type of marquee line
+ * @param marq      Enabled/disabled marquee
  */
-void MainWindow::displayButton(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough)
+void MainWindow::displayButton(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough, int marqtype, int marq)
 {
-    DECL_TRACER("MainWindow::displayButton(ulong handle, TBitmap buffer, size_t size, int width, int height, int left, int top, bool passthrough)");
-
-//    TLOCKER(draw_mutex);
+    DECL_TRACER("MainWindow::displayButton(ulong handle, TBitmap buffer, size_t size, int width, int height, int left, int top, bool passthrough, int marqtype, int marq)");
 
     TObject::OBJECT_t *obj = findObject(handle);
     TObject::OBJECT_t *par = findObject(parent);
@@ -3736,7 +3896,11 @@ void MainWindow::displayButton(ulong handle, ulong parent, TBitmap buffer, int w
         MSG_DEBUG("Adding new object " << handleToString(handle) << " ...");
         OBJECT_t nobj;
 
-        nobj.type = TObject::OBJ_BUTTON;
+        if (marqtype > 0 && marq)
+            nobj.type = OBJ_MARQUEE;
+        else
+            nobj.type = OBJ_BUTTON;
+
         nobj.handle = handle;
 
         if (gPageManager->isSetupActive())
@@ -3754,22 +3918,40 @@ void MainWindow::displayButton(ulong handle, ulong parent, TBitmap buffer, int w
             nobj.top = scale(top);
         }
 
-        nobj.object.label = new QLabel(par->object.widget);
-        nobj.object.label->setObjectName(QString("Label_") + handleToString(handle).c_str());
-
-        if (mGestureFilter)
+        if (nobj.type == OBJ_MARQUEE)
         {
-            nobj.object.label->installEventFilter(mGestureFilter);
-            nobj.object.label->grabGesture(Qt::PinchGesture);
-            nobj.object.label->grabGesture(Qt::SwipeGesture);
+            nobj.object.marquee = new TQMarquee(par->object.widget, 1, (TQMarquee::MQ_TYPES)marqtype, marq);
+            nobj.object.marquee->setObjectName(QString("Marquee_") + handleToString(handle).c_str());
+
+            if (mGestureFilter)
+            {
+                nobj.object.marquee->installEventFilter(mGestureFilter);
+                nobj.object.marquee->grabGesture(Qt::PinchGesture);
+                nobj.object.marquee->grabGesture(Qt::SwipeGesture);
+            }
+
+            nobj.object.marquee->setGeometry(nobj.left, nobj.top, nobj.width, nobj.height);
+
+            if (passthrough)
+                nobj.object.marquee->setAttribute(Qt::WA_TransparentForMouseEvents);
         }
+        else
+        {
+            nobj.object.label = new QLabel(par->object.widget);
+            nobj.object.label->setObjectName(QString("Label_") + handleToString(handle).c_str());
 
-        nobj.object.label->setGeometry(nobj.left, nobj.top, nobj.width, nobj.height);
-//        nobj.object.label->move(nobj.left, nobj.top);
-//        nobj.object.label->setFixedSize(nobj.width, nobj.height);
+            if (mGestureFilter)
+            {
+                nobj.object.label->installEventFilter(mGestureFilter);
+                nobj.object.label->grabGesture(Qt::PinchGesture);
+                nobj.object.label->grabGesture(Qt::SwipeGesture);
+            }
 
-        if (passthrough)
-            nobj.object.label->setAttribute(Qt::WA_TransparentForMouseEvents);
+            nobj.object.label->setGeometry(nobj.left, nobj.top, nobj.width, nobj.height);
+
+            if (passthrough)
+                nobj.object.label->setAttribute(Qt::WA_TransparentForMouseEvents);
+        }
 
         if (!addObject(nobj))
         {
@@ -3787,7 +3969,12 @@ void MainWindow::displayButton(ulong handle, ulong parent, TBitmap buffer, int w
         MSG_DEBUG("Object " << handleToString(handle) << " of type " << TObject::objectToString(obj->type) << " found!");
 
         if (passthrough && obj->object.label)
-            obj->object.label->setAttribute(Qt::WA_TransparentForMouseEvents);
+        {
+            if (obj->type == OBJ_BUTTON)
+                obj->object.label->setAttribute(Qt::WA_TransparentForMouseEvents);
+            else
+                obj->object.marquee->setAttribute(Qt::WA_TransparentForMouseEvents);
+        }
 
         if (!enableObject(handle))
         {
@@ -3820,14 +4007,10 @@ void MainWindow::displayButton(ulong handle, ulong parent, TBitmap buffer, int w
         if (obj->type != OBJ_INPUT && (wt != obj->width || ht != obj->height || lt != obj->left || tp != obj->top))
         {
             MSG_DEBUG("Scaled button with new size: lt: " << obj->left << ", tp: " << obj->top << ", wt: " << obj->width << ", ht: " << obj->height);
-/*
-            if (obj->left != lt || obj->top != tp)
-                obj->object.label->move(lt, tp);
 
-            if (obj->width != wt || obj->height != ht)
-                obj->object.label->setFixedSize(wt, ht);
-*/
-//            if (obj->left != lt || obj->top != tp || obj->width != wt || obj->height != ht)
+            if (obj->type == OBJ_MARQUEE)
+                obj->object.marquee->setGeometry(lt, tp, wt, ht);
+            else
                 obj->object.label->setGeometry(lt, tp, wt, ht);
 
             obj->left = lt;
@@ -3846,11 +4029,16 @@ void MainWindow::displayButton(ulong handle, ulong parent, TBitmap buffer, int w
                 MSG_DEBUG("Setting image for " << handleToString(handle) << " ...");
                 QPixmap pixmap = scaleImage((unsigned char *)buffer.getBitmap(), buffer.getWidth(), buffer.getHeight(), buffer.getPixline());
 
-                if (obj->object.label)
+                if (obj->type == OBJ_MARQUEE && obj->object.marquee)
+                {
+                    obj->object.marquee->setBackground(pixmap);
+#if TESTMODE == 1
+                    __success = true;
+#endif
+                }
+                else if (obj->object.label)
                 {
                     obj->object.label->setPixmap(pixmap);
-                    if (obj->handle == (((588 << 16) & 0xffff0000) | 6))
-                        pixmap.save("px588-6.png");
 #if TESTMODE == 1
                     __success = true;
 #endif
@@ -3873,6 +4061,34 @@ void MainWindow::displayButton(ulong handle, ulong parent, TBitmap buffer, int w
 #if TESTMODE == 1
     setScreenDone();
 #endif
+}
+
+void MainWindow::setMarqueeText(Button::TButton* button)
+{
+    DECL_TRACER("MainWindow::setMarqueeText(Button::TButton* button)");
+
+    ulong handle = button->getHandle();
+    TObject::OBJECT_t *obj = findObject(handle);
+
+    if (!obj)
+    {
+        MSG_WARNING("No object " << handleToString(handle) << " found!");
+        return;
+    }
+
+    if (obj->type != OBJ_MARQUEE || !obj->object.marquee)
+    {
+        MSG_WARNING("Object " << handleToString(handle) << " is not a Marquee type or does not exist!");
+        return;
+    }
+
+    TQMarquee *marquee = obj->object.marquee;
+    marquee->setText(button->getText().c_str());
+    marquee->setSpeed(button->getMarqueeSpeed(button->getActiveInstance()));
+    int frameSize = scale(button->getBorderSize(button->getBorderStyle(button->getActiveInstance())));
+    marquee->setFrame(frameSize, frameSize, frameSize, frameSize);
+    QFont font = loadFont(button->getFontIndex(button->getActiveInstance()), button->getFont(), button->getFontStyle());
+    marquee->setFont(font);
 }
 
 void MainWindow::displayViewButton(ulong handle, ulong parent, bool vertical, TBitmap buffer, int width, int height, int left, int top, int space, TColor::COLOR_T fillColor)
@@ -4197,6 +4413,12 @@ void MainWindow::SetVisible(ulong handle, bool state)
     if (obj->type == OBJ_BUTTON && obj->object.label)
     {
         obj->object.label->setVisible(state);
+        obj->invalid = false;
+        obj->remove = false;
+    }
+    else if (obj->type == OBJ_MARQUEE && obj->object.marquee)
+    {
+        obj->object.marquee->setVisible(state);
         obj->invalid = false;
         obj->remove = false;
     }
@@ -4571,7 +4793,7 @@ void MainWindow::setBackground(ulong handle, TBitmap image, int width, int heigh
     {
         MSG_DEBUG("Processing object " << objectToString(obj->type));
 
-        if (obj->type == OBJ_BUTTON && !obj->object.label)
+        if ((obj->type == OBJ_BUTTON || obj->type == OBJ_MARQUEE) && !obj->object.label)
         {
             MSG_ERROR("The label of the object " << handleToString(handle) << " was not initialized!");
 #if TESTMODE == 1
@@ -4609,8 +4831,10 @@ void MainWindow::setBackground(ulong handle, TBitmap image, int width, int heigh
                 pix.convertFromImage(img);
         }
 
-        if (obj->type == TObject::OBJ_BUTTON)
+        if (obj->type == OBJ_BUTTON)
             obj->object.label->setPixmap(pix);
+        else if (obj->type == OBJ_MARQUEE)
+            obj->object.marquee->setBackground(pix);
         else
         {
             MSG_DEBUG("Setting image as background for subpage " << handleToString(handle));

@@ -220,6 +220,9 @@ namespace Button
         int ww{0};              // line break when 1
         int et{0};              // Text effect (^TEF)
         int oo{-1};             // Over all opacity
+        int md{0};              // Marquee type: 1 = scroll left, 2 = scroll right, 3 = ping pong, 4 = scroll up, 5 = scroll down
+        int mr{0};              // Marquee enabled: 1 = enabled, 0 = disabled
+        int ms{1};              // Marquee speed: Range: 1 to 10
     } SR_T;
 
     typedef struct EXTBUTTON_t
@@ -430,6 +433,8 @@ namespace Button
             void setTextMaxChars(int m) { mt = m; }
             bool getTextWordWrap(int inst=0);
             bool setTextWordWrap(bool ww, int inst=-1);
+            void setMarqueeSpeed(int speed, int inst=-1);
+            int getMarqueeSpeed(int inst=0);
             int getFontIndex(int inst=0);
             bool setFontIndex(int fi, int inst=-1);
             int getIconIndex(int inst=0);
@@ -825,7 +830,7 @@ namespace Button
              * function is used for nearly every kind of button or bargraph.
              * It is up to the surface to bring the buttons to screen.
              */
-            void registerCallback(std::function<void (ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough)> displayButton)
+            void registerCallback(std::function<void (ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough, int marqtype, int marq)> displayButton)
             {
                 _displayButton = displayButton;
             }
@@ -1173,6 +1178,8 @@ namespace Button
             void listViewNavigate(const std::string& command, bool select=false);
             void listViewRefresh(int interval, bool force=false);
             void listViewSortData(const std::vector<std::string>& columns, LIST_SORT order, const std::string& override);
+            int getBorderSize(const std::string& name);
+            void setPassword(const std::string& pw) { mPassword = pw; }
 
         protected:
             BUTTONTYPE getButtonType(const std::string& bt);
@@ -1192,7 +1199,7 @@ namespace Button
             void funcNetworkState(int level);
 
         private:
-            std::function<void (ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough)> _displayButton{nullptr};
+            std::function<void (ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough, int marqtype, int marq)> _displayButton{nullptr};
             std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw)> _playVideo{nullptr};
             std::function<std::vector<std::string>(ulong handle, int ap, int ta, int ti, int rows, int columns)> _getListContent{nullptr};
             std::function<std::string(int ti, int row)> _getListRow{nullptr};
@@ -1210,7 +1217,6 @@ namespace Button
             std::string buttonTypeToString();
             POSITION_t calcImagePosition(int width, int height, CENTER_CODE cc, int number, int line = 0);
             IMAGE_SIZE_t calcImageSize(int imWidth, int imHeight, int instance, bool aspect=false);
-            int getBorderSize(const std::string& name);
             void calcImageSizePercent(int imWidth, int imHeight, int btWidth, int btHeight, int btFrame, int *realX, int *realY);
             SkColor baseColor(SkColor basePix, SkColor maskPix, SkColor col1, SkColor col2);
             TEXT_EFFECT textEffect(const std::string& effect);
@@ -1307,6 +1313,7 @@ namespace Button
             int ac_di{0};           // (guess) Direction of text: 0 = left to right (default); 1 = right to left
             int hd{0};              // 1 = Hidden, 0 = Normal visible
             int da{0};              // 1 = Disabled, 0 = Normal active
+            int pp{0};              // >0 = password protected; Range 1 to 4
             std::string lf;         // Bargraph function: empty = display only, active, active centering, drag, drag centering
             std::string sd;         // Name/Type of slider for a bargraph
             std::string sc;         // Color of slider (for bargraph)
@@ -1375,6 +1382,7 @@ namespace Button
             int mCursorPosition{0}; // The cursor position if this is of type TEXT_INPUT
             bool mHasFocus{false};  // If this is of type TEXT_INPUT this holds the focus state
             std::string dummy;      // dummy string used to return an empty string.
+            std::string mPassword;  // Contains the last typed password (askPassword()).
     };
 
     typedef struct BUTTONS_T

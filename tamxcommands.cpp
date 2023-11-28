@@ -158,6 +158,7 @@ CMD_DEFINATIONS cmdDefinations[] = {
     { "?JSI", true, true, ',' },
     { "^JST", true, true, ',' },
     { "?JST", true, true, ',' },
+    { "^MSP", true, true, ',' },
     { "^MBT", false, false, ',' },
     { "^MDC", false, false, ',' },
     { "^SHO", true, true, ',' },

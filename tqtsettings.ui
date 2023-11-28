@@ -1807,6 +1807,234 @@
      </property>
     </widget>
    </widget>
+   <widget class="QWidget" name="tabPasswords">
+    <attribute name="title">
+     <string>Passwords</string>
+    </attribute>
+    <widget class="QLabel" name="label_Password1">
+     <property name="geometry">
+      <rect>
+       <x>13</x>
+       <y>30</y>
+       <width>81</width>
+       <height>21</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Password 1</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_Password2">
+     <property name="geometry">
+      <rect>
+       <x>13</x>
+       <y>70</y>
+       <width>81</width>
+       <height>21</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Password 2</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_Password3">
+     <property name="geometry">
+      <rect>
+       <x>13</x>
+       <y>110</y>
+       <width>81</width>
+       <height>21</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Password 3</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_Password4">
+     <property name="geometry">
+      <rect>
+       <x>13</x>
+       <y>150</y>
+       <width>81</width>
+       <height>21</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Password 4</string>
+     </property>
+    </widget>
+    <widget class="QLineEdit" name="lineEdit_Password1">
+     <property name="geometry">
+      <rect>
+       <x>102</x>
+       <y>24</y>
+       <width>451</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="maxLength">
+      <number>32</number>
+     </property>
+     <property name="echoMode">
+      <enum>QLineEdit::Password</enum>
+     </property>
+     <property name="clearButtonEnabled">
+      <bool>true</bool>
+     </property>
+    </widget>
+    <widget class="QLineEdit" name="lineEdit_Password2">
+     <property name="geometry">
+      <rect>
+       <x>102</x>
+       <y>65</y>
+       <width>451</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="maxLength">
+      <number>32</number>
+     </property>
+     <property name="echoMode">
+      <enum>QLineEdit::Password</enum>
+     </property>
+     <property name="clearButtonEnabled">
+      <bool>true</bool>
+     </property>
+    </widget>
+    <widget class="QLineEdit" name="lineEdit_Password3">
+     <property name="geometry">
+      <rect>
+       <x>102</x>
+       <y>104</y>
+       <width>451</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="maxLength">
+      <number>32</number>
+     </property>
+     <property name="echoMode">
+      <enum>QLineEdit::Password</enum>
+     </property>
+     <property name="clearButtonEnabled">
+      <bool>true</bool>
+     </property>
+    </widget>
+    <widget class="QLineEdit" name="lineEdit_Password4">
+     <property name="geometry">
+      <rect>
+       <x>102</x>
+       <y>144</y>
+       <width>451</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="maxLength">
+      <number>32</number>
+     </property>
+     <property name="echoMode">
+      <enum>QLineEdit::Password</enum>
+     </property>
+     <property name="clearButtonEnabled">
+      <bool>true</bool>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_ViewPW1">
+     <property name="geometry">
+      <rect>
+       <x>560</x>
+       <y>24</y>
+       <width>51</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>View</string>
+     </property>
+     <property name="icon">
+      <iconset theme="eye"/>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_ViewPW2">
+     <property name="geometry">
+      <rect>
+       <x>560</x>
+       <y>64</y>
+       <width>51</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>View</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_ViewPW3">
+     <property name="geometry">
+      <rect>
+       <x>560</x>
+       <y>104</y>
+       <width>51</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>View</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_ViewPW4">
+     <property name="geometry">
+      <rect>
+       <x>560</x>
+       <y>144</y>
+       <width>51</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>View</string>
+     </property>
+    </widget>
+   </widget>
   </widget>
   <widget class="QDialogButtonBox" name="buttonBox">
    <property name="geometry">

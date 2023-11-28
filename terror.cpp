@@ -335,6 +335,7 @@ void TStreamError::_init(bool reinit)
 //    mLogFileEnabled = TConfig::getLogFileEnabled();
     __android_log_print(ANDROID_LOG_DEBUG, "tpanel", "TStreamError::_init: Logfile is %s", (mLogFileEnabled ? "ENABLED" : "DISABLED"));
 #endif
+
 #if LOGPATH == LPATH_FILE
     if (mLogFileEnabled && !mLogfile.empty())
     {
@@ -431,7 +432,7 @@ void TStreamError::_init(bool reinit)
 #else  // LOGPATH == LPATH_FILE
     if (!mStream)
     {
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS_AVAILABLE)
         std::cout.rdbuf(new androidbuf);
 #endif
         mStream = &std::cout;

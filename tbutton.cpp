@@ -339,6 +339,8 @@ size_t TButton::initialize(TExpat *xml, size_t index)
             op = content;
         else if (ename.compare("pc") == 0)          // Password character for text area (single line)
             pc = content;
+        else if (ename.compare("pp") == 0)          // Password protection
+            pp = xml->convertElementToInt(content);
         else if (ename.compare("ta") == 0)          // Listbox table channel
             ta = xml->convertElementToInt(content);
         else if (ename.compare("ti") == 0)          // Listbox table address channel of rows
@@ -449,6 +451,10 @@ size_t TButton::initialize(TExpat *xml, size_t index)
                     bsr.et = xml->convertElementToInt(content);
                 else if (e.compare("oo") == 0)      // Opacity
                     bsr.oo = xml->convertElementToInt(content);
+                else if (e.compare("md") == 0)      // Marquee type
+                    bsr.md = xml->convertElementToInt(content);
+                else if (e.compare("mr") == 0)      // Marquee enable/disable
+                    bsr.mr = xml->convertElementToInt(content);
 
                 oldIndex = index;
             }
@@ -2870,6 +2876,47 @@ bool TButton::setTextWordWrap(bool state, int instance)
     return makeElement(instance);
 }
 
+void TButton::setMarqueeSpeed(int speed, int inst)
+{
+    DECL_TRACER("TButton::setMarqueeSpeed(int speed, int inst)");
+
+    if (inst >= (int)sr.size())
+    {
+        MSG_ERROR("Invalid instance " << inst);
+        return;
+    }
+
+    if (speed < 1 || speed > 10)
+    {
+        MSG_ERROR("Speed for marquee line is out of range!");
+        return;
+    }
+
+    if (inst < 0)
+    {
+        for (size_t i = 0; i < sr.size(); ++i)
+            sr[i].ms = speed;
+    }
+    else
+        sr[inst].ms = speed;
+}
+
+int TButton::getMarqueeSpeed(int inst)
+{
+    DECL_TRACER("TButton::getMarqueeSpeed(int inst)");
+
+    if (inst >= (int)sr.size())
+    {
+        MSG_ERROR("Invalid instance " << inst);
+        return 1;
+    }
+
+    if (inst <= 0)
+        return sr[0].ms;
+    else
+        return sr[inst].ms;
+}
+
 bool TButton::getTextWordWrap(int inst)
 {
     DECL_TRACER("TButton::getTextWordWrap(int inst)");
@@ -3190,6 +3237,11 @@ void TButton::_imageRefresh(const string& url)
         }
         else if (mDOrder[i] == ORD_ELEM_TEXT)
         {
+            // If this is a marquee line, don't draw the text. This will be done
+            // by the surface.
+            if (sr[mActInstance].md > 0 && sr[mActInstance].mr > 0)
+                continue;
+
             if (!buttonText(&imgButton, mActInstance))
                 return;
         }
@@ -3278,7 +3330,13 @@ void TButton::_imageRefresh(const string& url)
         }
 #endif
         TBitmap image((unsigned char *)imgButton.getPixels(), imgButton.info().width(), imgButton.info().height());
-        _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop, isPassThrough());
+        _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop, isPassThrough(), sr[mActInstance].md, sr[mActInstance].mr);
+
+        if (sr[mActInstance].md > 0 && sr[mActInstance].mr > 0)
+        {
+            if (gPageManager && gPageManager->getSetMarqueeText())
+                gPageManager->getSetMarqueeText()(this);
+        }
     }
 }
 
@@ -3987,6 +4045,11 @@ bool TButton::drawAlongOrder(SkBitmap *imgButton, int instance)
         }
         else if (mDOrder[i] == ORD_ELEM_TEXT)
         {
+            // If this is a marquee line, don't draw the text. This will be done
+            // by the surface.
+            if (sr[mActInstance].md > 0 && sr[mActInstance].mr > 0)
+                continue;
+
             if (!buttonText(imgButton, instance))
                 return false;
         }
@@ -4181,7 +4244,7 @@ void TButton::funcResource(const RESOURCE_T* resource, const std::string& url, B
             if (bc.show && _displayButton)
             {
                 TBitmap image((unsigned char *)bmCache.bitmap.getPixels(), bmCache.bitmap.info().width(), bmCache.bitmap.info().height());
-                _displayButton(bc.handle, bc.parent, image, bc.width, bc.height, bc.left, bc.top, isPassThrough());
+                _displayButton(bc.handle, bc.parent, image, bc.width, bc.height, bc.left, bc.top, isPassThrough(), sr[mActInstance].md, sr[mActInstance].mr);
                 mChanged = false;
             }
         }
@@ -5696,6 +5759,11 @@ bool TButton::drawButton(int instance, bool show, bool subview)
         }
         else if (mDOrder[i] == ORD_ELEM_TEXT)
         {
+            // If this is a marquee line, don't draw the text. This will be done
+            // by the surface.
+            if (sr[mActInstance].md > 0 && sr[mActInstance].mr > 0)
+                continue;
+
             if (!buttonText(&imgButton, instance))
             {
 #if TESTMODE == 1
@@ -5805,7 +5873,13 @@ bool TButton::drawButton(int instance, bool show, bool subview)
             if (type != SUBPAGE_VIEW && !mSubViewPart)
             {
                 TBitmap image((unsigned char *)imgButton.getPixels(), imgButton.info().width(), imgButton.info().height());
-                _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop, isPassThrough());
+                _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop, isPassThrough(), sr[mActInstance].md, sr[mActInstance].mr);
+
+                if (sr[mActInstance].md > 0 && sr[mActInstance].mr > 0)
+                {
+                    if (gPageManager && gPageManager->getSetMarqueeText())
+                        gPageManager->getSetMarqueeText()(this);
+                }
             }
             else if (type != SUBPAGE_VIEW && mSubViewPart)
             {
@@ -6122,6 +6196,11 @@ bool TButton::drawMultistateBargraph(int level, bool show)
         }
         else if (mDOrder[i] == ORD_ELEM_TEXT)
         {
+            // If this is a marquee line, don't draw the text. This will be done
+            // by the surface.
+            if (sr[mActInstance].md > 0 && sr[mActInstance].mr > 0)
+                continue;
+
             if (!buttonText(&imgButton, maxLevel))
             {
 #if TESTMODE == 1
@@ -6230,7 +6309,13 @@ bool TButton::drawMultistateBargraph(int level, bool show)
         if (show)
         {
             TBitmap image((unsigned char *)imgButton.getPixels(), imgButton.info().width(), imgButton.info().height());
-            _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop, isPassThrough());
+            _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop, isPassThrough(), sr[mActInstance].md, sr[mActInstance].mr);
+
+            if (sr[mActInstance].md > 0 && sr[mActInstance].mr > 0)
+            {
+                if (gPageManager && gPageManager->getSetMarqueeText())
+                    gPageManager->getSetMarqueeText()(this);
+            }
         }
 #if TESTMODE == 1
         else
@@ -6597,7 +6682,7 @@ bool TButton::drawBargraph(int instance, int level, bool show)
         }
 #endif
         TBitmap image((unsigned char *)imgButton.getPixels(), imgButton.info().width(), imgButton.info().height());
-        _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop, isPassThrough());
+        _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop, isPassThrough(), sr[mActInstance].md, sr[mActInstance].mr);
     }
 
     return true;
@@ -7285,7 +7370,13 @@ void TButton::showLastButton()
         else if (_displayButton)
         {
             TBitmap image((unsigned char *)mLastImage.getPixels(), mLastImage.info().width(), mLastImage.info().height());
-            _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop, isPassThrough());
+            _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop, isPassThrough(), sr[mActInstance].md, sr[mActInstance].mr);
+
+            if (sr[mActInstance].md > 0 && sr[mActInstance].mr > 0)
+            {
+                if (gPageManager && gPageManager->getSetMarqueeText())
+                    gPageManager->getSetMarqueeText()(this);
+            }
         }
 
         mChanged = false;
@@ -7360,7 +7451,7 @@ void TButton::hide(bool total)
         if (_displayButton)
         {
             TBitmap image((unsigned char *)imgButton.getPixels(), imgButton.info().width(), imgButton.info().height());
-            _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop, isPassThrough());
+            _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop, isPassThrough(), sr[mActInstance].md, sr[mActInstance].mr);
             mChanged = false;
         }
     }
@@ -7762,6 +7853,55 @@ bool TButton::doClick(int x, int y, bool pressed)
 
     if (_buttonPress && mActInstance >= 0 && (size_t)mActInstance < sr.size() && cp == 0 && ch > 0)
         _buttonPress(ch, mHandle, pressed);
+
+    // If the button is marked as password protected, then we must display
+    // a window with an input line to get the password from the user. Only if
+    // the password is equal to the password in the setup the button is
+    // processed further.
+    if (pressed && pp > 0)
+    {
+        if (!mPassword.empty())
+        {
+            if (mPassword[0] == 1)  // No or invalid password?
+            {                       // Yes, then clear it and return
+                mPassword.clear();
+                return false;
+            }
+
+            string pass;
+
+            switch(pp)
+            {
+                case 1: pass = TConfig::getPassword1(); break;
+                case 2: pass = TConfig::getPassword2(); break;
+                case 3: pass = TConfig::getPassword3(); break;
+                case 4: pass = TConfig::getPassword4(); break;
+                default:
+                    MSG_WARNING("Detected invalid password index " << pp);
+                    mPassword.clear();
+                    return false;
+            }
+
+            if (pass != mPassword)  // Does the password not match?
+            {                       // Don't match then clear it and return
+                MSG_PROTOCOL("User typed wrong password!");
+                mPassword.clear();
+                return false;
+            }
+
+            // The password match. We clear it and proceed.
+            mPassword.clear();
+        }
+        else if (gPageManager && gPageManager->getAskPassword())
+        {
+            string msg = "Enter [" + intToString(pp) + "] password";
+            mPassword.clear();
+            gPageManager->getAskPassword()(mHandle, msg, "Password");
+            return true;
+        }
+        else
+            return false;
+    }
 
     if (type == GENERAL)
     {
@@ -9130,7 +9270,14 @@ void TButton::showBitmapCache()
                 if (_displayButton)
                 {
                     TBitmap image((unsigned char *)iter->bitmap.getPixels(), iter->bitmap.info().width(), iter->bitmap.info().height());
-                    _displayButton(iter->handle, iter->parent, image, iter->width, iter->height, iter->left, iter->top, isPassThrough());
+                    _displayButton(iter->handle, iter->parent, image, iter->width, iter->height, iter->left, iter->top, isPassThrough(), sr[mActInstance].md, sr[mActInstance].mr);
+
+                    if (sr[mActInstance].md > 0 && sr[mActInstance].mr > 0)
+                    {
+                        if (gPageManager && gPageManager->getSetMarqueeText())
+                            gPageManager->getSetMarqueeText()(this);
+                    }
+
                     mChanged = false;
                 }
 

@@ -1556,7 +1556,7 @@ string TConfig::makeConfigDefault(const std::string& log, const std::string& pro
     content += "UUID=" + localSettings.uuid + "\n";
     content += "FTPuser=administrator\n";
     content += "FTPpassword=password\n";
-    content += "FTPsurface=tpanel.tp4\n";
+    content += "FTPsurface=tpanel.TP4\n";
     content += "FTPpassive=true\n";
     content += "FTPdownloadTime=0\n";
     content += "SIP_PROXY=" + localSettings.sip_proxy + "\n";

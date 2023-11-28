@@ -64,11 +64,19 @@ bool TQTextEdit::event(QEvent* event)
         if (sKey)
         {
             if (sKey->key() == Qt::Key_Enter || sKey->key() == Qt::Key_Return)
+            {
                 sigContentChanged(mText);
+                return true;
+            }
             else if (sKey->key() == Qt::Key_0)
+            {
                 insert("0");
+                return true;
+            }
         }
     }
+
+    return false;
 }
 
 void TQTextEdit::append(const std::string& txt)

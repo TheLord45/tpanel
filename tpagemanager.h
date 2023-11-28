@@ -192,7 +192,8 @@ class TPageManager : public TAmxCommands
         double getDPI() { return mDPI; }
         void setDPI(const double dpi) { mDPI = dpi; }
 
-        void registerCallbackDB(std::function<void(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough)> displayButton) { _displayButton = displayButton; }
+        void registerCallbackDB(std::function<void(ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough, int marqtype, int marq)> displayButton) { _displayButton = displayButton; }
+        void registerSetMarqueeText(std::function<void(Button::TButton *button)> marquee) { _setMarqueeText = marquee; }
         void registerDropButton(std::function<void(ulong hanlde)> dropButton) { _dropButton = dropButton; }
         void registerCBsetVisible(std::function<void(ulong handle, bool state)> setVisible) { _setVisible = setVisible; }
         void registerCallbackSP(std::function<void (ulong handle, int width, int height)> setPage) { _setPage = setPage; }
@@ -251,6 +252,7 @@ class TPageManager : public TAmxCommands
         void regSetPhoneStatus(std::function<void (const std::string& msg)> setPhoneStatus) { _setPhoneStatus = setPhoneStatus; }
         void regSetPhoneState(std::function<void (int state, int id)> setPhoneState) { _setPhoneState = setPhoneState; }
         void regDisplayMessage(std::function<void (const std::string& msg, const std::string& title)> msg) { _displayMessage = msg; }
+        void regAskPassword(std::function<void (ulong handle, const std::string& msg, const std::string& title)> pw) { _askPassword = pw; }
         void regFileDialogFunction(std::function<void (ulong handle, const std::string& path, const std::string& extension, const std::string& suffix)> fdlg) { _fileDialog = fdlg; }
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         void regOnOrientationChange(std::function<void (int orientation)> orientationChange) { _onOrientationChange = orientationChange; }
@@ -412,6 +414,7 @@ class TPageManager : public TAmxCommands
         void sendPHNcommand(const std::string& cmd);
         void sendKeyStroke(char key);
         void sendCommandString(int port, const std::string& cmd);
+        void callSetPassword(ulong handle, const std::string& pw);
         /**
          * This starts the communication with the AMX controller. The method
          * registers the callbacks and starts a thread. This thread runs as
@@ -512,7 +515,8 @@ class TPageManager : public TAmxCommands
         void setSetupScaleFactor(double scale, double sw, double sh);
 #endif
         // Callbacks who will be registered by the graphical surface.
-        std::function<void (ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough)> getCallbackDB() { return _displayButton; }
+        std::function<void (ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough, int marqtype, int marq)> getCallbackDB() { return _displayButton; }
+        std::function<void (Button::TButton *button)> getSetMarqueeText() { return _setMarqueeText; }
         std::function<void (ulong handle)> getCallDropButton() { return _dropButton; }
         std::function<void (ulong handle, bool state)> getVisible() { return _setVisible; };
 #ifdef _OPAQUE_SKIA_
@@ -540,6 +544,7 @@ class TPageManager : public TAmxCommands
         std::function<void (int width, int height)> getMainWindowSizeFunc() { return _setMainWindowSize; }
         std::function<void (const std::string& file, size_t size)> getDownloadSurface() { return _downloadSurface; }
         std::function<void (const std::string& msg, const std::string& title)> getDisplayMessage() { return _displayMessage; }
+        std::function<void (ulong handle, const std::string& msg, const std::string& title)> getAskPassword() { return _askPassword; }
         std::function<void (ulong handle, const std::string& path, const std::string& extension, const std::string& suffix)> getFileDialogFunction() { return _fileDialog; }
         std::function<void (const std::string& text)> getStartWait() { return _startWait; }
         std::function<void ()> getStopWait() { return _stopWait; }
@@ -615,7 +620,8 @@ class TPageManager : public TAmxCommands
         bool startComm();
 
     private:
-        std::function<void (ulong handle, ulong parent, TBitmap image, int width, int height, int left, int top, bool passthrough)> _displayButton{nullptr};
+        std::function<void (ulong handle, ulong parent, TBitmap image, int width, int height, int left, int top, bool passthrough, int marqtype, int marq)> _displayButton{nullptr};
+        std::function<void (Button::TButton *button)> _setMarqueeText{nullptr};
         std::function<void (ulong handle)> _dropButton{nullptr};
         std::function<void (ulong handle, bool state)> _setVisible{nullptr};
         std::function<void (ulong handle, int width, int height)> _setPage{nullptr};
@@ -651,6 +657,7 @@ class TPageManager : public TAmxCommands
         std::function<void (int width, int height)> _setMainWindowSize{nullptr};
         std::function<void (const std::string& file, size_t size)> _downloadSurface{nullptr};
         std::function<void (const std::string& msg, const std::string& title)> _displayMessage{nullptr};
+        std::function<void (ulong handle, const std::string& msg, const std::string& title)> _askPassword{nullptr};
         std::function<void (ulong handle, const std::string& path, const std::string& extension, const std::string& suffix)> _fileDialog{nullptr};
         std::function<void (const std::string& text)> _startWait{nullptr};
         std::function<void ()> _stopWait{nullptr};
@@ -819,6 +826,7 @@ class TPageManager : public TAmxCommands
         void getJSI(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doJST(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void getJST(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doMSP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doSHO(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doTEC(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void getTEC(int port, std::vector<int>& channels, std::vector<std::string>& pars);

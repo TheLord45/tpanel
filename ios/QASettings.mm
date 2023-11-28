@@ -158,10 +158,17 @@ bool QASettings::oldToolbarSuppress{false};
 bool QASettings::oldToolbarForce{false};
 
 SetupController *mSetup = nil;
+os_log_t TPANEL_LOG = nil;
 
 QASettings::QASettings()
 {
     mSetup = [[SetupController alloc] init];
+}
+
+QASettings::~QASettings()
+{
+    if (TPANEL_LOG != nil)
+        [TPANEL_LOG release];
 }
 
 void QASettings::registerDefaultPrefs()
@@ -548,7 +555,7 @@ void QASettings::openSettings()
 
 void QASettings::writeLog(int type, const std::string& msg)
 {
-    int dbType = OS_LOG_TYPE_DEBUG;
+    os_log_type_t dbType = OS_LOG_TYPE_DEBUG;
 
     switch (type)
     {
@@ -560,8 +567,12 @@ void QASettings::writeLog(int type, const std::string& msg)
             dbType = OS_LOG_TYPE_DEFAULT;
     }
 
+    if (TPANEL_LOG == nil)
+        TPANEL_LOG = os_log_create("at.theosys.tpanel", "tpanel");
 
-//        os_log_with_type(OS_LOG_DEFAULT, dbType, "%s", msg.c_str());
-    NSLog(@"(tpanel) %s", msg.c_str());
+    if (os_log_type_enabled(TPANEL_LOG, dbType))
+        os_log_with_type(TPANEL_LOG, dbType, "%{public}s", msg.c_str());
+    else
+        NSLog(@"(tpanel) %s", msg.c_str());
 
 }

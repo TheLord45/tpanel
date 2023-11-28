@@ -86,6 +86,8 @@ ftplib::ftplib()
     {
         errorHandler("calloc", errno, __LINE__);
         free(mp_ftphandle);
+        mp_ftphandle = nullptr;
+        return;
     }
 
 #ifndef NOSSL
@@ -777,7 +779,6 @@ int ftplib::FtpAccess(const char *path, accesstype type, transfermode mode, ftph
     }
 
 #ifndef NOSSL
-
     if (nControl->tlsdata)
     {
         (*nData)->ssl = SSL_new(nControl->ctx);
@@ -927,6 +928,7 @@ int ftplib::FtpOpenPort(ftphandle *nControl, ftphandle **nData, transfermode mod
     {
         FtpClose(*nData);
         *nData = NULL;
+        free(ctrl);
         return -1;
     }
 
