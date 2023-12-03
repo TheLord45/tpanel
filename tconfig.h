@@ -151,6 +151,10 @@ class TConfig
         static void savePassword2(const std::string& pw);
         static void savePassword3(const std::string& pw);
         static void savePassword4(const std::string& pw);
+        static void setUserPassword(const std::string& user, const std::string& pw);
+        static std::string getUserPassword(const std::string& user);
+        static void clearUserPassword(const std::string& user);
+        static void clearUserPasswords();
         static void saveSystemSoundFile(const std::string& snd);
         static void saveSystemSoundState(bool state);
         static void saveSingleBeepFile(const std::string& snd);
@@ -195,6 +199,8 @@ class TConfig
         static std::string logLevelBitsToString(uint level);
         static std::string sipFirewallToString(SIP_FIREWALL_t fw);
         static SIP_FIREWALL_t sipFirewallStrToEnum(const std::string& str);
+        static void writeUserPasswords();
+        void readUserPasswords();
         bool findConfig();
         bool readConfig();
         std::vector<std::string> split(const std::string& str, const std::string& seps, const bool trimEmpty);

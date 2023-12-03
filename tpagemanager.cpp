@@ -718,6 +718,46 @@ JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setLogFile(JN
         }
     }
 }
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setPassword1(JNIEnv *env, jclass clazz, jstring pw)
+{
+    DECL_TRACER("JNICALL Java_org_qtproject_theosys_SettingsActivity_setPassword1(JNIEnv *env, jclass clazz, jstring pw)");
+
+    Q_UNUSED(clazz);
+
+    string password = javaJStringToString(env, pw);
+    TConfig::savePassword1(password);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setPassword2(JNIEnv *env, jclass clazz, jstring pw)
+{
+    DECL_TRACER("JNICALL Java_org_qtproject_theosys_SettingsActivity_setPassword2(JNIEnv *env, jclass clazz, jstring pw)");
+
+    Q_UNUSED(clazz);
+
+    string password = javaJStringToString(env, pw);
+    TConfig::savePassword2(password);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setPassword3(JNIEnv *env, jclass clazz, jstring pw)
+{
+    DECL_TRACER("JNICALL Java_org_qtproject_theosys_SettingsActivity_setPassword3(JNIEnv *env, jclass clazz, jstring pw)");
+
+    Q_UNUSED(clazz);
+
+    string password = javaJStringToString(env, pw);
+    TConfig::savePassword3(password);
+}
+
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setPassword4(JNIEnv *env, jclass clazz, jstring pw)
+{
+    DECL_TRACER("JNICALL Java_org_qtproject_theosys_SettingsActivity_setPassword4(JNIEnv *env, jclass clazz, jstring pw)");
+
+    Q_UNUSED(clazz);
+
+    string password = javaJStringToString(env, pw);
+    TConfig::savePassword4(password);
+}
 #endif
 
 TPageManager::TPageManager()
@@ -990,15 +1030,16 @@ TPageManager::TPageManager()
     REG_CMD(doUTF, "^UTF");     // G5: Set button state text using UTF-8 text command.
     REG_CMD(doVTP, "^VTP");     // Simulates a touch/release/pulse at the given coordinate
 
-//    REG_CMD(doLPC, "^LPC");     // Clear all users from the User Access Passwords list on the Password Setup page.
-//    REG_CMD(doLPR, "^LPR");     // Remove a given user from the User Access Passwords list on the Password Setup page.
-//    REG_CMD(doLPS, "^LPS");     // Set the user name and password.
+    REG_CMD(doLPB, "^LPB");     // Assigns a user name to a button.
+    REG_CMD(doLPC, "^LPC");     // Clear all users from the User Access Passwords list on the Password Setup page.
+    REG_CMD(doLPR, "^LPR");     // Remove a given user from the User Access Passwords list on the Password Setup page.
+    REG_CMD(doLPS, "^LPS");     // Set the user name and password.
 
     REG_CMD(doKPS, "^KPS");     // Set the keyboard passthru.
     REG_CMD(doVKS, "^VKS");     // Send one or more virtual key strokes to the G4 application.
 
-//    REG_CMD(doPWD, "@PWD");     // Set the page flip password.
-//    REG_CMD(doPWD, "^PWD");     // Set the page flip password.
+    REG_CMD(doAPWD, "@PWD");    // Set the page flip password.
+    REG_CMD(doPWD, "^PWD");     // Set the page flip password. Password level is required and must be 1 - 4.
 
     REG_CMD(doBBR, "^BBR");     // Set the bitmap of a button to use a particular resource.
     REG_CMD(doRAF, "^RAF");     // Add new resources
@@ -1461,6 +1502,15 @@ void TPageManager::showSetup()
     QJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "setLogEnableFile", "(I)V", (TConfig::getLogFileEnabled() ? 1 : 0));
     QJniObject strPath = QJniObject::fromString(TConfig::getLogFile().c_str());
     QJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "setLogPath", "(Ljava/lang/String;)V", strPath.object<jstring>());
+
+    QJniObject pw1 = QJniObject::fromString(TConfig::getPassword1().c_str());
+    QJniObject pw2 = QJniObject::fromString(TConfig::getPassword2().c_str());
+    QJniObject pw3 = QJniObject::fromString(TConfig::getPassword3().c_str());
+    QJniObject pw4 = QJniObject::fromString(TConfig::getPassword4().c_str());
+    QJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "setPassword", "(ILjava/lang/String;)V", 1, pw1.object<jstring>());
+    QJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "setPassword", "(ILjava/lang/String;)V", 2, pw2.object<jstring>());
+    QJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "setPassword", "(ILjava/lang/String;)V", 3, pw3.object<jstring>());
+    QJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "setPassword", "(ILjava/lang/String;)V", 4, pw4.object<jstring>());
 #endif
 
     enterSetup();
@@ -5003,9 +5053,9 @@ void TPageManager::sendOrientation()
     sendGlobalString("TPCACC-" + ori);
 }
 
-void TPageManager::callSetPassword(ulong handle, const string& pw)
+void TPageManager::callSetPassword(ulong handle, const string& pw, int x, int y)
 {
-    DECL_TRACER("TPageManager::callSetPassword(ulong handle, const string& pw)");
+    DECL_TRACER("TPageManager::callSetPassword(ulong handle, const string& pw, int x, int y)");
 
     Button::TButton *bt = findButton(handle);
 
@@ -5021,8 +5071,8 @@ void TPageManager::callSetPassword(ulong handle, const string& pw)
         pass = "\x01";
 
     bt->setPassword(pass);
-    bt->doClick(1, 1, true);
-    bt->doClick(1, 1, false);
+    bt->doClick(x, y, true);
+    bt->doClick(x, y, false);
 }
 
 void TPageManager::onSwipeEvent(TPageManager::SWIPES sw)
@@ -10343,6 +10393,7 @@ void TPageManager::doVTP (int, vector<int>&, vector<string>& pars)
         mouseEvent(x, y, false);
 }
 
+
 /**
  * Set the keyboard passthru.
  */
@@ -10364,9 +10415,9 @@ void TPageManager::doKPS(int, vector<int>&, vector<string>& pars)
         mPassThrough = true;
 }
 
-void TPageManager::doVKS(int, std::vector<int>&, vector<string>& pars)
+void TPageManager::doVKS(int, vector<int>&, vector<string>& pars)
 {
-    DECL_TRACER("TPageManager::doVKS(int, std::vector<int>&, vector<string>& pars)");
+    DECL_TRACER("TPageManager::doVKS(int, vector<int>&, vector<string>& pars)");
 
     if (pars.size() < 1)
     {
@@ -10376,6 +10427,139 @@ void TPageManager::doVKS(int, std::vector<int>&, vector<string>& pars)
 
     if (_sendVirtualKeys)
         _sendVirtualKeys(pars[0]);
+}
+
+void TPageManager::doLPB(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doLPB(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.size() < 1)
+        return;
+
+    TError::clear();
+    string passwd = pars[0];
+    vector<TMap::MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+            bt->setUserName(passwd);
+        }
+    }
+}
+
+void TPageManager::doLPC(int, vector<int>&, vector<string>&)
+{
+    DECL_TRACER("TPageManager::doLPC(int, vector<int>&, vector<string>&)");
+
+    TConfig::clearUserPasswords();
+}
+
+void TPageManager::doLPR(int, vector<int>&, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doLPR(int, vector<int>&, vector<string>& pars)");
+
+    if (pars.size() < 1)
+        return;
+
+    string user = pars[0];
+    TConfig::clearUserPassword(user);
+}
+
+void TPageManager::doLPS(int, vector<int>&, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doLPS(int, vector<int>&, vector<string>& pars)");
+
+    if (pars.size() < 2)
+        return;
+
+    string user = pars[0];
+    string password;
+
+    // In case the password contains one or more comma (,), the password is
+    // splitted. The following loop concatenates the password into one. Because
+    // the comma is lost, we must add it again.
+    for (size_t i = 0; i < pars.size(); ++i)
+    {
+        if (i > 0)
+            password += ",";
+
+        password += pars[i];
+    }
+
+    TConfig::setUserPassword(user, password);
+}
+
+/*
+ * Set the page flip password. @PWD sets the level 1 password only.
+ */
+void TPageManager::doAPWD(int, vector<int>&, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doPWD(int port, vector<int>&, vector<string>& pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Got less then 1 parameter!");
+        return;
+    }
+
+    string password;
+    // In case the password contains one or more comma (,), the password is
+    // splitted. The following loop concatenates the password into one. Because
+    // the comma is lost, we must add it again.
+    for (size_t i = 0; i < pars.size(); ++i)
+    {
+        if (i > 0)
+            password += ",";
+
+        password += pars[i];
+    }
+
+    TConfig::savePassword1(password);
+}
+
+/*
+ * Set the page flip password. Password level is required and must be 1 - 4
+ */
+void TPageManager::doPWD(int, vector<int>&, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doPWD(int, vector<int>&, vector<string>& pars)");
+
+    if (pars.size() < 2)
+    {
+        MSG_ERROR("Got less then 2 parameters!");
+        return;
+    }
+
+    int pwIdx = atoi(pars[0].c_str());
+    string password;
+    // In case the password contains one or more comma (,), the password is
+    // splitted. The following loop concatenates the password into one. Because
+    // the comma is lost, we must add it again.
+    for (size_t i = 1; i < pars.size(); ++i)
+    {
+        if (i > 1)
+            password += ",";
+
+        password += pars[i];
+    }
+
+    switch(pwIdx)
+    {
+        case 1: TConfig::savePassword1(password); break;
+        case 2: TConfig::savePassword2(password); break;
+        case 3: TConfig::savePassword3(password); break;
+        case 4: TConfig::savePassword4(password); break;
+    }
 }
 
 /*

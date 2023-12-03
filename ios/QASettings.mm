@@ -98,6 +98,14 @@
     TConfig::saveSystemSoundState([[ NSUserDefaults standardUserDefaults] boolForKey:@"sound_enable"]);
     TConfig::saveSystemVolume((int)[[ NSUserDefaults standardUserDefaults] integerForKey:@"sound_volume"]);
     TConfig::saveSystemGain((int)[[ NSUserDefaults standardUserDefaults] integerForKey:@"sound_gain"]);
+    str = [[ NSUserDefaults standardUserDefaults] stringForKey:@"password_1"];
+    TConfig::savePassword1(QString::fromNSString(str).toStdString());
+    str = [[ NSUserDefaults standardUserDefaults] stringForKey:@"password_2"];
+    TConfig::savePassword2(QString::fromNSString(str).toStdString());
+    str = [[ NSUserDefaults standardUserDefaults] stringForKey:@"password_3"];
+    TConfig::savePassword3(QString::fromNSString(str).toStdString());
+    str = [[ NSUserDefaults standardUserDefaults] stringForKey:@"password_4"];
+    TConfig::savePassword4(QString::fromNSString(str).toStdString());
 }
 
 - (void)registerDefaults
@@ -114,6 +122,7 @@
     NSDictionary* appDefaultsView = [NSDictionary dictionaryWithObject:@"View" forKey:@"StringsTable"];
     NSDictionary* appDefaultsSound = [NSDictionary dictionaryWithObject:@"Sound" forKey:@"StringsTable"];
     NSDictionary* appDefaultsLog = [NSDictionary dictionaryWithObject:@"Logging" forKey:@"StringsTable"];
+    NSDictionary* appDefaultsPasswd = [NSDictionary dictionaryWithObject:@"Passwords" forKey:@"StringsTable"];
 
     if (appDefaultsRoot)
     {
@@ -141,6 +150,11 @@
     if (appDefaultsLog)
     {
         [[NSUserDefaults standardUserDefaults] registerDefaults:appDefaultsLog];
+    }
+
+    if (appDefaultsPasswd)
+    {
+        [[NSUserDefaults standardUserDefaults] registerDefaults:appDefaultsPasswd];
     }
 }
 
@@ -441,6 +455,46 @@ QString QASettings::getLoggingLogfile()
 
     if (!str)
         return "tpanel.log";
+
+    return QString::fromNSString(str);
+}
+
+QString QASettings::getPassword1()
+{
+    NSString *str = [[ NSUserDefaults standardUserDefaults] stringForKey:@"password_1"];
+
+    if (!str)
+        return "1988";
+
+    return QString::fromNSString(str);
+}
+
+QString QASettings::getPassword2()
+{
+    NSString *str = [[ NSUserDefaults standardUserDefaults] stringForKey:@"password_2"];
+
+    if (!str)
+        return "1988";
+
+    return QString::fromNSString(str);
+}
+
+QString QASettings::getPassword3()
+{
+    NSString *str = [[ NSUserDefaults standardUserDefaults] stringForKey:@"password_3"];
+
+    if (!str)
+        return "1988";
+
+    return QString::fromNSString(str);
+}
+
+QString QASettings::getPassword4()
+{
+    NSString *str = [[ NSUserDefaults standardUserDefaults] stringForKey:@"password_4"];
+
+    if (!str)
+        return "1988";
 
     return QString::fromNSString(str);
 }

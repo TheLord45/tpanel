@@ -4,7 +4,7 @@ set -o pipefail
 ###########################################################################
 # Adapt the below variables to your need                                  #
 ###########################################################################
-QT_VERSION="6.6.0"
+QT_VERSION="6.6.1"
 QT_VERSION_MAJOR=6
 QT_PATH="$HOME/Qt"
 QT_ARCHITECTURE="arm64"

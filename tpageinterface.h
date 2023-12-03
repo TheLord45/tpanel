@@ -265,6 +265,7 @@ class TPageInterface : public TSystemButton
         int calcLineHeight(const std::string& text, SkFont& font);
         int numberLines(const std::string& str);
         int getSystemSelection(int ta, std::vector<std::string>& list);
+        bool getBorderFragment(const std::string& path, const std::string& pathAlpha, SkBitmap* image, SkColor color);
         SkBitmap retrieveBorderImage(const std::string& pa, const std::string& pb, SkColor color, SkColor bgColor);
         bool retrieveImage(const std::string& path, SkBitmap* image);
         SkBitmap colorImage(SkBitmap& base, SkBitmap& alpha, SkColor col, SkColor bg, bool useBG);

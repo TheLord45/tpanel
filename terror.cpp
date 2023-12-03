@@ -624,7 +624,7 @@ void TStreamError::endTemporaryLogLevel()
 
 std::mutex tracer_mutex;
 
-TTracer::TTracer(const std::string msg, int line, char *file, threadID_t tid)
+TTracer::TTracer(const std::string& msg, int line, const char *file, threadID_t tid)
     : mThreadID(tid)
 {
     if (!TConfig::isInitialized() || !TStreamError::checkFilter(HLOG_TRACE))

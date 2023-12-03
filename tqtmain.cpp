@@ -147,7 +147,7 @@ using std::pair;
 using std::string;
 using std::vector;
 
-string _NO_OBJECT = "The global class TObject is not available!";
+static string _NO_OBJECT = "The global class TObject is not available!";
 
 /**
  * @brief qtmain is used here as the entry point for the surface.
@@ -321,8 +321,8 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
         MSG_INFO("Screen size: " << width << " x " << height);
         // The scale factor is always calculated in difference to the prefered
         // size of the original AMX panel.
-        double scaleFactorW = width / (double)minWidth;
-        double scaleFactorH = height / (double)minHeight;
+        double scaleFactorW = width / static_cast<double>(minWidth);
+        double scaleFactorH = height / static_cast<double>(minHeight);
         setupScaleFactor = std::min(scaleFactorW, scaleFactorH);
         MSG_DEBUG("Scale factor for setup screen: " << setupScaleFactor);
     }
@@ -612,7 +612,9 @@ MainWindow::MainWindow()
     gPageManager->regDisplayMessage(bind(&MainWindow::_displayMessage, this, std::placeholders::_1, std::placeholders::_2));
     gPageManager->regAskPassword(bind(&MainWindow::_askPassword, this, std::placeholders::_1,
                                       std::placeholders::_2,
-                                      std::placeholders::_3));
+                                      std::placeholders::_3,
+                                      std::placeholders::_4,
+                                      std::placeholders::_5));
     gPageManager->regFileDialogFunction(bind(&MainWindow::_fileDialog, this,
                                              std::placeholders::_1,
                                              std::placeholders::_2,
@@ -1266,8 +1268,8 @@ void MainWindow::mousePressEvent(QMouseEvent* event)
             MSG_WARNING("Have no notch distances!");
         }
 #endif
-        int x = event->position().x() - nx;
-        int y = event->position().y() - ny;
+        int x = static_cast<int>(event->position().x()) - nx;
+        int y = static_cast<int>(event->position().y()) - ny;
         MSG_DEBUG("Mouse press coordinates: x: " << event->position().x() << ", y: " << event->position().y() << " [new x: " << x << ", y: " << y << " -- \"notch\" nx: " << nx << ", ny: " << ny << "]");
 
         mLastPressX = x;
@@ -1305,13 +1307,13 @@ void MainWindow::mousePressEvent(QMouseEvent* event)
 */
         if (gPageManager->isSetupActive() && isSetupScaled())
         {
-            x = (int)((double)x / mSetupScaleFactor);
-            y = (int)((double)y / mSetupScaleFactor);
+            x = static_cast<int>(static_cast<double>(x) / mSetupScaleFactor);
+            y = static_cast<int>(static_cast<double>(y) / mSetupScaleFactor);
         }
         else if (isScaled())
         {
-            x = (int)((double)x / mScaleFactor);
-            y = (int)((double)y / mScaleFactor);
+            x = static_cast<int>(static_cast<double>(x) / mScaleFactor);
+            y = static_cast<int>(static_cast<double>(y) / mScaleFactor);
         }
 
         gPageManager->mouseEvent(x, y, true);
@@ -1354,8 +1356,8 @@ void MainWindow::mouseReleaseEvent(QMouseEvent* event)
             ny = mNotchLandscape.top();
         }
 #endif
-        int x = ((mLastPressX >= 0) ? mLastPressX : (event->position().x() - nx));
-        int y = ((mLastPressY >= 0) ? mLastPressY : (event->position().y() - ny));
+        int x = ((mLastPressX >= 0) ? mLastPressX : (static_cast<int>(event->position().x()) - nx));
+        int y = ((mLastPressY >= 0) ? mLastPressY : (static_cast<int>(event->position().y()) - ny));
         MSG_DEBUG("Mouse press coordinates: x: " << event->position().x() << ", y: " << event->position().y());
         mLastPressX = mLastPressY = -1;
 /*
@@ -1391,13 +1393,13 @@ void MainWindow::mouseReleaseEvent(QMouseEvent* event)
 */
         if (gPageManager->isSetupActive() && isSetupScaled())
         {
-            x = (int)((double)x / mSetupScaleFactor);
-            y = (int)((double)y / mSetupScaleFactor);
+            x = static_cast<int>(static_cast<double>(x) / mSetupScaleFactor);
+            y = static_cast<int>(static_cast<double>(y) / mSetupScaleFactor);
         }
         else if (isScaled())
         {
-            x = (int)((double)x / mScaleFactor);
-            y = (int)((double)y / mScaleFactor);
+            x = static_cast<int>(static_cast<double>(x) / mScaleFactor);
+            y = static_cast<int>(static_cast<double>(y) / mScaleFactor);
         }
 
         gPageManager->mouseEvent(x, y, false);
@@ -1411,8 +1413,8 @@ void MainWindow::mouseReleaseEvent(QMouseEvent* event)
             return;
         }
 
-        x = event->position().x();
-        y = event->position().y();
+        x = static_cast<int>(event->position().x());
+        y = static_cast<int>(event->position().y());
         bool setupActive = gPageManager->isSetupActive();
         int width = (setupActive ? scaleSetup(gPageManager->getSystemSettings()->getWidth()) : scale(gPageManager->getSettings()->getWidth()));
         int height = (setupActive ? scaleSetup(gPageManager->getSystemSettings()->getHeight()) : scale(gPageManager->getSettings()->getHeight()));
@@ -1887,7 +1889,7 @@ void MainWindow::settings()
                 tpinit.regCallbackProcessEvents(bind(&MainWindow::runEvents, this));
                 tpinit.regCallbackProgressBar(bind(&MainWindow::_onProgressChanged, this, std::placeholders::_1));
                 tpinit.setPath(TConfig::getProjectPath());
-                tpinit.setFileSize(dlg_settings->getSelectedFtpFileSize());
+                tpinit.setFileSize(static_cast<off64_t>(dlg_settings->getSelectedFtpFileSize()));
                 string msg = "Loading file <b>" + TConfig::getFtpSurface() + "</b>.";
                 MSG_DEBUG("Download of surface " << TConfig::getFtpSurface() << " was forced!");
 
@@ -2259,10 +2261,10 @@ void MainWindow::downloadSurface(const string &file, size_t size)
         tpinit.setPath(TConfig::getProjectPath());
 
         if (size)
-            tpinit.setFileSize(size);
+            tpinit.setFileSize(static_cast<off64_t>(size));
         else
         {
-            size = tpinit.getFileSize(file);
+            size = static_cast<size_t>(tpinit.getFileSize(file));
 
             if (!size)
             {
@@ -2270,7 +2272,7 @@ void MainWindow::downloadSurface(const string &file, size_t size)
                 return;
             }
 
-            tpinit.setFileSize(size);
+            tpinit.setFileSize(static_cast<off64_t>(size));
         }
 
         string msg = "Loading file <b>" + file + "</b>.";
@@ -2320,9 +2322,9 @@ void MainWindow::displayMessage(const string &msg, const string &title)
     msgBox.exec();
 }
 
-void MainWindow::askPassword(ulong handle, const string msg, const string& title)
+void MainWindow::askPassword(ulong handle, const string msg, const string& title, int x, int y)
 {
-    DECL_TRACER("MainWindow::askPassword(const string msg, const string& title)");
+    DECL_TRACER("MainWindow::askPassword(const string msg, const string& title, int x, int y)");
 
     TQtInputLine *inputLine = new TQtInputLine(this);
     inputLine->setMessage(msg);
@@ -2334,14 +2336,14 @@ void MainWindow::askPassword(ulong handle, const string msg, const string& title
     if (bt == QDialog::Rejected)
     {
         if (gPageManager)
-            gPageManager->callSetPassword(handle, "");
+            gPageManager->callSetPassword(handle, "", x, y);
 
         delete inputLine;
         return;
     }
 
     if (gPageManager)
-        gPageManager->callSetPassword(handle, inputLine->getText());
+        gPageManager->callSetPassword(handle, inputLine->getText(), x, y);
 
     delete inputLine;
 }
@@ -2724,9 +2726,9 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
                             case O_LANDSCAPE:           mOrientation = Qt::LandscapeOrientation; break;
                         }
                     }
-
+#if defined(QT_DEBUG) && (defined(Q_OS_IOS) || defined(Q_OS_ANDROID))
                     MSG_DEBUG("Orientation after activate: " << orientationToString(mOrientation));
-
+#endif
                     if (gPageManager && mIosRotate)
                     {
                         if (gPageManager->getSettings()->isPortrait() && mOrientation != Qt::PortraitOrientation)
@@ -3101,8 +3103,8 @@ void MainWindow::_inputText(Button::TButton *button, Button::BITMAP_t& bm, int f
 
     if (bm.buffer && bm.rowBytes > 0)
     {
-        size_t size = (size_t)bm.width * (size_t)bm.height * (size_t)(bm.rowBytes / bm.width);
-        buf.insert(0, (const char *)bm.buffer, size);
+        size_t size = static_cast<size_t>(bm.width) * static_cast<size_t>(bm.height) * static_cast<size_t>(bm.rowBytes / static_cast<size_t>(bm.width));
+        buf.insert(0, (const char *)bm.buffer, static_cast<qsizetype>(size));
     }
 
     emit sigInputText(button, buf, bm.width, bm.height, frame, bm.rowBytes);
@@ -3119,8 +3121,8 @@ void MainWindow::_listBox(Button::TButton *button, Button::BITMAP_t& bm, int fra
 
     if (bm.buffer && bm.rowBytes > 0)
     {
-        size_t size = (size_t)bm.width * (size_t)bm.height * (size_t)(bm.rowBytes / bm.width);
-        buf.insert(0, (const char *)bm.buffer, size);
+        size_t size = static_cast<size_t>(bm.width) * static_cast<size_t>(bm.height) * static_cast<size_t>(bm.rowBytes / static_cast<size_t>(bm.width));
+        buf.insert(0, (const char *)bm.buffer, static_cast<qsizetype>(size));
     }
 
     emit sigListBox(button, buf, bm.width, bm.height, frame, bm.rowBytes);
@@ -3307,12 +3309,12 @@ void MainWindow::_displayMessage(const string &msg, const string &title)
         emit sigDisplayMessage(msg, title);
 }
 
-void MainWindow::_askPassword(ulong handle, const string& msg, const string& title)
+void MainWindow::_askPassword(ulong handle, const string& msg, const string& title, int x, int y)
 {
-    DECL_TRACER("MainWindow::_askPassword(ulong handle, const string& msg, const string& title)");
+    DECL_TRACER("MainWindow::_askPassword(ulong handle, const string& msg, const string& title, int x int y)");
 
     if (mHasFocus)
-        emit sigAskPassword(handle, msg, title);
+        emit sigAskPassword(handle, msg, title, x, y);
 }
 
 void MainWindow::_fileDialog(ulong handle, const string &path, const std::string& extension, const std::string& suffix)
@@ -3371,8 +3373,8 @@ void MainWindow::doReleaseButton()
 
         if (isScaled())
         {
-            x = (int)((double)x / mScaleFactor);
-            y = (int)((double)y / mScaleFactor);
+            x = static_cast<int>(static_cast<double>(x) / mScaleFactor);
+            y = static_cast<int>(static_cast<double>(y) / mScaleFactor);
         }
 
         gPageManager->mouseEvent(x, y, false);
@@ -3485,7 +3487,7 @@ double MainWindow::calcVolume(int value)
 
     return qRound(linearVolume * 100);
 #else
-    return (double)value / 100.0;
+    return static_cast<double>(value) / 100.0;
 #endif
 }
 
@@ -3498,25 +3500,42 @@ QFont MainWindow::loadFont(int number, const FONT_T& f, const FONT_STYLE style)
 
     if (number < 32)    // System font?
     {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
         path.append(prjPath).append("/__system/graphics/fonts/").append(f.file);
+#else
+        path.append(prjPath.c_str()).append("/__system/graphics/fonts/").append(f.file.c_str());
+#endif
 
         if (!fs::is_regular_file(path.toStdString()))
         {
             MSG_WARNING("Seem to miss system fonts ...");
             path.clear();
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
             path.append(prjPath).append("/fonts/").append(f.file);
+#else
+            path.append(prjPath.c_str()).append("/fonts/").append(f.file.c_str());
+#endif
         }
     }
     else
     {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
         path.append(prjPath).append("/fonts/").append(f.file);
-
+#else
+        path.append(prjPath.c_str()).append("/fonts/").append(f.file.c_str());
+#endif
         if (!fs::exists(path.toStdString()))
         {
             string pth = prjPath + "/__system/fonts/" + f.file;
 
             if (fs::exists(pth))
+            {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
                 path.assign(pth);
+#else
+                path = pth.c_str();
+#endif
+            }
         }
     }
 
@@ -3537,18 +3556,27 @@ QFont MainWindow::loadFont(int number, const FONT_T& f, const FONT_STYLE style)
     int pix = f.size;
 
     if (mScaleFactor > 0.0 && mScaleFactor != 1.0)
-        pix = (int)((double)f.size / mScaleFactor);
+        pix = static_cast<int>(static_cast<double>(f.size) / mScaleFactor);
 
     QString qstyle;
 
     switch (style)
     {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
         case FONT_BOLD:         qstyle.assign("Bold"); break;
         case FONT_ITALIC:       qstyle.assign("Italic"); break;
         case FONT_BOLD_ITALIC:  qstyle.assign("Bold Italic"); break;
 
         default:
             qstyle.assign("Normal");
+#else
+    case FONT_BOLD:         qstyle = "Bold"; break;
+    case FONT_ITALIC:       qstyle = "Italic"; break;
+    case FONT_BOLD_ITALIC:  qstyle = "Bold Italic"; break;
+
+    default:
+        qstyle = "Normal";
+#endif
     }
 
     if (!haveFont)  // Did we found the font?
@@ -3686,7 +3714,7 @@ void MainWindow::setNotch()
             }
         }
     }
-#ifdef QT_DEBUG
+#if defined(QT_DEBUG) && (defined(Q_OS_IOS) || defined(Q_OS_ANDROID))
     MSG_DEBUG("Notch top: " << margins.top() << ", bottom: " << margins.bottom() << ", left: " << margins.left() << ", right: " << margins.right() << ", Orientation real: " << orientationToString(so) << ", estimated: " << orientationToString(mOrientation));
 #endif
     if (gPageManager)
@@ -3920,7 +3948,7 @@ void MainWindow::displayButton(ulong handle, ulong parent, TBitmap buffer, int w
 
         if (nobj.type == OBJ_MARQUEE)
         {
-            nobj.object.marquee = new TQMarquee(par->object.widget, 1, (TQMarquee::MQ_TYPES)marqtype, marq);
+            nobj.object.marquee = new TQMarquee(par->object.widget, 1, static_cast<TQMarquee::MQ_TYPES>(marqtype), marq);
             nobj.object.marquee->setObjectName(QString("Marquee_") + handleToString(handle).c_str());
 
             if (mGestureFilter)
@@ -4027,7 +4055,7 @@ void MainWindow::displayButton(ulong handle, ulong parent, TBitmap buffer, int w
             if (buffer.getSize() > 0 && buffer.getPixline() > 0)
             {
                 MSG_DEBUG("Setting image for " << handleToString(handle) << " ...");
-                QPixmap pixmap = scaleImage((unsigned char *)buffer.getBitmap(), buffer.getWidth(), buffer.getHeight(), buffer.getPixline());
+                QPixmap pixmap = scaleImage(static_cast<unsigned char *>(buffer.getBitmap()), buffer.getWidth(), buffer.getHeight(), buffer.getPixline());
 
                 if (obj->type == OBJ_MARQUEE && obj->object.marquee)
                 {
@@ -4212,7 +4240,7 @@ void MainWindow::displayViewButton(ulong handle, ulong parent, bool vertical, TB
         if (buffer.getSize() > 0 && buffer.getPixline() > 0)
         {
             MSG_DEBUG("Setting image for " << handleToString(handle) << " ...");
-            QPixmap pixmap = scaleImage((unsigned char *)buffer.getBitmap(), buffer.getWidth(), buffer.getHeight(), buffer.getPixline());
+            QPixmap pixmap = scaleImage(static_cast<unsigned char *>(buffer.getBitmap()), buffer.getWidth(), buffer.getHeight(), buffer.getPixline());
 
             if (pixmap.isNull())
             {
@@ -5394,7 +5422,7 @@ void MainWindow::inputText(Button::TButton *button, QByteArray buf, int width, i
 
         if (gPageManager && gPageManager->isSetupActive())
         {
-            int eighty = (int)((double)button->getHeight() / 100.0 * 85.0);
+            int eighty = static_cast<int>(static_cast<double>(button->getHeight()) / 100.0 * 85.0);
             ft.setPixelSize(scaleSetup(eighty - frame * 2));
         }
         else
@@ -5794,7 +5822,7 @@ void MainWindow::playSound(const string& file)
         mMediaPlayer->stop();
 #else   // QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     mMediaPlayer->setSource(QUrl::fromLocalFile(file.c_str()));
-    mAudioOutput->setVolume(calcVolume(TConfig::getSystemVolume()));
+    mAudioOutput->setVolume(static_cast<float>(calcVolume(TConfig::getSystemVolume())));
 
     if (!mMediaPlayer->isAvailable())
     {
@@ -5818,9 +5846,7 @@ void MainWindow::playSound(const string& file)
 #endif  // QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     mMediaPlayer->play();
 #if TESTMODE == 1
-    QMediaPlayer::Error err = QMediaPlayer::NoError;
-
-    if ((err = mMediaPlayer->error()) != QMediaPlayer::NoError)
+    if (mMediaPlayer->error() != QMediaPlayer::NoError)
     {
         MSG_ERROR("Error playing \"" << file << "\": " << mMediaPlayer->errorString().toStdString());
     }
@@ -5879,7 +5905,7 @@ void MainWindow::setVolume(int volume)
         return;
     }
 
-    mAudioOutput->setVolume(calcVolume(volume));
+    mAudioOutput->setVolume(static_cast<float>(calcVolume(volume)));
 #if TESTMODE == 1
     __success = true;
     setAllDone();
@@ -6061,7 +6087,7 @@ int MainWindow::scale(int value)
     if (value <= 0 || s == 1.0 || s < 0.0)
         return value;
 
-    return (int)((double)value * s);
+    return static_cast<int>(static_cast<double>(value) * s);
 }
 
 int MainWindow::scaleSetup(int value)
@@ -6071,9 +6097,9 @@ int MainWindow::scaleSetup(int value)
     if (value <= 0 || mSetupScaleFactor == 1.0 || mSetupScaleFactor <= 0.0)
         return value;
 
-    double val = (double)value * mSetupScaleFactor;
+    double val = static_cast<double>(static_cast<double>(value) * mSetupScaleFactor);
 
-    return (int)val;
+    return static_cast<int>(val);
 }
 
 bool MainWindow::isScaled()

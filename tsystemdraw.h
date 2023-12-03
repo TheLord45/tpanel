@@ -185,6 +185,14 @@ typedef struct BORDER_t
     std::string t;          // top
     std::string tl;         // top left corner
     std::string l;          // left
+    std::string bl_alpha;   // bottom left corner
+    std::string b_alpha;    // bottom
+    std::string br_alpha;   // bottom right corner
+    std::string r_alpha;    // right
+    std::string tr_alpha;   // top right corner
+    std::string t_alpha;    // top
+    std::string tl_alpha;   // top left corner
+    std::string l_alpha;    // left
     BORDER_DATA_t border;   // Border data
     BORDER_STYLE_t bdStyle; // The border style data
 }BORDER_t;

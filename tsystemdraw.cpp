@@ -649,6 +649,7 @@ bool TSystemDraw::getBorder(const string &family, LINE_TYPE_t lt, BORDER_t *bord
     if (!border || family.empty() || mDraw.borders.size() == 0)
         return false;
 
+    string basePath = mPath + "/borders/";
     // Find the border details
     vector<FAMILY_t>::iterator iter;
     bool found = false;
@@ -720,7 +721,7 @@ bool TSystemDraw::getBorder(const string &family, LINE_TYPE_t lt, BORDER_t *bord
     }
 
     MSG_DEBUG("External system border " << family << " found.");
-    dir::TDirectory dir(mPath + "/borders");
+    dir::TDirectory dir(basePath);
     dir.setStripPath(true);
     vector<BORDER_DATA_t>::iterator brdIter;
     string dataName = (family2.length() > 0 ? family2 : fullName);
@@ -736,23 +737,103 @@ bool TSystemDraw::getBorder(const string &family, LINE_TYPE_t lt, BORDER_t *bord
                 if (num < 8)
                     continue;
 
-                border->b = mPath + "/borders/" + getDirEntry(&dir, "_b", (lt == LT_ON) ? true : false);
-                border->bl = mPath + "/borders/" + getDirEntry(&dir, "_bl", (lt == LT_ON) ? true : false);
-                border->br = mPath + "/borders/" + getDirEntry(&dir, "_br", (lt == LT_ON) ? true : false);
-                border->l = mPath + "/borders/" + getDirEntry(&dir, "_l", (lt == LT_ON) ? true : false);
-                border->r = mPath + "/borders/" + getDirEntry(&dir, "_r", (lt == LT_ON) ? true : false);
-                border->t = mPath + "/borders/" + getDirEntry(&dir, "_t", (lt == LT_ON) ? true : false);
-                border->tl = mPath + "/borders/" + getDirEntry(&dir, "_tl", (lt == LT_ON) ? true : false);
-                border->tr = mPath + "/borders/" + getDirEntry(&dir, "_tr", (lt == LT_ON) ? true : false);
+                border->b = basePath + getDirEntry(&dir, "_b", false);
+                border->bl = basePath + getDirEntry(&dir, "_bl", false);
+                border->br = basePath + getDirEntry(&dir, "_br", false);
+                border->l = basePath + getDirEntry(&dir, "_l", false);
+                border->r = basePath + getDirEntry(&dir, "_r", false);
+                border->t = basePath + getDirEntry(&dir, "_t", false);
+                border->tl = basePath + getDirEntry(&dir, "_tl", false);
+                border->tr = basePath + getDirEntry(&dir, "_tr", false);
+                border->b_alpha = basePath + getDirEntry(&dir, "_b");
+                border->bl_alpha = basePath + getDirEntry(&dir, "_bl");
+                border->br_alpha = basePath + getDirEntry(&dir, "_br");
+                border->l_alpha = basePath + getDirEntry(&dir, "_l");
+                border->r_alpha = basePath + getDirEntry(&dir, "_r");
+                border->t_alpha = basePath + getDirEntry(&dir, "_t");
+                border->tl_alpha = basePath + getDirEntry(&dir, "_tl");
+                border->tr_alpha = basePath + getDirEntry(&dir, "_tr");
                 border->border = *brdIter;
-                MSG_DEBUG("Bottom      : " << border->b);
-                MSG_DEBUG("Top         : " << border->t);
-                MSG_DEBUG("Left        : " << border->l);
-                MSG_DEBUG("Right       : " << border->r);
-                MSG_DEBUG("Top left    : " << border->tl);
-                MSG_DEBUG("Top right   : " << border->tr);
-                MSG_DEBUG("Bottom left : " << border->bl);
-                MSG_DEBUG("Bottom right: " << border->br);
+                MSG_DEBUG("Bottom        : " << border->b);
+                MSG_DEBUG("Top           : " << border->t);
+                MSG_DEBUG("Left          : " << border->l);
+                MSG_DEBUG("Right         : " << border->r);
+                MSG_DEBUG("Top left      : " << border->tl);
+                MSG_DEBUG("Top right     : " << border->tr);
+                MSG_DEBUG("Bottom left   : " << border->bl);
+                MSG_DEBUG("Bottom right  : " << border->br);
+                MSG_DEBUG("Bottom A      : " << border->b_alpha);
+                MSG_DEBUG("Top A         : " << border->t_alpha);
+                MSG_DEBUG("Left A        : " << border->l_alpha);
+                MSG_DEBUG("Right A       : " << border->r_alpha);
+                MSG_DEBUG("Top left A    : " << border->tl_alpha);
+                MSG_DEBUG("Top right A   : " << border->tr_alpha);
+                MSG_DEBUG("Bottom left A : " << border->bl_alpha);
+                MSG_DEBUG("Bottom right A: " << border->br_alpha);
+                // Eliminate equal paths
+                if (border->b == border->b_alpha)
+                {
+                    if (StrContains(border->b, "_alpha"))
+                        border->b.clear();
+                    else
+                        border->b_alpha.clear();
+                }
+
+                if (border->t == border->t_alpha)
+                {
+                    if (StrContains(border->t, "_alpha"))
+                        border->t.clear();
+                    else
+                        border->t_alpha.clear();
+                }
+
+                if (border->l == border->l_alpha)
+                {
+                    if (StrContains(border->l, "_alpha"))
+                        border->l.clear();
+                    else
+                        border->l_alpha.clear();
+                }
+
+                if (border->r == border->r_alpha)
+                {
+                    if (StrContains(border->r, "_alpha"))
+                        border->r.clear();
+                    else
+                        border->r_alpha.clear();
+                }
+
+                if (border->tl == border->tl_alpha)
+                {
+                    if (StrContains(border->tl, "_alpha"))
+                        border->tl.clear();
+                    else
+                        border->tl_alpha.clear();
+                }
+
+                if (border->tr == border->tr_alpha)
+                {
+                    if (StrContains(border->tr, "_alpha"))
+                        border->tr.clear();
+                    else
+                        border->tr_alpha.clear();
+                }
+
+                if (border->bl == border->bl_alpha)
+                {
+                    if (StrContains(border->bl, "_alpha"))
+                        border->bl.clear();
+                    else
+                        border->bl_alpha.clear();
+                }
+
+                if (border->br == border->br_alpha)
+                {
+                    if (StrContains(border->br, "_alpha"))
+                        border->br.clear();
+                    else
+                        border->br_alpha.clear();
+                }
             }
             else
                 border->border = *brdIter;
@@ -966,15 +1047,31 @@ bool TSystemDraw::evaluateName(const std::vector<std::string>& parts, const std:
         return false;
 
     size_t found = 0;
+    vector<string> nameParts = StrSplit(name, " ", true);
     vector<string>::const_iterator iter;
 
+    // First find the minimum number of parts who must match
+    size_t minParts = 0;
+
+    for (size_t i = 0; i < nameParts.size(); ++i)
+    {
+        if (strCaseCompare(nameParts[i], "raised") == 0 ||
+            strCaseCompare(nameParts[i], "inset") == 0 ||
+            strCaseCompare(nameParts[i], "active") == 0 ||
+            strCaseCompare(nameParts[i], "inactive") == 0)
+            continue;
+
+        minParts++;
+    }
+
+    // Compare the parts and count the matching parts
     for (iter = parts.begin(); iter != parts.end(); ++iter)
     {
         if (StrContains(name, *iter))
             found++;
     }
 
-    if (found == parts.size())
+    if (found == nameParts.size() || found >= minParts)
         return true;
 
     return false;

@@ -1180,6 +1180,7 @@ namespace Button
             void listViewSortData(const std::vector<std::string>& columns, LIST_SORT order, const std::string& override);
             int getBorderSize(const std::string& name);
             void setPassword(const std::string& pw) { mPassword = pw; }
+            void setUserName(const std::string& user);
 
         protected:
             BUTTONTYPE getButtonType(const std::string& bt);
@@ -1250,8 +1251,8 @@ namespace Button
             bool stretchImageHeight(SkBitmap *bm, int height);
             bool stretchImageWH(SkBitmap *bm, int width, int height);
             SkBitmap colorImage(SkBitmap& base, SkBitmap& alpha, SkColor col, SkColor bg=0, bool useBG=false);
-            SkBitmap retrieveBorderImage(const std::string& bs, const std::string& bsa, SkColor color, SkColor bgColor);
             bool retrieveImage(const std::string& path, SkBitmap *image);
+            bool getBorderFragment(const std::string& path, const std::string& pathAlpha, SkBitmap *image, SkColor color);
             SkBitmap drawSliderButton(const std::string& slider, SkColor col);
 
             void addToBitmapCache(BITMAP_CACHE& bc);
@@ -1383,6 +1384,7 @@ namespace Button
             bool mHasFocus{false};  // If this is of type TEXT_INPUT this holds the focus state
             std::string dummy;      // dummy string used to return an empty string.
             std::string mPassword;  // Contains the last typed password (askPassword()).
+            std::string mUser;      // If this contains a user name contained in the User Password list, the user is asked for a password.
     };
 
     typedef struct BUTTONS_T

@@ -3,7 +3,13 @@ ChangeLog
 
 Release: 1.4.1
 ===============================================================================
-2013-11-28 Added support for password protection.
+2023-12-02 Fixed the borders of buttons.
+
+2023-11-30 Added password support for Android and iOS.
+           Added new commands ^PWD and @PWD.
+           Added new commands ^LPB, ^LPC, ^LPR and ^LPS.
+
+2023-11-28 Added support for password protection.
 
 2023-11-25 Implemented Marquee lines completely.
            Added command ^MSP to set the speed of a marquee line.

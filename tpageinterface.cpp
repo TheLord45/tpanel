@@ -34,6 +34,23 @@
 #include "tintborder.h"
 #include "terror.h"
 
+#if __cplusplus < 201402L
+#   error "This module requires at least C++14 standard!"
+#else
+#   if __cplusplus < 201703L
+#       include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#       warning "Support for C++14 and experimental filesystem will be removed in a future version!"
+#   else
+#       include <filesystem>
+#       ifdef __ANDROID__
+namespace fs = std::__fs::filesystem;
+#       else
+namespace fs = std::filesystem;
+#       endif
+#   endif
+#endif
+
 using std::string;
 using std::vector;
 
@@ -188,7 +205,7 @@ bool TPageInterface::drawFrame(PAGE_T& pinfo, SkBitmap* bm)
     }
 
     // Try to find the border in the system table
-    BORDER_t bd, bda;
+    BORDER_t bd;
     bool classExist = (gPageManager && gPageManager->getSystemDraw());
 
     if (!classExist)
@@ -201,59 +218,42 @@ bool TPageInterface::drawFrame(PAGE_T& pinfo, SkBitmap* bm)
 
     MSG_DEBUG("System border \"" << borderName << "\" found.");
     SkColor color = TColor::getSkiaColor(pinfo.sr[instance].cb);      // border color
-    SkColor bgColor = TColor::getSkiaColor(pinfo.sr[instance].cf);    // fill color
     MSG_DEBUG("Button color: #" << std::setw(6) << std::setfill('0') << std::hex << color << std::dec);
     // Load images
     SkBitmap imgB, imgBR, imgR, imgTR, imgT, imgTL, imgL, imgBL;
 
-    imgB = retrieveBorderImage(bd.b, bda.b, color, bgColor);
-
-    if (imgB.empty())
+    if (!getBorderFragment(bd.b, bd.b_alpha, &imgB, color))
         return false;
 
-    MSG_DEBUG("Got images " << bd.b << " and " << bda.b << " with size " << imgB.info().width() << " x " << imgB.info().height());
-    imgBR = retrieveBorderImage(bd.br, bda.br, color, bgColor);
-
-    if (imgBR.empty())
+    MSG_DEBUG("Got images " << bd.b << " and " << bd.b_alpha << " with size " << imgB.info().width() << " x " << imgB.info().height());
+    if (!getBorderFragment(bd.br, bd.br_alpha, &imgBR, color))
         return false;
 
-    MSG_DEBUG("Got images " << bd.br << " and " << bda.br << " with size " << imgBR.info().width() << " x " << imgBR.info().height());
-    imgR = retrieveBorderImage(bd.r, bda.r, color, bgColor);
-
-    if (imgR.empty())
+    MSG_DEBUG("Got images " << bd.br << " and " << bd.br_alpha << " with size " << imgBR.info().width() << " x " << imgBR.info().height());
+    if (!getBorderFragment(bd.r, bd.r_alpha, &imgR, color))
         return false;
 
-    MSG_DEBUG("Got images " << bd.r << " and " << bda.r << " with size " << imgR.info().width() << " x " << imgR.info().height());
-    imgTR = retrieveBorderImage(bd.tr, bda.tr, color, bgColor);
-
-    if (imgTR.empty())
+    MSG_DEBUG("Got images " << bd.r << " and " << bd.r_alpha << " with size " << imgR.info().width() << " x " << imgR.info().height());
+    if (!getBorderFragment(bd.tr, bd.tr_alpha, &imgTR, color))
         return false;
 
-    MSG_DEBUG("Got images " << bd.tr << " and " << bda.tr << " with size " << imgTR.info().width() << " x " << imgTR.info().height());
-    imgT = retrieveBorderImage(bd.t, bda.t, color, bgColor);
-
-    if (imgT.empty())
+    MSG_DEBUG("Got images " << bd.tr << " and " << bd.tr_alpha << " with size " << imgTR.info().width() << " x " << imgTR.info().height());
+    if (getBorderFragment(bd.t, bd.t_alpha, &imgT, color))
         return false;
 
-    MSG_DEBUG("Got images " << bd.t << " and " << bda.t << " with size " << imgT.info().width() << " x " << imgT.info().height());
-    imgTL = retrieveBorderImage(bd.tl, bda.tl, color, bgColor);
-
-    if (imgTL.empty())
+    MSG_DEBUG("Got images " << bd.t << " and " << bd.t_alpha << " with size " << imgT.info().width() << " x " << imgT.info().height());
+    if (!getBorderFragment(bd.tl, bd.tl_alpha, &imgTL, color))
         return false;
 
-    MSG_DEBUG("Got images " << bd.tl << " and " << bda.tl << " with size " << imgTL.info().width() << " x " << imgTL.info().height());
-    imgL = retrieveBorderImage(bd.l, bda.l, color, bgColor);
-
-    if (imgL.empty())
+    MSG_DEBUG("Got images " << bd.tl << " and " << bd.tl_alpha << " with size " << imgTL.info().width() << " x " << imgTL.info().height());
+    if (!getBorderFragment(bd.l, bd.l_alpha, &imgL, color))
         return false;
 
-    MSG_DEBUG("Got images " << bd.l << " and " << bda.l << " with size " << imgL.info().width() << " x " << imgL.info().height());
-    imgBL = retrieveBorderImage(bd.bl, bda.bl, color, bgColor);
-
-    if (imgBL.empty())
+    MSG_DEBUG("Got images " << bd.l << " and " << bd.l_alpha << " with size " << imgL.info().width() << " x " << imgL.info().height());
+    if (!getBorderFragment(bd.bl, bd.bl_alpha, &imgBL, color))
         return false;
 
-    MSG_DEBUG("Got images " << bd.bl << " and " << bda.bl << " with size " << imgBL.info().width() << " x " << imgBL.info().height());
+    MSG_DEBUG("Got images " << bd.bl << " and " << bd.bl_alpha << " with size " << imgBL.info().width() << " x " << imgBL.info().height());
     MSG_DEBUG("Button image size: " << (imgTL.info().width() + imgT.info().width() + imgTR.info().width()) << " x " << (imgTL.info().height() + imgL.info().height() + imgBL.info().height()));
     MSG_DEBUG("Total size: " << pinfo.width << " x " << pinfo.height);
     stretchImageWidth(&imgB, pinfo.width - imgBL.info().width() - imgBR.info().width());
@@ -262,27 +262,37 @@ bool TPageInterface::drawFrame(PAGE_T& pinfo, SkBitmap* bm)
     stretchImageHeight(&imgR, pinfo.height - imgTR.info().height() - imgBR.info().height());
     MSG_DEBUG("Stretched button image size: " << (imgTL.info().width() + imgT.info().width() + imgTR.info().width()) << " x " << (imgTL.info().height() + imgL.info().height() + imgBL.info().height()));
     // Draw the frame
+    SkBitmap frame;
+    allocPixels(bm->info().width(), bm->info().height(), &frame);
+    frame.eraseColor(SK_ColorTRANSPARENT);
+    SkCanvas target(*bm, SkSurfaceProps());
+    SkCanvas canvas(frame, SkSurfaceProps());
     SkPaint paint;
-    SkCanvas canvas(*bm, SkSurfaceProps());
 
-    paint.setBlendMode(SkBlendMode::kSrc);
-    paint.setColor(color);
-    sk_sp<SkImage> _image = SkImages::RasterFromBitmap(imgB);                                                                              // Bottom
+    paint.setBlendMode(SkBlendMode::kSrcOver);
+    paint.setAntiAlias(true);
+    sk_sp<SkImage> _image = SkImages::RasterFromBitmap(imgB);   // bottom
     canvas.drawImage(_image, imgBL.info().width(), pinfo.height - imgB.info().height(), SkSamplingOptions(), &paint);
-    _image = SkImages::RasterFromBitmap(imgBR);                                                                                            // Corner bottom right
-    canvas.drawImage(_image, pinfo.width - imgBR.info().width(), pinfo.height - imgBR.info().height(), SkSamplingOptions(), &paint);
-    _image = SkImages::RasterFromBitmap(imgR);                                                                                             // Right
-    canvas.drawImage(_image, pinfo.width - imgR.info().width(), imgTR.info().height(), SkSamplingOptions(), &paint);
-    _image = SkImages::RasterFromBitmap(imgTR);                                                                                            // Corner top right
-    canvas.drawImage(_image, pinfo.width - imgTR.info().width(), 0, SkSamplingOptions(), &paint);
-    _image = SkImages::RasterFromBitmap(imgT);                                                                                             // Top
+    _image = SkImages::RasterFromBitmap(imgT);                  // top
     canvas.drawImage(_image, imgTL.info().width(), 0, SkSamplingOptions(), &paint);
-    _image = SkImages::RasterFromBitmap(imgTL);                                                                                            // Corner top left
+    _image = SkImages::RasterFromBitmap(imgBR);                 // bottom right
+    canvas.drawImage(_image, pinfo.width - imgBR.info().width(), pinfo.height - imgBR.info().height(), SkSamplingOptions(), &paint);
+    _image = SkImages::RasterFromBitmap(imgTR);                 // top right
+    canvas.drawImage(_image, pinfo.width - imgTR.info().width(), 0, SkSamplingOptions(), &paint);
+    _image = SkImages::RasterFromBitmap(imgTL);                 // top left
     canvas.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
-    _image = SkImages::RasterFromBitmap(imgL);                                                                                             // Left
-    canvas.drawImage(_image, 0, imgTL.info().height(), SkSamplingOptions(), &paint);
-    _image = SkImages::RasterFromBitmap(imgBL);                                                                                            // Corner bottom left
+    _image = SkImages::RasterFromBitmap(imgBL);                 // bottom left
     canvas.drawImage(_image, 0, pinfo.height - imgBL.info().height(), SkSamplingOptions(), &paint);
+    _image = SkImages::RasterFromBitmap(imgL);                  // left
+    canvas.drawImage(_image, 0, imgTL.info().height(), SkSamplingOptions(), &paint);
+    _image = SkImages::RasterFromBitmap(imgR);                  // right
+    canvas.drawImage(_image, pinfo.width - imgR.info().width(), imgTR.info().height(), SkSamplingOptions(), &paint);
+
+    Border::TIntBorder iborder;
+    iborder.erasePart(bm, frame, Border::ERASE_OUTSIDE, imgL.info().width());
+    _image = SkImages::RasterFromBitmap(frame);
+    paint.setBlendMode(SkBlendMode::kSrcATop);
+    target.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
     return true;
 }
 
@@ -1124,6 +1134,123 @@ string TPageInterface::getSelectedItem(ulong handle)
     }
 
     return string();
+}
+
+/**
+ * @brief getBorderFragment - get part of border
+ * The method reads a border image fragment from the disk and converts it to
+ * the border color. If there is a base image and an alpha mask image, the
+ * pixels of the alpha mask are converted to the border color and then the base
+ * image is layed over the mask image.
+ * In case there is no base image, an image with the same size as the mask image
+ * is created and filled transparaent.
+ *
+ * @param path      The path and file name of the base image.
+ * @param pathAlpha The path and file name of the alpha mask image.
+ * @param image     A pointer to an empty bitmap.
+ * @param color     The border color
+ *
+ * @return In case the images exists and were loaded successfully, TRUE is
+ * returned.
+ */
+bool TPageInterface::getBorderFragment(const string& path, const string& pathAlpha, SkBitmap* image, SkColor color)
+{
+    DECL_TRACER("TPageInterface::getBorderFragment(const string& path, const string& pathAlpha, SkBitmap* image, SkColor color)");
+
+    if (!image)
+    {
+        MSG_ERROR("Invalid pointer to image!");
+        return false;
+    }
+
+    sk_sp<SkData> im;
+    SkBitmap bm;
+    bool haveBaseImage = false;
+
+    // If the path ends with "alpha.png" then it is a mask image. This not what
+    // we want first unless this is the only image available.
+    if (!endsWith(path, "alpha.png") || pathAlpha.empty())
+    {
+        if (retrieveImage(path, image))
+        {
+            haveBaseImage = true;
+            // Underly the pixels with the border color
+            MSG_DEBUG("Path: " << path << ", pathAlpha: " << pathAlpha);
+            if (pathAlpha.empty() || !fs::exists(pathAlpha) || path == pathAlpha)
+            {
+                SkImageInfo info = image->info();
+                SkBitmap b;
+                allocPixels(info.width(), info.height(), &b);
+                b.eraseColor(SK_ColorTRANSPARENT);
+
+                for (int x = 0; x < info.width(); ++x)
+                {
+                    for (int y = 0; y < info.height(); ++y)
+                    {
+                        SkColor alpha = SkColorGetA(image->getColor(x, y));
+                        uint32_t *pix = b.getAddr32(x, y);
+
+                        if (alpha > 0)
+                            *pix = color;
+                    }
+                }
+
+                SkPaint paint;
+                paint.setAntiAlias(true);
+                paint.setBlendMode(SkBlendMode::kDstATop);
+                SkCanvas can(*image);
+                sk_sp<SkImage> _image = SkImages::RasterFromBitmap(b);
+                can.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
+            }
+        }
+    }
+
+    // If there is no valid path return.
+    if (pathAlpha.empty())
+        return haveBaseImage;
+
+    // On error retrieving the image, return.
+    if (!retrieveImage(pathAlpha, &bm))
+        return haveBaseImage;
+
+    // If there was no base image loaded, allocate the space for an image
+    // filled transparent. Make it the same size as the mask image.
+    if (!haveBaseImage)
+    {
+        allocPixels(bm.info().width(), bm.info().height(), image);
+        image->eraseColor(SK_ColorTRANSPARENT);
+    }
+
+    // Only if the base image and the mask image have the same size, which
+    // should be the case, then the visible pixels of the mask image are
+    // colored by the border color.
+    if (image->info().dimensions() == bm.info().dimensions())
+    {
+        for (int y = 0; y < image->info().height(); ++y)
+        {
+            for (int x = 0; x < image->info().width(); ++x)
+            {
+                SkColor col = bm.getColor(x, y);
+                SkColor alpha = SkColorGetA(col);
+                uint32_t *pix = bm.getAddr32(x, y);
+
+                if (alpha == 0)
+                    *pix = SK_ColorTRANSPARENT;
+                else
+                    *pix = SkColorSetA(color, alpha);
+            }
+        }
+    }
+
+    // Here we draw the border fragment over the base image.
+    SkPaint paint;
+    paint.setAntiAlias(true);
+    paint.setBlendMode(SkBlendMode::kDstATop);
+    SkCanvas can(*image);
+    sk_sp<SkImage> _image = SkImages::RasterFromBitmap(bm);
+    can.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
+
+    return true;
 }
 
 SkBitmap TPageInterface::retrieveBorderImage(const string& pa, const string& pb, SkColor color, SkColor bgColor)

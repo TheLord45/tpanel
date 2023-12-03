@@ -166,6 +166,14 @@
 			<key>File</key>
 			<string>Logging</string>
 		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSChildPaneSpecifier</string>
+			<key>Title</key>
+			<string>Passwords</string>
+			<key>File</key>
+			<string>Passwords</string>
+		</dict>
 	</array>
 </dict>
 </plist>

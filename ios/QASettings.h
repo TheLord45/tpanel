@@ -82,6 +82,12 @@ class QASettings
         bool getLoggingLogfileEnabled(void);
         QString getLoggingLogfile(void);
 
+        // Settings for passwords
+        QString getPassword1(void);
+        QString getPassword2(void);
+        QString getPassword3(void);
+        QString getPassword4(void);
+
         // Some static methods
         static QString getLibraryPath(void);
         static QString getDocumentPath(void);

@@ -68,9 +68,8 @@ namespace Border
             bool isTP4BorderValid(const std::string& name);
             std::string getTP4BorderName(int id);
 
-            void erasePart(SkBitmap *bm, const SkBitmap& mask, ERASE_PART_t ep);
+            void erasePart(SkBitmap *bm, const SkBitmap& mask, ERASE_PART_t ep, int fwidth=0);
             void colorizeFrame(SkBitmap *frame, SkColor color);
-            void backgroundFrame(SkBitmap *bm, SkBitmap& frame, SkColor color);
 
         private:
             SkRect calcRect(int width, int height, int pen);

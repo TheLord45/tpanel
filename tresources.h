@@ -29,6 +29,8 @@
 #include <codecvt>
 #include <cstdint>
 #include <clocale>
+#include <iomanip>
+#include <sstream>
 
 #ifdef __MACH__
 #include <skia/core/SkImage.h>
@@ -126,6 +128,15 @@ bool isNumeric(const std::string& str, bool blank=false);
 bool isBigEndian();
 std::string handleToString(ulong handle);
 ulong extractHandle(const std::string& obname);
+
+template<typename T>
+inline std::string numberToHex(T i)
+{
+    std::stringstream stream;
+    stream  << std::setfill ('0') << std::setw(sizeof(T)*2)
+    << std::hex << i;
+    return stream.str();
+}
 
 static inline std::string &ltrim(std::string &s)
 {

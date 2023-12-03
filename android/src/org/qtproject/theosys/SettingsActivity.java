@@ -44,6 +44,10 @@ public class SettingsActivity extends AppCompatActivity
     static private Intent m_intLogFile = null;
     static private EditTextPreference logFilePref = null;
     static private String logFilePath;
+    static private String password1Text;
+    static private String password2Text;
+    static private String password3Text;
+    static private String password4Text;
     private static final int CREATE_FILE = 1988;
 
     @Override
@@ -199,6 +203,39 @@ public class SettingsActivity extends AppCompatActivity
 
                 if (logFileEnable != null && !logFileEnable.isChecked())
                     logFileText.setVisible(false);
+            }
+
+            EditTextPreference password1 = findPreference("passwords_1");
+            EditTextPreference password2 = findPreference("passwords_2");
+            EditTextPreference password3 = findPreference("passwords_3");
+            EditTextPreference password4 = findPreference("passwords_4");
+
+            if (password1 != null)
+            {
+                password1Text = m_intent.getStringExtra("password_1");
+                password1.setText(password1Text);
+                password1.setSummaryProvider(preference -> setAsterisks(password1Text.length()));
+            }
+
+            if (password2 != null)
+            {
+                password2Text = m_intent.getStringExtra("password_2");
+                password2.setText(password2Text);
+                password2.setSummaryProvider(preference -> setAsterisks(password2Text.length()));
+            }
+
+            if (password3 != null)
+            {
+                password3Text = m_intent.getStringExtra("password_3");
+                password3.setText(password3Text);
+                password3.setSummaryProvider(preference -> setAsterisks(password3Text.length()));
+            }
+
+            if (password4 != null)
+            {
+                password4Text = m_intent.getStringExtra("password_4");
+                password4.setText(password4Text);
+                password4.setSummaryProvider(preference -> setAsterisks(password4Text.length()));
             }
         }
 
@@ -691,6 +728,63 @@ public class SettingsActivity extends AppCompatActivity
                     }
                 });
             }
+
+            EditTextPreference passwd1 = findPreference("passwords_1");
+            EditTextPreference passwd2 = findPreference("passwords_2");
+            EditTextPreference passwd3 = findPreference("passwords_3");
+            EditTextPreference passwd4 = findPreference("passwords_4");
+
+            if (passwd1 != null)
+            {
+                passwd1.setOnBindEditTextListener(editText -> {
+                    editText.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                    passwd1.setSummaryProvider(preference -> setAsterisks(editText.getText().toString().length()));
+                });
+                passwd1.setOnPreferenceChangeListener((preference, value) -> {
+                    setPassword1(value.toString());
+                    password1Text = value.toString();
+                    return true;
+                });
+            }
+
+            if (passwd2 != null)
+            {
+                passwd2.setOnBindEditTextListener(editText -> {
+                    editText.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                    passwd2.setSummaryProvider(preference -> setAsterisks(editText.getText().toString().length()));
+                });
+                passwd2.setOnPreferenceChangeListener((preference, value) -> {
+                    setPassword2(value.toString());
+                    password2Text = value.toString();
+                    return true;
+                });
+            }
+
+            if (passwd3 != null)
+            {
+                passwd3.setOnBindEditTextListener(editText -> {
+                    editText.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                    passwd3.setSummaryProvider(preference -> setAsterisks(editText.getText().toString().length()));
+                });
+                passwd3.setOnPreferenceChangeListener((preference, value) -> {
+                    setPassword3(value.toString());
+                    password3Text = value.toString();
+                    return true;
+                });
+            }
+
+            if (passwd4 != null)
+            {
+                passwd4.setOnBindEditTextListener(editText -> {
+                    editText.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                    passwd4.setSummaryProvider(preference -> setAsterisks(editText.getText().toString().length()));
+                });
+                passwd4.setOnPreferenceChangeListener((preference, value) -> {
+                    setPassword4(value.toString());
+                    password4Text = value.toString();
+                    return true;
+                });
+            }
         }
 
         //return the password in asterisks
@@ -768,6 +862,11 @@ public class SettingsActivity extends AppCompatActivity
     private static native void setLogLongFormat(boolean log);
     private static native void setLogEnableFile(boolean log);
     private static native void setLogFile(String log);
+
+    private static native void setPassword1(String pw);
+    private static native void setPassword2(String pw);
+    private static native void setPassword3(String pw);
+    private static native void setPassword4(String pw);
 
     private static native void saveSettings();
 }

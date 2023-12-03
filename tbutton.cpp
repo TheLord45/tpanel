@@ -63,12 +63,30 @@
 #include "testmode.h"
 #endif
 
+#if __cplusplus < 201402L
+#   error "This module requires at least C++14 standard!"
+#else
+#   if __cplusplus < 201703L
+#       include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#       warning "Support for C++14 and experimental filesystem will be removed in a future version!"
+#   else
+#       include <filesystem>
+#       ifdef __ANDROID__
+namespace fs = std::__fs::filesystem;
+#       else
+namespace fs = std::filesystem;
+#       endif
+#   endif
+#endif
+
 using std::exception;
 using std::string;
 using std::vector;
 using std::unique_ptr;
 using std::map;
 using std::pair;
+using std::min;
 using std::thread;
 using std::atomic;
 using std::mutex;
@@ -3497,11 +3515,22 @@ void TButton::getDrawOrder(const std::string& sdo, DRAW_ORDER *order)
 
     if (sdo.empty() || sdo.length() != 10)
     {
+/*
+ *      The commented out draw order is the default defined by AMX. It has the
+ *      the disadvantage that the last drawn border may destroy text and/or the
+ *      the icon, if any. It depends which border was selected and about the
+ *      size of the border.
         *order     = ORD_ELEM_FILL;
         *(order+1) = ORD_ELEM_BITMAP;
         *(order+2) = ORD_ELEM_ICON;
         *(order+3) = ORD_ELEM_TEXT;
         *(order+4) = ORD_ELEM_BORDER;
+*/
+        *order     = ORD_ELEM_FILL;
+        *(order+1) = ORD_ELEM_BITMAP;
+        *(order+2) = ORD_ELEM_BORDER;
+        *(order+3) = ORD_ELEM_ICON;
+        *(order+4) = ORD_ELEM_TEXT;
         return;
     }
 
@@ -5380,8 +5409,8 @@ bool TButton::buttonBorder(SkBitmap* bm, int inst)
 
     if (instance < 0)
         instance = 0;
-    else if ((size_t)instance > sr.size())
-        instance = (int)sr.size() - 1;
+    else if (static_cast<size_t>(instance) > sr.size())
+        instance = static_cast<int>(sr.size()) - 1;
 
     if (sr[instance].bs.empty())
     {
@@ -5397,9 +5426,8 @@ bool TButton::buttonBorder(SkBitmap* bm, int inst)
     // The border was not found or defined to be not drawn. Therefor we look
     // into the system directory (__system/graphics/borders). If the wanted
     // border exists there, we're drawing it.
-    BORDER_t bd, bda;
+    BORDER_t bd;
     int numBorders = 0;
-    bool extBorder = false;
 
     if (sr.size() == 2)
     {
@@ -5409,50 +5437,47 @@ bool TButton::buttonBorder(SkBitmap* bm, int inst)
     else if (gPageManager->getSystemDraw()->getBorder(bname, TSystemDraw::LT_ON, &bd))
         numBorders++;
 
-    if (numBorders)
-        extBorder = true;
-
-    if (extBorder)
+    if (numBorders > 0)
     {
         SkColor color = TColor::getSkiaColor(sr[instance].cb);      // border color
         MSG_DEBUG("Button color: #" << std::setw(6) << std::setfill('0') << std::hex << color);
         // Load images
         SkBitmap imgB, imgBR, imgR, imgTR, imgT, imgTL, imgL, imgBL;
 
-        if (!retrieveImage(bd.b, &imgB) || imgB.empty())
+        if (!getBorderFragment(bd.b, bd.b_alpha, &imgB, color) || imgB.empty())
             return false;
 
-        MSG_DEBUG("Got images " << bd.b << " and " << bda.b << " with size " << imgB.info().width() << " x " << imgB.info().height());
-        if (!retrieveImage(bd.br, &imgBR) || imgBR.empty())
+        MSG_DEBUG("Got images " << bd.b << " and " << bd.b_alpha << " with size " << imgB.info().width() << " x " << imgB.info().height());
+        if (!getBorderFragment(bd.br, bd.br_alpha, &imgBR, color) || imgBR.empty())
             return false;
 
-        MSG_DEBUG("Got images " << bd.br << " and " << bda.br << " with size " << imgBR.info().width() << " x " << imgBR.info().height());
-        if (!retrieveImage(bd.r, &imgR) || imgR.empty())
+        MSG_DEBUG("Got images " << bd.br << " and " << bd.br_alpha << " with size " << imgBR.info().width() << " x " << imgBR.info().height());
+        if (!getBorderFragment(bd.r, bd.r_alpha, &imgR, color) || imgR.empty())
             return false;
 
-        MSG_DEBUG("Got images " << bd.r << " and " << bda.r << " with size " << imgR.info().width() << " x " << imgR.info().height());
-        if (!retrieveImage(bd.tr, &imgTR) || imgTR.empty())
+        MSG_DEBUG("Got images " << bd.r << " and " << bd.r_alpha << " with size " << imgR.info().width() << " x " << imgR.info().height());
+        if (!getBorderFragment(bd.tr, bd.tr_alpha, &imgTR, color) || imgTR.empty())
             return false;
 
-        MSG_DEBUG("Got images " << bd.tr << " and " << bda.tr << " with size " << imgTR.info().width() << " x " << imgTR.info().height());
-        if (!retrieveImage(bd.t, &imgT) || imgT.empty())
+        MSG_DEBUG("Got images " << bd.tr << " and " << bd.tr_alpha << " with size " << imgTR.info().width() << " x " << imgTR.info().height());
+        if (!getBorderFragment(bd.t, bd.t_alpha, &imgT, color) || imgT.empty())
             return false;
 
-        MSG_DEBUG("Got images " << bd.t << " and " << bda.t << " with size " << imgT.info().width() << " x " << imgT.info().height());
-        if (!retrieveImage(bd.tl, &imgTL) || imgTL.empty())
+        MSG_DEBUG("Got images " << bd.t << " and " << bd.t_alpha << " with size " << imgT.info().width() << " x " << imgT.info().height());
+        if (!getBorderFragment(bd.tl, bd.tl_alpha, &imgTL, color) || imgTL.empty())
             return false;
 
-        MSG_DEBUG("Got images " << bd.tl << " and " << bda.tl << " with size " << imgTL.info().width() << " x " << imgTL.info().height());
-        if (!retrieveImage(bd.l, &imgL) || imgL.empty())
+        MSG_DEBUG("Got images " << bd.tl << " and " << bd.tl_alpha << " with size " << imgTL.info().width() << " x " << imgTL.info().height());
+        if (!getBorderFragment(bd.l, bd.l_alpha, &imgL, color) || imgL.empty())
             return false;
 
         mBorderWidth = imgL.info().width();
+        MSG_DEBUG("Got images " << bd.l << " and " << bd.l_alpha << " with size " << imgL.info().width() << " x " << imgL.info().height());
 
-        MSG_DEBUG("Got images " << bd.l << " and " << bda.l << " with size " << imgL.info().width() << " x " << imgL.info().height());
-        if (!retrieveImage(bd.bl, &imgBL) || imgBL.empty())
+        if (!getBorderFragment(bd.bl, bd.bl_alpha, &imgBL, color) || imgBL.empty())
             return false;
 
-        MSG_DEBUG("Got images " << bd.bl << " and " << bda.bl << " with size " << imgBL.info().width() << " x " << imgBL.info().height());
+        MSG_DEBUG("Got images " << bd.bl << " and " << bd.bl_alpha << " with size " << imgBL.info().width() << " x " << imgBL.info().height());
         MSG_DEBUG("Button image size: " << (imgTL.info().width() + imgT.info().width() + imgTR.info().width()) << " x " << (imgTL.info().height() + imgL.info().height() + imgBL.info().height()));
         MSG_DEBUG("Total size: " << wt << " x " << ht);
         stretchImageWidth(&imgB, wt - imgBL.info().width() - imgBR.info().width());
@@ -5469,25 +5494,25 @@ bool TButton::buttonBorder(SkBitmap* bm, int inst)
         SkPaint paint;
 
         paint.setBlendMode(SkBlendMode::kSrcOver);
-        sk_sp<SkImage> _image = SkImages::RasterFromBitmap(imgB);
+        paint.setAntiAlias(true);
+        sk_sp<SkImage> _image = SkImages::RasterFromBitmap(imgB);   // bottom
         canvas.drawImage(_image, imgBL.info().width(), ht - imgB.info().height(), SkSamplingOptions(), &paint);
-        _image = SkImages::RasterFromBitmap(imgBR);
-        canvas.drawImage(_image, wt - imgBR.info().width(), ht - imgBR.info().height(), SkSamplingOptions(), &paint);
-        _image = SkImages::RasterFromBitmap(imgR);
-        canvas.drawImage(_image, wt - imgR.info().width(), imgTR.info().height(), SkSamplingOptions(), &paint);
-        _image = SkImages::RasterFromBitmap(imgTR);
-        canvas.drawImage(_image, wt - imgTR.info().width(), 0, SkSamplingOptions(), &paint);
-        _image = SkImages::RasterFromBitmap(imgT);
+        _image = SkImages::RasterFromBitmap(imgT);                  // top
         canvas.drawImage(_image, imgTL.info().width(), 0, SkSamplingOptions(), &paint);
-        _image = SkImages::RasterFromBitmap(imgTL);
+        _image = SkImages::RasterFromBitmap(imgBR);                 // bottom right
+        canvas.drawImage(_image, wt - imgBR.info().width(), ht - imgBR.info().height(), SkSamplingOptions(), &paint);
+        _image = SkImages::RasterFromBitmap(imgTR);                 // top right
+        canvas.drawImage(_image, wt - imgTR.info().width(), 0, SkSamplingOptions(), &paint);
+        _image = SkImages::RasterFromBitmap(imgTL);                 // top left
         canvas.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
-        _image = SkImages::RasterFromBitmap(imgL);
-        canvas.drawImage(_image, 0, imgTL.info().height(), SkSamplingOptions(), &paint);
-        _image = SkImages::RasterFromBitmap(imgBL);
+        _image = SkImages::RasterFromBitmap(imgBL);                 // bottom left
         canvas.drawImage(_image, 0, ht - imgBL.info().height(), SkSamplingOptions(), &paint);
+        _image = SkImages::RasterFromBitmap(imgL);                  // left
+        canvas.drawImage(_image, 0, imgTL.info().height(), SkSamplingOptions(), &paint);
+        _image = SkImages::RasterFromBitmap(imgR);                  // right
+        canvas.drawImage(_image, wt - imgR.info().width(), imgTR.info().height(), SkSamplingOptions(), &paint);
 
-        erasePart(bm, frame, Border::ERASE_OUTSIDE);
-        backgroundFrame(bm, frame, color);
+        erasePart(bm, frame, Border::ERASE_OUTSIDE, imgL.info().width());
         _image = SkImages::RasterFromBitmap(frame);
         paint.setBlendMode(SkBlendMode::kSrcATop);
         target.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
@@ -6965,6 +6990,16 @@ int TButton::getBorderSize(const std::string& name)
     return 0;
 }
 
+void TButton::setUserName(const string& user)
+{
+    DECL_TRACER("TButton::setUserName(const string& user)");
+
+    if (TConfig::getUserPassword(user).empty())
+        return;
+
+    mUser = user;
+}
+
 void TButton::calcImageSizePercent(int imWidth, int imHeight, int btWidth, int btHeight, int btFrame, int *realX, int *realY)
 {
     DECL_TRACER("TButton::clacImageSizePercent(int imWidth, int imHeight, int btWidth, int btHeight, int btFrame, int *realX, int *realY)");
@@ -7209,7 +7244,7 @@ SkBitmap TButton::colorImage(SkBitmap& base, SkBitmap& alpha, SkColor col, SkCol
             uint32_t ala = SkColorGetA(pixelAlpha);
 
             if (ala == 0 && !useBG)
-                pixelAlpha = SK_ColorTRANSPARENT; //col;
+                pixelAlpha = SK_ColorTRANSPARENT;
             else if (ala == 0)
                 pixelAlpha = bg;
             else
@@ -7236,25 +7271,15 @@ SkBitmap TButton::colorImage(SkBitmap& base, SkBitmap& alpha, SkColor col, SkCol
     return maskBm;
 }
 
-SkBitmap TButton::retrieveBorderImage(const string& pa, const string& pb, SkColor color, SkColor bgColor)
-{
-    DECL_TRACER("TButton::retrieveBorderImage(const string& pa, const string& pb, SkColor color, SkColor bgColor)");
-
-    SkBitmap bm, bma;
-
-    if (!pa.empty() && !retrieveImage(pa, &bm))
-        return SkBitmap();
-
-    if (!pb.empty() && !retrieveImage(pb, &bma))
-        return bm;
-//        return SkBitmap();
-
-    return colorImage(bm, bma, color, bgColor, false);
-}
-
 bool TButton::retrieveImage(const string& path, SkBitmap* image)
 {
     DECL_TRACER("TButton::retrieveImage(const string& path, SkBitmap* image)");
+
+    if (!fs::exists(path) || !fs::is_regular_file(path))
+    {
+        MSG_WARNING("File " << path << " does not exist or is not a regular file!");
+        return false;
+    }
 
     sk_sp<SkData> im;
 
@@ -7268,6 +7293,123 @@ bool TButton::retrieveImage(const string& path, SkBitmap* image)
         MSG_WARNING("Could not create the image " << path);
         return false;
     }
+
+    return true;
+}
+
+/**
+ * @brief getBorderFragment - get part of border
+ * The method reads a border image fragment from the disk and converts it to
+ * the border color. If there is a base image and an alpha mask image, the
+ * pixels of the alpha mask are converted to the border color and then the base
+ * image is layed over the mask image.
+ * In case there is no base image, an image with the same size as the mask image
+ * is created and filled transparaent.
+ *
+ * @param path      The path and file name of the base image.
+ * @param pathAlpha The path and file name of the alpha mask image.
+ * @param image     A pointer to an empty bitmap.
+ * @param color     The border color
+ *
+ * @return In case the images exists and were loaded successfully, TRUE is
+ * returned.
+ */
+bool TButton::getBorderFragment(const string& path, const string& pathAlpha, SkBitmap* image, SkColor color)
+{
+    DECL_TRACER("TButton::getBorderFragment(const string& path, const string& pathAlpha, SkBitmap* image, SkColor color)");
+
+    if (!image)
+    {
+        MSG_ERROR("Invalid pointer to image!");
+        return false;
+    }
+
+    sk_sp<SkData> im;
+    SkBitmap bm;
+    bool haveBaseImage = false;
+
+    // If the path ends with "alpha.png" then it is a mask image. This not what
+    // we want first unless this is the only image available.
+    if (!endsWith(path, "alpha.png") || pathAlpha.empty())
+    {
+        if (retrieveImage(path, image))
+        {
+            haveBaseImage = true;
+            // Underly the pixels with the border color
+            MSG_DEBUG("Path: " << path << ", pathAlpha: " << pathAlpha);
+            if (pathAlpha.empty() || !fs::exists(pathAlpha) || path == pathAlpha)
+            {
+                SkImageInfo info = image->info();
+                SkBitmap b;
+                allocPixels(info.width(), info.height(), &b);
+                b.eraseColor(SK_ColorTRANSPARENT);
+
+                for (int x = 0; x < info.width(); ++x)
+                {
+                    for (int y = 0; y < info.height(); ++y)
+                    {
+                        SkColor alpha = SkColorGetA(image->getColor(x, y));
+                        uint32_t *pix = b.getAddr32(x, y);
+
+                        if (alpha > 0)
+                            *pix = color;
+                    }
+                }
+
+                SkPaint paint;
+                paint.setAntiAlias(true);
+                paint.setBlendMode(SkBlendMode::kDstATop);
+                SkCanvas can(*image);
+                sk_sp<SkImage> _image = SkImages::RasterFromBitmap(b);
+                can.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
+            }
+        }
+    }
+
+    // If there is no valid path return.
+    if (pathAlpha.empty())
+        return haveBaseImage;
+
+    // On error retrieving the image, return.
+    if (!retrieveImage(pathAlpha, &bm))
+        return haveBaseImage;
+
+    // If there was no base image loaded, allocate the space for an image
+    // filled transparent. Make it the same size as the mask image.
+    if (!haveBaseImage)
+    {
+        allocPixels(bm.info().width(), bm.info().height(), image);
+        image->eraseColor(SK_ColorTRANSPARENT);
+    }
+
+    // Only if the base image and the mask image have the same size, which
+    // should be the case, then the visible pixels of the mask image are
+    // colored by the border color.
+    if (image->info().dimensions() == bm.info().dimensions())
+    {
+        for (int y = 0; y < image->info().height(); ++y)
+        {
+            for (int x = 0; x < image->info().width(); ++x)
+            {
+                SkColor col = bm.getColor(x, y);
+                SkColor alpha = SkColorGetA(col);
+                uint32_t *pix = bm.getAddr32(x, y);
+
+                if (alpha == 0)
+                    *pix = SK_ColorTRANSPARENT;
+                else
+                    *pix = SkColorSetA(color, alpha);
+            }
+        }
+    }
+
+    // Here we draw the border fragment over the base image.
+    SkPaint paint;
+    paint.setAntiAlias(true);
+    paint.setBlendMode(SkBlendMode::kDstATop);
+    SkCanvas can(*image);
+    sk_sp<SkImage> _image = SkImages::RasterFromBitmap(bm);
+    can.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
 
     return true;
 }
@@ -7858,7 +8000,7 @@ bool TButton::doClick(int x, int y, bool pressed)
     // a window with an input line to get the password from the user. Only if
     // the password is equal to the password in the setup the button is
     // processed further.
-    if (pressed && pp > 0)
+    if (pressed && (pp > 0 || !mUser.empty()))
     {
         if (!mPassword.empty())
         {
@@ -7870,16 +8012,22 @@ bool TButton::doClick(int x, int y, bool pressed)
 
             string pass;
 
-            switch(pp)
+            if (!mUser.empty())
+                pass = TConfig::getUserPassword(mUser);
+
+            if (pass.empty() && pp > 0)
             {
-                case 1: pass = TConfig::getPassword1(); break;
-                case 2: pass = TConfig::getPassword2(); break;
-                case 3: pass = TConfig::getPassword3(); break;
-                case 4: pass = TConfig::getPassword4(); break;
-                default:
-                    MSG_WARNING("Detected invalid password index " << pp);
-                    mPassword.clear();
-                    return false;
+                switch(pp)
+                {
+                    case 1: pass = TConfig::getPassword1(); break;
+                    case 2: pass = TConfig::getPassword2(); break;
+                    case 3: pass = TConfig::getPassword3(); break;
+                    case 4: pass = TConfig::getPassword4(); break;
+                    default:
+                        MSG_WARNING("Detected invalid password index " << pp);
+                        mPassword.clear();
+                        return false;
+                }
             }
 
             if (pass != mPassword)  // Does the password not match?
@@ -7894,9 +8042,15 @@ bool TButton::doClick(int x, int y, bool pressed)
         }
         else if (gPageManager && gPageManager->getAskPassword())
         {
-            string msg = "Enter [" + intToString(pp) + "] password";
+            string msg;
+
+            if (mUser.empty())
+                msg = "Enter [" + intToString(pp) + "] password";
+            else
+                msg = "Enter password for user " + mUser;
+
             mPassword.clear();
-            gPageManager->getAskPassword()(mHandle, msg, "Password");
+            gPageManager->getAskPassword()(mHandle, msg, "Password", x, y);
             return true;
         }
         else

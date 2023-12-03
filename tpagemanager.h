@@ -252,7 +252,7 @@ class TPageManager : public TAmxCommands
         void regSetPhoneStatus(std::function<void (const std::string& msg)> setPhoneStatus) { _setPhoneStatus = setPhoneStatus; }
         void regSetPhoneState(std::function<void (int state, int id)> setPhoneState) { _setPhoneState = setPhoneState; }
         void regDisplayMessage(std::function<void (const std::string& msg, const std::string& title)> msg) { _displayMessage = msg; }
-        void regAskPassword(std::function<void (ulong handle, const std::string& msg, const std::string& title)> pw) { _askPassword = pw; }
+        void regAskPassword(std::function<void (ulong handle, const std::string& msg, const std::string& title, int x, int y)> pw) { _askPassword = pw; }
         void regFileDialogFunction(std::function<void (ulong handle, const std::string& path, const std::string& extension, const std::string& suffix)> fdlg) { _fileDialog = fdlg; }
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         void regOnOrientationChange(std::function<void (int orientation)> orientationChange) { _onOrientationChange = orientationChange; }
@@ -414,7 +414,7 @@ class TPageManager : public TAmxCommands
         void sendPHNcommand(const std::string& cmd);
         void sendKeyStroke(char key);
         void sendCommandString(int port, const std::string& cmd);
-        void callSetPassword(ulong handle, const std::string& pw);
+        void callSetPassword(ulong handle, const std::string& pw, int x, int y);
         /**
          * This starts the communication with the AMX controller. The method
          * registers the callbacks and starts a thread. This thread runs as
@@ -544,7 +544,7 @@ class TPageManager : public TAmxCommands
         std::function<void (int width, int height)> getMainWindowSizeFunc() { return _setMainWindowSize; }
         std::function<void (const std::string& file, size_t size)> getDownloadSurface() { return _downloadSurface; }
         std::function<void (const std::string& msg, const std::string& title)> getDisplayMessage() { return _displayMessage; }
-        std::function<void (ulong handle, const std::string& msg, const std::string& title)> getAskPassword() { return _askPassword; }
+        std::function<void (ulong handle, const std::string& msg, const std::string& title, int x, int y)> getAskPassword() { return _askPassword; }
         std::function<void (ulong handle, const std::string& path, const std::string& extension, const std::string& suffix)> getFileDialogFunction() { return _fileDialog; }
         std::function<void (const std::string& text)> getStartWait() { return _startWait; }
         std::function<void ()> getStopWait() { return _stopWait; }
@@ -657,7 +657,7 @@ class TPageManager : public TAmxCommands
         std::function<void (int width, int height)> _setMainWindowSize{nullptr};
         std::function<void (const std::string& file, size_t size)> _downloadSurface{nullptr};
         std::function<void (const std::string& msg, const std::string& title)> _displayMessage{nullptr};
-        std::function<void (ulong handle, const std::string& msg, const std::string& title)> _askPassword{nullptr};
+        std::function<void (ulong handle, const std::string& msg, const std::string& title, int x, int y)> _askPassword{nullptr};
         std::function<void (ulong handle, const std::string& path, const std::string& extension, const std::string& suffix)> _fileDialog{nullptr};
         std::function<void (const std::string& text)> _startWait{nullptr};
         std::function<void ()> _stopWait{nullptr};
@@ -811,7 +811,7 @@ class TPageManager : public TAmxCommands
         void doFON(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void getFON(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doGDI(int port, std::vector<int>& channels, std::vector<std::string>& pars);
-//        void doGDV(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doGDV(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doGLH(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doGLL(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doGSC(int port, std::vector<int>& channels, std::vector<std::string>& pars);
@@ -841,6 +841,9 @@ class TPageManager : public TAmxCommands
         void doKPS(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doVKS(int port, std::vector<int>& channels, std::vector<std::string>& pars);
 
+        void doAPWD(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doPWD(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+
         void doBBR(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doRAF(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doRFR(int port, std::vector<int>& channels, std::vector<std::string>& pars);
@@ -866,6 +869,12 @@ class TPageManager : public TAmxCommands
         void doMUT(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doTKP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doVKB(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+
+        void doLPB(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doLPC(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doLPR(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doLPS(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+
 #ifndef _NOSIP_
         void doPHN(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void getPHN(int port, std::vector<int>& channels, std::vector<std::string>& pars);
@@ -1015,6 +1024,11 @@ extern "C" {
     JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setLogLongFormat(JNIEnv *env, jclass clazz, jboolean log);
     JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setLogEnableFile(JNIEnv *env, jclass clazz, jboolean log);
     JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setLogFile(JNIEnv *env, jclass clazz, jstring log);
+
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setPassword1(JNIEnv *env, jclass clazz, jstring pw);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setPassword2(JNIEnv *env, jclass clazz, jstring pw);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setPassword3(JNIEnv *env, jclass clazz, jstring pw);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setPassword4(JNIEnv *env, jclass clazz, jstring pw);
 
     JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_saveSettings(JNIEnv *env, jclass clazz);
 }

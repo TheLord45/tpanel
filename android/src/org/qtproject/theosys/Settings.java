@@ -40,6 +40,10 @@ public class Settings extends Logger
     static private boolean mLogTrace = false;
     static private boolean mLogFileEnabled = false;
     static private String mLogPath;
+    static private String mPassword1;
+    static private String mPassword2;
+    static private String mPassword3;
+    static private String mPassword4;
 
     static public void callSettings(Activity act)
     {
@@ -86,6 +90,17 @@ public class Settings extends Logger
         mLogPath = path;
     }
 
+    static public void setPassword(int idx, String pw)
+    {
+        switch(idx)
+        {
+            case 1: mPassword1 = pw; break;
+            case 2: mPassword2 = pw; break;
+            case 3: mPassword3 = pw; break;
+            case 4: mPassword4 = pw; break;
+        }
+    }
+
     static public void deploySurfaces()
     {
         if (m_ActivityInstance == null || m_intent == null)
@@ -101,6 +116,10 @@ public class Settings extends Logger
         m_intent.putExtra("log_debug", mLogDebug);
         m_intent.putExtra("log_path", mLogPath);
         m_intent.putExtra("log_file_enabled", mLogFileEnabled);
+        m_intent.putExtra("password_1", mPassword1);
+        m_intent.putExtra("password_2", mPassword2);
+        m_intent.putExtra("password_3", mPassword3);
+        m_intent.putExtra("password_4", mPassword4);
 
         if (mSurfaces == null || mSurfaces.isEmpty())
             return;

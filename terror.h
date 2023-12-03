@@ -125,7 +125,7 @@ class TStreamError
 class TTracer
 {
     public:
-        TTracer(const std::string msg, int line, char *file, threadID_t tid);
+        TTracer(const std::string& msg, int line, const char *file, threadID_t tid);
         ~TTracer();
 
     private:
@@ -165,7 +165,7 @@ class TError : public std::ostream
 
     private:
         static std::string toHex(int num, int width);
-        TError() {};
+        TError() {}
         ~TError();
 
         static std::string msError;
@@ -180,10 +180,14 @@ class TError : public std::ostream
 #define MSG_WARNING(msg)    { if (TStreamError::checkFilter(HLOG_WARNING)) { _lock(); *TError::Current(_getThreadID())->getStream() << TError::append(HLOG_WARNING) << msg << std::endl; TStreamError::resetFlags(); _unlock(); }}
 #define MSG_ERROR(msg)      { if (TStreamError::checkFilter(HLOG_ERROR)) { _lock(); *TError::Current(_getThreadID())->getStream() << TError::append(HLOG_ERROR) << msg << std::endl; TStreamError::resetFlags(); _unlock(); }}
 #define MSG_TRACE(msg)      { if (TStreamError::checkFilter(HLOG_TRACE)) { _lock(); *TError::Current(_getThreadID())->getStream() << TError::append(HLOG_TRACE) << msg << std::endl; TStreamError::resetFlags(); _unlock(); }}
+#ifndef NDEBUG
 #define MSG_DEBUG(msg)      { if (TStreamError::checkFilter(HLOG_DEBUG)) { _lock(); *TError::Current(_getThreadID())->getStream() << TError::append(HLOG_DEBUG) << msg << std::endl; TStreamError::resetFlags(); _unlock(); }}
+#else
+#define MSG_DEBUG(msg)
+#endif
 #define MSG_PROTOCOL(msg)   { if (TStreamError::checkFilter(HLOG_PROTOCOL)) { _lock(); *TError::Current(_getThreadID())->getStream() << TError::append(HLOG_PROTOCOL) << msg << std::endl; TStreamError::resetFlags(); _unlock(); }}
 
-#define DECL_TRACER(msg)    TTracer _hidden_tracer(msg, __LINE__, (char *)__FILE__, _getThreadID());
+#define DECL_TRACER(msg)    TTracer _hidden_tracer(msg, __LINE__, static_cast<const char *>(__FILE__), _getThreadID());
 
 #define IS_LOG_INFO()       TStreamError::checkFilter(HLOG_INFO)
 #define IS_LOG_WARNING()    TStreamError::checkFilter(HLOG_WARNING)
@@ -193,7 +197,7 @@ class TError : public std::ostream
 #define IS_LOG_PROTOCOL()   TStreamError::checkFilter(HLOG_PROTOCOL)
 #define IS_LOG_ALL()        TStreamError::checkFilter(HLOG_ALL)
 
-#if defined(QT_DEBUG) || defined(DEBUG)
+#ifndef NDEBUG
 #define START_TEMPORARY_TRACE()     TStreamError::startTemporaryLogLevel(HLOG_TRACE)
 #define START_TEMPORARY_DEBUG()     TStreamError::startTemporaryLogLevel(HLOG_DEBUG)
 #define START_TEMPORARY_LOG(level)  TStreamError::startTemporaryLogLevel(level)

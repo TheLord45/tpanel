@@ -756,7 +756,7 @@ int ftplib::FtpAccess(const char *path, accesstype type, transfermode mode, ftph
         if ((strlen(path) + i) >= sizeof(buf))
             return 0;
 
-        strcpy(&buf[i], path);
+        strncpy(&buf[i], path, sizeof(buf));
     }
 
     if (nControl->cmode == ftplib::pasv)
@@ -1763,7 +1763,7 @@ int ftplib::Fxp(ftplib* src, ftplib* dst, const char *pathSrc, const char *pathD
             if ((strlen(pathSrc) + i) >= sizeof(buf))
                 return 0;
 
-            strcpy(&buf[i], pathSrc);
+            strncpy(&buf[i], pathSrc, sizeof(buf));
         }
 
         if (!src->FtpSendCmd(buf, '1', src->mp_ftphandle))
@@ -1781,7 +1781,7 @@ int ftplib::Fxp(ftplib* src, ftplib* dst, const char *pathSrc, const char *pathD
             if ((strlen(pathDst) + i) >= sizeof(buf))
                 return 0;
 
-            strcpy(&buf[i], pathDst);
+            strncpy(&buf[i], pathDst, sizeof(buf));
         }
 
         if (!dst->FtpSendCmd(buf, '1', dst->mp_ftphandle))
@@ -1837,7 +1837,7 @@ int ftplib::Fxp(ftplib* src, ftplib* dst, const char *pathSrc, const char *pathD
             if ((strlen(pathDst) + i) >= sizeof(buf))
                 return 0;
 
-            strcpy(&buf[i], pathDst);
+            strncpy(&buf[i], pathDst, sizeof(buf));
         }
 
         if (!dst->FtpSendCmd(buf, '1', dst->mp_ftphandle))
@@ -1855,7 +1855,7 @@ int ftplib::Fxp(ftplib* src, ftplib* dst, const char *pathSrc, const char *pathD
             if ((strlen(pathSrc) + i) >= sizeof(buf))
                 return 0;
 
-            strcpy(&buf[i], pathSrc);
+            strncpy(&buf[i], pathSrc, sizeof(buf));
         }
 
         if (!src->FtpSendCmd(buf, '1', src->mp_ftphandle))

@@ -150,7 +150,7 @@ class MainWindow : public QMainWindow, public TObject
         void sigDownloadSurface(const std::string& file, size_t size);
         void sigOnProgressChanged(int percent);
         void sigDisplayMessage(const std::string& msg, const std::string& title);
-        void sigAskPassword(ulong handle, const std::string& msg, const std::string& title);
+        void sigAskPassword(ulong handle, const std::string& msg, const std::string& title, int x, int y);
         void sigFileDialog(ulong handle, const std::string& path, const std::string& extension, const std::string& suffix);
         void sigSetSizeMainWindow(int width, int height);
         void sigStartWait(const std::string& text);
@@ -243,7 +243,7 @@ class MainWindow : public QMainWindow, public TObject
         void toFront(ulong handle);
         void downloadSurface(const std::string& file, size_t size);
         void displayMessage(const std::string& msg, const std::string& title);
-        void askPassword(ulong handle, const std::string msg, const std::string& title);
+        void askPassword(ulong handle, const std::string msg, const std::string& title, int x, int y);
         void fileDialog(ulong handle, const std::string& path, const std::string& extension, const std::string& suffix);
         // Progress bar (busy indicator)
         void onProgressChanged(int percent);
@@ -319,7 +319,7 @@ class MainWindow : public QMainWindow, public TObject
         void _setPhoneState(int state, int id);
         void _onProgressChanged(int percent);
         void _displayMessage(const std::string& msg, const std::string& title);
-        void _askPassword(ulong handle, const std::string& msg, const std::string& title);
+        void _askPassword(ulong handle, const std::string& msg, const std::string& title, int x, int y);
         void _fileDialog(ulong handle, const std::string& path, const std::string& extension, const std::string& suffix);
         void _setSizeMainWindow(int width, int height);
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)

@@ -19,6 +19,7 @@
 #include <fstream>
 #include <vector>
 #include <iterator>
+#include <map>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -42,11 +43,31 @@
 #include "ios/QASettings.h"
 #endif
 #endif
+
+#if __cplusplus < 201402L
+#   error "This module requires at least C++14 standard!"
+#else   // __cplusplus < 201402L
+#   if __cplusplus < 201703L
+#       include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#       warning "Support for C++14 and experimental filesystem will be removed in a future version!"
+#   else    // __cplusplus < 201703L
+#       include <filesystem>
+#       ifdef __ANDROID__
+namespace fs = std::__fs::filesystem;
+#       else    // __ANDROID__
+namespace fs = std::filesystem;
+#       endif   // __ANDROID__
+#   endif   // __cplusplus < 201703L
+#endif  // __cplusplus < 201402L
+
 using std::string;
 using std::ifstream;
 using std::ofstream;
 using std::fstream;
 using std::vector;
+using std::map;
+using std::pair;
 using std::cout;
 using std::cerr;
 using std::endl;
@@ -136,6 +157,8 @@ struct SETTINGS
 typedef struct SETTINGS settings_t;
 static settings_t localSettings;        //!< Global defines settings used in class TConfig.
 static settings_t localSettings_temp;   //!< Global defines settings temporary settings
+static map<string, string> userPasswords;
+static string fileUserPasswords("user_passwords.txt");
 
 /**
  * @brief TConfig::TConfig constructor
@@ -159,8 +182,11 @@ TConfig::TConfig(const std::string& path)
 #endif
     if (findConfig())
         readConfig();
+
+    readUserPasswords();
 #else
     readConfig();
+    readUserPasswords();
 #endif
 }
 
@@ -725,6 +751,119 @@ void TConfig::savePassword4(const std::string& pw)
         localSettings.password4 = pw;
 
     mTemporary = false;
+}
+
+void TConfig::setUserPassword(const string& user, const string& pw)
+{
+    DECL_TRACER("TConfig::setUserPassword(const string& user, const string& pw)");
+
+    userPasswords.insert(pair<string, string>(user, pw));
+    writeUserPasswords();
+}
+
+string TConfig::getUserPassword(const string& user)
+{
+    map<string, string>::iterator pw = userPasswords.find(user);
+
+    if (pw != userPasswords.end())
+        return pw->second;
+
+    return string();
+}
+
+void TConfig::clearUserPassword(const string& user)
+{
+    DECL_TRACER("TConfig::clearUserPassword(const string& user)");
+
+    map<string, string>::iterator pw = userPasswords.find(user);
+
+    if (pw != userPasswords.end())
+    {
+        userPasswords.erase(pw);
+        writeUserPasswords();
+    }
+}
+
+void TConfig::clearUserPasswords()
+{
+    DECL_TRACER("TConfig::clearUserPasswords()");
+
+    if (!userPasswords.empty())
+    {
+        userPasswords.clear();
+        fs::remove(localSettings.path + "/" + fileUserPasswords);
+    }
+}
+
+void TConfig::readUserPasswords()
+{
+    DECL_TRACER("TConfig::readUserPasswords()");
+
+    string fname = localSettings.path + "/" + fileUserPasswords;
+
+    if (!fs::exists(fname))
+        return;
+
+    ifstream f;
+
+    try
+    {
+        f.open(fname);
+
+        for (string line; getline(f, line);)
+        {
+            size_t pos = line.find_first_of("|");
+
+            if (pos == string::npos)
+                continue;
+
+            string user = line.substr(0, pos);
+            string pass = line.substr(pos + 1);
+            userPasswords.insert(pair<string, string>(user, pass));
+        }
+
+        f.close();
+    }
+    catch (std::exception& e)
+    {
+        MSG_ERROR("Error opening file " << fname << ": " << e.what());
+
+        if (f.is_open())
+            f.close();
+    }
+}
+
+void TConfig::writeUserPasswords()
+{
+    DECL_TRACER("TConfig::writeUserPasswords()");
+
+    if (userPasswords.empty())
+        return;
+
+    string fname = localSettings.path + "/" + fileUserPasswords;
+    ofstream f;
+
+    try
+    {
+        map<string, string>::iterator iter;
+
+        f.open(fname);
+
+        for (iter = userPasswords.begin(); iter != userPasswords.end(); ++iter)
+        {
+            string line = iter->first + "|" + iter->second + "\n";
+            f.write(line.c_str(), line.length());
+        }
+
+        f.close();
+    }
+    catch(std::exception& e)
+    {
+        MSG_ERROR("Error reading file " << fname << ": " << e.what());
+
+        if (f.is_open())
+            f.close();
+    }
 }
 
 void TConfig::saveSystemSoundFile(const std::string& snd)
@@ -1886,6 +2025,10 @@ bool TConfig::readConfig()
         localSettings_temp = localSettings;
     }
 
+    localSettings.password1 = settings.getPassword1().toStdString();
+    localSettings.password2 = settings.getPassword2().toStdString();
+    localSettings.password3 = settings.getPassword3().toStdString();
+    localSettings.password4 = settings.getPassword4().toStdString();
     mInitialized = true;
 
     if (IS_LOG_DEBUG())
