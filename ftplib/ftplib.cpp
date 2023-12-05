@@ -702,6 +702,8 @@ int ftplib::FtpAccess(const char *path, accesstype type, transfermode mode, ftph
     char buf[256];
     int dir;
 
+    memset(buf, 0, sizeof(buf));
+
     if ((path == NULL) && ((type == ftplib::filewrite)
                            || (type == ftplib::fileread)
                            || (type == ftplib::filereadappend)
@@ -756,7 +758,7 @@ int ftplib::FtpAccess(const char *path, accesstype type, transfermode mode, ftph
         if ((strlen(path) + i) >= sizeof(buf))
             return 0;
 
-        strncpy(&buf[i], path, sizeof(buf));
+        strncpy(&buf[i], path, sizeof(buf)-i);
     }
 
     if (nControl->cmode == ftplib::pasv)
@@ -1287,7 +1289,7 @@ int ftplib::Site(const char *cmd)
 int ftplib::Raw(const char *cmd)
 {
     char buf[256];
-    strncpy(buf, cmd, 256);
+    strncpy(buf, cmd, sizeof(buf));
 
     if (!FtpSendCmd(buf, '2', mp_ftphandle))
         return 0;
@@ -1763,7 +1765,7 @@ int ftplib::Fxp(ftplib* src, ftplib* dst, const char *pathSrc, const char *pathD
             if ((strlen(pathSrc) + i) >= sizeof(buf))
                 return 0;
 
-            strncpy(&buf[i], pathSrc, sizeof(buf));
+            strncpy(&buf[i], pathSrc, sizeof(buf)-i);
         }
 
         if (!src->FtpSendCmd(buf, '1', src->mp_ftphandle))
@@ -1781,7 +1783,7 @@ int ftplib::Fxp(ftplib* src, ftplib* dst, const char *pathSrc, const char *pathD
             if ((strlen(pathDst) + i) >= sizeof(buf))
                 return 0;
 
-            strncpy(&buf[i], pathDst, sizeof(buf));
+            strncpy(&buf[i], pathDst, sizeof(buf)-i);
         }
 
         if (!dst->FtpSendCmd(buf, '1', dst->mp_ftphandle))
@@ -1837,7 +1839,7 @@ int ftplib::Fxp(ftplib* src, ftplib* dst, const char *pathSrc, const char *pathD
             if ((strlen(pathDst) + i) >= sizeof(buf))
                 return 0;
 
-            strncpy(&buf[i], pathDst, sizeof(buf));
+            strncpy(&buf[i], pathDst, sizeof(buf)-i);
         }
 
         if (!dst->FtpSendCmd(buf, '1', dst->mp_ftphandle))
@@ -1855,7 +1857,7 @@ int ftplib::Fxp(ftplib* src, ftplib* dst, const char *pathSrc, const char *pathD
             if ((strlen(pathSrc) + i) >= sizeof(buf))
                 return 0;
 
-            strncpy(&buf[i], pathSrc, sizeof(buf));
+            strncpy(&buf[i], pathSrc, sizeof(buf)-i);
         }
 
         if (!src->FtpSendCmd(buf, '1', src->mp_ftphandle))

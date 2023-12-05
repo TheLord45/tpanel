@@ -1497,6 +1497,15 @@ void TPageManager::showSetup()
     QAndroidJniObject strPath = QAndroidJniObject::fromString(TConfig::getLogFile().c_str());
     QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "setLogEnableFile", "(Z)V", TConfig::getLogFileEnabled());
     QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "setLogPath", "(Ljava/lang/String;)V", strPath.object<jstring>());
+
+    QAndroidJniObject pw1 = QAndroidJniObject::fromString(TConfig::getPassword1().c_str());
+    QAndroidJniObject pw2 = QAndroidJniObject::fromString(TConfig::getPassword2().c_str());
+    QAndroidJniObject pw3 = QAndroidJniObject::fromString(TConfig::getPassword3().c_str());
+    QAndroidJniObject pw4 = QAndroidJniObject::fromString(TConfig::getPassword4().c_str());
+    QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "setPassword", "(ILjava/lang/String;)V", 1, pw1.object<jstring>());
+    QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "setPassword", "(ILjava/lang/String;)V", 2, pw2.object<jstring>());
+    QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "setPassword", "(ILjava/lang/String;)V", 3, pw3.object<jstring>());
+    QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "setPassword", "(ILjava/lang/String;)V", 4, pw4.object<jstring>());
 #else
     QJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "setLogLevel", "(I)V", TConfig::getLogLevelBits());
     QJniObject::callStaticMethod<void>("org/qtproject/theosys/Settings", "setLogEnableFile", "(I)V", (TConfig::getLogFileEnabled() ? 1 : 0));
@@ -1514,30 +1523,6 @@ void TPageManager::showSetup()
 #endif
 
     enterSetup();
-/*    if (mSetupActive)
-        return;
-
-    mSetupActive = true;
-    mSavedPage = mActualPage;
-
-    TPage *pg = getPage(mActualPage);
-
-    if (pg)
-    {
-        TSubPage *spage = pg->getFirstSubPage();
-        mSavedSubpages.clear();
-
-        while (spage)
-        {
-            if (spage->isVisible())
-                mSavedSubpages.push_back(spage->getNumber());
-
-            spage = pg->getNextSubPage();
-        }
-    }
-
-    setPage(SYSTEM_PAGE_CONTROLLER, true);    // Call the page "Controller" (NetLinx settings)
-*/
 #else
         if (_callShowSetup)
             _callShowSetup();

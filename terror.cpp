@@ -33,6 +33,22 @@
 #include "terror.h"
 #include "tconfig.h"
 
+#if __cplusplus < 201402L
+#   error "This module requires at least C++ 14 standard!"
+#else
+#   if __cplusplus < 201703L
+#       include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#       warning "Support for C++14 and experimental filesystem will be removed in a future version!"
+#   else
+#       include <filesystem>
+#       ifdef __ANDROID__
+namespace fs = std::__fs::filesystem;
+#       else
+namespace fs = std::filesystem;
+#       endif
+#   endif
+#endif
 
 #if LOGPATH == LPATH_SYSLOG || defined(__ANDROID__)
 #   ifdef __ANDROID__
@@ -332,7 +348,6 @@ void TStreamError::_init(bool reinit)
     mInitialized = true;
 
 #ifdef __ANDROID__
-//    mLogFileEnabled = TConfig::getLogFileEnabled();
     __android_log_print(ANDROID_LOG_DEBUG, "tpanel", "TStreamError::_init: Logfile is %s", (mLogFileEnabled ? "ENABLED" : "DISABLED"));
 #endif
 
@@ -383,19 +398,30 @@ void TStreamError::_init(bool reinit)
                 if (mStream && mStream != &std::cout)
                     delete mStream;
 
-#if __cplusplus < 201402L
-                mOfStream.open(mLogfile.c_str(), std::ios::out | std::ios::ate);
-#else   // __cplusplus < 201402L
-                mOfStream.open(mLogfile, std::ios::out | std::ios::ate);
-#endif  //__cplusplus < 201402L
-                mStream = new std::ostream(&mOfStream);
+                __android_log_print(ANDROID_LOG_DEBUG, "tpanel", "TStreamError::_init: Opening logfile: \"%s\"", mLogfile.c_str());
 
-                if (!isStreamValid())
+                if (!mOfStream.open(mLogfile, std::ios::out | std::ios::trunc))
                 {
-                    if (mOfStream.is_open())
-                        mOfStream.close();
-
+                    __android_log_print(ANDROID_LOG_ERROR, "tpanel", "TStreamError::_init: Could not open logfile!");
+                    std::cout.rdbuf(new androidbuf);
                     mStream = &std::cout;
+                    mLogFileEnabled = false;
+                }
+                else
+                {
+                    mStream = new std::ostream(&mOfStream);
+
+                    if (!isStreamValid())
+                    {
+                        delete mStream;
+
+                        if (mOfStream.is_open())
+                            mOfStream.close();
+
+                        std::cout.rdbuf(new androidbuf);
+                        mStream = &std::cout;
+                        mLogFileEnabled = false;
+                    }
                 }
             }
             else
@@ -579,13 +605,34 @@ std::ostream& indent(std::ostream& os)
 bool TStreamError::isStreamValid()
 {
     if (!mStream)
+    {
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_ERROR, "tpanel", "TStreamError::isStreamValid: Stream is nullptr!");
+#else
+        std::cerr << "ERROR: TStreamError::isStreamValid: Stream is nullptr!" << std::endl;
+#endif
         return false;
+    }
 
     if (mStream->rdstate() & std::ostream::failbit)
+    {
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_ERROR, "tpanel", "TStreamError::isStreamValid: Stream has failbit set!");
+#else
+        std::cerr << "ERROR: TStreamError::isStreamValid: Stream has failbit set!" << std::endl;
+#endif
         return false;
+    }
 
     if (mStream->rdstate() & std::ostream::badbit)
+    {
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_ERROR, "tpanel", "TStreamError::isStreamValid: Stream has badbit set!");
+#else
+        std::cerr << "ERROR: TStreamError::isStreamValid: Stream has badbit set!" << std::endl;
+#endif
         return false;
+    }
 
     return true;
 }

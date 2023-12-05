@@ -19,12 +19,12 @@
 #define __TERROR_H__
 
 #include <iostream>
-#include <iomanip>
+//#include <iomanip>
 #include <iostream>
-#include <sstream>
+//#include <sstream>
 #include <string>
 #include <chrono>
-#include <mutex>
+//#include <mutex>
 #include <thread>
 
 #define LPATH_FILE          1   //!< Creates a log file and protocolls there
@@ -51,6 +51,8 @@
 #define SLOG_DEBUG          "DEBUG"
 #define SLOG_PROTOCOL       "PROTOCOL"
 #define SLOG_ALL            "ALL"
+
+#define T_UNUSED(x) (void)x;
 
 typedef enum terrtype_t
 {

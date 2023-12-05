@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 to 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2018 to 2023 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -357,7 +357,7 @@ void TAmxNet::start()
         {
             string controller = TConfig::getController();
             MSG_INFO("Refusing to connect to invalid controller " << controller);
-            sendAllFuncNetwork(NSTATE_OFFLINE);
+            sendAllFuncNetwork(mLastOnlineState == NSTATE_OFFLINE ? NSTATE_OFFLINE1 : NSTATE_OFFLINE);
             std::this_thread::sleep_for(std::chrono::seconds(10));  // Wait 10 seconds before next try
             continue;
         }
@@ -1147,10 +1147,7 @@ void TAmxNet::handle_read(size_t n, R_TOKEN tk)
                     comm.checksum = buff_[comm.hlen + 3];
 
                     sendAllFuncTimer(comm.data.blinkMessage);
-/*                        if (callback)
-                        callback(comm);
-                    else
-                        MSG_WARNING("Missing callback function!"); */
+                    sendAllFuncNetwork(mLastOnlineState == NSTATE_ONLINE ? NSTATE_ONLINE1 : NSTATE_ONLINE);
                 break;
             }
         break;
@@ -2723,6 +2720,8 @@ int TAmxNet::countFiles()
 void TAmxNet::sendAllFuncNetwork(int state)
 {
     DECL_TRACER("TAmxNet::sendAllFuncNetwork(int state)");
+
+    mLastOnlineState = state;
 
     if (mFuncsNetwork.empty())
         return;

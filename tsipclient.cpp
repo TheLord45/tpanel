@@ -1677,6 +1677,8 @@ void TSIPClient::call_on_dtmf_callback2(pjsua_call_id call_id, const pjsua_dtmf_
 {
     DECL_TRACER("TSIPClient::call_on_dtmf_callback2(pjsua_call_id call_id, const pjsua_dtmf_info *info)");
 
+    T_UNUSED(call_id);
+
     char duration[16];
     char method[16];
 
@@ -1739,6 +1741,7 @@ void TSIPClient::on_call_transfer_status(pjsua_call_id call_id, int status_code,
 {
     DECL_TRACER("TSIPClient::on_call_transfer_status(pjsua_call_id call_id, int status_code, const pj_str_t *status_text, pj_bool_t final, pj_bool_t *p_cont)");
 
+    T_UNUSED(final);
     string dbgMsg;
 
     if (status_text->slen > 0)
@@ -1877,6 +1880,7 @@ void TSIPClient::on_pager2(pjsua_call_id call_id, const pj_str_t* from, const pj
 
     PJ_UNUSED_ARG(contact);
     PJ_UNUSED_ARG(rdata);
+    PJ_UNUSED_ARG(call_id);
 
     string sFrom(from->ptr, from->slen);
     string sTo(to->ptr, to->slen);
@@ -1941,6 +1945,9 @@ void TSIPClient::on_buddy_state(pjsua_buddy_id buddy_id)
 void TSIPClient::on_buddy_evsub_state(pjsua_buddy_id buddy_id, pjsip_evsub* sub, pjsip_event* event)
 {
     DECL_TRACER("TSIPClient::on_buddy_evsub_state(pjsua_buddy_id buddy_id, pjsip_evsub* sub, pjsip_event* event)");
+
+    T_UNUSED(buddy_id);
+    T_UNUSED(sub);
 
     char event_info[80];
 

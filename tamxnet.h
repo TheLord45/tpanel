@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 to 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2018 to 2023 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,7 +45,9 @@ namespace amx
 #define BUF_SIZE    0x1000  // 4096 bytes
 
 #define NSTATE_OFFLINE      0
+#define NSTATE_OFFLINE1     1
 #define NSTATE_ONLINE       6
+#define NSTATE_ONLINE1      5
 #define NSTATE_CONNECTING   9
 
 #define WAIT_RESET          3   // Number of seconds to wait in case of connecting to another controller
@@ -440,7 +442,6 @@ namespace amx
             void sendAllFuncTimer(const ANET_BLINK& blink);
 
             std::function<void(const ANET_COMMAND&)> callback;
-            std::function<bool(TAmxNet *)> cbWebConn;
 
             TSocket *mSocket{nullptr};  // Pointer to socket class needed for communication
             FILE *rcvFile{nullptr};
@@ -478,6 +479,7 @@ namespace amx
             bool isOpenRcv{false};
             bool _retry{false};
             char buff_[BUF_SIZE];       // Internal used buffer for network communication
+            int mLastOnlineState{NSTATE_OFFLINE};
     };
 }
 

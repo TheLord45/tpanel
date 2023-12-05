@@ -21,6 +21,7 @@
 #include <cstring>
 #include <iomanip>
 #include <algorithm>
+#include <sstream>
 #ifdef __LINUX__
 #include <bits/stdc++.h>
 #endif

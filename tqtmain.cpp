@@ -4631,7 +4631,7 @@ void MainWindow::setSubPage(ulong handle, ulong parent, int left, int top, int w
 {
     DECL_TRACER("MainWindow::setSubPage(ulong handle, int left, int top, int width, int height)");
 
-//    TLOCKER(draw_mutex);
+    Q_UNUSED(height);
     OBJECT_t *par = findObject(parent);
 
     if (!par || par->type != OBJ_PAGE)

@@ -218,28 +218,24 @@
     </PreferenceCategory>
     <PreferenceCategory android:title="Passwords">
         <EditTextPreference
-            android:id="@+id/systemPassword1"
             android:defaultValue="1988"
             android:key="passwords_1"
             android:title="Password 1"
             android:summary="********"
             android:inputType="textPassword" />
         <EditTextPreference
-            android:id="@+id/systemPassword2"
             android:defaultValue="1988"
             android:key="passwords_2"
             android:title="Password 2"
             android:summary="********"
             android:inputType="textPassword" />
         <EditTextPreference
-            android:id="@+id/systemPassword3"
             android:defaultValue="1988"
             android:key="passwords_3"
             android:title="Password 3"
             android:summary="********"
             android:inputType="textPassword" />
         <EditTextPreference
-            android:id="@+id/systemPassword4"
             android:defaultValue="1988"
             android:key="passwords_4"
             android:title="Password 4"

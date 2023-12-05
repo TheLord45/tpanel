@@ -18,7 +18,9 @@
 package org.qtproject.theosys;
 
 import java.util.*;
+import java.io.File;
 
+import android.content.ContentResolver;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -716,10 +718,17 @@ public class SettingsActivity extends AppCompatActivity
                         int index = path.lastIndexOf("/");
 
                         if (index >= 0)
+                        {
+                            // First delete the file, if it exists
+                            File file = new File(path);
+                            file.delete();
+                            // Get the file name only
                             path = path.substring(index + 1);
+                        }
 
                         m_intLogFile = new Intent(Intent.ACTION_CREATE_DOCUMENT); // Intent to start File Manager
                         m_intLogFile.addCategory(Intent.CATEGORY_OPENABLE);
+                        m_intLogFile.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
                         m_intLogFile.setType("text/*");
                         m_intLogFile.putExtra(Intent.EXTRA_TITLE, path);
                         startActivityForResult(m_intLogFile, CREATE_FILE);
@@ -808,14 +817,18 @@ public class SettingsActivity extends AppCompatActivity
         {
             Uri uri = data.getData();
             String value = UriToPath.getFileName(uri, getApplicationContext());
-            Logger.log(Logger.HLOG_DEBUG, "Transfered file to: " + value);
+            Logger.log(Logger.HLOG_DEBUG, "Translated URI to file: " + value);
 
             if (logFilePref != null)
-            {
                 logFilePref.setText(value);
-                Logger.log(Logger.HLOG_DEBUG, "Stored file name to input line.");
-            }
 
+            ContentResolver contentResolver = getContentResolver();
+            contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            // We must delete the just created file to ensure it can be accessed
+            // by the error logger.
+            File file = new File(value);
+            file.delete();
+            // Now we set the path to the config
             setLogFile(value.toString());
         }
     }
