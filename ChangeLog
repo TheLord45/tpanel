@@ -3,6 +3,8 @@ ChangeLog
 
 Release: 1.4.1
 ===============================================================================
+2023-12-05 Fixed broken FTP transfer.
+
 2023-12-02 Fixed the borders of buttons.
 
 2023-11-30 Added password support for Android and iOS.
