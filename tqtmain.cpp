@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -550,7 +550,8 @@ MainWindow::MainWindow()
                                           std::placeholders::_4,
                                           std::placeholders::_5,
                                           std::placeholders::_6,
-                                          std::placeholders::_7));
+                                          std::placeholders::_7,
+                                          std::placeholders::_8));
 
     gPageManager->registerCallbackSB(bind(&MainWindow::_setBackground, this,
                                          std::placeholders::_1,
@@ -1320,9 +1321,15 @@ void MainWindow::mousePressEvent(QMouseEvent* event)
         mTouchStart = std::chrono::steady_clock::now();
         mTouchX = mLastPressX;
         mTouchY = mLastPressY;
+        event->accept();
     }
     else if (event->button() == Qt::MiddleButton)
+    {
+        event->accept();
         settings();
+    }
+    else
+        QMainWindow::mousePressEvent(event);
 }
 
 /**
@@ -1410,6 +1417,7 @@ void MainWindow::mouseReleaseEvent(QMouseEvent* event)
         if (msecs.count() < 100)    // 1/10 of a second
         {
             MSG_DEBUG("Time was too short: " << msecs.count());
+            event->accept();
             return;
         }
 
@@ -1428,21 +1436,31 @@ void MainWindow::mouseReleaseEvent(QMouseEvent* event)
             gPageManager->onSwipeEvent(TPageManager::SW_DOWN);
         else if (y < mTouchY && (mTouchY - y) > (height / 3))
             gPageManager->onSwipeEvent(TPageManager::SW_UP);
+
+        event->accept();
     }
+    else
+        QMainWindow::mouseReleaseEvent(event);
 }
 
 void MainWindow::mouseMoveEvent(QMouseEvent* event)
 {
     DECL_TRACER("MainWindow::mouseMoveEvent(QMouseEvent* event)");
 
-    Q_UNUSED(event);
-/*
-    QWidget *w = childAt(event->x(), event->y());
+    if (!gPageManager)
+        return;
+
+    QWidget *w = childAt(event->position().x(), event->position().y());
 
     if (w)
     {
         MSG_DEBUG("Object " << w->objectName().toStdString() << " is under mouse cursor.");
-        QObject *par = w->parent();
+
+        gPageManager->mouseMoveEvent(event->position().x(), event->position().y());
+        mLastPressX = event->position().x();
+        mLastPressY = event->position().y();
+    }
+/*        QObject *par = w->parent();
 
         if (par)
         {
@@ -1485,18 +1503,24 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
         if (ret == QMessageBox::Accepted)   // This is correct! QT seems to change here the buttons.
         {
             showSetup();
+            event->accept();
             return;
         }
         else if (ret == QMessageBox::Rejected)  // This is correct! QT seems to change here the buttons.
+        {
+            event->accept();
             close();
+        }
     }
+    else
+        QMainWindow::keyPressEvent(event);
 }
 
 void MainWindow::keyReleaseEvent(QKeyEvent *event)
 {
     DECL_TRACER("MainWindow::keyReleaseEvent(QKeyEvent *event)");
 
-    Q_UNUSED(event);
+    QMainWindow::keyReleaseEvent(event);
 }
 
 /**
@@ -2516,8 +2540,8 @@ void MainWindow::pageFinished(ulong handle)
             if (!obj->object.widget->isEnabled())
                 obj->object.widget->setEnabled(true);
 
-            obj->object.widget->lower();
             obj->object.widget->show();
+            obj->object.widget->lower();
             obj->object.widget->raise();
         }
 
@@ -2555,8 +2579,8 @@ void MainWindow::pageFinished(ulong handle)
                                 if (!obj->object.widget->isEnabled())
                                     obj->object.widget->setEnabled(true);
 
-                                obj->object.widget->lower();
                                 obj->object.widget->show();
+                                obj->object.widget->lower();
                                 obj->object.widget->raise();
                             }
                         break;
@@ -2999,14 +3023,14 @@ void MainWindow::_setPage(ulong handle, int width, int height)
     emit sigSetPage(handle, width, height);
 }
 
-void MainWindow::_setSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate)
+void MainWindow::_setSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate, bool modal)
 {
-    DECL_TRACER("MainWindow::_setSubPage(ulong handle, ulong parent, int left, int top, int width, int height)");
+    DECL_TRACER("MainWindow::_setSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate, bool modal)");
 
     if (prg_stopped || !mHasFocus)
         return;
 
-    emit sigSetSubPage(handle, parent, left, top, width, height, animate);
+    emit sigSetSubPage(handle, parent, left, top, width, height, animate, modal);
 }
 
 #ifdef _OPAQUE_SKIA_
@@ -3948,7 +3972,7 @@ void MainWindow::displayButton(ulong handle, ulong parent, TBitmap buffer, int w
 
         if (nobj.type == OBJ_MARQUEE)
         {
-            nobj.object.marquee = new TQMarquee(par->object.widget, 1, static_cast<TQMarquee::MQ_TYPES>(marqtype), marq);
+            nobj.object.marquee = new TQMarquee(par->object.widget, 1, static_cast<TQMarquee::MQ_TYPES>(marqtype));
             nobj.object.marquee->setObjectName(QString("Marquee_") + handleToString(handle).c_str());
 
             if (mGestureFilter)
@@ -3996,11 +4020,11 @@ void MainWindow::displayButton(ulong handle, ulong parent, TBitmap buffer, int w
     {
         MSG_DEBUG("Object " << handleToString(handle) << " of type " << TObject::objectToString(obj->type) << " found!");
 
-        if (passthrough && obj->object.label)
+        if (passthrough && obj->object.label)   // Because it's a union we can test on any of the pointer types
         {
             if (obj->type == OBJ_BUTTON)
                 obj->object.label->setAttribute(Qt::WA_TransparentForMouseEvents);
-            else
+            else if (obj->type == OBJ_MARQUEE)
                 obj->object.marquee->setAttribute(Qt::WA_TransparentForMouseEvents);
         }
 
@@ -4111,6 +4135,26 @@ void MainWindow::setMarqueeText(Button::TButton* button)
     }
 
     TQMarquee *marquee = obj->object.marquee;
+    Button::TEXT_ORIENTATION to = static_cast<Button::TEXT_ORIENTATION>(button->getTextJustification(nullptr, nullptr, button->getActiveInstance()));
+
+    switch(to)
+    {
+        case Button::ORI_TOP_LEFT:          marquee->setAlignment(Qt::AlignTop | Qt::AlignLeft); break;
+        case Button::ORI_TOP_MIDDLE:        marquee->setAlignment(Qt::AlignTop | Qt::AlignHCenter); break;
+        case Button::ORI_TOP_RIGHT:         marquee->setAlignment(Qt::AlignTop | Qt::AlignRight); break;
+
+        case Button::ORI_CENTER_LEFT:       marquee->setAlignment(Qt::AlignHCenter | Qt::AlignLeft); break;
+        case Button::ORI_CENTER_MIDDLE:     marquee->setAlignment(Qt::AlignCenter); break;
+        case Button::ORI_CENTER_RIGHT:      marquee->setAlignment(Qt::AlignHCenter | Qt::AlignRight); break;
+
+        case Button::ORI_BOTTOM_LEFT:       marquee->setAlignment(Qt::AlignBottom | Qt::AlignLeft); break;
+        case Button::ORI_BOTTOM_MIDDLE:     marquee->setAlignment(Qt::AlignBottom | Qt::AlignHCenter); break;
+        case Button::ORI_BOTTOM_RIGHT:      marquee->setAlignment(Qt::AlignBottom | Qt::AlignRight); break;
+
+        default:
+            marquee->setAlignment(Qt::AlignCenter);
+    }
+
     marquee->setText(button->getText().c_str());
     marquee->setSpeed(button->getMarqueeSpeed(button->getActiveInstance()));
     int frameSize = scale(button->getBorderSize(button->getBorderStyle(button->getActiveInstance())));
@@ -4627,9 +4671,9 @@ void MainWindow::setPage(ulong handle, int width, int height)
     MSG_PROTOCOL("Current page: " << handleToString(handle));
 }
 
-void MainWindow::setSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate)
+void MainWindow::setSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate, bool modal)
 {
-    DECL_TRACER("MainWindow::setSubPage(ulong handle, int left, int top, int width, int height)");
+    DECL_TRACER("MainWindow::setSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate, bool modal)");
 
     Q_UNUSED(height);
     OBJECT_t *par = findObject(parent);
@@ -4718,6 +4762,13 @@ void MainWindow::setSubPage(ulong handle, ulong parent, int left, int top, int w
     {
         obj->object.widget = new QWidget(par->object.widget);
         obj->object.widget->setObjectName(QString("Subpage_%1").arg(handleToString(handle).c_str()));
+/*
+        if (modal)
+        {
+            obj->object.widget->setWindowModality(Qt::WindowModal);
+            MSG_TRACE("Subpage " << handleToString(handle) << " is a modal page");
+        }
+*/
     }
     else
         obj->object.widget->setParent(par->object.widget);
@@ -5291,7 +5342,6 @@ void MainWindow::inputText(Button::TButton *button, QByteArray buf, int width, i
         return;
     }
 
-//    TLOCKER(draw_mutex);
     ulong handle = button->getHandle();
     ulong parent = button->getParent();
     TObject::OBJECT_t *obj = findObject(handle);
@@ -5333,17 +5383,21 @@ void MainWindow::inputText(Button::TButton *button, QByteArray buf, int width, i
         string text = button->getText(instance);
         string mask = button->getInputMask();
 
+        if (button->isMultiLine())
+            text = ReplaceString(text, "|", "\n");
+
         nobj.object.plaintext = new TQEditLine(text, par->object.widget, button->isMultiLine());
+//        nobj.object.plaintext = new TQTextEdit(QString::fromStdString(text), par->object.widget);
         nobj.object.plaintext->setObjectName(string("EditLine_") + handleToString(handle));
         nobj.object.plaintext->setHandle(handle);
         nobj.object.plaintext->move(nobj.left, nobj.top);
         nobj.object.plaintext->setFixedSize(nobj.width, nobj.height);
         nobj.object.plaintext->setPadding(frame, frame, frame, frame);
-        nobj.object.plaintext->setWordWrapMode(button->getTextWordWrap());
         nobj.object.plaintext->setPasswordChar(button->getPasswordChar());
         nobj.wid = nobj.object.plaintext->winId();
+        bool sys = false;
 
-        if (gPageManager->isSetupActive())
+        if (button->getAddressPort() == 0 || button->getChannelPort() == 0)
         {
             int ch = 0;
 
@@ -5358,15 +5412,21 @@ void MainWindow::inputText(Button::TButton *button, QByteArray buf, int width, i
                 case SYSTEM_ITEM_NETLINX_PORT:
                     nobj.object.plaintext->setInputMask("000000");
                     nobj.object.plaintext->setNumericInput();
+                    sys = true;
                 break;
 
                 case SYSTEM_ITEM_NETLINX_CHANNEL:
                     nobj.object.plaintext->setInputMask("99999");
                     nobj.object.plaintext->setNumericInput();
+                    sys = true;
                 break;
             }
+
+            if (sys)
+                MSG_TRACE("System button " << ch << " detected.");
         }
-        else if (!mask.empty())
+
+        if (!sys && !mask.empty())
             nobj.object.plaintext->setInputMask(convertMask(mask));
 
         if (!buf.size() || pixline == 0)
@@ -5387,61 +5447,15 @@ void MainWindow::inputText(Button::TButton *button, QByteArray buf, int width, i
         else
             pix.convertFromImage(img);
 
+//        nobj.object.plaintext->setBgPixmap(pix);
+        nobj.object.plaintext->setBackgroundPixmap(pix);
         // Load the font
-        FONT_T font = button->getFont();
-        vector<string> fontList = TFont::getFontPathList();
-        vector<string>::iterator iter;
-        string ffile;
-
-        for (iter = fontList.begin(); iter != fontList.end(); ++iter)
-        {
-            TValidateFile vf;
-
-            if (!vf.isValidFile(*iter + "/" + font.file))
-                continue;
-
-            ffile = *iter + "/" + font.file;
-            break;
-        }
-
-        if (ffile.empty())
-        {
-            MSG_ERROR("Font " << font.file << " doesn't exists!");
-            return;
-        }
-
-        if (QFontDatabase::addApplicationFont(ffile.c_str()) == -1)
-        {
-            MSG_ERROR("Font " << ffile << " could not be loaded!");
-            TError::setError();
-            return;
-        }
-
-        QFont ft;
-        ft.setFamily(font.name.c_str());
+        QFont font = loadFont(button->getFontIndex(button->getActiveInstance()), button->getFont(), button->getFontStyle());
 
         if (gPageManager && gPageManager->isSetupActive())
         {
             int eighty = static_cast<int>(static_cast<double>(button->getHeight()) / 100.0 * 85.0);
-            ft.setPixelSize(scaleSetup(eighty - frame * 2));
-        }
-        else
-            ft.setPixelSize(scale(font.size));
-
-        MSG_DEBUG("Using font \"" << font.name << "\" with size " << font.size << "px.");
-
-        switch (button->getFontStyle())
-        {
-            case FONT_BOLD:     ft.setBold(true); break;
-            case FONT_ITALIC:   ft.setItalic(true); break;
-            case FONT_BOLD_ITALIC:
-                ft.setBold(true);
-                ft.setItalic(true);
-                break;
-
-            default:
-                ft.setBold(false);
-                ft.setItalic(false);
+            font.setPixelSize(scaleSetup(eighty - frame * 2));
         }
 
         QPalette palette(this->palette());
@@ -5452,9 +5466,9 @@ void MainWindow::inputText(Button::TButton *button, QByteArray buf, int width, i
         palette.setColor(QPalette::Window, cfcolor);
         palette.setColor(QPalette::Base, cfcolor);
         palette.setColor(QPalette::Text, txcolor);
-        palette.setBrush(QPalette::Window, QBrush(pix));
+//        palette.setBrush(QPalette::Window, QBrush(pix));
 
-        nobj.object.plaintext->setFont(ft);
+        nobj.object.plaintext->setFont(font);
         nobj.object.plaintext->setPalette(palette);
         nobj.object.plaintext->setTextColor(txcolor);
 
@@ -5474,6 +5488,10 @@ void MainWindow::inputText(Button::TButton *button, QByteArray buf, int width, i
 
         string text = button->getText(instance);
         string mask = button->getInputMask();
+
+        if (button->isMultiLine())
+            text = ReplaceString(text, "|", "\n");
+
         obj->object.plaintext->setText(text);
 
         if (!mask.empty())
@@ -5487,6 +5505,8 @@ void MainWindow::inputText(Button::TButton *button, QByteArray buf, int width, i
         else
             pix.convertFromImage(img);
 
+//        obj->object.plaintext->setBgPixmap(pix);
+        obj->object.plaintext->setBackgroundPixmap(pix);
         QPalette palette(this->palette());
         TColor::COLOR_T textColor = TColor::getAMXColor(button->getTextColor(instance));
         TColor::COLOR_T fillColor = TColor::getAMXColor(button->getFillColor(instance));
@@ -5495,7 +5515,7 @@ void MainWindow::inputText(Button::TButton *button, QByteArray buf, int width, i
         palette.setColor(QPalette::Window, cfcolor);
         palette.setColor(QPalette::Base, cfcolor);
         palette.setColor(QPalette::Text, txcolor);
-        palette.setBrush(QPalette::Window, QBrush(pix));
+//        palette.setBrush(QPalette::Window, QBrush(pix));
 
         obj->object.plaintext->setPalette(palette);
         obj->object.plaintext->setTextColor(txcolor);

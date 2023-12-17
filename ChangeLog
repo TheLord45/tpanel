@@ -3,6 +3,14 @@ ChangeLog
 
 Release: 1.4.1
 ===============================================================================
+2023-12-13 Added joystick support.
+           Added command ^GIV
+
+2023-12-12 Completed the bargraphs by adding all possible level functions.
+
+2023-12-06 Added command ^RPP to reset panel protect password
+           Added support for reset of subpage when showed.
+
 2023-12-05 Fixed broken FTP transfer.
 
 2023-12-02 Fixed the borders of buttons.

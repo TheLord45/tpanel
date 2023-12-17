@@ -26,6 +26,23 @@
 #include "tresources.h"
 #include "terror.h"
 
+#if __cplusplus < 201402L
+#   error "This module requires at least C++14 standard!"
+#else
+#   if __cplusplus < 201703L
+#       include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#       warning "Support for C++14 and experimental filesystem will be removed in a future version!"
+#   else
+#       include <filesystem>
+#       ifdef __ANDROID__
+namespace fs = std::__fs::filesystem;
+#       else
+namespace fs = std::filesystem;
+#       endif
+#   endif
+#endif
+
 using std::string;
 using std::vector;
 using std::ifstream;
@@ -243,7 +260,7 @@ void TSystemDraw::startElement(void *, const XML_Char *name, const XML_Char **)
     if (strCaseCompare(name, "cursorFamily") == 0)
         mActFamily = X_CURSOR_FAMILY;
 
-    if (strCaseCompare(name, "cursorStyle") == 0)
+    if (strCaseCompare(name, "cursor") == 0 || strCaseCompare(name, "cursorStyle") == 0)
         mActFamily = X_CURSOR_STYLE;
 
     if (strCaseCompare(name, "sliderData") == 0)
@@ -754,22 +771,6 @@ bool TSystemDraw::getBorder(const string &family, LINE_TYPE_t lt, BORDER_t *bord
                 border->tl_alpha = basePath + getDirEntry(&dir, "_tl");
                 border->tr_alpha = basePath + getDirEntry(&dir, "_tr");
                 border->border = *brdIter;
-                MSG_DEBUG("Bottom        : " << border->b);
-                MSG_DEBUG("Top           : " << border->t);
-                MSG_DEBUG("Left          : " << border->l);
-                MSG_DEBUG("Right         : " << border->r);
-                MSG_DEBUG("Top left      : " << border->tl);
-                MSG_DEBUG("Top right     : " << border->tr);
-                MSG_DEBUG("Bottom left   : " << border->bl);
-                MSG_DEBUG("Bottom right  : " << border->br);
-                MSG_DEBUG("Bottom A      : " << border->b_alpha);
-                MSG_DEBUG("Top A         : " << border->t_alpha);
-                MSG_DEBUG("Left A        : " << border->l_alpha);
-                MSG_DEBUG("Right A       : " << border->r_alpha);
-                MSG_DEBUG("Top left A    : " << border->tl_alpha);
-                MSG_DEBUG("Top right A   : " << border->tr_alpha);
-                MSG_DEBUG("Bottom left A : " << border->bl_alpha);
-                MSG_DEBUG("Bottom right A: " << border->br_alpha);
                 // Eliminate equal paths
                 if (border->b == border->b_alpha)
                 {
@@ -834,6 +835,23 @@ bool TSystemDraw::getBorder(const string &family, LINE_TYPE_t lt, BORDER_t *bord
                     else
                         border->br_alpha.clear();
                 }
+
+                MSG_DEBUG("Bottom        : " << border->b);
+                MSG_DEBUG("Top           : " << border->t);
+                MSG_DEBUG("Left          : " << border->l);
+                MSG_DEBUG("Right         : " << border->r);
+                MSG_DEBUG("Top left      : " << border->tl);
+                MSG_DEBUG("Top right     : " << border->tr);
+                MSG_DEBUG("Bottom left   : " << border->bl);
+                MSG_DEBUG("Bottom right  : " << border->br);
+                MSG_DEBUG("Bottom A      : " << border->b_alpha);
+                MSG_DEBUG("Top A         : " << border->t_alpha);
+                MSG_DEBUG("Left A        : " << border->l_alpha);
+                MSG_DEBUG("Right A       : " << border->r_alpha);
+                MSG_DEBUG("Top left A    : " << border->tl_alpha);
+                MSG_DEBUG("Top right A   : " << border->tr_alpha);
+                MSG_DEBUG("Bottom left A : " << border->bl_alpha);
+                MSG_DEBUG("Bottom right A: " << border->br_alpha);
             }
             else
                 border->border = *brdIter;
@@ -981,7 +999,6 @@ vector<SLIDER_t> TSystemDraw::getSliderFiles(const string& slider)
     string myPath = mPath + "/sliders";
     dir::TDirectory dir(myPath);
     dir.setStripPath(true);
-    MSG_DEBUG("Scanning for files " << mPath << "/sliders/" << fbase << "_*");
     int num = dir.scanFiles(fbase + "_");
 
     if (num <= 0)
@@ -993,40 +1010,99 @@ vector<SLIDER_t> TSystemDraw::getSliderFiles(const string& slider)
     slid.type = SGR_TOP;
     slid.path = myPath + dir.getEntryWithPart(fbase+"_t");
     slid.pathAlpha = myPath + dir.getEntryWithPart("_t_alpha");
-    MSG_DEBUG("Adding paths \"" << slid.path << "\" and \"" << slid.pathAlpha << "\"");
     list.push_back(slid);
 
     slid.type = SGR_BOTTOM;
     slid.path = myPath + dir.getEntryWithPart(fbase+"_b");
     slid.pathAlpha = myPath + dir.getEntryWithPart("_b_alpha");
-    MSG_DEBUG("Adding paths \"" << slid.path << "\" and \"" << slid.pathAlpha << "\"");
     list.push_back(slid);
 
     slid.type = SGR_LEFT;
     slid.path = myPath + dir.getEntryWithPart(fbase+"_l");
     slid.pathAlpha = myPath + dir.getEntryWithPart("_l_alpha");
-    MSG_DEBUG("Adding paths \"" << slid.path << "\" and \"" << slid.pathAlpha << "\"");
     list.push_back(slid);
 
     slid.type = SGR_RIGHT;
     slid.path = myPath + dir.getEntryWithPart(fbase+"_r");
     slid.pathAlpha = myPath + dir.getEntryWithPart("_r_alpha");
-    MSG_DEBUG("Adding paths \"" << slid.path << "\" and \"" << slid.pathAlpha << "\"");
     list.push_back(slid);
 
     slid.type = SGR_HORIZONTAL;
     slid.path = myPath + dir.getEntryWithPart(fbase+"_h");
     slid.pathAlpha = myPath + dir.getEntryWithPart("_h_alpha");
-    MSG_DEBUG("Adding paths \"" << slid.path << "\" and \"" << slid.pathAlpha << "\"");
     list.push_back(slid);
 
     slid.type = SGR_VERTICAL;
     slid.path = myPath + dir.getEntryWithPart(fbase+"_v");
     slid.pathAlpha = myPath + dir.getEntryWithPart("_v_alpha");
-    MSG_DEBUG("Adding paths \"" << slid.path << "\" and \"" << slid.pathAlpha << "\"");
     list.push_back(slid);
 
     return list;
+}
+
+bool TSystemDraw::getCursor(const string& cursor, CURSOR_STYLE_t* style)
+{
+    DECL_TRACER("TSystemDraw::getCursor(const string& cursor, CURSOR_STYLE_t* style)");
+
+    if (cursor.empty() || mDraw.cursorStyles.empty() || !style)
+        return false;
+
+    vector<CURSOR_STYLE_t>::iterator iter;
+
+    for (iter = mDraw.cursorStyles.begin(); iter != mDraw.cursorStyles.end(); ++iter)
+    {
+        if (iter->name.compare(cursor) == 0)
+        {
+            *style = *iter;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool TSystemDraw::existCursor(const string& cursor)
+{
+    DECL_TRACER("TSystemDraw::existCursor(const string& cursor)");
+
+    if (cursor.empty() || mDraw.cursors.empty())
+        return false;
+
+    vector<FAMILY_t>::iterator iter;
+
+    for (iter = mDraw.cursors.begin(); iter != mDraw.cursors.end(); ++iter)
+    {
+        if (iter->name == "Cursors")
+        {
+            vector<string>::iterator memIter;
+
+            for (memIter = iter->member.begin(); memIter != iter->member.end(); ++memIter)
+            {
+                if (*memIter == cursor)
+                    return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+CURSOR_t TSystemDraw::getCursorFiles(const CURSOR_STYLE_t& style)
+{
+    DECL_TRACER("TSystemDraw::getCursorFiles(const CURSOR_STYLE_t& style)");
+
+    string path = mPath + "/cursors";
+    string f1 = path + "/" + style.baseFile + ".png";
+    string f2 = path + "/" + style.baseFile + "_alpha.png";
+    CURSOR_t cursor;
+
+    if (fs::exists(f1))
+        cursor.imageBase = f1;
+
+    if (fs::exists(f2))
+        cursor.imageAlpha = f2;
+
+    return cursor;
 }
 
 /**

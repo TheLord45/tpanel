@@ -205,7 +205,7 @@ TStreamError::TStreamError(const string& logFile, const std::string& logLevel)
     if (!logLevel.empty())
         setLogLevel(logLevel);
     else if (!TConfig::getLogLevel().empty())
-        setLogLevel(TConfig::getLogFile());
+        setLogLevel(TConfig::getLogLevel());
 
     _init();
 }
@@ -268,8 +268,8 @@ void TStreamError::setLogLevel(const std::string& slv)
 #ifdef __ANDROID__
     __android_log_print(ANDROID_LOG_INFO, "tpanel", "TStreamError::setLogLevel: New loglevel: %s", slv.c_str());
 #else
-    if (TError::Current()->getStream())
-        *TError::Current()->getStream() << TError::append(HLOG_INFO) << "New loglevel: " << slv << std::endl;
+    if (mInitialized && mStream)
+        *mStream << TError::append(HLOG_INFO) << "New loglevel: " << slv << std::endl;
     else
         std::cout << TError::append(HLOG_INFO) << "New loglevel: " << slv << std::endl;
 #endif
@@ -380,6 +380,7 @@ void TStreamError::_init(bool reinit)
                 if (mOfStream.is_open())
                     mOfStream.close();
 
+                delete mStream;
                 mStream = &std::cout;
             }
 #else   //__ANDROID__
@@ -453,7 +454,7 @@ void TStreamError::_init(bool reinit)
 #else
         std::cout << "DEBUG: Stream wurde auf std::cout gesetzt." << std::endl;
 #endif  // __ANDROID__
-#endif
+#endif  // defined(QT_DEBUG) || defined(DEBUG)
     }
 #else  // LOGPATH == LPATH_FILE
     if (!mStream)

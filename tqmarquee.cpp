@@ -18,9 +18,15 @@
 #include <QPainter>
 #include <QString>
 #include <QStaticText>
+#include <QRegion>
+#include <QApplication>
+
+#include <vector>
 
 #include "tqmarquee.h"
 #include "terror.h"
+
+using std::vector;
 
 TQMarquee::TQMarquee(QWidget* parent)
     : QLabel(parent),
@@ -51,6 +57,14 @@ TQMarquee::TQMarquee(QWidget* parent, int msec, MQ_TYPES type, bool enable)
 TQMarquee::~TQMarquee()
 {
     DECL_TRACER("TQMarquee::~TQMarquee()");
+
+    if (mTimer)
+    {
+        if (mTimer->isActive())
+            mTimer->stop();
+
+        delete mTimer;
+    }
 }
 
 void TQMarquee::init()
@@ -66,11 +80,14 @@ void TQMarquee::init()
             mDirection = Qt::RightToLeft;
     }
 
-    connect(&mTimer, &QTimer::timeout, this, &TQMarquee::refreshLabel);
-    // By default the background image is transparent
-    mBackgroundImage.fill(Qt::transparent);
+    setAutoFillBackground(false);
+    mTimer = new QTimer(this);
+    mTimer->setTimerType(Qt::CoarseTimer);
+    connect(mTimer, &QTimer::timeout, this, &TQMarquee::refreshLabel);
+    // By default the background is transparent
+//    mBackgroundImage.fill(Qt::transparent);
     setBackgroundColor(mBgColor);
-    mTimer.start(mSpeed);
+    mTimer->start(mSpeed);
 }
 
 void TQMarquee::setAlignment(Qt::Alignment al)
@@ -79,7 +96,6 @@ void TQMarquee::setAlignment(Qt::Alignment al)
 
     mAlign = al;
     updateCoordinates();
-    QLabel::setAlignment(al);
 }
 
 void TQMarquee::setFrame(int left, int top, int right, int bottom)
@@ -97,7 +113,7 @@ void TQMarquee::setFrame(int left, int top, int right, int bottom)
     if ((mFrameTop + mFrameBottom) > height())
         mFrameTop = mFrameBottom = 0;
 
-    MSG_DEBUG("Frame size: l=" << mFrameLeft << ", r=" << mFrameRight << ", t=" << mFrameTop << ", b=" << mFrameBottom);
+    update();
 }
 
 void TQMarquee::setText(const QString& text)
@@ -121,26 +137,30 @@ void TQMarquee::setSpeed(int msec)
 
     mSpeed = msec;
 
-    if (mTimer.isActive())
-        mTimer.start(mSpeed);
+    if (mTimer->isActive())
+        mTimer->start(mSpeed);
     else
-        mTimer.setInterval(mSpeed);
+        mTimer->setInterval(mSpeed);
 }
 
 void TQMarquee::pause()
 {
     DECL_TRACER("TQMarquee::pause()");
 
-    if (mTimer.isActive())
-        mTimer.stop();
+    if (mTimer->isActive())
+        mTimer->stop();
+
+    mPaused = true;
 }
 
 void TQMarquee::resume()
 {
     DECL_TRACER("TQMarquee::resume()");
 
-    if (!mTimer.isActive())
-        mTimer.start(mSpeed);
+    if (!mTimer->isActive())
+        mTimer->start(mSpeed);
+
+    mPaused = false;
 }
 
 QColor TQMarquee::backgroundColor()
@@ -176,7 +196,7 @@ void TQMarquee::setBackground(QPixmap& image)
 
     mBackgroundImage = image;
     setPixmap(mBackgroundImage);
-    repaint();
+    update();
 }
 
 void TQMarquee::setDirection(MQ_TYPES type)
@@ -199,24 +219,69 @@ void TQMarquee::setDirection(MQ_TYPES type)
     else if (mType == MQ_LEFT)
         px = mFrameLeft;
     else if (mType == MQ_DOWN)
+    {
         py = height() - (mTextHeight + mFrameTop + mFrameBottom);
+        px = width() / 2 - mTextLength / 2;
+    }
     else if (mType == MQ_UP)
+    {
         py = mFrameTop;
+        px = width() / 2 - mTextLength / 2;
+    }
 
     refreshLabel();
 }
 
 void TQMarquee::refreshLabel()
 {
-    DECL_TRACER("TQMarquee::refreshLabel()");
+//    DECL_TRACER("TQMarquee::refreshLabel()");       // This would fill up a logfile, if there is one.
 
-    repaint();
-    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    QApplication::processEvents();
+    update();
+    std::this_thread::sleep_for(std::chrono::milliseconds(mDelay));
+}
+
+void TQMarquee::hideEvent(QHideEvent *e)
+{
+    DECL_TRACER("TQMarquee::hideEvent(QHideEvent*)");
+
+    pause();
+    QLabel::hideEvent(e);
+}
+
+void TQMarquee::showEvent(QShowEvent *e)
+{
+    DECL_TRACER("TQMarquee::showEvent(QShowEvent*)");
+
+    resume();
+    QLabel::showEvent(e);
+}
+
+bool TQMarquee::testVisibility(const QRegion& region)
+{
+    if (region.isEmpty() || region.isNull())
+        return false;
+
+    QRegion::const_iterator iter;
+
+    for (iter = region.begin(); iter != region.end(); ++iter)
+    {
+        if (iter->contains(px, py))
+            return true;
+
+        if (iter->left() >= px && iter->right() <= (px + mTextLength))
+            return true;
+    }
+
+    return false;
 }
 
 void TQMarquee::paintEvent(QPaintEvent*)
 {
 //    DECL_TRACER("TQMarquee::paintEvent(QPaintEvent*)");   // This would fill up a logfile, if there is one.
+
+    if (!testVisibility(visibleRegion()) || mPaused)
+        return;
 
     QPainter p(this);
     p.drawPixmap(0, 0, mBackgroundImage);
@@ -245,7 +310,7 @@ void TQMarquee::paintEvent(QPaintEvent*)
                 bool changeDirection = false;
 
                 if (mTextLength > width())
-                    changeDirection = (px <= ((mTextLength - (width() - mFrameLeft - mFrameRight)) * -1));
+                    changeDirection = (px <= (width() - mTextLength - mFrameLeft));
                 else
                     changeDirection = (px <= mFrameLeft);
 
@@ -303,22 +368,35 @@ void TQMarquee::updateCoordinates()
 {
     DECL_TRACER("TQMarquee::updateCoordinates()");
 
-    switch(mAlign)
-    {
-        case Qt::AlignTop:      py = mFrameTop; break;
-        case Qt::AlignBottom:   py = height() - (mFrameTop + mFrameBottom); break;
-        case Qt::AlignVCenter:  py = height() / 2; break;
-    }
-
     mFontPointSize = font().pointSize() / 2;
     mTextLength = fontMetrics().horizontalAdvance(mText);
     mTextHeight = fontMetrics().height();
 
-    if (mType == MQ_UP || mType == MQ_DOWN)
+    vector<Qt::Alignment> alignList = {
+        Qt::AlignLeft, Qt::AlignHCenter, Qt::AlignRight,
+        Qt::AlignTop, Qt::AlignVCenter, Qt::AlignBottom };
+    vector<Qt::Alignment>::iterator iter;
+
+    for (iter = alignList.begin(); iter != alignList.end(); ++iter)
     {
-        if (width() < mTextLength)
-            px = ((mTextLength - width()) / 2) * -1;
-        else
-            px = width() - mTextLength / 2;
+        bool al = (mAlign & *iter) == *iter;
+
+        if (al)
+        {
+            switch(*iter)
+            {
+                case Qt::AlignTop:      py = mFrameTop + mTextHeight / 2; break;
+                case Qt::AlignBottom:   py = height() - (mFrameTop + mFrameBottom + mTextHeight / 2); break;
+                case Qt::AlignVCenter:  py = height() / 2; break;
+
+                case Qt::AlignLeft:     px = mFrameLeft; break;
+                case Qt::AlignRight:    px = width() - mTextLength - mFrameRight; break;
+                case Qt::AlignHCenter:  px = width() / 2 - mTextLength / 2; break;
+
+                default:
+                    px = width() / 2 - mTextLength / 2;
+                    py = height() / 2;
+            }
+        }
     }
 }

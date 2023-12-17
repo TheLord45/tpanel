@@ -115,21 +115,6 @@ TPage::~TPage()
 
     setButtons(nullptr);
     mSubPages.clear();
-/*
-    PAGECHAIN_T *pc = mSubPages;
-    PAGECHAIN_T *pc_next = nullptr;
-
-    // We're not allowd to delete the subpages here, because they're managed
-    // by the TPageManager.
-    while (pc)
-    {
-        pc_next = pc->next;
-        delete pc;
-        pc = pc_next;
-    }
-
-    mSubPages = nullptr;
-*/
 }
 
 void TPage::initialize(const string& nm)
@@ -268,31 +253,7 @@ void TPage::initialize(const string& nm)
     }
 
     setSR(sr);
-/*
-    if (TStreamError::checkFilter(HLOG_DEBUG))
-    {
-        MSG_DEBUG("PageID: " << mPage.pageID);
-        MSG_DEBUG("Name  : " << mPage.name);
-        MSG_DEBUG("Width : " << mPage.width);
-        MSG_DEBUG("Height: " << mPage.height);
 
-        vector<SR_T>::iterator iter;
-        size_t pos = 1;
-
-        for (iter = sr.begin(); iter != sr.end(); ++iter)
-        {
-            MSG_DEBUG("   " << pos << ": bs: " << iter->bs);
-            MSG_DEBUG("   " << pos << ": cb: " << iter->cb);
-            MSG_DEBUG("   " << pos << ": cf: " << iter->cf);
-            MSG_DEBUG("   " << pos << ": ct: " << iter->ct);
-            MSG_DEBUG("   " << pos << ": ec: " << iter->ec);
-            MSG_DEBUG("   " << pos << ": bm: " << iter->bm);
-            MSG_DEBUG("   " << pos << ": mi: " << iter->mi);
-            MSG_DEBUG("   " << pos << ": fi: " << iter->fi);
-            pos++;
-        }
-    }
-*/
     if (TPageInterface::getButtons())
         sortButtons();
 }

@@ -204,6 +204,12 @@ typedef struct SLIDER_t
     std::string pathAlpha;  //<! The path and file name of the graphics file containing the alpha part of the image.
 }SLIDER_t;
 
+typedef struct CURSOR_t
+{
+    std::string imageBase;  // The base image file.
+    std::string imageAlpha; // The alpha image file.
+}CURSOR_t;
+
 /**
  * @brief Class to manage system resources like borders, sliders, ...
  *
@@ -235,6 +241,9 @@ class TSystemDraw : public TValidateFile
         bool existSlider(const std::string& slider);
         bool getSlider(const std::string& slider, SLIDER_STYLE_t *style);
         std::vector<SLIDER_t> getSliderFiles(const std::string& slider);
+        bool getCursor(const std::string& cursor, CURSOR_STYLE_t *style);
+        bool existCursor(const std::string& cursor);
+        CURSOR_t getCursorFiles(const CURSOR_STYLE_t& style);
 
     protected:
         static void startElement(void *, const XML_Char *name, const XML_Char **);

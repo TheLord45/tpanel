@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -195,6 +195,7 @@ CMD_DEFINATIONS cmdDefinations[] = {
     { "^PKB", false, true, ';' },
     { "@PKP", false, true, ';' },
     { "^PKP", false, true, ';' },
+    { "^RPP", false, false, ',' },
     { "SETUP", false, false, ',' },
     { "^STP", false, false, ',' },
     { "SHUTDOWN", false, false, ',' },
@@ -479,8 +480,13 @@ bool TAmxCommands::parseCommand(int device, int port, const string& cmd)
                 {
                     vector<string> parts = getFields(rest, cdef.separator);
 
-                    if (cdef.hasChannels)
+                    if (cdef.hasChannels && !parts.empty())
                         extractChannels(parts[0], &iter->channels);
+                    else if (parts.empty())
+                    {
+                        MSG_WARNING("Malformed command " << scmd << ". Ignoring it!");
+                        continue;
+                    }
 
                     if (cdef.hasPars)
                     {

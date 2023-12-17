@@ -41,7 +41,7 @@ class TMap : public TValidateFile
         {
             int p{0};           // port number
             int c{0};           // channel number
-            int ax{0};          // ??
+            int ax{0};          // Joystick? (Couldn't find out the real meaning)
             int pg{0};          // page number
             int bt{0};          // button number
             std::string pn;     // page name

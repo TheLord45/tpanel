@@ -629,7 +629,20 @@ void *renew(char **mem, size_t old_size, size_t new_size)
     return nullptr;
 }
 
-string toUpper(string& str)
+/**
+ * @brief Converts characters to uppercase letters.
+ * Converts the string to uppercase letters according to the character
+ * conversion rules defined by the currently installed C locale.
+ * In the default "C" locale, the following lowercase letters
+ * abcdefghijklmnopqrstuvwxyz are replaced with respective uppercase letters
+ * ABCDEFGHIJKLMNOPQRSTUVWXYZ.
+ * !!This method destroys the content of \n str!!
+ * !!This method does not work correct with UTF-8!!
+ *
+ * @param str   String to be converted.
+ * @return Returns the \b str with the content converted to uppercase letters.
+ */
+string& toUpper(string& str)
 {
     string::iterator iter;
 
@@ -639,7 +652,20 @@ string toUpper(string& str)
     return str;
 }
 
-string toLower(string& str)
+/**
+ * @brief Converts characters to lowercase letters.
+ * Converts the string to lowercase letters according to the character
+ * conversion rules defined by the currently installed C locale.
+ * In the default "C" locale, the following uppercase letters
+ * ABCDEFGHIJKLMNOPQRSTUVWXYZ are replaced with respective lowercase letters
+ * abcdefghijklmnopqrstuvwxyz.
+ * !!This method destroys the content of \n str!!
+ * !!This method does not work correct with UTF-8!!
+ *
+ * @param str   String to be converted.
+ * @return Returns the \b str with the content converted to lowercase letters.
+ */
+string& toLower(string& str)
 {
     string::iterator iter;
 
@@ -649,9 +675,9 @@ string toLower(string& str)
     return str;
 }
 
-vector<string> splitLine(const string& str)
+vector<string> splitLine(const string& str, bool multiline)
 {
-    DECL_TRACER("splitLine(const string& str)");
+    DECL_TRACER("splitLine(const string& str, bool multiline)");
 
     vector<string> lines;
     string sl;
@@ -665,7 +691,7 @@ vector<string> splitLine(const string& str)
         if (*iter == '\r')  // ignore bloating byte coming from brain death windows
             continue;
 
-        if (*iter == '\n')
+        if (*iter == '\n' || (multiline && *iter == '|'))
         {
             lines.push_back(sl);
             sl.clear();
@@ -704,29 +730,59 @@ vector<string> splitLine(const string& str, int width, int height, SkFont& font,
     if (words.size() == 0)
         return lines;
 
+    // Split the words with a | too but let the | pipe at start to mark it for line break.
+    bool repeat = true;
+
+    while (repeat)
+    {
+        repeat = false;
+
+        for (iter = words.begin(); iter != words.end(); ++iter)
+        {
+            size_t pos = 0;
+
+            if ((pos = iter->find("|")) != string::npos && pos > 0)
+            {
+                string left = iter->substr(0, pos);
+                string right = iter->substr(pos);
+                *iter = left;
+                ++iter;
+
+                if (iter != words.end())
+                    words.insert(iter, right);
+                else
+                    words.push_back(right);
+
+                repeat = true;
+                break;
+            }
+
+            pos++;
+        }
+    }
+
     for (iter = words.begin(); iter != words.end(); ++iter)
     {
         size_t pos;
         bool lineBreak = false;
 
-        if ((pos = iter->find("\n")) != string::npos)
+        if ((pos = iter->find("|")) != string::npos)
         {
-            if (pos > 0)
-                *iter = iter->substr(0, pos);
-            else
-                *iter = "";
-
+            *iter = iter->substr(1);
             lineBreak = true;
         }
 
-        if (part.empty())
-            part += *iter;
-        else
-            part += " " + *iter;
+        if (!lineBreak)
+        {
+            if (part.empty())
+                part += *iter;
+            else
+                part += " " + *iter;
+        }
 
         font.measureText(part.c_str(), part.length(), SkTextEncoding::kUTF8, &rect, &paint);
 
-        if (rect.width() > (width - 8))
+        if (rect.width() > (width - 8) && !lineBreak)
         {
             if (oldPart.empty())
             {
@@ -776,7 +832,7 @@ vector<string> splitLine(const string& str, int width, int height, SkFont& font,
         else if (lineBreak)
         {
             lines.push_back(part);
-            part.clear();
+            part = *iter;
         }
 
         oldPart = part;
@@ -1207,7 +1263,9 @@ bool isBigEndian()
     {
         uint32_t i;
         char c[4];
-    } bint = {0x01020304};
+    }bint;
+
+    bint.i = 0x01020304;
 
     return bint.c[0] == 1;
 }

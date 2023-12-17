@@ -24,6 +24,9 @@
 
 class QString;
 class QPaintEvent;
+class QResizeEvent;
+class QHideEvent;
+class QShowEvent;
 class QStaticText;
 class QPixmap;
 class QFont;
@@ -67,6 +70,8 @@ class TQMarquee : public QLabel
     protected:
         virtual void paintEvent(QPaintEvent *);
         virtual void resizeEvent(QResizeEvent *);
+        virtual void hideEvent(QHideEvent *);
+        virtual void showEvent(QShowEvent *);
         void updateCoordinates();
 
     private slots:
@@ -74,6 +79,7 @@ class TQMarquee : public QLabel
 
     private:
         void init();
+        bool testVisibility(const QRegion& region);
 
         QWidget *mParent{nullptr};
         QString mText;
@@ -85,11 +91,13 @@ class TQMarquee : public QLabel
         int mFrameTop{0};
         int mFrameRight{0};
         int mFrameBottom{0};
+        bool mPaused{false};
 
         int px{0};
         int py{0};
-        QTimer mTimer;
-        Qt::Alignment mAlign{Qt::AlignVCenter};
+        QTimer *mTimer{nullptr};
+        uint mDelay{10};         // Delay of drawing im milli seconds
+        Qt::Alignment mAlign{Qt::AlignCenter};
         int mSpeed{200};
         Qt::LayoutDirection mDirection{Qt::LeftToRight};
         int mFontPointSize{8};

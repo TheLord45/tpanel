@@ -349,7 +349,9 @@ vector<TMap::MAP_T> TMap::findBargraphs(int port, vector<int>& channels)
         {
             for (mapIter = mMap.map_lm.begin(); mapIter != mMap.map_lm.end(); ++mapIter)
             {
-                if (mapIter->p == port && mapIter->c == *iter)
+                // To find also the joysticks, we must test for level codes
+                // less then and grater then *iter.
+                if (mapIter->p == port && (mapIter->c == *iter || mapIter->c == (*iter-1) || mapIter->c == (*iter+1)))
                     map.push_back(*mapIter);
             }
         }

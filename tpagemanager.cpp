@@ -1002,7 +1002,7 @@ TPageManager::TPageManager()
     REG_CMD(doFON, "^FON");     // Set a font to a specific Font ID value for those buttons with a range.
     REG_CMD(getFON, "?FON");    // Get the current font index.
     REG_CMD(doGDI, "^GDI");     // Change the bargraph drag increment.
-//    REG_CMD(doGDV, "^GDV");     // Invert the joystick axis to move the origin to another corner.
+    REG_CMD(doGIV, "^GIV");     // Invert the joystick axis to move the origin to another corner.
     REG_CMD(doGLH, "^GLH");     // Change the bargraph upper limit.
     REG_CMD(doGLL, "^GLL");     // Change the bargraph lower limit.
     REG_CMD(doGRD, "^GRD");     // Change the bargraph ramp down time.
@@ -1063,6 +1063,7 @@ TPageManager::TPageManager()
     REG_CMD(doPKP, "@PKB");     // Present a private keyboard.
     REG_CMD(doPKP, "PKEYP");    // Present a private keypad.
     REG_CMD(doPKP, "@PKP");     // Present a private keypad.
+    REG_CMD(doRPP, "^RPP");     // Reset protected password command
     REG_CMD(doSetup, "SETUP");  // Send panel to SETUP page.
     REG_CMD(doSetup, "^STP");   // G5: Open setup page.
     REG_CMD(doShutdown, "SHUTDOWN");// Shut down the App
@@ -1438,7 +1439,7 @@ void TPageManager::runCommands()
 {
     DECL_TRACER("TPageManager::runCommands()");
 
-    if (mBusy || cmdLoop_busy)
+    if (cmdLoop_busy)
         return;
 
     try
@@ -1820,10 +1821,10 @@ void TPageManager::commandLoop()
 {
     DECL_TRACER("TPageManager::commandLoop()");
 
-    if (mBusy || cmdLoop_busy)
+    if (cmdLoop_busy)
         return;
 
-    mBusy = cmdLoop_busy = true;
+    cmdLoop_busy = true;
     string com;
 
     while (cmdLoop_busy && !killed && !_restart_)
@@ -1886,7 +1887,7 @@ void TPageManager::commandLoop()
                         msg.content[len] = 0;
                     }
 
-                    if (getCommand((char *)msg.content) == "^UTF")  // This is already UTF8!
+                    if (getCommand((char *)msg.content) == "^UTF" || bef.intern)  // This is already UTF8!
                         com.assign((char *)msg.content);
                     else
                         com.assign(cp1250ToUTF8((char *)&msg.content));
@@ -1965,7 +1966,6 @@ void TPageManager::commandLoop()
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
 
-    mBusy = false;
     cmdLoop_busy = false;
 }
 
@@ -2140,7 +2140,7 @@ bool TPageManager::run()
             ani.hideTime = subPg->getHideTime();
 
             subPg->setZOrder(pg->getNextZOrder());
-            _setSubPage(subPg->getHandle(), pg->getHandle(), left, top, width, height, ani);
+            _setSubPage(subPg->getHandle(), pg->getHandle(), left, top, width, height, ani, subPg->isModal());
             subPg->show();
         }
 
@@ -2294,9 +2294,9 @@ void TPageManager::reloadSystemPage(TPage *page)
                 case SYSTEM_ITEM_VIEWROTATE:        bt->setActiveInstance(TConfig::getRotationFixed() ? 1 : 0); break;
             }
         }
-        else if (bt->getLevelPort() == 0 && bt->getLevelValue() > 0)
+        else if (bt->getLevelPort() == 0 && bt->getLevelChannel() > 0)
         {
-            switch(bt->getLevelValue())
+            switch(bt->getLevelChannel())
             {
                 case SYSTEM_ITEM_SYSVOLUME:         bt->drawBargraph(0, TConfig::getSystemVolume(), false); break;
                 case SYSTEM_ITEM_SYSGAIN:           bt->drawBargraph(0, TConfig::getSystemGain(), false); break;
@@ -2400,6 +2400,9 @@ bool TPageManager::_setPageDo(int pageID, const string& name, bool forget)
 TSubPage *TPageManager::getSubPage(int pageID)
 {
     DECL_TRACER("TPageManager::getSubPage(int pageID)");
+
+    if (pageID < REGULAR_SUBPAGE_START)
+        return nullptr;
 
     SPCHAIN_T *p = mSPchain;
 
@@ -4007,7 +4010,7 @@ void TPageManager::showSubPage(const string& name)
             if (pg->getTimeout() > 0)
                 pg->startTimer();
 
-            _setSubPage(pg->getHandle(), page->getHandle(), left, top, width, height, ani);
+            _setSubPage(pg->getHandle(), page->getHandle(), left, top, width, height, ani, pg->isModal());
         }
 
         pg->show();
@@ -4119,7 +4122,7 @@ void TPageManager::showSubPage(int number, bool force)
             if (pg->getTimeout() > 0)
                 pg->startTimer();
 
-            _setSubPage(pg->getHandle(), page->getHandle(), left, top, width, height, ani);
+            _setSubPage(pg->getHandle(), page->getHandle(), left, top, width, height, ani, pg->isModal());
         }
     }
 
@@ -4196,10 +4199,15 @@ void TPageManager::runClickQueue()
                     else
                         MSG_TRACE("TPageManager::runClickQueue() -- executing: _mouseEvent(" << handleToString(mClickQueue[0].handle) << ", " << (mClickQueue[0].pressed ? "TRUE" : "FALSE") << ")")
 #endif
-                    if (mClickQueue[0].coords)
-                        _mouseEvent(mClickQueue[0].x, mClickQueue[0].y, mClickQueue[0].pressed);
-                    else
-                        _mouseEvent(mClickQueue[0].handle, mClickQueue[0].handle);
+                    if (mClickQueue[0].eventType == _EVENT_MOUSE_CLICK)
+                    {
+                        if (mClickQueue[0].coords)
+                            _mouseEvent(mClickQueue[0].x, mClickQueue[0].y, mClickQueue[0].pressed);
+                        else
+                            _mouseEvent(mClickQueue[0].handle, mClickQueue[0].handle);
+                    }
+                    else  if (mClickQueue[0].eventType == _EVENT_MOUSE_MOVE)
+                        _mouseMoveEvent(mClickQueue[0].x, mClickQueue[0].y);
 
                     mClickQueue.erase(mClickQueue.begin()); // Remove first entry
                 }
@@ -4269,9 +4277,27 @@ void TPageManager::mouseEvent(int x, int y, bool pressed)
     TTRYLOCK(click_mutex);
 
     _CLICK_QUEUE_t cq;
+    cq.eventType = _EVENT_MOUSE_CLICK;
     cq.x = x;
     cq.y = y;
     cq.pressed = pressed;
+    cq.coords = true;
+    mClickQueue.push_back(cq);
+#if TESTMODE == 1
+    setScreenDone();
+#endif
+}
+
+void TPageManager::mouseMoveEvent(int x, int y)
+{
+    DECL_TRACER("TPageManager::mouseMoveEvent(int x, int y)");
+
+    TTRYLOCK(click_mutex);
+
+    _CLICK_QUEUE_t cq;
+    cq.eventType = _EVENT_MOUSE_MOVE;
+    cq.x = x;
+    cq.y = y;
     cq.coords = true;
     mClickQueue.push_back(cq);
 #if TESTMODE == 1
@@ -4320,6 +4346,9 @@ void TPageManager::_mouseEvent(int x, int y, bool pressed)
             bt->doClick(x - bt->getLeftPosition(), y - bt->getTopPosition(), pressed);
         }
 
+        if (pressed)
+            mLastPagePush = getActualPageNumber();
+
         return;
     }
 
@@ -4331,6 +4360,47 @@ void TPageManager::_mouseEvent(int x, int y, bool pressed)
         mLastPagePush = 0;
 
     subPage->doClick(realX - subPage->getLeft(), realY - subPage->getTop(), pressed);
+}
+
+void TPageManager::_mouseMoveEvent(int x, int y)
+{
+    DECL_TRACER("TPageManager::_mouseMoveEvent(int x, int y)");
+
+    int realX = x - mFirstLeftPixel;
+    int realY = y - mFirstTopPixel;
+
+#ifdef _SCALE_SKIA_
+    if (mScaleFactor != 1.0 && mScaleFactor > 0.0)
+    {
+        realX = (int)((double)realX / mScaleFactor);
+        realY = (int)((double)realY / mScaleFactor);
+        MSG_DEBUG("Scaled coordinates: x=" << realX << ", y=" << realY);
+    }
+#endif
+
+    TSubPage *subPage = nullptr;
+    subPage = getCoordMatch(realX, realY);
+
+    if (!subPage)
+    {
+        Button::TButton *bt = getCoordMatchPage(realX, realY);
+
+        if (bt)
+        {
+            if (bt->getButtonType() == BARGRAPH)
+                bt->moveBargraphLevel(realX - bt->getLeftPosition(), realY - bt->getTopPosition());
+            else if (bt->getButtonType() == JOYSTICK && !bt->getLevelFuction().empty())
+            {
+                bt->drawJoystick(realX - bt->getLeftPosition(), realY - bt->getTopPosition());
+                // Send the levels
+                bt->sendJoystickLevels();
+            }
+        }
+
+        return;
+    }
+
+    subPage->moveMouse(realX - subPage->getLeft(), realY - subPage->getTop());
 }
 
 void TPageManager::mouseEvent(ulong handle, bool pressed)
@@ -5497,7 +5567,10 @@ void TPageManager::doLEVEL(int port, vector<int>&, vector<string>& pars)
         {
             Button::TButton *bt = *mapIter;
 
-            if (bt->getButtonType() == BARGRAPH)
+            if (bt->getButtonType() != JOYSTICK && bt->isBargraphInverted())
+                level = (bt->getBarRangeHigh() - bt->getBarRangeLow()) - level;
+
+            if (bt->getButtonType() == BARGRAPH && bt->getLevelChannel() == c)
             {
                 bt->drawBargraph(bt->getActiveInstance(), level);
 #if TESTMODE == 1
@@ -5505,7 +5578,20 @@ void TPageManager::doLEVEL(int port, vector<int>&, vector<string>& pars)
                     _gTestMode->setResult(intToString(bt->getLevelValue()));
 #endif
             }
-            else if (bt->getButtonType() == MULTISTATE_BARGRAPH)
+            else if (bt->getButtonType() == JOYSTICK)
+            {
+                int x = (bt->getLevelChannel() == c ? level : bt->getLevelAxisX());
+                int y = (bt->getLevelChannel() == c ? bt->getLevelAxisY() : level);
+
+                if (bt->isBargraphInverted())
+                    x = (bt->getBarRangeHigh() - bt->getBarRangeLow()) - x;
+
+                if (bt->isJoystickAuxInverted())
+                    y = (bt->getBarRangeHigh() - bt->getBarRangeLow()) - y;
+
+                bt->drawJoystick(x, y);
+            }
+            else if (bt->getButtonType() == MULTISTATE_BARGRAPH && bt->getLevelChannel() == c)
             {
                 int state = (int)((double)bt->getStateCount() / (double)(bt->getRangeHigh() - bt->getRangeLow()) * (double)level);
                 bt->setActive(state);
@@ -8650,6 +8736,7 @@ void TPageManager::doBSP(int port, vector<int>& channels, vector<string>& pars)
         return;
 
     vector<Button::TButton *> buttons = collectButtons(map);
+    x = y = 0;
 
     if (buttons.size() > 0)
     {
@@ -8658,7 +8745,6 @@ void TPageManager::doBSP(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-//            setButtonCallbacks(bt);
 
             if (bLeft)
                 x = 0;
@@ -9205,12 +9291,44 @@ void TPageManager::doGDI(int port, vector<int>& channels, vector<std::string>& p
         }
     }
 }
-/* Currently not implemented
-void TPageManager::doGDV(int port, vector<int>& channels, vector<std::string>& pars)
+/*
+ * Invert the joystick axis to move the origin to another corner.
+ */
+void TPageManager::doGIV(int port, vector<int>& channels, vector<std::string>& pars)
 {
-    DECL_TRACER("TPageManager::doGDV(int port, vector<int>& channels, vector<std::string>& pars)");
+    DECL_TRACER("TPageManager::doGIV(int port, vector<int>& channels, vector<std::string>& pars)");
+
+    if (pars.empty())
+        return;
+
+    TError::clear();
+    int inv = atoi(pars[0].c_str());
+
+    if (inv < 0 || inv > 3)
+    {
+        MSG_ERROR("Invalid invert type " << inv);
+        return;
+    }
+
+    vector<TMap::MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+            bt->setBargraphInvert(inv);
+        }
+    }
 }
-*/
+
 /**
  * Change the bargraph upper limit.
  */
@@ -9247,7 +9365,6 @@ void TPageManager::doGLH(int port, vector<int>& channels, vector<std::string>& p
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-//            setButtonCallbacks(bt);
             bt->setBargraphUpperLimit(limit);
         }
     }
@@ -9289,12 +9406,14 @@ void TPageManager::doGLL(int port, vector<int>& channels, vector<std::string>& p
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-//            setButtonCallbacks(bt);
             bt->setBargraphLowerLimit(limit);
         }
     }
 }
 
+/*
+ * Change the bargraph slider color or joystick cursor color.
+ */
 void TPageManager::doGSC(int port, vector<int>& channels, vector<string>& pars)
 {
     DECL_TRACER("TPageManager::doGSC(int port, vector<int>& channels, vector<string>& pars)");
@@ -11097,6 +11216,18 @@ void TPageManager::doPKP(int, vector<int>&, vector<string>& pars)
 
     if (_callKeypad)
         _callKeypad(initText, promptText, true);
+}
+
+/**
+ * @brief Reset protected password command
+ * This command is used to reset the protected setup password to the factory
+ * default value.
+ */
+void TPageManager::doRPP(int, vector<int>&, vector<string>&)
+{
+    DECL_TRACER("TPageManager::doRPP(int, vector<int>&, vector<string>&)");
+
+    TConfig::savePassword1("1988");
 }
 
 /**

@@ -278,13 +278,25 @@ size_t TButton::initialize(TExpat *xml, size_t index)
         else if (ename.compare("bd") == 0)          // Description
             bd = content;
         else if (ename.compare("lt") == 0)          // Left
+        {
             lt = xml->convertElementToInt(content);
+            mPosLeft = lt;
+        }
         else if (ename.compare("tp") == 0)          // Top
+        {
             tp = xml->convertElementToInt(content);
+            mPosTop = tp;
+        }
         else if (ename.compare("wt") == 0)          // Width
+        {
             wt = xml->convertElementToInt(content);
+            mWidthOrig = wt;
+        }
         else if (ename.compare("ht") == 0)          // Height
+        {
             ht = xml->convertElementToInt(content);
+            mHeightOrig = ht;
+        }
         else if (ename.compare("zo") == 0)          // Z-Order
             zo = xml->convertElementToInt(content);
         else if (ename.compare("hs") == 0)          // bounding
@@ -336,15 +348,34 @@ size_t TButton::initialize(TExpat *xml, size_t index)
         else if (ename.compare("rh") == 0)          // Bargraph range high
             rh = xml->convertElementToInt(content);
         else if (ename.compare("ri") == 0)          // Bargraph inverted (0 = normal, 1 = inverted)
+        {
             ri = xml->convertElementToInt(content);
+
+            if (ri > 0 && lf != "center" && lf != "dragCenter")
+            {
+                mLastLevel = rh - rl;
+                mLastJoyX = mLastLevel;
+            }
+        }
+        else if (ename.compare("ji") == 0)          // Joystick aux inverted (0 = normal, 1 = inverted)
+        {
+            ji = xml->convertElementToInt(content);
+
+            if (ji > 0 && lf != "center" && lf != "dragCenter")
+                mLastJoyY = rh - rl;
+        }
         else if (ename.compare("rn") == 0)          // Bargraph: Range drag increment
             rn = xml->convertElementToInt(content);
         else if (ename.compare("lf") == 0)          // Bargraph function
             lf = content;
         else if (ename.compare("sd") == 0)          // Name/Type of slider for a bargraph
             sd = content;
+        else if (ename.compare("cd") == 0)          // Name of cursor for a joystick
+            cd = content;
         else if (ename.compare("sc") == 0)          // Color of slider (for bargraph)
             sc = content;
+        else if (ename.compare("cc") == 0)          // Color of cursor (for joystick)
+            cc = content;
         else if (ename.compare("mt") == 0)          // Length of text area
             mt = xml->convertElementToInt(content);
         else if (ename.compare("dt") == 0)          // Textarea multiple/single line
@@ -537,8 +568,8 @@ bool TButton::createSoftButton(const EXTBUTTON_t& bt)
     type = bt.type;
     bi = bt.bi;
     na = bt.na;
-    lt = bt.lt;
-    tp = bt.tp;
+    lt = mPosLeft = bt.lt;
+    tp = mPosTop = bt.tp;
     wt = bt.wt;
     ht = bt.ht;
     zo = bt.zo;
@@ -660,6 +691,116 @@ void TButton::setBargraphLevel(int level)
         setActive(level);
 }
 
+void TButton::moveBargraphLevel(int x, int y)
+{
+    DECL_TRACER("TButton::moveBargraphLevel(int x, int y)");
+
+    if (type != BARGRAPH)
+        return;
+
+    if (lf.empty())     // Display only
+        return;
+
+    int level = 0;
+    int dragUp = false;
+
+    if (dr.compare("horizontal") == 0)
+    {
+//        level = (ri ? (wt - x) : x);
+        level = x;
+        level = static_cast<int>(static_cast<double>(rh - rl) / static_cast<double>(wt) * static_cast<double>(level));
+    }
+    else
+    {
+//        level = (ri ? y : (ht - y));
+        level = ht - y;
+        level = static_cast<int>(static_cast<double>(rh - rl) / static_cast<double>(ht) * static_cast<double>(level));
+    }
+
+    if (lf == "drag" || lf == "dragCenter")
+    {
+        int diff = 0;
+
+        level += mBarThreshold;
+
+        if (dr == "horizontal")
+            dragUp = (mBarStartLevel > level);
+        else
+            dragUp = (level > mBarStartLevel);
+
+        diff = (mBarStartLevel > level ? (mBarStartLevel - level) : (level - mBarStartLevel));
+        double gap = static_cast<double>(rn) / static_cast<double>(rh - rl) * static_cast<double>(diff);
+        MSG_DEBUG("Gap is " << gap << ", diff: " << diff << ", mBarStartLevel: " << mBarStartLevel << ", level: " << level << ", rn: " << rn);
+
+        if (dragUp)
+            level = mBarStartLevel + static_cast<int>(gap);
+        else
+            level = mBarStartLevel - static_cast<int>(gap);
+
+        if (level < rl)
+            level = rl;
+        else if (level > rh)
+            level = rh;
+    }
+
+    drawBargraph(mActInstance, level, visible);
+
+    // Send the level
+    if (lp && lv && gPageManager && gPageManager->getLevelSendState() && gAmxNet)
+    {
+        amx::ANET_SEND scmd;
+        scmd.device = TConfig::getChannel();
+        scmd.port = lp;
+        scmd.channel = lv;
+        scmd.level = lv;
+        scmd.value = (ri ? ((rh - rl) - level) : level);
+        scmd.MC = 0x008a;
+
+        if (mLastSendLevelX != level)
+            gAmxNet->sendCommand(scmd);
+
+        mLastSendLevelX = level;
+    }
+}
+
+void TButton::sendJoystickLevels()
+{
+    DECL_TRACER("TButton::sendJoystickLevels()");
+
+    // Send the levels
+    if (lp && lv && gPageManager && gPageManager->getLevelSendState())
+    {
+        amx::ANET_SEND scmd;
+
+        scmd.device = TConfig::getChannel();
+        scmd.port = lp;
+        scmd.channel = lv;
+        scmd.level = lv;
+        scmd.value = (ri ? ((rh - rl) - mLastJoyX) : mLastJoyX);
+        scmd.MC = 0x008a;
+
+        if (gAmxNet)
+        {
+            if (mLastSendLevelX != mLastJoyX)
+                gAmxNet->sendCommand(scmd);
+
+            mLastSendLevelX = mLastJoyX;
+        }
+
+        scmd.channel = lv + 1;
+        scmd.level = lv + 1;
+        scmd.value = (ji ? ((rh - rl) - mLastJoyY) : mLastJoyY);
+
+        if (gAmxNet)
+        {
+            if (mLastSendLevelY != mLastJoyY)
+                gAmxNet->sendCommand(scmd);
+
+            mLastSendLevelY = mLastJoyY;
+        }
+    }
+}
+
 bool TButton::invalidate()
 {
     DECL_TRACER("TButton::invalidate()");
@@ -711,8 +852,8 @@ BUTTONTYPE TButton::getButtonType(const string& bt)
         return BARGRAPH;
     else if (strCaseCompare(bt, "multi-state bargraph") == 0 || strCaseCompare(bt, "multiBargraph") == 0)
         return MULTISTATE_BARGRAPH;
-    else if (strCaseCompare(bt, "joistick") == 0)
-        return JOISTICK;
+    else if (strCaseCompare(bt, "joystick") == 0)
+        return JOYSTICK;
     else if (strCaseCompare(bt, "text input") == 0 || strCaseCompare(bt, "textArea") == 0)
         return TEXT_INPUT;
     else if (strCaseCompare(bt, "computer control") == 0)
@@ -736,7 +877,7 @@ string TButton::buttonTypeToString()
         case MULTISTATE_GENERAL:    return "MULTISTAE GENERAL";
         case BARGRAPH:              return "BARGRAPH";
         case MULTISTATE_BARGRAPH:   return "MULTISTATE BARGRAPH";
-        case JOISTICK:              return "JOISTICK";
+        case JOYSTICK:              return "JOISTICK";
         case TEXT_INPUT:            return "TEXT INPUT";
         case COMPUTER_CONTROL:      return "COMPUTER CONTROL";
         case TAKE_NOTE:             return "TAKE NOTE";
@@ -899,7 +1040,12 @@ bool TButton::makeElement(int instance)
     else if (type == BARGRAPH && isSystem && lv == 9)   // System volume button
         return drawBargraph(inst, TConfig::getSystemVolume());
     else if (type == BARGRAPH)
+    {
+        if (lf == "center" || lf == "dragCenter")
+            mLastLevel = (rh - rl) / 2;
+
         return drawBargraph(inst, mLastLevel);
+    }
     else if (type == MULTISTATE_BARGRAPH)
         return drawMultistateBargraph(mLastLevel, true);
     else if (type == TEXT_INPUT)
@@ -978,6 +1124,13 @@ bool TButton::makeElement(int instance)
 
         MSG_DEBUG("Drawing system button " << ch << " with instance " << inst);
         return drawButton(inst);
+    }
+    else if (type == JOYSTICK)
+    {
+        if (lf == "center" || lf == "dragCenter")
+            mLastJoyX = mLastJoyY = (rh - rl) / 2;
+
+        return drawJoystick(mLastJoyX, mLastJoyY);
     }
     else
     {
@@ -1199,7 +1352,7 @@ bool TButton::setTextOnly(const string& txt, int instance)
     {
         for (size_t i = 0; i < sr.size(); ++i)
         {
-            if (sr[i].te != txt && (int)i == mActInstance)
+            if (sr[i].te != txt && static_cast<int>(i) == mActInstance)
                 mChanged = true;
 
             sr[i].te = txt;
@@ -1207,7 +1360,7 @@ bool TButton::setTextOnly(const string& txt, int instance)
     }
     else
     {
-        if (sr[instance].te != txt && (int)instance == mActInstance)
+        if (sr[instance].te != txt && static_cast<int>(instance) == mActInstance)
             mChanged = true;
 
         sr[instance].te = txt;
@@ -1813,17 +1966,26 @@ bool TButton::setBargraphSliderColor(const string& color)
         return false;
     }
 
-    if (sc != color)
+    if (type == BARGRAPH && sc != color)
+    {
         mChanged = true;
+        sc = color;
+    }
+    else if (type == JOYSTICK && cc != color)
+    {
+        mChanged = true;
+        cc = color;
+    }
 
-    sc = color;
-
-    if (visible)
+    if (mChanged && visible)
         refresh();
 
     return true;
 }
 
+/*
+ * Change the bargraph slider name or joystick cursor name.
+ */
 bool TButton::setBargraphSliderName(const string& name)
 {
     DECL_TRACER("TButton::setBargraphSliderName(const string& name)");
@@ -1831,17 +1993,33 @@ bool TButton::setBargraphSliderName(const string& name)
     if (name.empty())
         return false;
 
-    if (!gPageManager || !gPageManager->getSystemDraw()->existSlider(name))
+    if (!gPageManager)
+    {
+        MSG_ERROR("Page manager was not initialized!");
+        TError::setError();
+        return false;
+    }
+
+    if (type == BARGRAPH && !gPageManager->getSystemDraw()->existSlider(name))
     {
         MSG_ERROR("The slider " << name << " doesn't exist!");
         return false;
     }
+    else if (type == JOYSTICK && !gPageManager->getSystemDraw()->existCursor(name))
+    {
+        MSG_ERROR("The cursor " << name << " doesn't exist!");
+        return false;
+    }
 
-    if (name == sd)
+    if ((type == BARGRAPH && name == sd) || (type == JOYSTICK && name == cd))
         return true;
 
-    sd = name;
     mChanged = true;
+
+    if (type == BARGRAPH)
+        sd = name;
+    else
+        cd = name;
 
     if (visible)
         refresh();
@@ -2323,10 +2501,10 @@ void TButton::setLeft(int left)
     if (left < 0)
         return;
 
-    if (lt != left)
+    if (mPosLeft != left)
         mChanged = true;
 
-    lt = left;
+    mPosLeft = left;
     makeElement(mActInstance);
 }
 
@@ -2337,10 +2515,10 @@ void TButton::setTop(int top)
     if (top < 0)
         return;
 
-    if (tp != top)
+    if (mPosTop != top)
         mChanged = true;
 
-    tp = top;
+    mPosTop = top;
     makeElement(mActInstance);
 }
 
@@ -2351,13 +2529,13 @@ void TButton::setLeftTop(int left, int top)
     if (top < 0 || left < 0)
         return;
 
-    if (lt != left || tp != top)
+    if (mPosLeft != left || mPosTop != top)
         mChanged = true;
     else
         return;
 
-    lt = left;
-    tp = top;
+    mPosLeft = left;
+    mPosTop = top;
     makeElement(mActInstance);
 }
 
@@ -2374,10 +2552,10 @@ void TButton::setRectangle(int left, int top, int right, int bottom)
     int height = bottom - top;
 
     if (left >= 0 && right > left && (left + width) < screenWidth)
-        lt = left;
+        mPosLeft = left;
 
     if (top >= 0 && bottom > top && (top + height) < screenHeight)
-        tp = top;
+        mPosTop = top;
 
     if (left >= 0 && right > left)
         wt = width;
@@ -2391,10 +2569,10 @@ void TButton::getRectangle(int *left, int *top, int *height, int *width)
     DECL_TRACER("TButton::getRectangle(int *left, int *top, int *height, int *width)");
 
     if (left)
-        *left = lt;
+        *left = mPosLeft;
 
     if (top)
-        *top = tp;
+        *top = mPosTop;
 
     if (height)
         *height = ht;
@@ -2402,6 +2580,20 @@ void TButton::getRectangle(int *left, int *top, int *height, int *width)
     if (width)
         *width = wt;
 
+}
+
+void TButton::resetButton()
+{
+    DECL_TRACER("TButton::resetButton()");
+
+    if (mPosLeft == lt && mPosTop == tp && wt == mWidthOrig && ht == mHeightOrig)
+        return;
+
+    mChanged = true;
+    mPosLeft = lt;
+    mPosTop = tp;
+    wt = mWidthOrig;
+    ht = mHeightOrig;
 }
 
 void TButton::setResourceName(const string& name, int instance)
@@ -3319,15 +3511,15 @@ void TButton::_imageRefresh(const string& url)
     {
         int rwidth = wt;
         int rheight = ht;
-        int rleft = lt;
-        int rtop = tp;
+        int rleft = mPosLeft;
+        int rtop = mPosTop;
 #ifdef _SCALE_SKIA_
         if (gPageManager && gPageManager->getScaleFactor() != 1.0)
         {
-            rwidth = (int)((double)wt * gPageManager->getScaleFactor());
-            rheight = (int)((double)ht * gPageManager->getScaleFactor());
-            rleft = (int)((double)lt * gPageManager->getScaleFactor());
-            rtop = (int)((double)tp * gPageManager->getScaleFactor());
+            rwidth = static_cast<int>(static_cast<double>(wt) * gPageManager->getScaleFactor());
+            rheight = static_cast<int>(static_cast<double>(ht) * gPageManager->getScaleFactor());
+            rleft = static_cast<int>(static_cast<double>(mPosLeft) * gPageManager->getScaleFactor());
+            rtop = static_cast<int>(static_cast<double>(mPosTop) * gPageManager->getScaleFactor());
 
             SkPaint paint;
             paint.setBlendMode(SkBlendMode::kSrc);
@@ -3393,7 +3585,8 @@ void TButton::registerSystemButton()
         else
             MSG_WARNING("Network class not initialized!");
 
-        if (ad >= SYSTEM_ITEM_STANDARDTIME && ad <= SYSTEM_ITEM_TIME24 && !mTimer)
+//        if (ad >= SYSTEM_ITEM_STANDARDTIME && ad <= SYSTEM_ITEM_TIME24 && !mTimer)
+        if (!mTimer)
         {
             mTimer = new TTimer;
             mTimer->setInterval(std::chrono::milliseconds(1000));   // 1 second
@@ -3519,18 +3712,18 @@ void TButton::getDrawOrder(const std::string& sdo, DRAW_ORDER *order)
  *      The commented out draw order is the default defined by AMX. It has the
  *      the disadvantage that the last drawn border may destroy text and/or the
  *      the icon, if any. It depends which border was selected and about the
- *      size of the border.
+ *      size of the border. */
         *order     = ORD_ELEM_FILL;
         *(order+1) = ORD_ELEM_BITMAP;
         *(order+2) = ORD_ELEM_ICON;
         *(order+3) = ORD_ELEM_TEXT;
         *(order+4) = ORD_ELEM_BORDER;
-*/
+/*
         *order     = ORD_ELEM_FILL;
         *(order+1) = ORD_ELEM_BITMAP;
         *(order+2) = ORD_ELEM_BORDER;
         *(order+3) = ORD_ELEM_ICON;
-        *(order+4) = ORD_ELEM_TEXT;
+        *(order+4) = ORD_ELEM_TEXT; */
         return;
     }
 
@@ -4005,8 +4198,8 @@ bool TButton::buttonDynamic(SkBitmap* bm, int instance, bool show, bool *state)
     {
         // First me must add the credential for the image into a bitmap cache element
         BITMAP_CACHE bc;
-        bc.top = tp;
-        bc.left = lt;
+        bc.top = mPosTop;
+        bc.left = mPosLeft;
         bc.width = wt;
         bc.height = ht;
         bc.bi = bi;
@@ -4285,7 +4478,7 @@ void TButton::funcResource(const RESOURCE_T* resource, const std::string& url, B
         if (_playVideo && !prg_stopped)
         {
             ulong parent = (mHandle >> 16) & 0x0000ffff;
-            _playVideo(mHandle, parent, lt, tp, wt, ht, url, resource->user, resource->password);
+            _playVideo(mHandle, parent, mPosLeft, mPosTop, wt, ht, url, resource->user, resource->password);
         }
     }
 }
@@ -4449,10 +4642,18 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
         // Calculation: width / <effective pixels> * level
         // Calculation: height / <effective pixels> * level
         if (dr.compare("horizontal") == 0)
-            width = (int)((double)width / ((double)rh - (double)rl) * (double)level);
+        {
+            width = static_cast<int>(static_cast<double>(width) / static_cast<double>(rh - rl) * static_cast<double>(level));
+//            startX = sr[0].mi_width - width;
+//            width = sr[0].mi_width;
+        }
         else
-            height = (int)((double)height / ((double)rh - (double)rl) * (double)level);
-
+        {
+            height = static_cast<int>(static_cast<double>(height) / static_cast<double>(rh - rl) * static_cast<double>(level));
+            startY = sr[0].mi_height - height;
+            height = sr[0].mi_height;
+        }
+/*
         if (ri && dr.compare("horizontal") == 0)
         {
             startX = sr[0].mi_width - width;
@@ -4463,7 +4664,7 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
             startY = sr[0].mi_height - height;
             height = sr[0].mi_height;
         }
-
+*/
         if (!allocPixels(sr[0].mi_width, sr[0].mi_height, &img))
             return false;
 
@@ -4557,10 +4758,18 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
         // Calculation: width / <effective pixels> * level
         // Calculation: height / <effective pixels> * level
         if (dr.compare("horizontal") == 0)
-            width = (int)((double)width / ((double)rh - (double)rl) * (double)level);
+        {
+            width = static_cast<int>(static_cast<double>(width) / static_cast<double>(rh - rl) * static_cast<double>(level));
+//            startX = sr[0].mi_width - width;
+//            width = sr[0].mi_width;
+        }
         else
-            height = (int)((double)height / ((double)rh - (double)rl) * (double)level);
-
+        {
+            height = static_cast<int>(static_cast<double>(height) / static_cast<double>(rh - rl) * static_cast<double>(level));
+            startY = sr[0].mi_height - height;
+            height = sr[0].mi_height;
+        }
+/*
         if (ri && dr.compare("horizontal") == 0)     // range inverted?
         {
             startX = sr[0].mi_width - width;
@@ -4571,7 +4780,7 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
             startY = sr[0].mi_height - height;
             height = sr[0].mi_height;
         }
-
+*/
         MSG_DEBUG("dr=" << dr << ", startX=" << startX << ", startY=" << startY << ", width=" << width << ", height=" << height << ", level=" << level);
         MSG_TRACE("Creating bargraph ...");
         SkBitmap img_bar;
@@ -4629,10 +4838,18 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
         // Calculation: width / <effective pixels> * level
         // Calculation: height / <effective pixels> * level
         if (dr.compare("horizontal") == 0)
-            width = (int)((double)width / ((double)rh - (double)rl) * (double)level);
+        {
+            width = static_cast<int>(static_cast<double>(width) / static_cast<double>(rh - rl) * static_cast<double>(level));
+//            startX = sr[1].mi_width - width;
+//            width = sr[1].mi_width;
+        }
         else
-            height = (int)((double)height / ((double)rh - (double)rl) * (double)level);
-
+        {
+            height = static_cast<int>(static_cast<double>(height) / static_cast<double>(rh - rl) * static_cast<double>(level));
+            startY = sr[1].mi_height - height;
+            height = sr[1].mi_height;
+        }
+/*
         if (ri && dr.compare("horizontal") == 0)     // range inverted?
         {
             startX = sr[1].mi_width - width;
@@ -4643,7 +4860,7 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
             startY = sr[1].mi_height - height;
             height = sr[1].mi_height;
         }
-
+*/
         MSG_DEBUG("dr=" << dr << ", startX=" << startX << ", startY=" << startY << ", width=" << width << ", height=" << height << ", level=" << level);
         MSG_TRACE("Creating bargraph ...");
         SkBitmap img_bar;
@@ -4687,10 +4904,14 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
         // Calculation: width / <effective pixels> * level = <level position>
         // Calculation: height / <effective pixels> * level = <level position>
         if (dr.compare("horizontal") == 0)
-            width = (int)((double)width / ((double)rh - (double)rl) * (double)level);
+            width = static_cast<int>(static_cast<double>(width) / static_cast<double>(rh - rl) * static_cast<double>(level));
         else
-            height = (int)((double)height / ((double)rh - (double)rl) * (double)level);
-
+        {
+            height = static_cast<int>(static_cast<double>(height) / static_cast<double>(rh - rl) * static_cast<double>(level));
+            startY = ht - height;
+            height = ht;
+        }
+/*
         if (ri && dr.compare("horizontal") == 0)
         {
             startX = wt - width;
@@ -4701,7 +4922,7 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
             startY = ht - height;
             height = ht;
         }
-
+*/
         SkPaint paint;
         paint.setBlendMode(SkBlendMode::kSrc);
         SkCanvas can(*bm, SkSurfaceProps());
@@ -4736,26 +4957,27 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
             if (dr.compare("horizontal") != 0)
             {
                 double scale;
-                innerH = (int)((double)(height - border_size * 2 - slButton.info().height() / 2) / ((double)rh - (double)rl) * (double)level) + border_size + slButton.info().height() / 2;
+                innerH = static_cast<int>(static_cast<double>(height - border_size * 2 - slButton.info().height() / 2) / static_cast<double>(rh - rl) * static_cast<double>(level)) + border_size + slButton.info().height() / 2;
                 innerW = width;
-                scale = (double)(wt - border_size * 2) / (double)slButton.info().width();
+                scale = static_cast<double>(wt - border_size * 2) / static_cast<double>(slButton.info().width());
                 scaleW = scale;
                 scaleH = 1.0;
 
-                if (!ri)
+//                if (!ri)
                     innerH = height - innerH;
             }
             else
             {
                 double scale;
-                scale = (double)(ht - border_size * 2) / (double)slButton.info().height();
+                scale = static_cast<double>(ht - border_size * 2) / static_cast<double>(slButton.info().height());
                 scaleW = 1.0;
                 scaleH = scale;
-                innerW = (int)((double)(width - border_size * 2 - slButton.info().width() / 2) / ((double)rh - (double)rl) * (double)level) + border_size + slButton.info().width() / 2;
+//                innerW = static_cast<int>(static_cast<double>(width - border_size * 2 - slButton.info().width() / 2) / static_cast<double>(rh - rl) * static_cast<double>(level)) + border_size + slButton.info().width() / 2;
                 innerH = height;
+                innerW = width;
 
-                if (!ri)
-                    innerW = width - innerW;
+//                if (!ri)
+//                    innerW = width - innerW;
             }
 
             if (scaleImage(&slButton, scaleW, scaleH))
@@ -5078,23 +5300,26 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
         vector<string> textLines;
 
         if (!sr[instance].ww)
-            textLines = splitLine(sr[instance].te);
+        {
+            textLines = splitLine(sr[instance].te, true);
+            lines = static_cast<int>(textLines.size());
+        }
         else
         {
             textLines = splitLine(sr[instance].te, wt, ht, skFont, paint);
-            lines = (int)textLines.size();
+            lines = static_cast<int>(textLines.size());
         }
 
         MSG_DEBUG("Calculated number of lines: " << lines);
         int lineHeight = (metrics.fAscent * -1) + metrics.fDescent;
         int totalHeight = lineHeight * lines;
-
+/*
         if (totalHeight > ht)
         {
             lines = ht / lineHeight;
             totalHeight = lineHeight * lines;
         }
-
+*/
         MSG_DEBUG("Line height: " << lineHeight << ", total height: " << totalHeight);
         vector<string>::iterator iter;
         int line = 0;
@@ -5398,13 +5623,16 @@ bool TButton::textEffect(SkCanvas *canvas, sk_sp<SkTextBlob>& blob, SkScalar sta
  *
  * @param bm        Bitmap to draw the border on.
  * @param inst      The instance where the border definitition should be taken from
+ * @param lnType    This can be used to define one of the border types
+ *                      off, on, drag or drop
  *
  * @return TRUE on success, otherwise FALSE.
  */
-bool TButton::buttonBorder(SkBitmap* bm, int inst)
+bool TButton::buttonBorder(SkBitmap* bm, int inst, TSystemDraw::LINE_TYPE_t lnType)
 {
-    DECL_TRACER("TButton::buttonBorder(SkBitmap* bm, int instance)");
+    DECL_TRACER("TButton::buttonBorder(SkBitmap* bm, int instance, TSystemDraw::LINE_TYPE_t lnType)");
 
+    TSystemDraw::LINE_TYPE_t lineType = lnType;
     int instance = inst;
 
     if (instance < 0)
@@ -5431,10 +5659,17 @@ bool TButton::buttonBorder(SkBitmap* bm, int inst)
 
     if (sr.size() == 2)
     {
-        if (gPageManager->getSystemDraw()->getBorder(bname, TSystemDraw::LT_OFF, &bd))
+        string n = bname;
+
+        if ((StrContains(toLower(n), "inset") || StrContains(n, "active on")) && lineType == TSystemDraw::LT_OFF)
+            lineType = TSystemDraw::LT_ON;
+
+        if (gPageManager->getSystemDraw()->getBorder(bname, lineType, &bd))
             numBorders++;
     }
-    else if (gPageManager->getSystemDraw()->getBorder(bname, TSystemDraw::LT_ON, &bd))
+    else if (lineType == TSystemDraw::LT_OFF && gPageManager->getSystemDraw()->getBorder(bname, TSystemDraw::LT_ON, &bd))
+        numBorders++;
+    else if (gPageManager->getSystemDraw()->getBorder(bname, lineType, &bd))
         numBorders++;
 
     if (numBorders > 0)
@@ -5447,37 +5682,37 @@ bool TButton::buttonBorder(SkBitmap* bm, int inst)
         if (!getBorderFragment(bd.b, bd.b_alpha, &imgB, color) || imgB.empty())
             return false;
 
-        MSG_DEBUG("Got images " << bd.b << " and " << bd.b_alpha << " with size " << imgB.info().width() << " x " << imgB.info().height());
+        MSG_DEBUG("Got images \"" << bd.b << "\" and \"" << bd.b_alpha << "\" with size " << imgB.info().width() << " x " << imgB.info().height());
         if (!getBorderFragment(bd.br, bd.br_alpha, &imgBR, color) || imgBR.empty())
             return false;
 
-        MSG_DEBUG("Got images " << bd.br << " and " << bd.br_alpha << " with size " << imgBR.info().width() << " x " << imgBR.info().height());
+        MSG_DEBUG("Got images \"" << bd.br << "\" and \"" << bd.br_alpha << "\" with size " << imgBR.info().width() << " x " << imgBR.info().height());
         if (!getBorderFragment(bd.r, bd.r_alpha, &imgR, color) || imgR.empty())
             return false;
 
-        MSG_DEBUG("Got images " << bd.r << " and " << bd.r_alpha << " with size " << imgR.info().width() << " x " << imgR.info().height());
+        MSG_DEBUG("Got images \"" << bd.r << "\" and \"" << bd.r_alpha << "\" with size " << imgR.info().width() << " x " << imgR.info().height());
         if (!getBorderFragment(bd.tr, bd.tr_alpha, &imgTR, color) || imgTR.empty())
             return false;
 
-        MSG_DEBUG("Got images " << bd.tr << " and " << bd.tr_alpha << " with size " << imgTR.info().width() << " x " << imgTR.info().height());
+        MSG_DEBUG("Got images \"" << bd.tr << "\" and \"" << bd.tr_alpha << "\" with size " << imgTR.info().width() << " x " << imgTR.info().height());
         if (!getBorderFragment(bd.t, bd.t_alpha, &imgT, color) || imgT.empty())
             return false;
 
-        MSG_DEBUG("Got images " << bd.t << " and " << bd.t_alpha << " with size " << imgT.info().width() << " x " << imgT.info().height());
+        MSG_DEBUG("Got images \"" << bd.t << "\" and \"" << bd.t_alpha << "\" with size " << imgT.info().width() << " x " << imgT.info().height());
         if (!getBorderFragment(bd.tl, bd.tl_alpha, &imgTL, color) || imgTL.empty())
             return false;
 
-        MSG_DEBUG("Got images " << bd.tl << " and " << bd.tl_alpha << " with size " << imgTL.info().width() << " x " << imgTL.info().height());
+        MSG_DEBUG("Got images \"" << bd.tl << "\" and \"" << bd.tl_alpha << "\" with size " << imgTL.info().width() << " x " << imgTL.info().height());
         if (!getBorderFragment(bd.l, bd.l_alpha, &imgL, color) || imgL.empty())
             return false;
 
         mBorderWidth = imgL.info().width();
-        MSG_DEBUG("Got images " << bd.l << " and " << bd.l_alpha << " with size " << imgL.info().width() << " x " << imgL.info().height());
+        MSG_DEBUG("Got images \"" << bd.l << "\" and \"" << bd.l_alpha << "\" with size " << imgL.info().width() << " x " << imgL.info().height());
 
         if (!getBorderFragment(bd.bl, bd.bl_alpha, &imgBL, color) || imgBL.empty())
             return false;
 
-        MSG_DEBUG("Got images " << bd.bl << " and " << bd.bl_alpha << " with size " << imgBL.info().width() << " x " << imgBL.info().height());
+        MSG_DEBUG("Got images \"" << bd.bl << "\" and \"" << bd.bl_alpha << "\" with size " << imgBL.info().width() << " x " << imgBL.info().height());
         MSG_DEBUG("Button image size: " << (imgTL.info().width() + imgT.info().width() + imgTR.info().width()) << " x " << (imgTL.info().height() + imgL.info().height() + imgBL.info().height()));
         MSG_DEBUG("Total size: " << wt << " x " << ht);
         stretchImageWidth(&imgB, wt - imgBL.info().width() - imgBR.info().width());
@@ -5530,16 +5765,15 @@ int TButton::numberLines(const string& str)
     int lines = 1;
 
     if (str.empty())
-    {
-        MSG_DEBUG("Found an empty string.");
         return lines;
-    }
 
     string::const_iterator iter;
 
     for (iter = str.begin(); iter != str.end(); ++iter)
     {
-        if (*iter == '\n')
+        if (*iter == '\n' ||
+            (type == TEXT_INPUT && dt == "multiple" && *iter == '|') ||
+            (sr[mActInstance].ww != 0 && *iter == '|'))
             lines++;
     }
 
@@ -5863,15 +6097,15 @@ bool TButton::drawButton(int instance, bool show, bool subview)
     {
         int rwidth = wt;
         int rheight = ht;
-        int rleft = lt;
-        int rtop = tp;
+        int rleft = mPosLeft;
+        int rtop = mPosTop;
 #ifdef _SCALE_SKIA_
         if (gPageManager && gPageManager->getScaleFactor() != 1.0)
         {
             rwidth = (int)((double)wt * gPageManager->getScaleFactor());
             rheight = (int)((double)ht * gPageManager->getScaleFactor());
-            rleft = (int)((double)lt * gPageManager->getScaleFactor());
-            rtop = (int)((double)tp * gPageManager->getScaleFactor());
+            rleft = (int)((double)mPosLeft * gPageManager->getScaleFactor());
+            rtop = (int)((double)mPosTop * gPageManager->getScaleFactor());
 
             SkPaint paint;
             paint.setBlendMode(SkBlendMode::kSrc);
@@ -5953,7 +6187,7 @@ bool TButton::drawTextArea(int instance)
         return false;
     }
 
-    if (!mChanged)
+    if (!mChanged && !mLastImage.empty())
     {
         showLastButton();
         return true;
@@ -6070,7 +6304,6 @@ bool TButton::drawTextArea(int instance)
         MSG_DEBUG("Calculated alpha value: " << alpha);
         SkPaint paint;
         paint.setAlphaf(alpha);
-//        paint.setImageFilter(SkImageFilters::AlphaThreshold(region, 0.0, alpha, nullptr));
         sk_sp<SkImage> _image = SkImages::RasterFromBitmap(imgButton);
         canvas.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
         imgButton.erase(SK_ColorTRANSPARENT, {0, 0, w, h});
@@ -6084,8 +6317,8 @@ bool TButton::drawTextArea(int instance)
     {
         int rwidth = wt;
         int rheight = ht;
-        int rleft = lt;
-        int rtop = tp;
+        int rleft = mPosLeft;
+        int rtop = mPosTop;
         size_t rowBytes = imgButton.info().minRowBytes();
 #ifdef _SCALE_SKIA_
         if (gPageManager && gPageManager->getScaleFactor() != 1.0)
@@ -6093,8 +6326,8 @@ bool TButton::drawTextArea(int instance)
             size_t rowBytes = imgButton.info().minRowBytes();
             rwidth = (int)((double)wt * gPageManager->getScaleFactor());
             rheight = (int)((double)ht * gPageManager->getScaleFactor());
-            rleft = (int)((double)lt * gPageManager->getScaleFactor());
-            rtop = (int)((double)tp * gPageManager->getScaleFactor());
+            rleft = (int)((double)mPosLeft * gPageManager->getScaleFactor());
+            rtop = (int)((double)mPosTop * gPageManager->getScaleFactor());
 
             SkPaint paint;
             paint.setBlendMode(SkBlendMode::kSrc);
@@ -6300,15 +6533,15 @@ bool TButton::drawMultistateBargraph(int level, bool show)
     {
         int rwidth = wt;
         int rheight = ht;
-        int rleft = lt;
-        int rtop = tp;
+        int rleft = mPosLeft;
+        int rtop = mPosTop;
 #ifdef _SCALE_SKIA_
         if (gPageManager && gPageManager->getScaleFactor() != 1.0)
         {
             rwidth = (int)((double)wt * gPageManager->getScaleFactor());
             rheight = (int)((double)ht * gPageManager->getScaleFactor());
-            rleft = (int)((double)lt * gPageManager->getScaleFactor());
-            rtop = (int)((double)tp * gPageManager->getScaleFactor());
+            rleft = (int)((double)mPosLeft * gPageManager->getScaleFactor());
+            rtop = (int)((double)mPosTop * gPageManager->getScaleFactor());
 
             SkPaint paint;
             paint.setBlendMode(SkBlendMode::kSrc);
@@ -6351,23 +6584,47 @@ bool TButton::drawMultistateBargraph(int level, bool show)
     return true;
 }
 
-void TButton::setBargraphInvert(bool invert)
+void TButton::setBargraphInvert(int invert)
 {
-    DECL_TRACER("TButton::setBargraphInvert(bool invert)");
+    DECL_TRACER("TButton::setBargraphInvert(int invert)");
 
-    if (invert && !ri)
+    if (invert < 0 || invert > 3)
+        return;
+
+    if (invert != ri)
     {
-        ri = 1;
-        mChanged = true;
-    }
-    else if (!invert && ri)
-    {
-        ri = 0;
+        ri = invert;
         mChanged = true;
     }
 
-    if (mChanged)
-        makeElement(mActInstance);
+    if (mChanged && lp && lv)
+    {
+        amx::ANET_SEND scmd;
+        scmd.device = TConfig::getChannel();
+        scmd.port = lp;
+        scmd.channel = lv;
+        scmd.level = lv;
+
+        if (type == BARGRAPH)
+            scmd.value = (ri > 0 ? ((rh - rl) - mLastLevel) : mLastLevel);
+        else if (invert == 1 || invert == 3)
+            scmd.value = (ri > 0 ? ((rh - rl) - mLastJoyX) : mLastJoyX);
+
+        scmd.MC = 0x008a;
+
+        if (gAmxNet)
+            gAmxNet->sendCommand(scmd);
+
+        if (type == JOYSTICK && (invert == 2 || invert == 3))
+        {
+            scmd.channel = lv;
+            scmd.level = lv;
+            scmd.value = (ri > 0 ? ((rh - rl) - mLastJoyY) : mLastJoyY);
+
+            if (gAmxNet)
+                gAmxNet->sendCommand(scmd);
+        }
+    }
 }
 
 void TButton::setBargraphRampDownTime(int t)
@@ -6398,6 +6655,365 @@ void TButton::setBargraphDragIncrement(int inc)
         return;
 
     rn = inc;
+}
+
+/*
+ * The parameters "x" and "y" are the levels of the x and y axes.
+ */
+bool TButton::drawJoystick(int x, int y)
+{
+    DECL_TRACER("TButton::drawJoystick(int x, int y)");
+
+    if (type != JOYSTICK)
+    {
+        MSG_ERROR("Element is no joystick!");
+        TError::setError();
+        return false;
+    }
+
+    if (sr.empty())
+    {
+        MSG_ERROR("Joystick has no element!");
+        TError::setError();
+        return false;
+    }
+
+    if (!_displayButton && gPageManager)
+        _displayButton = gPageManager->getCallbackDB();
+
+    if (!mChanged && mLastJoyX == x && mLastJoyY == y)
+    {
+        showLastButton();
+        return true;
+    }
+
+    if (x < rl)
+        mLastJoyX = rl;
+    else if (x > rh)
+        mLastJoyX = rh;
+    else
+        mLastJoyX = x;
+
+    if (y < rl)
+        mLastJoyY = rl;
+    else if (y > rh)
+        mLastJoyY = rh;
+    else
+        mLastJoyY = y;
+
+    if (!visible || hd || !_displayButton)
+    {
+        bool db = (_displayButton != nullptr);
+        MSG_DEBUG("Joystick " << bi << ", \"" << na << "\" with coordinates " << mLastJoyX << "|" << mLastJoyY << " is not to draw!");
+        MSG_DEBUG("Visible: " << (visible ? "YES" : "NO") << ", callback: " << (db ? "PRESENT" : "N/A"));
+        return true;
+    }
+
+    ulong parent = mHandle & 0xffff0000;
+
+    getDrawOrder(sr[0]._do, (DRAW_ORDER *)&mDOrder);
+
+    if (TError::isError())
+        return false;
+
+    SkBitmap imgButton;
+
+    if (!allocPixels(wt, ht, &imgButton))
+        return false;
+
+    imgButton.eraseColor(TColor::getSkiaColor(sr[0].cf));
+    bool haveFrame = false;
+
+    for (int i = 0; i < ORD_ELEM_COUNT; i++)
+    {
+        if (mDOrder[i] == ORD_ELEM_FILL && !haveFrame)
+        {
+            if (!buttonFill(&imgButton, 0))
+                return false;
+        }
+        else if (mDOrder[i] == ORD_ELEM_BITMAP)
+        {
+            if (!drawJoystickCursor(&imgButton, mLastJoyX, mLastJoyY))
+                return false;
+        }
+        else if (mDOrder[i] == ORD_ELEM_ICON)
+        {
+            if (!buttonIcon(&imgButton, 0))
+                return false;
+        }
+        else if (mDOrder[i] == ORD_ELEM_TEXT)
+        {
+            if (!buttonText(&imgButton, 0))
+                return false;
+        }
+        else if (mDOrder[i] == ORD_ELEM_BORDER)
+        {
+            if (!buttonBorder(&imgButton, 0))
+                return false;
+
+            haveFrame = true;
+        }
+    }
+
+    if (mGlobalOO >= 0 || sr[0].oo >= 0) // Take overall opacity into consideration
+    {
+        SkBitmap ooButton;
+        int w = imgButton.width();
+        int h = imgButton.height();
+
+        if (!allocPixels(w, h, &ooButton))
+            return false;
+
+        SkCanvas canvas(ooButton);
+        SkIRect irect = SkIRect::MakeXYWH(0, 0, w, h);
+        SkRegion region;
+        region.setRect(irect);
+        SkScalar oo;
+
+        if (mGlobalOO >= 0 && sr[0].oo >= 0)
+        {
+            oo = std::min((SkScalar)mGlobalOO, (SkScalar)sr[0].oo);
+            MSG_DEBUG("Set global overal opacity to " << oo);
+        }
+        else if (sr[0].oo >= 0)
+        {
+            oo = (SkScalar)sr[0].oo;
+            MSG_DEBUG("Set overal opacity to " << oo);
+        }
+        else
+        {
+            oo = (SkScalar)mGlobalOO;
+            MSG_DEBUG("Set global overal opacity to " << oo);
+        }
+
+        SkScalar alpha = 1.0 / 255.0 * oo;
+        MSG_DEBUG("Calculated alpha value: " << alpha);
+        SkPaint paint;
+        paint.setAlphaf(alpha);
+        //        paint.setImageFilter(SkImageFilters::AlphaThreshold(region, 0.0, alpha, nullptr));
+        sk_sp<SkImage> _image = SkImages::RasterFromBitmap(imgButton);
+        canvas.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
+        imgButton.erase(SK_ColorTRANSPARENT, {0, 0, w, h});
+        imgButton = ooButton;
+    }
+
+    mLastImage = imgButton;
+    mChanged = false;
+
+    if (!prg_stopped && visible && _displayButton)
+    {
+        int rwidth = wt;
+        int rheight = ht;
+        int rleft = mPosLeft;
+        int rtop = mPosTop;
+#ifdef _SCALE_SKIA_
+        if (gPageManager && gPageManager->getScaleFactor() != 1.0)
+        {
+            rwidth = (int)((double)wt * gPageManager->getScaleFactor());
+            rheight = (int)((double)ht * gPageManager->getScaleFactor());
+            rleft = (int)((double)mPosLeft * gPageManager->getScaleFactor());
+            rtop = (int)((double)mPosTop * gPageManager->getScaleFactor());
+
+            SkPaint paint;
+            paint.setBlendMode(SkBlendMode::kSrc);
+            paint.setFilterQuality(kHigh_SkFilterQuality);
+            // Calculate new dimension
+            SkImageInfo info = imgButton.info();
+            int width = (int)((double)info.width() * gPageManager->getScaleFactor());
+            int height = (int)((double)info.height() * gPageManager->getScaleFactor());
+            // Create a canvas and draw new image
+            sk_sp<SkImage> im = SkImage::MakeFromBitmap(imgButton);
+            imgButton.allocN32Pixels(width, height);
+            imgButton.eraseColor(SK_ColorTRANSPARENT);
+            SkCanvas can(imgButton, SkSurfaceProps());
+            SkRect rect = SkRect::MakeXYWH(0, 0, width, height);
+            can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
+            mLastImage = imgButton;
+        }
+#endif
+        TBitmap image((unsigned char *)imgButton.getPixels(), imgButton.info().width(), imgButton.info().height());
+        _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop, isPassThrough(), sr[mActInstance].md, sr[mActInstance].mr);
+    }
+
+    return true;
+}
+
+bool TButton::drawJoystickCursor(SkBitmap *bm, int x, int y)
+{
+    DECL_TRACER("TButton::drawJoystickCursor(SkBitmap *bm, int x, int y)");
+
+    if (cd.empty())
+        return true;
+
+    SkBitmap cursor = drawCursorButton(cd, TColor::getSkiaColor(cc));
+
+    if (cursor.empty())
+        return false;
+
+    SkPaint paint;
+    paint.setBlendMode(SkBlendMode::kSrcOver);
+    SkCanvas can(*bm, SkSurfaceProps());
+
+    int imgWidth = cursor.info().width();
+    int imgHeight = cursor.info().height();
+
+    int startX = static_cast<int>(static_cast<double>(wt) / static_cast<double>(rh - rl) * static_cast<double>(x));
+    int startY = static_cast<int>(static_cast<double>(ht) / static_cast<double>(rh - rl) * static_cast<double>(y));
+
+    startX -= imgWidth / 2;
+    startY -= imgHeight / 2;
+    sk_sp<SkImage> _image = SkImages::RasterFromBitmap(cursor);
+    can.drawImage(_image, startX, startY, SkSamplingOptions(), &paint);
+    return true;
+}
+
+SkBitmap TButton::drawCursorButton(const string &cursor, SkColor col)
+{
+    DECL_TRACER("TButton::drawCursorButton(const string &cursor, SkColor col)");
+
+    SkBitmap slButton;
+    // First we look for the cursor button.
+    if (!gPageManager || !gPageManager->getSystemDraw()->existCursor(cursor))
+        return slButton;
+
+    // There exists one with the wanted name. We grab it and create
+    // the images from the files.
+    CURSOR_STYLE_t cst;
+
+    if (!gPageManager->getSystemDraw()->getCursor(cursor, &cst))    // should never be true!
+    {
+        MSG_ERROR("No cursor entry found!");
+        return slButton;
+    }
+
+    // Retrieve all available cursor graphics files from the system
+    CURSOR_t curFiles = gPageManager->getSystemDraw()->getCursorFiles(cst);
+
+    if (curFiles.imageBase.empty() && curFiles.imageAlpha.empty())
+    {
+        MSG_ERROR("No system cursor graphics found!");
+        return SkBitmap();
+    }
+
+    // Load the images
+    SkBitmap imageBase, imageAlpha;
+    int width = 0;
+    int height = 0;
+    bool haveBaseImage = false;
+
+    if (!curFiles.imageBase.empty())
+    {
+        if (!retrieveImage(curFiles.imageBase, &imageBase))
+        {
+            MSG_ERROR("Unable to load image file " << baseName(curFiles.imageBase));
+            return SkBitmap();
+        }
+
+        width = imageBase.info().width();
+        height = imageBase.info().height();
+        haveBaseImage = true;
+        MSG_DEBUG("Found base image file " << cursor << ".png");
+    }
+
+    if (!curFiles.imageAlpha.empty())
+    {
+        if (!retrieveImage(curFiles.imageAlpha, &imageAlpha))
+        {
+            MSG_ERROR("Unable to load image file " << baseName(curFiles.imageAlpha));
+            return SkBitmap();
+        }
+
+        MSG_DEBUG("Found alpha image file " << cursor << "_alpha.png");
+
+        if (!haveBaseImage)
+        {
+            width = imageAlpha.info().width();
+            height = imageAlpha.info().height();
+
+            if (!allocPixels(width, height, &imageBase))
+                return imageBase;
+
+            imageBase.eraseColor(col);
+        }
+    }
+
+    if (imageAlpha.empty())
+    {
+        MSG_ERROR("Missing alpha mask!");
+        return imageAlpha;
+    }
+
+    SkPaint paint;
+    paint.setBlendMode(SkBlendMode::kSrcOver);
+
+    if (!allocPixels(width, height, &slButton))
+        return slButton;
+
+    /*
+     * The base image, if it exists, contains the final white mask who must be
+     * on top of the image stack. The stack looks like:
+     *      alpha image  (top)
+     *      base image
+     *      target image (bottom)
+     * where the "target" image is the one where the others are mapped to.
+     *
+     * The alpha image contains the cursor in black and white. If there is a
+     * base image all visible pixels of the base image must be set to the
+     * cursor color by preventing the original alpha value. All other pixels
+     * must be marked transparent.
+     */
+    slButton.eraseColor(SK_ColorTRANSPARENT);
+    SkCanvas slCan(slButton, SkSurfaceProps());
+
+    if (!haveBaseImage)
+    {
+        for (int x = 0; x < width; ++x)
+        {
+            for (int y = 0; y < height; ++y)
+            {
+                uint32_t *pix = imageBase.getAddr32(x, y);
+                SkColor color = imageAlpha.getColor(x, y);
+                SkColor alpha = SkColorGetA(color);
+
+                if (!alpha)
+                    *pix = SK_ColorTRANSPARENT;
+            }
+        }
+    }
+    else
+    {
+        // Colorize alpha image
+        for (int x = 0; x < width; ++x)
+        {
+            for (int y = 0; y < height; ++y)
+            {
+                uint32_t *pix = imageAlpha.getAddr32(x, y);
+                SkColor alpha = SkColorGetA(imageAlpha.getColor(x, y));
+
+                if (!alpha)
+                {
+                    *pix = SK_ColorTRANSPARENT;
+                    continue;
+                }
+
+                if (isBigEndian())
+                    *pix = SkColorSetA(col, alpha);
+                else
+                {
+                    SkColor red = SkColorGetR(col);
+                    SkColor green = SkColorGetG(col);
+                    SkColor blue = SkColorGetB(col);
+                    *pix = SkColorSetARGB(alpha, blue, green, red);
+                }
+            }
+        }
+    }
+
+    sk_sp<SkImage> _image = SkImages::RasterFromBitmap(imageAlpha);
+    slCan.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
+    _image = SkImages::RasterFromBitmap(imageBase);
+    slCan.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
+    return slButton;
 }
 
 bool TButton::drawList(bool show)
@@ -6495,8 +7111,8 @@ bool TButton::drawList(bool show)
     {
         int rwidth = wt;
         int rheight = ht;
-        int rleft = lt;
-        int rtop = tp;
+        int rleft = mPosLeft;
+        int rtop = mPosTop;
         size_t rowBytes = imgButton.info().minRowBytes();
 #ifdef _SCALE_SKIA_
         if (gPageManager && gPageManager->getScaleFactor() != 1.0)
@@ -6504,8 +7120,8 @@ bool TButton::drawList(bool show)
             size_t rowBytes = imgButton.info().minRowBytes();
             rwidth = (int)((double)wt * gPageManager->getScaleFactor());
             rheight = (int)((double)ht * gPageManager->getScaleFactor());
-            rleft = (int)((double)lt * gPageManager->getScaleFactor());
-            rtop = (int)((double)tp * gPageManager->getScaleFactor());
+            rleft = (int)((double)mPosLeft * gPageManager->getScaleFactor());
+            rtop = (int)((double)mPosTop * gPageManager->getScaleFactor());
 
             SkPaint paint;
             paint.setBlendMode(SkBlendMode::kSrc);
@@ -6679,15 +7295,15 @@ bool TButton::drawBargraph(int instance, int level, bool show)
     {
         int rwidth = wt;
         int rheight = ht;
-        int rleft = lt;
-        int rtop = tp;
+        int rleft = mPosLeft;
+        int rtop = mPosTop;
 #ifdef _SCALE_SKIA_
         if (gPageManager && gPageManager->getScaleFactor() != 1.0)
         {
             rwidth = (int)((double)wt * gPageManager->getScaleFactor());
             rheight = (int)((double)ht * gPageManager->getScaleFactor());
-            rleft = (int)((double)lt * gPageManager->getScaleFactor());
-            rtop = (int)((double)tp * gPageManager->getScaleFactor());
+            rleft = (int)((double)mPosLeft * gPageManager->getScaleFactor());
+            rtop = (int)((double)mPosTop * gPageManager->getScaleFactor());
 
             SkPaint paint;
             paint.setBlendMode(SkBlendMode::kSrc);
@@ -6772,7 +7388,7 @@ POSITION_t TButton::calcImagePosition(int width, int height, CENTER_CODE cc, int
 
             if (border < 4)
                 border = 4;
-//            border += 4;
+
             rwt = std::min(wt - border * 2, width);         // We've always a minimum (invisible) border of 4 pixels.
             rht = std::min(ht - border_size * 2, height);   // The height is calculated from a defined border, if any.
         break;
@@ -6801,7 +7417,7 @@ POSITION_t TButton::calcImagePosition(int width, int height, CENTER_CODE cc, int
             if (cc == SC_TEXT)
             {
                 position.left = border;
-                position.top = ht - ((ht - rht) / 2) - height * ln;
+                position.top = border; // ht - ((ht - rht) / 2) - height * ln;
             }
 
             position.width = rwt;
@@ -6810,7 +7426,7 @@ POSITION_t TButton::calcImagePosition(int width, int height, CENTER_CODE cc, int
 
         case 2: // center, top
             if (cc == SC_TEXT)
-                position.top = ht - ((ht - rht) / 2) - height * ln;
+                position.top = border; // ht - ((ht - rht) / 2) - height * ln;
 
             position.left = (wt - rwt) / 2;
             position.height = rht;
@@ -6823,7 +7439,7 @@ POSITION_t TButton::calcImagePosition(int width, int height, CENTER_CODE cc, int
             if (cc == SC_TEXT)
             {
                 position.left = (((position.left - border) < 0) ? 0 : position.left - border);
-                position.top = ht - (ht - rht) - height * ln;
+                position.top = border; // ht - (ht - rht) - height * ln;
             }
 
             position.width = rwt;
@@ -7275,9 +7891,15 @@ bool TButton::retrieveImage(const string& path, SkBitmap* image)
 {
     DECL_TRACER("TButton::retrieveImage(const string& path, SkBitmap* image)");
 
+    if (path.empty() || !image)
+    {
+        MSG_WARNING("TButton::retrieveImage: Empty parameter!");
+        return false;
+    }
+
     if (!fs::exists(path) || !fs::is_regular_file(path))
     {
-        MSG_WARNING("File " << path << " does not exist or is not a regular file!");
+        MSG_WARNING("File \"" << path << "\" does not exist or is not a regular file!");
         return false;
     }
 
@@ -7327,12 +7949,16 @@ bool TButton::getBorderFragment(const string& path, const string& pathAlpha, SkB
     sk_sp<SkData> im;
     SkBitmap bm;
     bool haveBaseImage = false;
+    SkColor swCol = color;
+
+    if (!isBigEndian())
+        flipColorLevelsRB(swCol);
 
     // If the path ends with "alpha.png" then it is a mask image. This not what
     // we want first unless this is the only image available.
     if (!endsWith(path, "alpha.png") || pathAlpha.empty())
     {
-        if (retrieveImage(path, image))
+        if (!path.empty() && retrieveImage(path, image))
         {
             haveBaseImage = true;
             // Underly the pixels with the border color
@@ -7352,7 +7978,7 @@ bool TButton::getBorderFragment(const string& path, const string& pathAlpha, SkB
                         uint32_t *pix = b.getAddr32(x, y);
 
                         if (alpha > 0)
-                            *pix = color;
+                            *pix = swCol;
                     }
                 }
 
@@ -7398,7 +8024,7 @@ bool TButton::getBorderFragment(const string& path, const string& pathAlpha, SkB
                 if (alpha == 0)
                     *pix = SK_ColorTRANSPARENT;
                 else
-                    *pix = SkColorSetA(color, alpha);
+                    *pix = SkColorSetA(swCol, alpha);
             }
         }
     }
@@ -7461,15 +8087,15 @@ void TButton::showLastButton()
         size_t rowBytes = mLastImage.info().minRowBytes();
         int rwidth = wt;
         int rheight = ht;
-        int rleft = lt;
-        int rtop = tp;
+        int rleft = mPosLeft;
+        int rtop = mPosTop;
 #ifdef _SCALE_SKIA_
         if (gPageManager && gPageManager->getScaleFactor() != 1.0)
         {
             rwidth = (int)((double)wt * gPageManager->getScaleFactor());
             rheight = (int)((double)ht * gPageManager->getScaleFactor());
-            rleft = (int)((double)lt * gPageManager->getScaleFactor());
-            rtop = (int)((double)tp * gPageManager->getScaleFactor());
+            rleft = (int)((double)mPosLeft * gPageManager->getScaleFactor());
+            rtop = (int)((double)mPosTop * gPageManager->getScaleFactor());
         }
 #endif
         if (type == TEXT_INPUT)
@@ -7506,7 +8132,7 @@ void TButton::showLastButton()
             {
                 TBitmap image((unsigned char *)mLastImage.getPixels(), mLastImage.info().width(), mLastImage.info().height());
                 TColor::COLOR_T bgcolor = TColor::getAMXColor(sr[mActInstance].cf);
-                gPageManager->getDisplayViewButton()(mHandle, getParent(), (on.empty() ? false : true), image, wt, ht, lt, tp, sa, bgcolor);
+                gPageManager->getDisplayViewButton()(mHandle, getParent(), (on.empty() ? false : true), image, wt, ht, mPosLeft, mPosTop, sa, bgcolor);
             }
         }
         else if (_displayButton)
@@ -7536,8 +8162,8 @@ void TButton::hide(bool total)
     {
         int rwidth = wt;
         int rheight = ht;
-        int rleft = lt;
-        int rtop = tp;
+        int rleft = mPosLeft;
+        int rtop = mPosTop;
 
         ulong parent = mHandle & 0xffff0000;
         THR_REFRESH_t *tr = _findResource(mHandle, parent, bi);
@@ -7552,8 +8178,8 @@ void TButton::hide(bool total)
         {
             rwidth = (int)((double)wt * gPageManager->getScaleFactor());
             rheight = (int)((double)ht * gPageManager->getScaleFactor());
-            rleft = (int)((double)lt * gPageManager->getScaleFactor());
-            rtop = (int)((double)tp * gPageManager->getScaleFactor());
+            rleft = (int)((double)mPosLeft * gPageManager->getScaleFactor());
+            rtop = (int)((double)mPosTop * gPageManager->getScaleFactor());
         }
 #endif
         if (type == TEXT_INPUT)
@@ -8777,45 +9403,54 @@ bool TButton::doClick(int x, int y, bool pressed)
                 MSG_WARNING("Missing global class TAmxNet. Can't send a message!");
         }
     }
-    else if (type == BARGRAPH && lf.find("active") != string::npos)
+    else if (type == BARGRAPH && (lf == "active" || lf == "center"))
     {
         // Find the click position
         int level = 0;
 
-        if (dr.compare("horizontal") == 0)
-        {
-            level = (ri ? (wt - x) : x);
-            level = (int)((double)(rh - rl) / (double)wt * (double)level);
-        }
+        if (!pressed)
+            mRunBargraphMove = false;
+
+        if (!pressed && lf == "center")
+            level = (rh - rl) / 2;
         else
         {
-            level = (ri ? y : (ht - y));
-            level = (int)((double)(rh - rl) / (double)ht * (double)level);
+            if (dr.compare("horizontal") == 0)
+            {
+                level = x;
+                level = static_cast<int>(static_cast<double>(rh - rl) / static_cast<double>(wt) * static_cast<double>(level));
+            }
+            else
+            {
+                level = ht - y;
+                level = static_cast<int>(static_cast<double>(rh - rl) / static_cast<double>(ht) * static_cast<double>(level));
+            }
         }
 
-        // Draw the bargraph
-        if (!drawBargraph(mActInstance, level, visible))
-            return false;
-
-        // Handle click
-        if (isSystem && lv == 9)    // System volume button
+        if (isSystem)
         {
-            TConfig::saveSystemVolume(level);
-            TConfig::saveSettings();
+            // Draw the bargraph
+            if (!drawBargraph(mActInstance, level, visible))
+                return false;
+
+            // Handle click
+            if (lv == 9)    // System volume button
+            {
+                if (!pressed)
+                {
+                    TConfig::saveSystemVolume(level);
+                    TConfig::saveSettings();
+                }
+            }
         }
-        else if ((cp && ch) || !op.empty())
+        else if ((pressed && cp && ch) || (pressed && !op.empty()))
         {
             scmd.device = TConfig::getChannel();
             scmd.port = cp;
             scmd.channel = ch;
 
             if (op.empty())
-            {
-                if (pressed || fb == FB_ALWAYS_ON)
-                    scmd.MC = 0x0084;
-                else
-                    scmd.MC = 0x0085;
-            }
+                scmd.MC = 0x0084;   // push button
             else
             {
                 scmd.MC = 0x008b;
@@ -8823,33 +9458,250 @@ bool TButton::doClick(int x, int y, bool pressed)
             }
 
             if (gAmxNet)
-            {
-                if (scmd.MC != 0x008b || (pressed && scmd.MC == 0x008b))
-                    gAmxNet->sendCommand(scmd);
-            }
+                gAmxNet->sendCommand(scmd);
             else
                 MSG_WARNING("Missing global class TAmxNet. Can't send a message!");
         }
 
-        // Send the level
-        if (lp && lv && gPageManager && gPageManager->getLevelSendState())
+        if (!isSystem)
         {
-            scmd.device = TConfig::getChannel();
-            scmd.port = lp;
-            scmd.channel = lv;
-            scmd.level = lv;
-            scmd.value = level;
-            scmd.MC = 0x008a;
+            int distance = (mLastLevel > level ? (mLastLevel - level) : (level - mLastLevel));
+            bool directionUp = (mLastLevel > level);
+
+            if (pressed && distance > 0)
+                runBargraphMove(distance, directionUp);
+            else if (!pressed)
+            {
+                drawBargraph(mActInstance, level);
+
+                if (lp && lv && gPageManager && gPageManager->getLevelSendState())
+                {
+                    scmd.device = TConfig::getChannel();
+                    scmd.port = lp;
+                    scmd.channel = lv;
+                    scmd.level = lv;
+                    scmd.value = (ri ? ((rh - rl) - level) : level);
+                    scmd.MC = 0x008a;
+
+                    if (gAmxNet)
+                    {
+                        if (mLastSendLevelX != level)
+                            gAmxNet->sendCommand(scmd);
+
+                        mLastSendLevelX = level;
+                    }
+                }
+            }
+
+            if ((!pressed && cp && ch) || (!pressed && !op.empty()))
+            {
+                scmd.device = TConfig::getChannel();
+                scmd.port = cp;
+                scmd.channel = ch;
+
+                if (op.empty())
+                    scmd.MC = 0x0085;   // release button
+                else
+                {
+                    scmd.MC = 0x008b;
+                    scmd.msg = op;
+                }
+
+                if (gAmxNet)
+                    gAmxNet->sendCommand(scmd);
+                else
+                    MSG_WARNING("Missing global class TAmxNet. Can't send a message!");
+            }
+        }
+    }
+    else if (type == BARGRAPH && (lf == "drag" || lf == "dragCenter") && pressed)
+    {
+        mBarStartLevel = mLastLevel;
+        int level;
+
+        if (dr.compare("horizontal") == 0)
+        {
+            level = x;
+            level = (int)((double)(rh - rl) / (double)wt * (double)level);
+        }
+        else
+        {
+            level = ht - y;
+            level = (int)((double)(rh - rl) / (double)ht * (double)level);
+        }
+
+        mBarThreshold = mBarStartLevel - level;
+        scmd.device = TConfig::getChannel();
+        scmd.port = cp;
+        scmd.channel = ch;
+
+        if (op.empty())
+            scmd.MC = 0x0084;   // push button
+        else
+        {
+            scmd.MC = 0x008b;
+            scmd.msg = op;
+        }
+
+        if (gAmxNet)
+            gAmxNet->sendCommand(scmd);
+        else
+            MSG_WARNING("Missing global class TAmxNet. Can't send a message!");
+    }
+    else if (type == BARGRAPH && (lf == "drag" || lf == "dragCenter") && !pressed)
+    {
+        if (lf == "dragCenter")
+        {
+            int level = (rh - rl) / 2;
+            mBarStartLevel = level;
+            // Draw the bargraph
+            if (!drawBargraph(mActInstance, level, visible))
+                return false;
+
+            // Send the level
+            if (lp && lv && gPageManager && gPageManager->getLevelSendState())
+            {
+                scmd.device = TConfig::getChannel();
+                scmd.port = lp;
+                scmd.channel = lv;
+                scmd.level = lv;
+                scmd.value = (ri ? ((rh - rl) - level) : level);
+                scmd.MC = 0x008a;
+
+                if (gAmxNet)
+                {
+                    if (mLastSendLevelX != level)
+                        gAmxNet->sendCommand(scmd);
+
+                    mLastSendLevelX = level;
+                }
+            }
+        }
+
+        scmd.device = TConfig::getChannel();
+        scmd.port = cp;
+        scmd.channel = ch;
+
+        if (op.empty())
+            scmd.MC = 0x0085;   // release button
+            else
+            {
+                scmd.MC = 0x008b;
+                scmd.msg = op;
+            }
 
             if (gAmxNet)
                 gAmxNet->sendCommand(scmd);
-        }
+        else
+            MSG_WARNING("Missing global class TAmxNet. Can't send a message!");
     }
     else if (type == TEXT_INPUT)
     {
         MSG_DEBUG("Text area detected. Switching on keyboard");
         // Drawing background graphic (visible part of area)
         drawTextArea(mActInstance);
+    }
+    else if (type == JOYSTICK && !lf.empty())
+    {
+        if (!pressed && (lf == "center" || lf == "dragCenter"))
+            sx = sy = (rh - rl) / 2;
+
+        if (pressed && ((cp && ch) || !op.empty()))
+        {
+            scmd.device = TConfig::getChannel();
+            scmd.port = cp;
+            scmd.channel = ch;
+
+            if (op.empty())
+                scmd.MC = 0x0084;
+            else
+            {
+                scmd.MC = 0x008b;
+                scmd.msg = op;
+            }
+
+            if (gAmxNet)
+                gAmxNet->sendCommand(scmd);
+            else
+                MSG_WARNING("Missing global class TAmxNet. Can't send a message!");
+        }
+
+        if (!drawJoystick(sx, sy))
+            return false;
+
+        // Send the levels
+        if (lp && lv && gPageManager && gPageManager->getLevelSendState())
+        {
+            scmd.device = TConfig::getChannel();
+            scmd.port = lp;
+            scmd.channel = lv;
+            scmd.level = lv;
+            scmd.value = (ri ? ((rh - rl) - mLastJoyX) : mLastJoyX);
+            scmd.MC = 0x008a;
+
+            if (gAmxNet)
+            {
+                if (mLastSendLevelX != mLastJoyX)
+                    gAmxNet->sendCommand(scmd);
+
+                mLastSendLevelX = mLastJoyX;
+            }
+
+            scmd.channel = lv + 1;
+            scmd.level = lv + 1;
+            scmd.value = (ji ? ((rh - rl) - mLastJoyY) : mLastJoyY);
+
+            if (gAmxNet)
+            {
+                if (mLastSendLevelY != mLastJoyY)
+                    gAmxNet->sendCommand(scmd);
+
+                mLastSendLevelY = mLastJoyY;
+            }
+        }
+
+        if (!pressed && ((cp && ch) || !op.empty()))
+        {
+            scmd.device = TConfig::getChannel();
+            scmd.port = cp;
+            scmd.channel = ch;
+
+            if (op.empty())
+                scmd.MC = 0x0085;
+            else
+            {
+                scmd.MC = 0x008b;
+                scmd.msg = op;
+            }
+
+            if (gAmxNet)
+                gAmxNet->sendCommand(scmd);
+            else
+                MSG_WARNING("Missing global class TAmxNet. Can't send a message!");
+        }
+    }
+    else if (type == JOYSTICK && lf.empty())
+    {
+        if ((cp && ch) || !op.empty())
+        {
+            scmd.device = TConfig::getChannel();
+            scmd.port = cp;
+            scmd.channel = ch;
+            scmd.MC = 0;
+
+            if (op.empty())
+                scmd.MC = (pressed ? 0x0084 : 0x0085);
+            else if (pressed)
+            {
+                scmd.MC = 0x008b;
+                scmd.msg = op;
+            }
+
+            if (gAmxNet && scmd.MC != 0)
+                gAmxNet->sendCommand(scmd);
+            else if (!gAmxNet)
+                MSG_WARNING("Missing global class TAmxNet. Can't send a message!");
+        }
     }
 
     /* FIXME: Move the following to class TPageManager!
@@ -8977,6 +9829,7 @@ bool TButton::doClick(int x, int y, bool pressed)
         if (gPageManager)
         {
             amx::ANET_COMMAND cmd;
+            cmd.intern = true;
             cmd.MC = 0x000c;
             cmd.device1 = channel;
             cmd.port1 = 1;
@@ -9041,12 +9894,11 @@ SkColor TButton::baseColor(SkColor basePix, SkColor maskPix, SkColor col1, SkCol
     uint alpha = SkColorGetA(basePix);
     uint green = SkColorGetG(basePix);
     uint red = 0;
-//#if (defined(__x86_64__) || defined(_M_X64)) && !defined(__MACH__)
+
     if (isBigEndian())
         red = SkColorGetB(basePix);
     else
         red = SkColorGetR(basePix);
-//#endif
 
     if (alpha == 0)
         return maskPix;
@@ -9479,6 +10331,112 @@ bool TButton::isPassThrough()
         return true;
 
     return false;
+}
+
+/**
+ * @brief Flip the red and blue color level
+ * Swaps the red and blue color level. This is sometimes necessary to preserve
+ * the correct color.
+ * This method changes the content of the parameter \b color to the swapped
+ * value!
+ *
+ * @param color     The color to swap.
+ * @return Returns the the color where red and blue level was swapped.
+ */
+SkColor& TButton::flipColorLevelsRB(SkColor& color)
+{
+    DECL_TRACER("TButton::flipColorLevelsRB(SkColor& color)");
+
+    SkColor red = SkColorGetR(color);
+    SkColor green = SkColorGetG(color);
+    SkColor blue = SkColorGetB(color);
+    SkColor alpha = SkColorGetA(color);
+    color = SkColorSetARGB(alpha, blue, green, red);
+    return color;
+}
+
+void TButton::runBargraphMove(int distance, bool moveUp)
+{
+    DECL_TRACER("TButton::runBargraphMove(int distance, bool moveUp)");
+
+    if (mThreadRunMove)
+        return;
+
+    mRunBargraphMove = true;
+
+    try
+    {
+        mThrSlider = thread([=] { threadBargraphMove(distance, moveUp); });
+        mThrSlider.detach();
+    }
+    catch (std::exception& e)
+    {
+        MSG_ERROR("Error starting thread: " << e.what());
+        mRunBargraphMove = false;
+        mThreadRunMove = false;
+    }
+}
+
+void TButton::threadBargraphMove(int distance, bool moveUp)
+{
+    DECL_TRACER("TButton::threadBargraphMove(int distance, bool moveUp)");
+
+    if (mThreadRunMove)
+        return;
+
+    mThreadRunMove = true;
+
+    int zeit = (moveUp ? lu : ld);
+    double step = static_cast<double>(zeit) / 10.0 * (static_cast<double>(distance) / 10.0);
+    double pos = 0.0;
+    double lastLevel = static_cast<double>(mLastLevel);
+    double posLevel = lastLevel;
+    std::chrono::milliseconds ms = std::chrono::milliseconds(zeit * 100);
+    std::chrono::milliseconds msStep = std::chrono::milliseconds(10);
+    MSG_DEBUG("step: " << step << ", total time (ms): " << (zeit * 100) << ", distance: " << distance);
+
+    for (std::chrono::milliseconds mi = std::chrono::milliseconds(0); mi < ms; mi += msStep)
+    {
+        if (!mRunBargraphMove)
+            break;
+
+        lastLevel = (moveUp ? (posLevel - pos) : (posLevel + pos));
+
+        if (static_cast<int>(lastLevel) != mLastLevel)
+        {
+            int level = static_cast<int>(lastLevel);
+
+            if (!drawBargraph(mActInstance, level))
+                break;
+
+            if (lp && lv && gPageManager && gPageManager->getLevelSendState())
+            {
+                amx::ANET_SEND scmd;
+                scmd.device = TConfig::getChannel();
+                scmd.port = lp;
+                scmd.channel = lv;
+                scmd.level = lv;
+                scmd.value = (ri ? ((rh - rl) - level) : level);
+                scmd.MC = 0x008a;
+
+                if (gAmxNet)
+                {
+                    if (mLastSendLevelX != level)
+                        gAmxNet->sendCommand(scmd);
+
+                    mLastSendLevelX = level;
+                }
+            }
+        }
+
+        if (pos >= static_cast<double>(distance))
+            break;
+
+        pos += step;
+        std::this_thread::sleep_for(std::chrono::milliseconds(msStep));
+    }
+
+    mThreadRunMove = false;
 }
 
 bool TButton::setListSource(const string &source, const vector<string>& configs)

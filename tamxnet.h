@@ -308,6 +308,7 @@ namespace amx
         uint16_t MC{0};         // 0x14 - 0x15: Message command identifier
         ANET_DATA data;         // 0x16 - n     Data block
         unsigned char checksum{0};  // last byte:   Checksum
+        bool intern{false};     // Internal command
 
         void clear()
         {
@@ -325,6 +326,7 @@ namespace amx
             count = 0;
             MC = 0;
             checksum = 0;
+            intern = false;
         }
     } ANET_COMMAND;
 

@@ -23,6 +23,7 @@
 #include <QEvent>
 #include <QKeyEvent>
 #include <QApplication>
+#include <QPainter>
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 #include <QAnyStringView>
 #endif
@@ -35,22 +36,22 @@
 using std::string;
 
 TQEditLine::TQEditLine(QWidget *widget, bool multiline)
-    : mMultiline(multiline)
+    : QWidget(widget),
+      mMultiline(multiline)
 {
     DECL_TRACER("TQEditLine::TQEditLine(QWidget *widget, bool multiline)");
 
-    QWidget::setParent(widget);
     init();
 }
 
 TQEditLine::TQEditLine(string &text, QWidget *widget, bool multiline)
-    : mText(text),
+    : QWidget(widget),
+      mText(text),
       mMultiline(multiline)
 
 {
     DECL_TRACER("TQEditLine::TQEditLine(string &text, QWidget *widget, bool multiline)");
 
-    QWidget::setParent(widget);
     init();
 }
 
@@ -240,6 +241,17 @@ void TQEditLine::setTextColor(QColor col)
         mTextArea->setPalette(pal);
 }
 
+void TQEditLine::setBackgroundPixmap(QPixmap& pixmap)
+{
+    DECL_TRACER("TQEditLine::setBackgroundPixmap(QPixmap& pixmap)");
+
+    if (pixmap.isNull())
+        return;
+
+    mBackground = pixmap;
+    update();
+}
+
 void TQEditLine::grabGesture(Qt::GestureType type, Qt::GestureFlags flags)
 {
     DECL_TRACER("TQEditLine::grabGesture(Qt::GestureType type, Qt::GestureFlags flags)");
@@ -353,9 +365,9 @@ void TQEditLine::onKeyPressed(int key)
             emit inputChanged(mHandle, mText);
             mChanged = false;
         }
-
-        return;
     }
+
+    QApplication::processEvents();
 }
 
 void TQEditLine::hideEvent(QHideEvent *event)
@@ -435,4 +447,15 @@ void TQEditLine::onEditingFinished()
     DECL_TRACER("TQEditLine::onEditingFinished()");
 
     _end();
+}
+
+void TQEditLine::paintEvent(QPaintEvent* event)
+{
+    DECL_TRACER("TQEditLine::paintEvent(QPaintEvent* event)");
+
+    if (mBackground.isNull())
+        return;
+
+    QPainter p(this);
+    p.drawPixmap(0, 0, mBackground);
 }

@@ -240,14 +240,29 @@ elseif(IOS)
     include_directories(${PJSIP_INCLUDE_DIRS})
     link_directories(${PJSIP_LIBRARY_DIRS})
 
-    if(NOT APPLE)
-#        link_libraries(
-#            pjsua2 pjsua pjsip-ua pjsip-simple pjsip
-#            pjmedia-codec pjmedia pjmedia-audiodev
-#            pjnath pjlib-util pj
-#            gsmcodec ilbccodec speex g7221codec
-#            srtp resample webrtc)
-#    else(APPLE)
+    if(APPLE)
+        # To avoid path problems on mac we add SIP as static libraries.
+        link_libraries(
+            libpjsua2-arm-apple-darwin23.0.0.a
+            libpjsua-arm-apple-darwin23.0.0.a
+            libpjsip-ua-arm-apple-darwin23.0.0.a
+            libpjsip-simple-arm-apple-darwin23.0.0.a
+            libpjsip-arm-apple-darwin23.0.0.a
+            libpjmedia-codec-arm-apple-darwin23.0.0.a
+            libpjmedia-arm-apple-darwin23.0.0.a
+            libpjmedia-audiodev-arm-apple-darwin23.0.0.a
+            libpjnath-arm-apple-darwin23.0.0.a
+            libpjlib-util-arm-apple-darwin23.0.0.a
+            libpj-arm-apple-darwin23.0.0.a
+            libgsmcodec-arm-apple-darwin23.0.0.a
+            libilbccodec-arm-apple-darwin23.0.0.a
+            libspeex-arm-apple-darwin23.0.0.a
+            libg7221codec-arm-apple-darwin23.0.0.a
+            libsrtp-arm-apple-darwin23.0.0.a
+            libresample-arm-apple-darwin23.0.0.a
+            libwebrtc-arm-apple-darwin23.0.0.a
+        )
+    else(APPLE)
         set(LIBS ${LIBS} -L/usr/local/lib)
         link_libraries(
             pjsua2 pjsua pjsip-ua pjsip-simple pjsip
@@ -256,7 +271,7 @@ elseif(IOS)
             gsmcodec ilbccodec speex g7221codec
             srtp resample yuv webrtc
             opus asound)
-    endif()
+    endif(APPLE)
 
     find_library(UUID_LIBRARY NAMES uuid)
     set(LIBS ${LIBS} ${UUID_LIBRARY})
@@ -268,29 +283,15 @@ elseif(IOS)
         # the following paths!
         set(OSX_INCLUDE -I/opt/homebrew/include -I/usr/local/include)
         add_definitions(${OSX_INCLUDE})
-        link_libraries(
-            pjsua2
-            pjsua
-            pjsip-ua
-            pjsip-simple
-            pjsip
-            pjmedia-codec
-            pjmedia
-            pjmedia-audiodev
-            pjnath
-            pjlib-util
-            pj
-            gsmcodec
-            ilbccodec
-            speex
-            g7221codec
-            srtp
-            resample
-            webrtc
-        )
+
+        # The mac requires some additional frameworks for audio.
+        find_library(COREAUDIO_LIBRARY CoreAudio)
+        find_library(AUDIOUNIT_LIBRARY AudioUnit)
+        find_library(AUDIOTOOLBOX_LIBRARY AudioToolbox)
+        mark_as_advanced(COREAUDIO_LIBRARY AUDIOUNIT_LIBRARY AUDIOTOOLBOX_LIBRARY)
 
         set(OSX_LIB -L/opt/homebrew/lib -L/usr/local/lib -liconv -lexpat -lz)
-        set(LIBS ${LIBS} ${OSX_LIB})
+        set(LIBS ${LIBS} ${OSX_LIB} ${COREAUDIO_LIBRARY} ${AUDIOUNIT_LIBRARY} ${AUDIOTOOLBOX_LIBRARY})
     else(APPLE)
         set(CMAKE_INSTALL_PREFIX /usr)
     endif(APPLE)
@@ -408,6 +409,8 @@ set(PROJECT_SOURCES
         tqdownload.cpp
         tqdownload.h
         download.ui
+#        tqtextedit.cpp
+#        tqtextedit.h
         tqeditline.cpp
         tqeditline.h
         tqsingleline.cpp

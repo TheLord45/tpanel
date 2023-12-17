@@ -197,7 +197,7 @@ class TPageManager : public TAmxCommands
         void registerDropButton(std::function<void(ulong hanlde)> dropButton) { _dropButton = dropButton; }
         void registerCBsetVisible(std::function<void(ulong handle, bool state)> setVisible) { _setVisible = setVisible; }
         void registerCallbackSP(std::function<void (ulong handle, int width, int height)> setPage) { _setPage = setPage; }
-        void registerCallbackSSP(std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate)> setSubPage) { _setSubPage = setSubPage; }
+        void registerCallbackSSP(std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate, bool modal)> setSubPage) { _setSubPage = setSubPage; }
 #ifdef _OPAQUE_SKIA_
         void registerCallbackSB(std::function<void (ulong handle, TBitmap image, int width, int height, ulong color)> setBackground) {_setBackground = setBackground; }
 #else
@@ -328,6 +328,18 @@ class TPageManager : public TAmxCommands
          * @param pressed   TRUE=The mouse button is pressed.
          */
         void mouseEvent(ulong handle, bool pressed);
+        /**
+         * @brief mouseMoveEvent - Moves bar on a bargraph
+         * This method looks for an object which is a bargraph. If so it is
+         * moved to the position of the mouse pointer. The behavior depends on
+         * the settings.
+         * This method just queues the event. For real handling of it look at
+         * method _mouseEvent().
+         *
+         * @param x     The x coordinate of the mouse pointer
+         * @param y     The y coordinate of the mouse pointer
+         */
+        void mouseMoveEvent(int x, int y);
         /**
          * Searches for a button with the handle \p handle and determines all
          * buttons with the same port and channel. Then it sets \p txt to all
@@ -528,7 +540,7 @@ class TPageManager : public TAmxCommands
         std::function<void (ulong handle, int width, int height)> getCallbackSetPage() { return _setPage; }
         std::function<void (Button::TButton *button, Button::BITMAP_t& bm, int frame)> getCallbackInputText() { return _callInputText; }
         std::function<void (Button::TButton *button, Button::BITMAP_t& bm, int frame)> getCallbackListBox() { return _callListBox; }
-        std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate)> getCallbackSetSubPage() { return _setSubPage; }
+        std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate, bool modal)> getCallbackSetSubPage() { return _setSubPage; }
         std::function<void (ulong handle)> getCallDropPage() { return _callDropPage; }
         std::function<void (ulong handle, ulong parent)> getCallDropSubPage() { return _callDropSubPage; }
         std::function<void (const std::string& file)> getCallPlaySound() { return _playSound; }
@@ -625,7 +637,7 @@ class TPageManager : public TAmxCommands
         std::function<void (ulong handle)> _dropButton{nullptr};
         std::function<void (ulong handle, bool state)> _setVisible{nullptr};
         std::function<void (ulong handle, int width, int height)> _setPage{nullptr};
-        std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate)> _setSubPage{nullptr};
+        std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate, bool modal)> _setSubPage{nullptr};
 #ifdef _OPAQUE_SKIA_
         std::function<void (ulong handle, TBitmap image, int width, int height, ulong color)> _setBackground{nullptr};
 #else
@@ -682,6 +694,12 @@ class TPageManager : public TAmxCommands
             size_t size{0};
         }_FTP_SURFACE_t;
 
+        typedef enum _EVENT_TYPE
+        {
+            _EVENT_MOUSE_CLICK,
+            _EVENT_MOUSE_MOVE
+        }_EVENT_TYPE;
+
         typedef struct _CLICK_QUEUE_t
         {
             bool coords{false};
@@ -689,6 +707,7 @@ class TPageManager : public TAmxCommands
             bool pressed{false};
             int x{0};
             int y{0};
+            _EVENT_TYPE eventType{_EVENT_MOUSE_CLICK};
         }_CLICK_QUEUE_t;
 
         /**
@@ -738,6 +757,7 @@ class TPageManager : public TAmxCommands
         void _mouseEvent(int x, int y, bool pressed);
         void _mouseEvent(ulong handle, bool pressed);
         void _updateSubViewItem(Button::TButton *bt);
+        void _mouseMoveEvent(int x, int y);
 #ifndef _NOSIP_
         std::string sipStateToString(TSIPClient::SIP_STATE_t s);
 #endif
@@ -811,7 +831,7 @@ class TPageManager : public TAmxCommands
         void doFON(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void getFON(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doGDI(int port, std::vector<int>& channels, std::vector<std::string>& pars);
-        void doGDV(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doGIV(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doGLH(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doGLL(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doGSC(int port, std::vector<int>& channels, std::vector<std::string>& pars);
@@ -863,6 +883,7 @@ class TPageManager : public TAmxCommands
         void doEKP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doPKB(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doPKP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doRPP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doSetup(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doShutdown(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doSOU(int port, std::vector<int>& channels, std::vector<std::string>& pars);
@@ -928,7 +949,6 @@ class TPageManager : public TAmxCommands
         TSystemDraw *mSystemDraw{nullptr};              // A pointer to the (optional) system resources
         std::thread mThreadAmxNet;                      // The thread handle to the controler handler
         TVector<amx::ANET_COMMAND> mCommands;           // Command queue of commands received from controller
-        std::atomic<bool> mBusy{false};                 // Internal used to block the command handler
         std::string mCmdBuffer;                         // Internal used buffer for commands who need more than one network package
         std::string mAkbText;                           // This is the text for the virtual keyboard (@AKB)
         std::string mAkpText;                           // This is the text for the virtual keyad (@AKP)

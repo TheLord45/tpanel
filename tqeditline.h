@@ -48,6 +48,7 @@ class TQEditLine : public QWidget
         void setFont(QFont &font);
         void setTextColor(QColor col);
         void setPalette(QPalette &pal);
+        void setBackgroundPixmap(QPixmap& pixmap);
         void grabGesture(Qt::GestureType type, Qt::GestureFlags flags = Qt::GestureFlags());
         void setPadding(int left, int top, int right, int bottom);
         void setFrameSize(int s);
@@ -73,6 +74,7 @@ class TQEditLine : public QWidget
         void hideEvent(QHideEvent *event) override;
         void leaveEvent(QEvent *event) override;
         void closeEvent(QCloseEvent *event) override;
+        void paintEvent(QPaintEvent *event) override;
 
         void onTextChanged(const QString &text);
         void onTextAreaChanged();
@@ -88,6 +90,7 @@ class TQEditLine : public QWidget
         QHBoxLayout *mLayout{nullptr};
         TQSingleLine *mEdit{nullptr};
         TQMultiLine *mTextArea{nullptr};
+        QPixmap mBackground;
 
         std::string mText;
         ulong mHandle{0};

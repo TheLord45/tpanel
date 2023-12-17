@@ -120,7 +120,7 @@ class MainWindow : public QMainWindow, public TObject
         void sigSetSubViewPadding(ulong handle, int padding);
         void sigSetVisible(ulong handle, bool state);
         void sigSetPage(ulong handle, int width, int height);
-        void sigSetSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate);
+        void sigSetSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate, bool modal);
 #ifndef _OPAQUE_SKIA_
         void sigSetBackground(ulong handle, TBitmap image, int width, int height, ulong color, int opacity=255);
 #else
@@ -188,7 +188,7 @@ class MainWindow : public QMainWindow, public TObject
         void setSubViewPadding(ulong handle, int padding);
         void SetVisible(ulong handle, bool state);
         void setPage(ulong handle, int width, int height);
-        void setSubPage(ulong hanlde, ulong parent, int left, int top, int width, int height, ANIMATION_t animate);
+        void setSubPage(ulong hanlde, ulong parent, int left, int top, int width, int height, ANIMATION_t animate, bool modal=false);
 #ifdef _OPAQUE_SKIA_
         void setBackground(ulong handle, TBitmap image, int width, int height, ulong color);
 #else
@@ -289,7 +289,7 @@ class MainWindow : public QMainWindow, public TObject
         void _setSubViewPadding(ulong handle, int padding);
         void _setVisible(ulong handle, bool state);
         void _setPage(ulong handle, int width, int height);
-        void _setSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate);
+        void _setSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate, bool modal=false);
 #ifdef _OPAQUE_SKIA_
         void _setBackground(ulong handle, TBitmap image, int width, int height, ulong color);
 #else

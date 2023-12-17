@@ -179,15 +179,29 @@ void TSubPage::initialize()
         else if (ename.compare("name") == 0)
             mSubpage.name = content;
         else if (ename.compare("left") == 0)
+        {
             mSubpage.left = xml.convertElementToInt(content);
+            mSubpage.leftOrig = mSubpage.left;
+        }
         else if (ename.compare("top") == 0)
+        {
             mSubpage.top = xml.convertElementToInt(content);
+            mSubpage.topOrig = mSubpage.top;
+        }
         else if (ename.compare("width") == 0)
+        {
             mSubpage.width = xml.convertElementToInt(content);
+            mSubpage.widthOrig = mSubpage.width;
+        }
         else if (ename.compare("height") == 0)
+        {
             mSubpage.height = xml.convertElementToInt(content);
+            mSubpage.heightOrig = mSubpage.height;
+        }
         else if (ename.compare("group") == 0)
             mSubpage.group = content;
+        else if (ename.compare("modal") == 0)
+            mSubpage.modal = xml.convertElementToInt(content);
         else if (ename.compare("showEffect") == 0)
             mSubpage.showEffect = (SHOWEFFECT)xml.convertElementToInt(content);
         else if (ename.compare("showTime") == 0)
@@ -198,6 +212,8 @@ void TSubPage::initialize()
             mSubpage.hideEffect = (SHOWEFFECT)xml.convertElementToInt(content);
         else if (ename.compare("timeout") == 0)
             mSubpage.timeout = xml.convertElementToInt(content);
+        else if (ename.compare("resetPos") == 0)
+            mSubpage.resetPos = xml.convertElementToInt(content);
         else if (ename.compare("button") == 0)      // Read a button
         {
             try
@@ -352,6 +368,14 @@ void TSubPage::show()
         setScreenDone();
 #endif
         return;
+    }
+
+    if (mSubpage.resetPos != 0)
+    {
+        mSubpage.left = mSubpage.leftOrig;
+        mSubpage.top = mSubpage.topOrig;
+        mSubpage.width = mSubpage.widthOrig;
+        mSubpage.height = mSubpage.heightOrig;
     }
 
     target.eraseColor(TColor::getSkiaColor(mSubpage.sr[0].cf));
@@ -544,7 +568,9 @@ void TSubPage::show()
             if (mSubpage.sr.size() > 0)
                 button->button->setGlobalOpacity(mSubpage.sr[0].oo);
 
-//            button->button->setChanged(true);
+            if (mSubpage.resetPos != 0)
+                button->button->resetButton();
+
             button->button->show();
         }
 
@@ -913,6 +939,53 @@ void TSubPage::doClick(int x, int y, bool pressed)
 
             if (but->doClick(btX, btY, pressed))
                 break;
+        }
+
+        button = button->previous;
+    }
+}
+
+void TSubPage::moveMouse(int x, int y)
+{
+    DECL_TRACER("TSubPage::moveMouse(int x, int y)");
+
+    BUTTONS_T *button = TPageInterface::getButtons();
+
+    if (!button)
+        return;
+
+    // Find last button
+    while (button && button->next)
+        button = button->next;
+
+    // Scan in reverse order
+    while (button)
+    {
+        TButton *but = button->button;
+
+        if (but->getButtonType() != BARGRAPH && but->getButtonType() != JOYSTICK)
+        {
+            button = button->previous;
+            continue;
+        }
+
+        bool clickable = but->isClickable();
+
+        if (clickable && x > but->getLeftPosition() && x < (but->getLeftPosition() + but->getWidth()) &&
+            y > but->getTopPosition() && y < (but->getTopPosition() + but->getHeight()))
+        {
+            int btX = x - but->getLeftPosition();
+            int btY = y - but->getTopPosition();
+
+            if (but->getButtonType() == BARGRAPH)
+                but->moveBargraphLevel(btX, btY);
+            else if (but->getButtonType() == JOYSTICK && !but->getLevelFuction().empty())
+            {
+                but->drawJoystick(btX, btY);
+                but->sendJoystickLevels();
+            }
+
+            break;
         }
 
         button = button->previous;

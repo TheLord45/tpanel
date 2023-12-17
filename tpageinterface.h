@@ -165,9 +165,13 @@ typedef struct PAGE_T
     int pageID{0};                          // Unique ID of popup/page
     std::string name;                       // The name of the popup/page
     int left{0};                            // Left position of popup (always 0 for pages)
+    int leftOrig{0};                        // Original left position; Not used for pages
     int top{0};                             // Top position of popup (always 0 for pages)
+    int topOrig{0};                         // Original top position; (not used for pages)
     int width{0};                           // Width of popup
+    int widthOrig{0};                       // The original width of the popup
     int height{0};                          // Height of popup
+    int heightOrig{0};                      // The original height of the popup
     int modal{0};                           // 0 = Popup/Page = non modal
     std::string group;                      // Name of the group the popup belongs (popup only)
     int timeout{0};                         // Time after the popup hides in 1/10 seconds (popup only)
@@ -179,6 +183,7 @@ typedef struct PAGE_T
     int hideTime{0};                        // The time reserved for the hide effect (popup only)
     int hideX{0};                           // End of hide effect position (by default "left"); (popup only)
     int hideY{0};                           // End of hide effect position (by default "top"); (popup only)
+    int resetPos{0};                        // If this is 1 the popup is reset to it's original position and size on open
     std::vector<Button::SR_T> sr;           // Page/Popup description
 }PAGE_T;
 

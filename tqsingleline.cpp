@@ -25,17 +25,16 @@
 using std::string;
 
 TQSingleLine::TQSingleLine(QWidget *parent)
+    : QLineEdit(parent)
 {
     DECL_TRACER("TQSingleLine::TQSingleLine(QWidget *parent)");
-
-    setParent(parent);
 }
 
 TQSingleLine::TQSingleLine(QWidget *parent, const string& text)
+    : QLineEdit(parent)
 {
     DECL_TRACER("TQSingleLine::TQSingleLine(QWidget *parent, const string& text)");
 
-    setParent(parent);
     setText(text.c_str());
 }
 
@@ -47,6 +46,7 @@ void TQSingleLine::keyPressEvent(QKeyEvent *e)
 {
     DECL_TRACER("TQSingleLine::keyPressEvent(QKeyEvent *e)");
 
+    QLineEdit::keyPressEvent(e);
     emit keyPressed(e->key());
 }
 
@@ -54,7 +54,7 @@ void TQSingleLine::focusInEvent(QFocusEvent *e)
 {
     DECL_TRACER("TQSingleLine::focusInEvent(QFocusEvent *e)");
 
-    Q_UNUSED(e);
+    QLineEdit::focusInEvent(e);
     emit focusChanged(true);
 }
 
@@ -62,6 +62,6 @@ void TQSingleLine::focusOutEvent(QFocusEvent *e)
 {
     DECL_TRACER("TQSingleLine::focusOutEvent(QFocusEvent *e)");
 
-    Q_UNUSED(e);
+    QLineEdit::focusOutEvent(e);
     emit focusChanged(false);
 }

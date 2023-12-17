@@ -51,8 +51,10 @@ class TSubPage : public TValidateFile, public TPageInterface, public Border::TIn
         PAGE_T& getSubPage() { return mSubpage; }
         std::string& getGroupName() { return mSubpage.group; }
         int getLeft() { return mSubpage.left; }
+        int getLeftOrig() { return mSubpage.leftOrig; }
         void setLeft(int l) { mSubpage.left = l; }
         int getTop() { return mSubpage.top; }
+        int getTopOrig() { return mSubpage.topOrig; }
         void setTop(int t) { mSubpage.top = t; }
         int getWidth() { return mSubpage.width; }
         void setWidth(int w) { mSubpage.width = w; }
@@ -89,6 +91,7 @@ class TSubPage : public TValidateFile, public TPageInterface, public Border::TIn
         void show();
         void drop();
         void doClick(int x, int y, bool pressed);
+        void moveMouse(int x, int y);
         void startTimer();
         void stopTimer() { mTimerRunning = false; }
 #ifdef _OPAQUE_SKIA_

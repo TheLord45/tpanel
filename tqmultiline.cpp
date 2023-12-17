@@ -25,17 +25,16 @@
 using std::string;
 
 TQMultiLine::TQMultiLine(QWidget *parent)
+    : QTextEdit(parent)
 {
     DECL_TRACER("TQMultiLine::TQMultiLine(QWidget *parent)");
-
-    setParent(parent);
 }
 
 TQMultiLine::TQMultiLine(QWidget *parent, const string& text)
+    : QTextEdit(parent)
 {
     DECL_TRACER("TQMultiLine::TQMultiLine(QWidget *parent, const string& text)");
 
-    setParent(parent);
     setText(text.c_str());
 }
 
@@ -47,6 +46,7 @@ void TQMultiLine::keyPressEvent(QKeyEvent *e)
 {
     DECL_TRACER("TQMultiLine::keyPressEvent(QKeyEvent *e)");
 
+    QTextEdit::keyPressEvent(e);
     emit keyPressed(e->key());
 }
 
@@ -54,7 +54,7 @@ void TQMultiLine::focusInEvent(QFocusEvent *e)
 {
     DECL_TRACER("TQMultiLine::focusInEvent(QFocusEvent *e)");
 
-    Q_UNUSED(e);
+    QTextEdit::focusInEvent(e);
     emit focusChanged(true);
 }
 
@@ -62,6 +62,6 @@ void TQMultiLine::focusOutEvent(QFocusEvent *e)
 {
     DECL_TRACER("TQMultiLine::focusOutEvent(QFocusEvent *e)");
 
-    Q_UNUSED(e);
+    QTextEdit::focusOutEvent(e);
     emit focusChanged(false);
 }

@@ -31,6 +31,7 @@
 #include <clocale>
 #include <iomanip>
 #include <sstream>
+#include <type_traits>
 
 #ifdef __MACH__
 #include <skia/core/SkImage.h>
@@ -95,8 +96,8 @@ sk_sp<SkData> readImage(const std::string& fname);
 SkBitmap *allocPixels(int width, int height, SkBitmap *bm);
 SkColor reverseColor(const SkColor& col);
 
-std::string toLower(std::string& str);
-std::string toUpper(std::string& str);
+std::string& toLower(std::string& str);
+std::string& toUpper(std::string& str);
 std::vector<std::string> StrSplit(const std::string& str, const std::string& seps, const bool trimEmpty=false);
 std::string UTF8ToCp1250(const std::string& str);
 std::string cp1250ToUTF8(const std::string& str);
@@ -105,7 +106,7 @@ std::string intToString(int num);
 std::string ReplaceString(const std::string subject, const std::string& search, const std::string& replace);
 
 void *renew(char **mem, size_t old_size, size_t new_size);
-std::vector<std::string> splitLine(const std::string& str);
+std::vector<std::string> splitLine(const std::string& str, bool multiline=false);
 std::vector<std::string> splitLine(const std::string& str, int width, int height, SkFont& font, SkPaint& paint);
 bool isHex(int c);
 int strCaseCompare(const std::string& str1, const std::string& str2);
@@ -129,6 +130,17 @@ bool isBigEndian();
 std::string handleToString(ulong handle);
 ulong extractHandle(const std::string& obname);
 
+/**
+ * @brief Converts a numeric value of any type into a string.
+ * This template converts a numeric value of any type into a string with
+ * hexadezimal representation. The numer of digits is always equal. If
+ * necessary a 0 is prepended to the string.
+ * If the type is double or float the result is undefined!
+ *
+ * @param i     A numeric value of any type.
+ *
+ * @return Returns the hexadezimal string representation of the numeric value.
+ */
 template<typename T>
 inline std::string numberToHex(T i)
 {

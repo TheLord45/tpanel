@@ -105,6 +105,7 @@ class TStreamError
         static void startTemporaryLogLevel(unsigned int l);
         static void endTemporaryLogLevel();
         static void setLogFileEnabled(bool s) { mLogFileEnabled = s; }
+        static bool isInitialized() { return (mInitialized && mStream != nullptr); }
 
     private:
         static unsigned int _getLevel(const std::string& slv);

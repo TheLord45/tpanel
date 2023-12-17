@@ -22,13 +22,14 @@
 #include <string>
 
 #include "tpageinterface.h"
+//#include "tqtextedit.h"
 #include "tqeditline.h"
 
 QT_BEGIN_NAMESPACE
 class QLabel;
 class QWidget;
-class QTextEdit;
-class QLineEdit;
+//class QTextEdit;
+//class QLineEdit;
 class QMediaPlayer;
 class QVideoWidget;
 class QPropertyAnimation;
@@ -62,6 +63,7 @@ class TObject
             TQMarquee *marquee;             // For marquee lines
             QWidget *widget;                // For subpage
             TQEditLine *plaintext;          // For text input
+//            TQTextEdit *plaintext;          // For text input
             QListWidget *list;              // For lists
             TQScrollArea *area;             // For scroll area
         }_OBJ;

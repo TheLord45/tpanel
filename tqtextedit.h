@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2022, 2023 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,35 +19,63 @@
 #ifndef __TQTEXTEDIT_H__
 #define __TQTEXTEDIT_H__
 
-#include <string>
 #include <QWidget>
-#include <QLabel>
+#include <QString>
 
-//QT_BEGIN_NAMESPACE
-//class QLabel;
-//QT_END_NAMESPACE
+QT_BEGIN_NAMESPACE
+class QPixmap;
+QT_END_NAMESPACE
 
-class TQTextEdit : public QLabel
+class TQTextEdit : public QWidget
 {
+    Q_OBJECT
+
     public:
-        TQTextEdit();
-        TQTextEdit(QWidget *parent);
+        TQTextEdit(QWidget *parent=nullptr);
+        TQTextEdit(const QString& text, QWidget *parent=nullptr);
 
-        void setText(const std::string& text);
-        std::string& getText() { return mText; }
+        void setText(const QString& text);
+        QString& getText() { return mText; }
+        void setHandle(ulong handle) { mHandle = handle; }
+        ulong getHandle() { return mHandle; }
+        void setBackgroundPixmap(const QPixmap& pixmap);
+        QPixmap& getBackgroundPixmap() { return mBackground; }
+        void setAlignment(Qt::Alignment al);
+        void setPadding(int left, int top, int right, int bottom);
+        void setPasswordChar(char c) { mPwChar = (c > 0 ? c : '*'); }
 
-        virtual void sigContentChanged(const std::string& text) = 0;
+    signals:
+        void contentChanged(const QString& text);
 
     protected:
-        bool event(QEvent *event) override;
+        virtual bool event(QEvent *event);
+        virtual void paintEvent(QPaintEvent *);
+        virtual void resizeEvent(QResizeEvent *);
+        void updateCoordinates();
 
     private:
         void init();
-        void append(const std::string& txt);
-        void insert(const std::string& txt, int pos=-1);
+        void append(const QString& txt);
+        void insert(const QString& txt, int pos=-1);
 
-        std::string mText;
+        QString mText;
         int mPos{0};            // The current cursor position
+        ulong mHandle{0};
+        QPixmap mBackground;
+        int mFontPointSize{8};
+        int mTextLength{0};
+        int mTextHeight{0};
+        Qt::Alignment mAlignment{Qt::AlignLeft | Qt::AlignHCenter};
+        int mPosX{0};
+        int mPosY{0};
+        int mPadLeft{0};
+        int mPadTop{0};
+        int mPadRight{0};
+        int mPadBottom{0};
+        bool mShift{false};
+        bool mCapsLock{false};
+        bool mCtrl{false};
+        char mPwChar{'*'};
 };
 
 #endif

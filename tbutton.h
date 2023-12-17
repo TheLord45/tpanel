@@ -37,6 +37,7 @@
 #include "timagerefresh.h"
 #include "tsystem.h"
 #include "tintborder.h"
+#include "tsystemdraw.h"
 
 #define ORD_ELEM_COUNT  5
 
@@ -222,7 +223,7 @@ namespace Button
         int oo{-1};             // Over all opacity
         int md{0};              // Marquee type: 1 = scroll left, 2 = scroll right, 3 = ping pong, 4 = scroll up, 5 = scroll down
         int mr{0};              // Marquee enabled: 1 = enabled, 0 = disabled
-        int ms{1};              // Marquee speed: Range: 1 to 10
+        int ms{1};              // Marquee speed: Range: 1 to 10 (look for command ^MSP to see of how to set this)
     } SR_T;
 
     typedef struct EXTBUTTON_t
@@ -371,11 +372,19 @@ namespace Button
             /**
              * Returns the left position in pixels.
              */
-            int getLeftPosition() { return lt; }
+            int getLeftPosition() { return mPosLeft; }
             /**
              * Returns the top position of the button in pixels.
              */
-            int getTopPosition() { return tp; }
+            int getTopPosition() { return mPosTop; }
+            /**
+             * Returns the original left position.
+             */
+            int getLeftOriginPosition() { return lt; }
+            /**
+             * Returns the original top position.
+             */
+            int getTopOriginPosition() { return tp; }
             /**
              * Returns the Z-order. This number marks the order the buttons
              * are drawed on the screen. Inside a page or subpage the buttons
@@ -415,7 +424,15 @@ namespace Button
             int getChannelNumber() { return ch; }
             int getChannelPort() { return cp; }
             int getLevelPort() { return lp; }
-            int getLevelValue() { return lv; }
+            int getLevelChannel() { return lv; }
+            bool isBargraphInverted() { return (ri != 0); }
+            bool isJoystickAuxInverted() { return (ji != 0); }
+            int getBarRangeHigh() { return rh; }
+            int getBarRangeLow() { return rl; }
+            int getLevelValue() { return mLastLevel; }
+            int getLevelAxisX() { return mLastJoyX; }
+            int getLevelAxisY() { return mLastJoyY; }
+            std::string& getLevelFuction() { return lf; }
             std::string getText(int inst=0);
             std::string getTextColor(int inst=0);
             std::string getTextEffectColor(int inst=0);
@@ -522,6 +539,7 @@ namespace Button
             void setLeftTop(int left, int top);
             void setRectangle(int left, int top, int right, int bottom);
             void getRectangle(int *left, int *top, int *height, int *width);
+            void resetButton();
             void setResourceName(const std::string& name, int instance);
             int getBitmapJustification(int *x, int *y, int instance);
             void setBitmapJustification(int j, int x, int y, int instance);
@@ -958,12 +976,19 @@ namespace Button
              */
             bool drawMultistateBargraph(int level, bool show=true);
             /**
-             * @brief Invert bargraph
-             * This method sets or unsets inverting bargraphs.
+             * @brief Invert bargraph/joystick
+             * This method sets or unsets inverting bargraphs or the axis of a
+             * joystick.
              *
-             * @param invert    TRUE: Invert the bargraph.
+             * @param invert    A value between 0 and 3. If it is a bargraph
+             *                  any value > 0 means to invert the axis. For
+             *                  joysticks the values mean:
+             *                     0 = no invert
+             *                     1 = invert horizontal axis
+             *                     2 = invert vertical axis
+             *                     3 = invert both axis
              */
-            void setBargraphInvert(bool invert);
+            void setBargraphInvert(int invert);
             /**
              * @brief Change ramp down time
              *
@@ -982,6 +1007,32 @@ namespace Button
              * @param inc   Step increment.
              */
             void setBargraphDragIncrement(int inc);
+            /**
+             * @brief Draws a joystick field.
+             * The method draws a rectangular field acting as a joystick. This
+             * means, that every touch of move is translated into coordinates
+             * who are send to the NetLinx.
+             * This works the same prinzyp as the bargraphs do, but with 2
+             * dimensions.
+             *
+             * @param x         The x coordinate to set the curser. If this is
+             *                  -1 the default position is used.
+             * @param y         The y coordinate to set the cursor. If this is
+             *                  -1 the default position is used.
+             * @return If everything went well, TRUE is returned.
+             */
+            bool drawJoystick(int x, int y);
+            /**
+             * Draws the curser of the joystick, if there is one. The method
+             * calculates the pixel position of the cursor out of the level
+             * values.
+             *
+             * @param bm        The bitmap where to draw the curser.
+             * @param x         The x coordinate to set the curser (X level).
+             * @param y         The y coordinate to set the cursor (Y level).
+             * @return If everything went well, TRUE is returned.
+             */
+            bool drawJoystickCursor(SkBitmap *bm, int x, int y);
             /**
              * Draws the background and the frame, if any, of the box. It takes
              * the number of rows in account.
@@ -1082,6 +1133,17 @@ namespace Button
              * @param level     The new level value
              */
             void setBargraphLevel(int level);
+            /**
+             * @brief Move the level to the mouse position
+             * The method moves the level to the mouse position while the left
+             * button is pressed. The exact behavior depends on the settings for
+             * the bargraph.
+             *
+             * @param x     The x coordinate of the mouse
+             * @param y     The y coordinate of the mouse
+             */
+            void moveBargraphLevel(int x, int y);
+            void sendJoystickLevels();
             /**
              * @brief invalidate - Mark a button internal as hidden.
              * This method does not call any surface methods and marks the
@@ -1233,7 +1295,7 @@ namespace Button
             bool buttonDynamic(SkBitmap *bm, int instance, bool show, bool *state=nullptr);
             bool buttonIcon(SkBitmap *bm, int instance);
             bool buttonText(SkBitmap *bm, int instance);
-            bool buttonBorder(SkBitmap *bm, int instance);
+            bool buttonBorder(SkBitmap *bm, int instance, TSystemDraw::LINE_TYPE_t lnType=TSystemDraw::LT_OFF);
             bool isPixelTransparent(int x, int y);
             bool barLevel(SkBitmap *bm, int instance, int level);
             bool makeElement(int instance=-1);
@@ -1254,6 +1316,7 @@ namespace Button
             bool retrieveImage(const std::string& path, SkBitmap *image);
             bool getBorderFragment(const std::string& path, const std::string& pathAlpha, SkBitmap *image, SkColor color);
             SkBitmap drawSliderButton(const std::string& slider, SkColor col);
+            SkBitmap drawCursorButton(const std::string& cursor, SkColor col);
 
             void addToBitmapCache(BITMAP_CACHE& bc);
             BITMAP_CACHE& getBCentryByHandle(ulong handle, ulong parent);
@@ -1265,6 +1328,9 @@ namespace Button
             void showBitmapCache();
             uint32_t pixelMix(uint32_t s, uint32_t d, uint32_t a, PMIX mix);
             bool isPassThrough();
+            SkColor& flipColorLevelsRB(SkColor& color);
+            void runBargraphMove(int distance, bool moveUp=false);
+            void threadBargraphMove(int distance, bool moveUp);
 
             BUTTONTYPE type;
             int bi{0};              // button ID
@@ -1310,6 +1376,7 @@ namespace Button
             int rl{0};              // Range low
             int rh{0};              // Range high
             int ri{0};              // Bargraph inverted (0 = normal, 1 = inverted)
+            int ji{0};              // Joystick aux inverted (0 = normal, 1 = inverted)
             int rn{0};              // Bargraph: Range drag increment
             int ac_di{0};           // (guess) Direction of text: 0 = left to right (default); 1 = right to left
             int hd{0};              // 1 = Hidden, 0 = Normal visible
@@ -1317,7 +1384,9 @@ namespace Button
             int pp{0};              // >0 = password protected; Range 1 to 4
             std::string lf;         // Bargraph function: empty = display only, active, active centering, drag, drag centering
             std::string sd;         // Name/Type of slider for a bargraph
+            std::string cd;         // Name of cursor for a joystick
             std::string sc;         // Color of slider (for bargraph)
+            std::string cc;         // Color of cursor (for joystick)
             int mt{0};              // Length of text area (0 = 2000)
             std::string dt;         // "multiple" textarea has multiple lines, else single line
             std::string im;         // Input mask of a text area
@@ -1367,9 +1436,18 @@ namespace Button
             DRAW_ORDER mDOrder[ORD_ELEM_COUNT];  // The order to draw the elements of a button
             std::thread mThrAni;    // Thread handle for animation
             std::thread mThrRes;    // A resouce (download of a remote image/video) running in background
+            std::thread mThrSlider; // Thread to move a slider (bargraph)
             std::atomic<bool> mAniRunning{false}; // TRUE = Animation is running
             std::atomic<bool> mAniStop{false};  // If TRUE, the running animation will stop
             int mLastLevel{0};      // The last level value for a bargraph
+            int mBarStartLevel{0};  // The level when a drag bargraph started.
+            int mBarThreshold{0};   // The difference between start coordinate and actual coordinate (drag bargraph only)
+            bool mRunBargraphMove{false}; // TRUE = The thread to move the bargraph level should run.
+            bool mThreadRunMove{false}; // TRUE the thread to move the bargrapg slider is running.
+            int mLastJoyX{0};       // The last x position of the joystick curser
+            int mLastJoyY{0};       // The last y position of the joystick curser
+            int mLastSendLevelX{0}; // This is the last level send from a bargraph or the X level of a joystick
+            int mLastSendLevelY{0}; // This is the last Y level from a joystick
             bool mSystemReg{false}; // TRUE = registered as system button
             amx::ANET_BLINK mLastBlink; // This is used for the system clock buttons
             TTimer *mTimer{nullptr};    // This is for buttons displaying the time or a date. It's a thread running in background.
@@ -1385,6 +1463,11 @@ namespace Button
             std::string dummy;      // dummy string used to return an empty string.
             std::string mPassword;  // Contains the last typed password (askPassword()).
             std::string mUser;      // If this contains a user name contained in the User Password list, the user is asked for a password.
+            int mPosLeft{0};        // The actual left position of the button
+            int mPosTop{0};         // The actual top position of the button
+            int mWidthOrig{0};      // The original width
+            int mHeightOrig{0};     // The original height
+
     };
 
     typedef struct BUTTONS_T
