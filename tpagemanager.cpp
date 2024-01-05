@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2024 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1225,6 +1225,16 @@ TPageManager::~TPageManager()
         {
             delete mExternal;
             mExternal = nullptr;
+        }
+
+        if (!mButtonStates.empty())
+        {
+            vector<TButtonStates *>::iterator iter;
+
+            for (iter = mButtonStates.begin(); iter != mButtonStates.end(); ++iter)
+                delete *iter;
+
+            mButtonStates.clear();
         }
     }
     catch (std::exception& e)
@@ -3392,6 +3402,101 @@ Button::TButton *TPageManager::findButton(ulong handle)
     return nullptr;
 }
 
+/**
+ * @brief Find a bargraph
+ * The method can search for a bargraph on a particular page or subpage defined
+ * by \b parent. if no page or subpage defined, it searches on the actual page
+ * or subpage.
+ * If it finds a bargraph it returns the pointer to it. Otherwise a nullptr is
+ * returned.
+ *
+ * @param lp        The brgraph port number.
+ * @param lv        The bargraph code number.
+ * @param parent    The parent handle of the bargraph.
+ *
+ * @return If the wanted bargraph with the parent handle exists, the pointer to
+ * it is returned. Otherwise it return a \b nullptr.
+ */
+Button::TButton *TPageManager::findBargraph(int lp, int lv, ulong parent)
+{
+    DECL_TRACER("TPageManager::findBargraph(int lp, int lv, ulong parent)");
+
+    int page = (parent >> 16) & 0x0000ffff;
+    vector<Button::TButton *>::iterator iter;
+
+    if (!page)
+    {
+        page = mActualPage;
+
+        if (!page)
+        {
+            MSG_WARNING("No valid active page!");
+            return nullptr;
+        }
+    }
+
+    MSG_DEBUG("Searching for bargraph " << lp << ":" << lv << " on page " << page);
+
+    if (page < REGULAR_SUBPAGE_START)
+    {
+        TPage *pg = getPage(mActualPage);
+
+        if (!pg)
+            return nullptr;
+
+        vector<Button::TButton *> pgBtList = pg->getAllButtons();
+        MSG_DEBUG("Found " << pgBtList.size() << " buttons.");
+
+        if (pgBtList.size() > 0)
+        {
+            // First we look into the elements of the page
+            for (iter = pgBtList.begin(); iter != pgBtList.end(); ++iter)
+            {
+                Button::TButton *bt = *iter;
+
+                if (bt->getButtonType() == BARGRAPH && bt->getLevelPort() == lp && bt->getLevelChannel() == lv && bt->getParent() == parent)
+                {
+                    MSG_DEBUG("Found bargraph LP:" << lp << ", LV:" << lv << " on page " << page);
+                    return bt;
+                }
+            }
+        }
+
+        MSG_WARNING("No bargraph " << lp << ":" << lv << " on page " << page);
+        return nullptr;
+    }
+
+    // We've not found the wanted element in the elements of the page. So
+    // we're looking at the elements of the subpage.
+    TSubPage *sp = getSubPage(page);
+
+    if (!sp)
+    {
+        MSG_WARNING("Found no subpage " << page);
+        return nullptr;
+    }
+
+    vector<Button::TButton *> spBtList = sp->getAllButtons();
+    MSG_DEBUG("Found " << spBtList.size() << " buttons.");
+
+    if (spBtList.size() > 0)
+    {
+        for (iter = spBtList.begin(); iter != spBtList.end(); ++iter)
+        {
+            Button::TButton *bt = *iter;
+
+            if (bt->getButtonType() == BARGRAPH && bt->getLevelPort() == lp && bt->getLevelChannel() == lv && bt->getParent() == parent)
+            {
+                MSG_DEBUG("Found bargraph LP:" << lp << ", LV:" << lv << " on subpage " << page);
+                return bt;
+            }
+        }
+    }
+
+    MSG_WARNING("No bargraph " << lp << ":" << lv << " on subpage " << page);
+    return nullptr;
+}
+
 TPage *TPageManager::getActualPage()
 {
     DECL_TRACER("TPageManager::getActualPage()");
@@ -4984,6 +5089,48 @@ void TPageManager::sendCommandString(int port, const string& cmd)
         MSG_WARNING("Missing global class TAmxNet. Can't send message!");
 }
 
+void TPageManager::sendLevel(int lp, int lv, int level)
+{
+    DECL_TRACER("TPageManager::sendLevel(int lp, int lv, int level)");
+
+    if (!lv)
+        return;
+
+    amx::ANET_SEND scmd;
+    scmd.device = TConfig::getChannel();
+    scmd.port = lp;
+    scmd.channel = lv;
+    scmd.level = lv;
+    scmd.MC = 0x008a;
+    scmd.value = level;
+
+    if (gAmxNet)
+        gAmxNet->sendCommand(scmd);
+    else
+        MSG_WARNING("Missing global class TAmxNet. Can't send message!");
+}
+
+void TPageManager::sendInternalLevel(int lp, int lv, int level)
+{
+    DECL_TRACER("TPageManager::sendInternalLevel(int lp, int lv, int level)");
+
+    amx::ANET_COMMAND cmd;
+    int channel = TConfig::getChannel();
+    int system = TConfig::getSystem();
+
+    cmd.MC = 0x000a;
+    cmd.device1 = channel;
+    cmd.port1 = lp;
+    cmd.system = system;
+    cmd.data.message_value.system = system;
+    cmd.data.message_value.device = channel;
+    cmd.data.message_value.port = lp;           // Must be the address port of bargraph
+    cmd.data.message_value.value = lv;          // Must be the level channel of bargraph
+    cmd.data.message_value.type = DTSZ_UINT;    // unsigned integer
+    cmd.data.message_value.content.sinteger = level;
+    doCommand(cmd);
+}
+
 void TPageManager::sendPHNcommand(const std::string& cmd)
 {
     DECL_TRACER("TPageManager::sendPHNcommand(const std::string& cmd)");
@@ -5128,6 +5275,121 @@ void TPageManager::callSetPassword(ulong handle, const string& pw, int x, int y)
     bt->setPassword(pass);
     bt->doClick(x, y, true);
     bt->doClick(x, y, false);
+}
+
+TButtonStates *TPageManager::addButtonState(BUTTONTYPE t, int rap, int rad, int rch, int rcp, int rlp, int rlv)
+{
+    DECL_TRACER("TPageManager::addButtonState(BUTTONTYPE t, int rap, int rad, int rch, int rcp, int rlp, int rlv)");
+
+    TButtonStates *pbs = new TButtonStates(t, rap, rad, rch, rcp, rlp, rlv);
+    uint32_t id = pbs->getID();
+
+    if (!mButtonStates.empty())
+    {
+        vector<TButtonStates *>::iterator iter;
+
+        for (iter = mButtonStates.begin(); iter != mButtonStates.end(); ++iter)
+        {
+            TButtonStates *bs = *iter;
+
+            if (bs->isButton(t, id))
+            {
+                delete pbs;
+                return bs;
+            }
+        }
+    }
+
+    mButtonStates.push_back(pbs);
+    return pbs;
+}
+
+TButtonStates *TPageManager::addButtonState(const TButtonStates& rbs)
+{
+    DECL_TRACER("TPageManager::addButtonState(const TButtonStates& rbs)");
+
+    if (!mButtonStates.empty())
+    {
+        vector<TButtonStates *>::iterator iter;
+        TButtonStates bs = rbs;
+        BUTTONTYPE type = bs.getType();
+        uint32_t id = bs.getID();
+
+        for (iter = mButtonStates.begin(); iter != mButtonStates.end(); ++iter)
+        {
+            TButtonStates *pbs = *iter;
+
+            if (pbs->isButton(type, id))
+                return pbs;
+        }
+    }
+
+    TButtonStates *pbs = new TButtonStates(rbs);
+    mButtonStates.push_back(pbs);
+    return pbs;
+}
+
+TButtonStates *TPageManager::getButtonState(BUTTONTYPE t, int rap, int rad, int rch, int rcp, int rlp, int rlv)
+{
+    DECL_TRACER("TPageManager::getButtonState(BUTTONTYPE t, int rap, int rad, int rch, int rcp, int rlp, int rlv)");
+
+    if (mButtonStates.empty())
+        return nullptr;
+
+    vector<TButtonStates *>::iterator iter;
+    MSG_DEBUG("Found " << mButtonStates.size() << " button states.");
+
+    for (iter = mButtonStates.begin(); iter != mButtonStates.end(); ++iter)
+    {
+        TButtonStates *bs = *iter;
+
+        if (bs->isButton(t, rap, rad, rch, rcp, rlp, rlv))
+            return bs;
+    }
+
+    return nullptr;
+}
+
+TButtonStates *TPageManager::getButtonState(uint32_t id)
+{
+    DECL_TRACER("TPageManager::getButtonState(uint32_t id)");
+
+    if (mButtonStates.empty())
+        return nullptr;
+
+    vector<TButtonStates *>::iterator iter;
+    MSG_DEBUG("Found " << mButtonStates.size() << " button states.");
+
+    for (iter = mButtonStates.begin(); iter != mButtonStates.end(); ++iter)
+    {
+        TButtonStates *bs = *iter;
+
+        if (bs->isButton(id))
+            return bs;
+    }
+
+    return nullptr;
+}
+
+TButtonStates *TPageManager::getButtonState(BUTTONTYPE t, uint32_t id)
+{
+    DECL_TRACER("TPageManager::getButtonState(BUTTONTYPE t, uint32_t id)");
+
+    if (mButtonStates.empty())
+        return nullptr;
+
+    vector<TButtonStates *>::iterator iter;
+    MSG_DEBUG("Found " << mButtonStates.size() << " button states.");
+
+    for (iter = mButtonStates.begin(); iter != mButtonStates.end(); ++iter)
+    {
+        TButtonStates *bs = *iter;
+
+        if (bs->isButton(t, id))
+            return bs;
+    }
+
+    return nullptr;
 }
 
 void TPageManager::onSwipeEvent(TPageManager::SWIPES sw)
@@ -5561,18 +5823,21 @@ void TPageManager::doLEVEL(int port, vector<int>&, vector<string>& pars)
 
     if (buttons.size() > 0)
     {
+        MSG_DEBUG("Found " << buttons.size() << " buttons.");
         vector<Button::TButton *>::iterator mapIter;
 
         for (mapIter = buttons.begin(); mapIter != buttons.end(); ++mapIter)
         {
             Button::TButton *bt = *mapIter;
-
-            if (bt->getButtonType() != JOYSTICK && bt->isBargraphInverted())
-                level = (bt->getBarRangeHigh() - bt->getBarRangeLow()) - level;
+            MSG_DEBUG("Evaluating button " << handleToString(bt->getHandle()))
 
             if (bt->getButtonType() == BARGRAPH && bt->getLevelChannel() == c)
             {
+                if (bt->isBargraphInverted())
+                    level = (bt->getRangeHigh() - bt->getRangeLow()) - level;
+
                 bt->drawBargraph(bt->getActiveInstance(), level);
+                bt->sendBargraphLevel();
 #if TESTMODE == 1
                 if (_gTestMode)
                     _gTestMode->setResult(intToString(bt->getLevelValue()));
@@ -5584,17 +5849,27 @@ void TPageManager::doLEVEL(int port, vector<int>&, vector<string>& pars)
                 int y = (bt->getLevelChannel() == c ? bt->getLevelAxisY() : level);
 
                 if (bt->isBargraphInverted())
-                    x = (bt->getBarRangeHigh() - bt->getBarRangeLow()) - x;
+                    x = (bt->getRangeHigh() - bt->getRangeLow()) - x;
 
                 if (bt->isJoystickAuxInverted())
-                    y = (bt->getBarRangeHigh() - bt->getBarRangeLow()) - y;
+                    y = (bt->getRangeHigh() - bt->getRangeLow()) - y;
 
                 bt->drawJoystick(x, y);
+                bt->sendJoystickLevels();
+#if TESTMODE == 1
+                if (_gTestMode)
+                {
+                    std::stringstream s;
+                    s << x << "|" << y;
+                    _gTestMode->setResult(s.str());
+                }
+#endif
             }
             else if (bt->getButtonType() == MULTISTATE_BARGRAPH && bt->getLevelChannel() == c)
             {
                 int state = (int)((double)bt->getStateCount() / (double)(bt->getRangeHigh() - bt->getRangeLow()) * (double)level);
                 bt->setActive(state);
+                bt->sendBargraphLevel();
 #if TESTMODE == 1
                 if (_gTestMode)
                     _gTestMode->setResult(intToString(bt->getActiveInstance()));
@@ -5602,6 +5877,9 @@ void TPageManager::doLEVEL(int port, vector<int>&, vector<string>& pars)
             }
         }
     }
+    else
+        MSG_DEBUG("No buttons found!");
+
 #if TESTMODE == 1
     setDone();
 #endif

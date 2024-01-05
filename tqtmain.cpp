@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2024 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -75,7 +75,7 @@
 #include <QtAndroidExtras/QtAndroid>
 #endif
 #include <functional>
-#include <mutex>
+//#include <mutex>
 #ifdef Q_OS_ANDROID
 #include <android/log.h>
 #endif
@@ -3419,22 +3419,32 @@ void MainWindow::repaintObjects()
 {
     DECL_TRACER("MainWindow::repaintObjects()");
 
-    TObject::OBJECT_t *obj = getFirstDirty();
+    if (mRunRedraw)
+        return;
 
-    while (obj)
-    {
-        if (!obj->remove && !obj->invalid && obj->dirty)
+    std::thread thr = std::thread([=] {
+        mRunRedraw = true;
+        TObject::OBJECT_t *obj = getFirstDirty();
+
+        while (obj)
         {
-            MSG_PROTOCOL("Refreshing widget " << handleToString (obj->handle));
+            if (!obj->remove && !obj->invalid && obj->dirty)
+            {
+                MSG_PROTOCOL("Refreshing widget " << handleToString (obj->handle));
 
-            if (gPageManager)
-                gPageManager->redrawObject(obj->handle);
+                if (gPageManager)
+                    gPageManager->redrawObject(obj->handle);
 
-            obj->dirty = false;
+                obj->dirty = false;
+            }
+
+            obj = getNextDirty(obj);
         }
 
-        obj = getNextDirty(obj);
-    }
+        mRunRedraw = false;
+    });
+
+    thr.detach();
 }
 
 void MainWindow::refresh(ulong handle)
@@ -3520,7 +3530,7 @@ QFont MainWindow::loadFont(int number, const FONT_T& f, const FONT_STYLE style)
     DECL_TRACER("MainWindow::loadFont(int number, const FONT_t& f, const FONT_STYLE style)");
 
     QString path;
-    string prjPath= TConfig::getProjectPath();
+    string prjPath = TConfig::getProjectPath();
 
     if (number < 32)    // System font?
     {
@@ -3565,17 +3575,17 @@ QFont MainWindow::loadFont(int number, const FONT_T& f, const FONT_STYLE style)
 
     const QStringList ffamilies = QFontDatabase::families();
     bool haveFont = false;
+    QString fname = QString::fromStdString(f.name);
 
     for (const QString &family : ffamilies)
     {
-        if (family.compare(f.name.c_str()) == 0)
+        if (family == fname)
         {
             haveFont = true;
             break;
         }
     }
 
-    QFont font;
     // Scale the font size
     int pix = f.size;
 
@@ -3583,6 +3593,7 @@ QFont MainWindow::loadFont(int number, const FONT_T& f, const FONT_STYLE style)
         pix = static_cast<int>(static_cast<double>(f.size) / mScaleFactor);
 
     QString qstyle;
+    QFont font;
 
     switch (style)
     {
@@ -3594,24 +3605,24 @@ QFont MainWindow::loadFont(int number, const FONT_T& f, const FONT_STYLE style)
         default:
             qstyle.assign("Normal");
 #else
-    case FONT_BOLD:         qstyle = "Bold"; break;
-    case FONT_ITALIC:       qstyle = "Italic"; break;
-    case FONT_BOLD_ITALIC:  qstyle = "Bold Italic"; break;
+        case FONT_BOLD:         qstyle = "Bold"; break;
+        case FONT_ITALIC:       qstyle = "Italic"; break;
+        case FONT_BOLD_ITALIC:  qstyle = "Bold Italic"; break;
 
-    default:
-        qstyle = "Normal";
+        default:
+            qstyle = "Normal";
 #endif
     }
 
     if (!haveFont)  // Did we found the font?
     {               // No, then load it
         QFontDatabase::addApplicationFont(path);
-        font = QFontDatabase::font(f.name.c_str(), qstyle, pix);
+        font = QFontDatabase::font(fname, qstyle, pix);
         MSG_DEBUG("Font \"" << path.toStdString() << "\" was loaded");
     }
     else
     {
-        font.setFamily(f.name.c_str());
+        font.setFamily(fname);
         font.setPointSize(pix);
         font.setStyleName(qstyle);
     }
@@ -4167,8 +4178,6 @@ void MainWindow::displayViewButton(ulong handle, ulong parent, bool vertical, TB
 {
     DECL_TRACER("MainWindow::displayViewButton(ulong handle, TBitmap buffer, size_t size, int width, int height, int left, int top)");
 
-//    TLOCKER(draw_mutex);
-
     TObject::OBJECT_t *obj = findObject(handle);
     TObject::OBJECT_t *par = findObject(parent);
     MSG_TRACE("Processing button " << handleToString(handle) << " from parent " << handleToString(parent));
@@ -4676,6 +4685,7 @@ void MainWindow::setSubPage(ulong handle, ulong parent, int left, int top, int w
     DECL_TRACER("MainWindow::setSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate, bool modal)");
 
     Q_UNUSED(height);
+    Q_UNUSED(modal);
     OBJECT_t *par = findObject(parent);
 
     if (!par || par->type != OBJ_PAGE)
@@ -4812,8 +4822,9 @@ void MainWindow::setBackground(ulong handle, TBitmap image, int width, int heigh
 void MainWindow::setBackground(ulong handle, TBitmap image, int width, int height, ulong color, int opacity)
 #endif
 {
-//    TLOCKER(draw_mutex);
     DECL_TRACER("MainWindow::setBackground(ulong handle, TBitmap image, ulong color [, int opacity])");
+
+    Q_UNUSED(height);
 
     if (!mCentralWidget)
     {
@@ -5380,14 +5391,14 @@ void MainWindow::inputText(Button::TButton *button, QByteArray buf, int width, i
             nobj.top = scale(button->getTopPosition());
         }
 
-        string text = button->getText(instance);
+        string text = button->getText(0);
+        string placeholder = button->getText(1);
         string mask = button->getInputMask();
 
         if (button->isMultiLine())
             text = ReplaceString(text, "|", "\n");
 
         nobj.object.plaintext = new TQEditLine(text, par->object.widget, button->isMultiLine());
-//        nobj.object.plaintext = new TQTextEdit(QString::fromStdString(text), par->object.widget);
         nobj.object.plaintext->setObjectName(string("EditLine_") + handleToString(handle));
         nobj.object.plaintext->setHandle(handle);
         nobj.object.plaintext->move(nobj.left, nobj.top);
@@ -5395,6 +5406,10 @@ void MainWindow::inputText(Button::TButton *button, QByteArray buf, int width, i
         nobj.object.plaintext->setPadding(frame, frame, frame, frame);
         nobj.object.plaintext->setPasswordChar(button->getPasswordChar());
         nobj.wid = nobj.object.plaintext->winId();
+
+        if (!placeholder.empty())
+            nobj.object.plaintext->setPlaceholderText(placeholder);
+
         bool sys = false;
 
         if (button->getAddressPort() == 0 || button->getChannelPort() == 0)
@@ -5447,7 +5462,6 @@ void MainWindow::inputText(Button::TButton *button, QByteArray buf, int width, i
         else
             pix.convertFromImage(img);
 
-//        nobj.object.plaintext->setBgPixmap(pix);
         nobj.object.plaintext->setBackgroundPixmap(pix);
         // Load the font
         QFont font = loadFont(button->getFontIndex(button->getActiveInstance()), button->getFont(), button->getFontStyle());
@@ -5466,7 +5480,6 @@ void MainWindow::inputText(Button::TButton *button, QByteArray buf, int width, i
         palette.setColor(QPalette::Window, cfcolor);
         palette.setColor(QPalette::Base, cfcolor);
         palette.setColor(QPalette::Text, txcolor);
-//        palette.setBrush(QPalette::Window, QBrush(pix));
 
         nobj.object.plaintext->setFont(font);
         nobj.object.plaintext->setPalette(palette);
@@ -5486,8 +5499,13 @@ void MainWindow::inputText(Button::TButton *button, QByteArray buf, int width, i
     {
         MSG_DEBUG("Object " << handleToString(handle) << " of type " << objectToString(obj->type) << " found!");
 
-        string text = button->getText(instance);
+        string text = button->getText(0);
+        string placeholder = button->getText(1);
         string mask = button->getInputMask();
+        MSG_DEBUG("Setting text: \"" << text << "\" with mask: \"" << mask << "\"");
+
+        if (!placeholder.empty())
+            obj->object.plaintext->setPlaceholderText(placeholder);
 
         if (button->isMultiLine())
             text = ReplaceString(text, "|", "\n");
@@ -6393,16 +6411,38 @@ void MainWindow::onFocusChanged(ulong handle, bool in)
 {
     DECL_TRACER("MainWindow::onFocusChanged(ulong handle, bool in)");
 
-    if (gPageManager)
-        gPageManager->inputFocusChanged(handle, in);
+    try
+    {
+        std::thread thr = std::thread([=] {
+            if (gPageManager)
+                gPageManager->inputFocusChanged(handle, in);
+        });
+
+        thr.detach();
+    }
+    catch (std::exception& e)
+    {
+        MSG_ERROR("Error starting a thread to handle input line finish: " << e.what());
+    }
 }
 
 void MainWindow::onCursorChanged(ulong handle, int oldPos, int newPos)
 {
     DECL_TRACER("MainWindow::onCursorChanged(ulong handle, int oldPos, int newPos)");
 
-    if (gPageManager)
-        gPageManager->inputCursorPositionChanged(handle, oldPos, newPos);
+    try
+    {
+        std::thread thr = std::thread([=] {
+            if (gPageManager)
+                gPageManager->inputCursorPositionChanged(handle, oldPos, newPos);
+        });
+
+        thr.detach();
+    }
+    catch (std::exception& e)
+    {
+        MSG_ERROR("Error starting a thread to handle input line finish: " << e.what());
+    }
 }
 
 void MainWindow::onGestureEvent(QObject *obj, QGestureEvent *event)

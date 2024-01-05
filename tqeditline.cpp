@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2023, 2024 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -82,6 +82,8 @@ void TQEditLine::init()
 {
     DECL_TRACER("TQEditLine::init()");
 
+    setAutoFillBackground(false);
+
     if (!mLayout)
     {
         mLayout = new QHBoxLayout(this);
@@ -96,15 +98,16 @@ void TQEditLine::init()
         QPalette pal(palette());
 
         pal.setColor(QPalette::Window, Qt::transparent);
+        pal.setColor(QPalette::Base, Qt::transparent);
         pal.setColor(QPalette::WindowText, Qt::black);
         pal.setColor(QPalette::Text, Qt::black);
 
         if (!mText.empty())
         {
             if (mMultiline)
-                mTextArea->setText(mText.c_str());
+                mTextArea->setText(QString::fromStdString(mText));
             else
-                mEdit->setText(mText.c_str());
+                mEdit->setText(QString::fromStdString(mText));
         }
 
         if (mMultiline)
@@ -137,13 +140,24 @@ void TQEditLine::setText(string &text)
     DECL_TRACER("TQEditLine::setText(string &text)");
 
     mText = text;
+    MSG_DEBUG("Setting text: " << text);
 
     if (mMultiline && mTextArea)
-        mTextArea->setText(text.c_str());
+        mTextArea->setText(QString::fromStdString(text));
     else if (!mMultiline && mEdit)
-        mEdit->setText(text.c_str());
+        mEdit->setText(QString::fromStdString(text));
 
     mChanged = false;
+}
+
+void TQEditLine::setPlaceholderText(string& text)
+{
+    DECL_TRACER("TQEditLine::setPlaceholderText(string& text)");
+
+    if (mMultiline && mTextArea)
+        mTextArea->setPlaceholderText(QString::fromStdString(text));
+    else if (!mMultiline && mEdit)
+        mEdit->setPlaceholderText(QString::fromStdString(text));
 }
 
 void TQEditLine::setObjectName(const string& name)
@@ -153,9 +167,9 @@ void TQEditLine::setObjectName(const string& name)
     if (name.empty())
         return;
 
-    QWidget::setObjectName(name.c_str());
+    QWidget::setObjectName(QString::fromStdString(name));
     QString editName("Edit#");
-    editName.append(name.c_str());
+    editName.append(QString::fromStdString(name));
 
     if (mMultiline && mTextArea)
         mTextArea->setObjectName(editName);
@@ -163,7 +177,7 @@ void TQEditLine::setObjectName(const string& name)
         mEdit->setObjectName(editName);
 
     if (mLayout)
-        mLayout->setObjectName(QString("Layout#%1").arg(name.c_str()));
+        mLayout->setObjectName(QString("Layout#%1").arg(QString::fromStdString(name)));
 }
 
 void TQEditLine::setPasswordChar(uint c)
@@ -212,11 +226,6 @@ void TQEditLine::setPalette(QPalette &pal)
     DECL_TRACER("TQEditLine::setPalette(QPalette &pal)");
 
     QWidget::setPalette(pal);
-/*
-    if (mMultiline && mTextArea)
-        mTextArea->setPalette(pal);
-    else if (!mMultiline && mEdit)
-        mEdit->setPalette(pal); */
 }
 
 void TQEditLine::setTextColor(QColor col)
@@ -239,6 +248,13 @@ void TQEditLine::setTextColor(QColor col)
         mEdit->setPalette(pal);
     else
         mTextArea->setPalette(pal);
+}
+
+void TQEditLine::setBgColor(QColor &col)
+{
+    DECL_TRACER("TQEditLine::setBgColor(QColor &col)");
+
+    mBgColor = col;
 }
 
 void TQEditLine::setBackgroundPixmap(QPixmap& pixmap)
@@ -313,7 +329,7 @@ void TQEditLine::setInputMask(const std::string& mask)
     DECL_TRACER("TQEditLine::setInputMask(const std::string& mask)");
 
     if (!mMultiline && mEdit)
-        mEdit->setInputMask(mask.c_str());
+        mEdit->setInputMask(QString::fromStdString(mask));
 }
 
 void TQEditLine::setNumericInput()
@@ -362,6 +378,7 @@ void TQEditLine::onKeyPressed(int key)
 
         if (mChanged || txt != mText)
         {
+            mText = txt;
             emit inputChanged(mHandle, mText);
             mChanged = false;
         }
@@ -412,8 +429,11 @@ void TQEditLine::_end()
     else if (!mMultiline && mEdit)
         text = mEdit->text().toStdString();
 
+    MSG_DEBUG("Current text: " << text);
+
     if (mChanged || text != mText)
     {
+        mText = text;
         emit inputChanged(mHandle, mText);
         mChanged = false;
     }
@@ -424,6 +444,7 @@ void TQEditLine::onTextChanged(const QString &text)
     DECL_TRACER("TQEditLine::onTextChanged(const QString &text)");
 
     mText = text.toStdString();
+    MSG_DEBUG("Text changed to: " << mText);
     mChanged = true;
 }
 
@@ -432,6 +453,7 @@ void TQEditLine::onTextAreaChanged()
     DECL_TRACER("TQEditLine::onTextAreaChanged()");
 
     mText = mTextArea->toPlainText().toStdString();
+    MSG_DEBUG("Multiline text changed to: " << mText);
     mChanged = true;
 }
 
@@ -453,8 +475,13 @@ void TQEditLine::paintEvent(QPaintEvent* event)
 {
     DECL_TRACER("TQEditLine::paintEvent(QPaintEvent* event)");
 
+    Q_UNUSED(event);
+
     if (mBackground.isNull())
-        return;
+    {
+        mBackground = QPixmap(width(), height());
+        mBackground.fill(mBgColor);
+    }
 
     QPainter p(this);
     p.drawPixmap(0, 0, mBackground);

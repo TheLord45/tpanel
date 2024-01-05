@@ -3,6 +3,14 @@ ChangeLog
 
 Release: 1.4.1
 ===============================================================================
+2024-01-05 Fixed bargraphs with an image.
+
+2024-01-04 Added support for placeholder text in input lines.
+
+2024-01-01 Added support for bargraph control buttons (+/-).
+
+2023-12-22 Fixed speed and time calculation for bargraphs.
+
 2023-12-13 Added joystick support.
            Added command ^GIV
 

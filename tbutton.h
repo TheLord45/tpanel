@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2024 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -47,6 +47,7 @@ extern bool _restart_;
 class SkFont;
 class SkTextBlob;
 class TBitmap;
+class TButtonStates;
 
 struct RESOURCE_T;
 
@@ -276,6 +277,12 @@ namespace Button
         bool valid{false};
     }POSITION_t;
 
+    typedef struct POINT_t
+    {
+        int x{0};
+        int y{0};
+    }POINT_t;
+
     typedef struct IMAGE_SIZE_t
     {
         int width{0};
@@ -418,6 +425,8 @@ namespace Button
             std::string& getName() { return na; }
             int getRangeLow() { return rl; }
             int getRangeHigh() { return rh; }
+            int getLevelRangeUp() { return ru; }
+            int getLevelRangeDown() { return rd; }
             int getStateCount() { return stateCount; }
             int getAddressPort() { return ap; }
             int getAddressChannel() { return ad; }
@@ -427,11 +436,12 @@ namespace Button
             int getLevelChannel() { return lv; }
             bool isBargraphInverted() { return (ri != 0); }
             bool isJoystickAuxInverted() { return (ji != 0); }
-            int getBarRangeHigh() { return rh; }
-            int getBarRangeLow() { return rl; }
-            int getLevelValue() { return mLastLevel; }
-            int getLevelAxisX() { return mLastJoyX; }
-            int getLevelAxisY() { return mLastJoyY; }
+            int getLevelValue();
+            void setLevelValue(int level);
+            int getLevelAxisX();
+            int getLevelAxisY();
+            uint32_t getButtonID() { return mButtonID; }
+            std::string getButtonIDstr(uint32_t rid=0x1fffffff);
             std::string& getLevelFuction() { return lf; }
             std::string getText(int inst=0);
             std::string getTextColor(int inst=0);
@@ -1143,7 +1153,17 @@ namespace Button
              * @param y     The y coordinate of the mouse
              */
             void moveBargraphLevel(int x, int y);
+            /**
+             * @brief Send the levels of a joystick
+             * The method sends the level of the x and y axes of a joystick to
+             * the NetLinx.
+             */
             void sendJoystickLevels();
+            /**
+             * @brief Send the level of the bargraph
+             * The method sends the level of the bargraph to the NetLinx.
+             */
+            void sendBargraphLevel();
             /**
              * @brief invalidate - Mark a button internal as hidden.
              * This method does not call any surface methods and marks the
@@ -1278,6 +1298,7 @@ namespace Button
             std::mutex mutex_bmCache;
 
             std::string buttonTypeToString();
+            std::string buttonTypeToString(BUTTONTYPE t);
             POSITION_t calcImagePosition(int width, int height, CENTER_CODE cc, int number, int line = 0);
             IMAGE_SIZE_t calcImageSize(int imWidth, int imHeight, int instance, bool aspect=false);
             void calcImageSizePercent(int imWidth, int imHeight, int btWidth, int btHeight, int btFrame, int *realX, int *realY);
@@ -1317,6 +1338,7 @@ namespace Button
             bool getBorderFragment(const std::string& path, const std::string& pathAlpha, SkBitmap *image, SkColor color);
             SkBitmap drawSliderButton(const std::string& slider, SkColor col);
             SkBitmap drawCursorButton(const std::string& cursor, SkColor col);
+            POINT_t getImagePosition(int width, int height);
 
             void addToBitmapCache(BITMAP_CACHE& bc);
             BITMAP_CACHE& getBCentryByHandle(ulong handle, ulong parent);
@@ -1331,6 +1353,7 @@ namespace Button
             SkColor& flipColorLevelsRB(SkColor& color);
             void runBargraphMove(int distance, bool moveUp=false);
             void threadBargraphMove(int distance, bool moveUp);
+            TButtonStates *getButtonState();
 
             BUTTONTYPE type;
             int bi{0};              // button ID
@@ -1362,17 +1385,17 @@ namespace Button
             int co{1};              // Command port
             std::vector<std::string> cm;         // Commands to send on each button hit
             std::string dr;         // Level "horizontal" or "vertical"
-            int va{0};
+            int va{0};              // Level control value
             int stateCount{0};      // State count with multistate buttons (number of states)
             int rm{0};              // State count with multistate buttons?
             int nu{2};              // Animate time up
             int nd{2};              // Animate time down
             int ar{0};              // Auto repeat (1 = true)
-            int ru{0};              // Animate time up (bargraph)
-            int rd{0};              // Animate time down (bargraph)
-            int lu{0};              // Animate time up (Bargraph)
-            int ld{0};              // Animate time down (Bargraph)
-            int rv{0};              // Bargraph: repeat interval?
+            int ru{2};              // Animate time up (bargraph)
+            int rd{2};              // Animate time down (bargraph)
+            int lu{2};              // Animate time up (Bargraph)
+            int ld{2};              // Animate time down (Bargraph)
+            int rv{0};              // Level control repeat time
             int rl{0};              // Range low
             int rh{0};              // Range high
             int ri{0};              // Bargraph inverted (0 = normal, 1 = inverted)
@@ -1384,6 +1407,7 @@ namespace Button
             int pp{0};              // >0 = password protected; Range 1 to 4
             std::string lf;         // Bargraph function: empty = display only, active, active centering, drag, drag centering
             std::string sd;         // Name/Type of slider for a bargraph
+            std::string vt;         // Level control type (rel = relative, abs = absolute)
             std::string cd;         // Name of cursor for a joystick
             std::string sc;         // Color of slider (for bargraph)
             std::string cc;         // Color of cursor (for joystick)
@@ -1427,6 +1451,7 @@ namespace Button
             // Image management
             SkBitmap mLastImage;    // The last calculated image
             ulong mHandle{0};       // internal used handle to identify button
+            uint32_t mButtonID{0};  // A CRC32 checksum identifying the button.
             int mParentHeight{0};   // The height of the parent page / subpage
             int mParentWidth{0};    // The width of the parent page / subpage
             bool mEnabled{true};    // By default a button is enabled (TRUE); FALSE = Button disabled
@@ -1439,15 +1464,15 @@ namespace Button
             std::thread mThrSlider; // Thread to move a slider (bargraph)
             std::atomic<bool> mAniRunning{false}; // TRUE = Animation is running
             std::atomic<bool> mAniStop{false};  // If TRUE, the running animation will stop
-            int mLastLevel{0};      // The last level value for a bargraph
+//            int mLastLevel{0};      // The last level value for a bargraph
             int mBarStartLevel{0};  // The level when a drag bargraph started.
             int mBarThreshold{0};   // The difference between start coordinate and actual coordinate (drag bargraph only)
             bool mRunBargraphMove{false}; // TRUE = The thread to move the bargraph level should run.
             bool mThreadRunMove{false}; // TRUE the thread to move the bargrapg slider is running.
-            int mLastJoyX{0};       // The last x position of the joystick curser
-            int mLastJoyY{0};       // The last y position of the joystick curser
-            int mLastSendLevelX{0}; // This is the last level send from a bargraph or the X level of a joystick
-            int mLastSendLevelY{0}; // This is the last Y level from a joystick
+//            int mLastJoyX{0};       // The last x position of the joystick curser
+//            int mLastJoyY{0};       // The last y position of the joystick curser
+//            int mLastSendLevelX{0}; // This is the last level send from a bargraph or the X level of a joystick
+//            int mLastSendLevelY{0}; // This is the last Y level from a joystick
             bool mSystemReg{false}; // TRUE = registered as system button
             amx::ANET_BLINK mLastBlink; // This is used for the system clock buttons
             TTimer *mTimer{nullptr};    // This is for buttons displaying the time or a date. It's a thread running in background.

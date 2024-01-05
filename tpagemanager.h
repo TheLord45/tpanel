@@ -40,6 +40,7 @@
 #include "tsipclient.h"
 #include "tvector.h"
 #include "tbitmap.h"
+#include "tbuttonstates.h"
 
 #define REG_CMD(func, name)     registerCommand(bind(&TPageManager::func, this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),name)
 
@@ -188,6 +189,7 @@ class TPageManager : public TAmxCommands
         bool haveSubPage(const std::string& page, int id);
         TFont *getFonts() { return mFonts; }
         Button::TButton *findButton(ulong handle);
+        Button::TButton *findBargraph(int lp, int lv, ulong parent);
         void onSwipeEvent(SWIPES sw);
         double getDPI() { return mDPI; }
         void setDPI(const double dpi) { mDPI = dpi; }
@@ -419,6 +421,7 @@ class TPageManager : public TAmxCommands
          * @param checked   On button press this is TRUE, and on release it is FALSE.
          */
         void externalButton(extButtons_t bt, bool checked);
+
         void sendKeyboard(const std::string& text);
         void sendKeypad(const std::string& text);
         void sendString(uint handle, const std::string& text);
@@ -426,7 +429,15 @@ class TPageManager : public TAmxCommands
         void sendPHNcommand(const std::string& cmd);
         void sendKeyStroke(char key);
         void sendCommandString(int port, const std::string& cmd);
+        void sendLevel(int lp, int lv, int level);
+        void sendInternalLevel(int lp, int lv, int level);
         void callSetPassword(ulong handle, const std::string& pw, int x, int y);
+        TButtonStates *addButtonState(BUTTONTYPE t, int rap, int rad, int rch, int rcp, int rlp, int rlv);
+        TButtonStates *addButtonState(const TButtonStates& bs);
+        TButtonStates *getButtonState(BUTTONTYPE t, int rap, int rad, int rch, int rcp, int rlp, int rlv);
+        TButtonStates *getButtonState(uint32_t id);
+        TButtonStates *getButtonState(BUTTONTYPE t, uint32_t id);
+
         /**
          * This starts the communication with the AMX controller. The method
          * registers the callbacks and starts a thread. This thread runs as
@@ -966,6 +977,7 @@ class TPageManager : public TAmxCommands
         std::vector<_CLICK_QUEUE_t> mClickQueue;        // A queue holding click requests. Needed to serialize the clicks.
         std::vector<Button::TButton *> mUpdateViews;    // A queue for the method "updateSubViewItem()"
         bool mUpdateViewsRun{false};                    // TRUE = The thread for the queue mUpdateViews is running
+        std::vector<TButtonStates *> mButtonStates;       // Holds the states for each button
         // SIP
 #ifndef _NOSIP_
         bool mPHNautoanswer{false};                     // The state of the SIP autoanswer

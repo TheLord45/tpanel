@@ -22,6 +22,7 @@
 #include <QApplication>
 
 #include <vector>
+#include <chrono>
 
 #include "tqmarquee.h"
 #include "terror.h"
@@ -41,15 +42,12 @@ TQMarquee::TQMarquee(QWidget* parent, int msec, MQ_TYPES type, bool enable)
     : QLabel(parent),
       mParent(parent),
       mScrollEnabled(enable),
-      mType(type),
-      mSpeed(msec)
+      mType(type)
 {
     DECL_TRACER("TQMarquee::TQMarquee(QWidget* parent, int msec, MQ_TYPES type, bool enable)");
 
-    if (mSpeed < 1)
-        mSpeed = 1;
-    else if (mSpeed > 10)
-        mSpeed = 10;
+    if (msec >= 1 && msec <= 10)
+        mInterval = BASE_SPEED - 2 + msec * 2;
 
     init();
 }
@@ -80,14 +78,16 @@ void TQMarquee::init()
             mDirection = Qt::RightToLeft;
     }
 
-    setAutoFillBackground(false);
+//    setAutoFillBackground(false);
     mTimer = new QTimer(this);
     mTimer->setTimerType(Qt::CoarseTimer);
     connect(mTimer, &QTimer::timeout, this, &TQMarquee::refreshLabel);
     // By default the background is transparent
-//    mBackgroundImage.fill(Qt::transparent);
     setBackgroundColor(mBgColor);
-    mTimer->start(mSpeed);
+    mFontPointSize = font().pointSize() / 2;
+    mTextLength = fontMetrics().horizontalAdvance(mText);
+    mTextHeight = fontMetrics().height();
+    mTimer->start(mInterval);
 }
 
 void TQMarquee::setAlignment(Qt::Alignment al)
@@ -121,8 +121,21 @@ void TQMarquee::setText(const QString& text)
     DECL_TRACER("TQMarquee::setText(const QString& text)");
 
     mText = text;
+    mFontPointSize = font().pointSize() / 2;
+    mTextLength = fontMetrics().horizontalAdvance(mText);
+    mTextHeight = fontMetrics().height();
     refreshLabel();
     update();
+}
+
+void TQMarquee::setFont(const QFont &f)
+{
+    DECL_TRACER("TQMarquee::setFont(const QFont &font)");
+
+    QLabel::setFont(f);
+    mFontPointSize = font().pointSize() / 2;
+    mTextLength = fontMetrics().horizontalAdvance(mText);
+    mTextHeight = fontMetrics().height();
 }
 
 void TQMarquee::setSpeed(int msec)
@@ -135,17 +148,26 @@ void TQMarquee::setSpeed(int msec)
         return;
     }
 
-    mSpeed = msec;
+    if (!mTimer)
+    {
+        MSG_ERROR("Timer is not initialized!");
+        return;
+    }
+
+    mInterval = BASE_SPEED - 2 + msec * 2;
 
     if (mTimer->isActive())
-        mTimer->start(mSpeed);
+        mTimer->start(mInterval);
     else
-        mTimer->setInterval(mSpeed);
+        mTimer->setInterval(mInterval);
 }
 
 void TQMarquee::pause()
 {
     DECL_TRACER("TQMarquee::pause()");
+
+    if (!mTimer)
+        return;
 
     if (mTimer->isActive())
         mTimer->stop();
@@ -157,8 +179,11 @@ void TQMarquee::resume()
 {
     DECL_TRACER("TQMarquee::resume()");
 
+    if (!mTimer)
+        return;
+
     if (!mTimer->isActive())
-        mTimer->start(mSpeed);
+        mTimer->start(mInterval);
 
     mPaused = false;
 }
@@ -236,9 +261,7 @@ void TQMarquee::refreshLabel()
 {
 //    DECL_TRACER("TQMarquee::refreshLabel()");       // This would fill up a logfile, if there is one.
 
-    QApplication::processEvents();
     update();
-    std::this_thread::sleep_for(std::chrono::milliseconds(mDelay));
 }
 
 void TQMarquee::hideEvent(QHideEvent *e)
@@ -262,31 +285,20 @@ bool TQMarquee::testVisibility(const QRegion& region)
     if (region.isEmpty() || region.isNull())
         return false;
 
-    QRegion::const_iterator iter;
-
-    for (iter = region.begin(); iter != region.end(); ++iter)
-    {
-        if (iter->contains(px, py))
-            return true;
-
-        if (iter->left() >= px && iter->right() <= (px + mTextLength))
-            return true;
-    }
-
-    return false;
+    return true;
 }
 
 void TQMarquee::paintEvent(QPaintEvent*)
 {
 //    DECL_TRACER("TQMarquee::paintEvent(QPaintEvent*)");   // This would fill up a logfile, if there is one.
 
-    if (!testVisibility(visibleRegion()) || mPaused)
+    if (!testVisibility(visibleRegion()))
         return;
 
     QPainter p(this);
     p.drawPixmap(0, 0, mBackgroundImage);
 
-    if (mScrollEnabled)
+    if (mScrollEnabled && !mPaused)
     {
         if(mType == MQ_LEFT)
         {
@@ -352,8 +364,8 @@ void TQMarquee::paintEvent(QPaintEvent*)
         p.drawText(px, py + mFontPointSize, mText);
         p.translate(px,0);
     }
-    else
-        QLabel::setText(mText);
+//    else
+//        QLabel::setText(mText);
 }
 
 void TQMarquee::resizeEvent(QResizeEvent* evt)
@@ -368,9 +380,9 @@ void TQMarquee::updateCoordinates()
 {
     DECL_TRACER("TQMarquee::updateCoordinates()");
 
-    mFontPointSize = font().pointSize() / 2;
-    mTextLength = fontMetrics().horizontalAdvance(mText);
-    mTextHeight = fontMetrics().height();
+//    mFontPointSize = font().pointSize() / 2;
+//    mTextLength = fontMetrics().horizontalAdvance(mText);
+//    mTextHeight = fontMetrics().height();
 
     vector<Qt::Alignment> alignList = {
         Qt::AlignLeft, Qt::AlignHCenter, Qt::AlignRight,

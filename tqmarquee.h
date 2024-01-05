@@ -32,6 +32,8 @@ class QPixmap;
 class QFont;
 class QRawFont;
 
+#define BASE_SPEED  25
+
 class TQMarquee : public QLabel
 {
     Q_OBJECT
@@ -61,6 +63,7 @@ class TQMarquee : public QLabel
     public slots:
         QString text() const { return mText; }
         void setText(const QString& text);
+        void setFont(const QFont& f);
         QColor backgroundColor();
         void setBackgroundColor(QColor& color);
         QPixmap background();
@@ -96,9 +99,9 @@ class TQMarquee : public QLabel
         int px{0};
         int py{0};
         QTimer *mTimer{nullptr};
-        uint mDelay{10};         // Delay of drawing im milli seconds
+        int mInterval{BASE_SPEED};
         Qt::Alignment mAlign{Qt::AlignCenter};
-        int mSpeed{200};
+        int mSpeed{1};
         Qt::LayoutDirection mDirection{Qt::LeftToRight};
         int mFontPointSize{8};
         int mTextLength{0};

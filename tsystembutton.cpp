@@ -379,20 +379,24 @@ void TSystemButton::setDistinctFocus(ulong handle)
     if (mButtons.empty())
         return;
 
-    vector<TButton *>::iterator iter;
+    std::thread thr = std::thread([=] {
+        vector<TButton *>::iterator iter;
 
-    for (iter = mButtons.begin(); iter != mButtons.end(); ++iter)
-    {
-        TButton *button = *iter;
-
-        if (button->getButtonType() == TEXT_INPUT)
+        for (iter = mButtons.begin(); iter != mButtons.end(); ++iter)
         {
-            if (button->getHandle() == handle && !button->isFocused())
-                button->setTextFocus(true);
-            else if (button->isFocused())
-                button->setTextFocus(false);
+            TButton *button = *iter;
+
+            if (button->getButtonType() == TEXT_INPUT)
+            {
+                if (button->getHandle() == handle && !button->isFocused())
+                    button->setTextFocus(true);
+                else if (button->isFocused())
+                    button->setTextFocus(false);
+            }
         }
-    }
+    });
+
+    thr.detach();
 }
 
 void TSystemButton::setCursorPosition(ulong handle, int oldPos, int newPos)
@@ -436,6 +440,7 @@ void TSystemButton::setInputFocus(ulong handle, bool in)
             mCursorPosition = button->getTextCursorPosition();
             mInputText = button->getText();
             button->setTextFocus(in);
+            MSG_DEBUG("Input text: " << mInputText << ", cursor position: " << mCursorPosition << ", handle: " << handleToString(handle));
         }
         else if (button->getButtonType() == TEXT_INPUT)
             button->setTextFocus(false);
@@ -804,29 +809,35 @@ void TSystemButton::setKeysToBank(int bank, uint handle)
     if (mButtons.empty() || bank < BANK_1 || bank > BANK_3)
         return;
 
-    vector<TButton *>::iterator iter;
-    int inst = (bank - 1) * 2;
+    std::thread thr = std::thread([=] {
+        vector<TButton *>::iterator iter;
+        int inst = (bank - 1) * 2;
 
-    for (iter = mButtons.begin(); iter != mButtons.end(); ++iter)
-    {
-        TButton *button = *iter;
-        SYS_BUTTON_TYPE tp = getSystemButtonType(button->getChannelNumber(), 0);
+        for (iter = mButtons.begin(); iter != mButtons.end(); ++iter)
+        {
+            TButton *button = *iter;
+            int channelNumber = button->getChannelNumber();
+            uint hdl = button->getHandle();
+            SYS_BUTTON_TYPE tp = getSystemButtonType(channelNumber, 0);
 
-        if (tp == KEY_KEY)
-        {
-            if (handle == button->getHandle())
-                button->setBargraphLevel(inst + 1);
-            else
-                button->setBargraphLevel(inst);
+            if (tp == KEY_KEY)
+            {
+                if (handle == hdl)
+                    button->setBargraphLevel(inst + 1);
+                else
+                    button->setBargraphLevel(inst);
+            }
+            else if (tp == KEY_BUTTON)
+            {
+                if (handle == hdl || (channelNumber == KB_CAPS_LOCK && mCapsLock))
+                    button->setActive(STATE_ON);
+                else
+                    button->setActive(STATE_OFF);
+            }
         }
-        else if (tp == KEY_BUTTON)
-        {
-            if (handle == button->getHandle() || (button->getChannelNumber() == KB_CAPS_LOCK && mCapsLock))
-                button->setActive(STATE_ON);
-            else
-                button->setActive(STATE_OFF);
-        }
-    }
+    });
+
+    thr.detach();
 }
 
 void TSystemButton::handleDedicatedKeys(int channel, bool pressed)

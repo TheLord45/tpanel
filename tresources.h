@@ -129,6 +129,7 @@ bool isNumeric(const std::string& str, bool blank=false);
 bool isBigEndian();
 std::string handleToString(ulong handle);
 ulong extractHandle(const std::string& obname);
+uint32_t createButtonID(int type, int ap, int ad, int cp, int ch, int lp=-1, int lv=-1);
 
 /**
  * @brief Converts a numeric value of any type into a string.

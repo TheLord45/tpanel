@@ -849,7 +849,7 @@ void TQScrollArea::hideItem(ulong handle)
 
 int TQScrollArea::scale(int value)
 {
-    DECL_TRACER("TQScrollArea::scale(int value)");
+//    DECL_TRACER("TQScrollArea::scale(int value)");
 
     if (mScaleFactor != 1.0)
         return (int)((double)value * mScaleFactor);
@@ -1005,8 +1005,8 @@ void TQScrollArea::setPosition(QWidget* w, int position)
         }
         else
         {
-            defPosY = position;
-            defPosX = 0;
+            defPosY = 0;
+            defPosX = position;
         }
 
         ensureWidgetVisible(w, defPosX, defPosY);

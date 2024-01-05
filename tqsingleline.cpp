@@ -28,14 +28,28 @@ TQSingleLine::TQSingleLine(QWidget *parent)
     : QLineEdit(parent)
 {
     DECL_TRACER("TQSingleLine::TQSingleLine(QWidget *parent)");
+
+    QPalette pal(palette());
+    pal.setColor(QPalette::Window, Qt::transparent);
+    pal.setColor(QPalette::Base, Qt::transparent);
+    pal.setColor(QPalette::WindowText, Qt::black);
+    pal.setColor(QPalette::Text, Qt::black);
+    setPalette(pal);
+    setFrame(false);
 }
 
 TQSingleLine::TQSingleLine(QWidget *parent, const string& text)
-    : QLineEdit(parent)
+    : QLineEdit(QString::fromStdString(text), parent)
 {
     DECL_TRACER("TQSingleLine::TQSingleLine(QWidget *parent, const string& text)");
 
-    setText(text.c_str());
+    QPalette pal(palette());
+    pal.setColor(QPalette::Window, Qt::transparent);
+    pal.setColor(QPalette::Base, Qt::transparent);
+    pal.setColor(QPalette::WindowText, Qt::black);
+    pal.setColor(QPalette::Text, Qt::black);
+    setPalette(pal);
+    setFrame(false);
 }
 
 /*******************************************************************************

@@ -1,16 +1,7 @@
-Bargraphs
-=========
-* A bargraph with a slider button can't be moved free as long as a mouse press
-  on the bargraph is active. This must be implemented.
-
 Buttons
 =======
-* Add marquee function
-* Implement text area buttons completly
 * Add command ^BMF
   - Set video on off
-  - Text area an input masks
-  - Bargraph control
 
 Missing features
 ================
@@ -18,25 +9,27 @@ Missing features
 * Crack the encryption of TP5 internal file.
 * Crack the encryption of passwords in resources.
 * Implement panel to panel audio communication.
-* Implemet commands to control a view
 * Implement commands to control a list
-* Implement a joystick
 
 Known errors
 ============
-* On a mobile device the surface may become a destructive look if the app is
-  suspended and loose network connection. In this case a new connection is
-  established, which work, but the surface can't be drawn. This leads into loss
-  of graphics. Seen this on a Samsung tablet Galaxy A7.
-
-* Sometimes the application crashes on mobile devices. It seems that the Qt
-  framework may be the course. But it could be that the handling of that
-  framework is wrong. This would be my fault.
-
 * While Views are working it is poosible that when another page is shown and
   switched back to the previous page the view doesn't react any more. Here the
   framework simply forgets to send mouse events to the widget. I found no way
   to restore the internal event table to what it should be.
+
+* On Linux with Wayland objects may look incomplete or they look like
+  something is above them and hiding them partly. This is a problem with Qt6
+  and Wayland. The same binary on X11 works as expected.
+
+* Views are resetting to initial state when they are on a page drawn the second
+  time.
+
+* If there are too many objects on a page or subpage, views may become
+  unresponsive. It is very likely that this is because it takes too much time
+  to draw all the objects and the internal event loop of Qt6 is missing some
+  events. Then some objects, like the scroll area of a view will not get any
+  mouse events any more. The same can happen on any other type of object.
 
 Documentation
 =============

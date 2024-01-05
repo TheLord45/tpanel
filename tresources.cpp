@@ -34,6 +34,7 @@
 
 #include "tresources.h"
 #include "tpagemanager.h"
+#include "tcrc32.h"
 #include "terror.h"
 #include "tconfig.h"
 
@@ -298,11 +299,18 @@ sk_sp<SkData> readImage(const string& fname)
 {
     DECL_TRACER("readImage(const string& fname)");
 
+    if (fname.empty())
+    {
+        MSG_ERROR("readImage: Empty file name!");
+        TError::setError();
+        return nullptr;
+    }
+
     sk_sp<SkData> data = GetResourceAsData(fname.c_str());
 
     if (!data)
     {
-        MSG_ERROR("readImage: Error loading the image " << fname);
+        MSG_ERROR("readImage: Error loading the image \"" << fname << "\"");
         TError::setError();
     }
 
@@ -1297,4 +1305,71 @@ ulong extractHandle(const std::string& obname)
     }
 
     return handle;
+}
+
+uint32_t createButtonID(int type, int ap, int ad, int cp, int ch, int lp, int lv)
+{
+    vector<uint8_t> bytes;
+    uint8_t bt1, bt2;
+    bytes.push_back(static_cast<uint8_t>(type));
+
+    if (ap >= 0)
+    {
+        // ap
+        bt1 = static_cast<uint8_t>((ap >> 8) & 0x00ff);
+        bt2 = static_cast<uint8_t>(ap & 0x00ff);
+        bytes.push_back(bt1);
+        bytes.push_back(bt2);
+    }
+
+    if (ad >= 0)
+    {
+        // ad
+        bt1 = static_cast<uint8_t>((ad >> 8) & 0x00ff);
+        bt2 = static_cast<uint8_t>(ad & 0x00ff);
+        bytes.push_back(bt1);
+        bytes.push_back(bt2);
+    }
+
+    if (cp >= 0)
+    {
+        // cp
+        bt1 = static_cast<uint8_t>((cp >> 8) & 0x00ff);
+        bt2 = static_cast<uint8_t>(cp & 0x00ff);
+        bytes.push_back(bt1);
+        bytes.push_back(bt2);
+    }
+
+    if (ch >= 0)
+    {
+        // ch
+        bt1 = static_cast<uint8_t>((ch >> 8) & 0x00ff);
+        bt2 = static_cast<uint8_t>(ch & 0x00ff);
+        bytes.push_back(bt1);
+        bytes.push_back(bt2);
+    }
+
+    if (lp >= 0)
+    {
+        // lp
+        bt1 = static_cast<uint8_t>((lp >> 8) & 0x00ff);
+        bt2 = static_cast<uint8_t>(lp & 0x00ff);
+        bytes.push_back(bt1);
+        bytes.push_back(bt2);
+    }
+
+    if (lv >= 0)
+    {
+        // lv
+        bt1 = static_cast<uint8_t>((lv >> 8) & 0x00ff);
+        bt2 = static_cast<uint8_t>(lv & 0x00ff);
+        bytes.push_back(bt1);
+        bytes.push_back(bt2);
+    }
+
+    TCrc32 crc(bytes);
+    std::stringstream s;
+    s << "0x" << std::setw(8) << std::setfill('0') << std::hex << crc.getCrc32();
+    MSG_DEBUG("CRC32: " << s.str());
+    return crc.getCrc32();
 }

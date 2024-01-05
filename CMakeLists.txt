@@ -321,12 +321,16 @@ set(PROJECT_SOURCES
         tpageinterface.h
         tbutton.cpp
         tbutton.h
+        tbuttonstates.cpp
+        tbuttonstates.h
         tsystembutton.cpp
         tsystembutton.h
         tvalidatefile.cpp
         tvalidatefile.h
         tresources.cpp
         tresources.h
+        tcrc32.cpp
+        tcrc32.h
         tcolor.cpp
         tcolor.h
         tpalette.cpp

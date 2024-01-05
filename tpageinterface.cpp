@@ -225,35 +225,35 @@ bool TPageInterface::drawFrame(PAGE_T& pinfo, SkBitmap* bm)
     if (!getBorderFragment(bd.b, bd.b_alpha, &imgB, color))
         return false;
 
-    MSG_DEBUG("Got images " << bd.b << " and " << bd.b_alpha << " with size " << imgB.info().width() << " x " << imgB.info().height());
+    MSG_DEBUG("Got images \"" << bd.b << "\" and \"" << bd.b_alpha << "\" with size " << imgB.info().width() << " x " << imgB.info().height());
     if (!getBorderFragment(bd.br, bd.br_alpha, &imgBR, color))
         return false;
 
-    MSG_DEBUG("Got images " << bd.br << " and " << bd.br_alpha << " with size " << imgBR.info().width() << " x " << imgBR.info().height());
+    MSG_DEBUG("Got images \"" << bd.br << "\" and \"" << bd.br_alpha << "\" with size " << imgBR.info().width() << " x " << imgBR.info().height());
     if (!getBorderFragment(bd.r, bd.r_alpha, &imgR, color))
         return false;
 
-    MSG_DEBUG("Got images " << bd.r << " and " << bd.r_alpha << " with size " << imgR.info().width() << " x " << imgR.info().height());
+    MSG_DEBUG("Got images \"" << bd.r << "\" and \"" << bd.r_alpha << "\" with size " << imgR.info().width() << " x " << imgR.info().height());
     if (!getBorderFragment(bd.tr, bd.tr_alpha, &imgTR, color))
         return false;
 
-    MSG_DEBUG("Got images " << bd.tr << " and " << bd.tr_alpha << " with size " << imgTR.info().width() << " x " << imgTR.info().height());
+    MSG_DEBUG("Got images \"" << bd.tr << "\" and \"" << bd.tr_alpha << "\" with size " << imgTR.info().width() << " x " << imgTR.info().height());
     if (getBorderFragment(bd.t, bd.t_alpha, &imgT, color))
         return false;
 
-    MSG_DEBUG("Got images " << bd.t << " and " << bd.t_alpha << " with size " << imgT.info().width() << " x " << imgT.info().height());
+    MSG_DEBUG("Got images \"" << bd.t << "\" and \"" << bd.t_alpha << "\" with size " << imgT.info().width() << " x " << imgT.info().height());
     if (!getBorderFragment(bd.tl, bd.tl_alpha, &imgTL, color))
         return false;
 
-    MSG_DEBUG("Got images " << bd.tl << " and " << bd.tl_alpha << " with size " << imgTL.info().width() << " x " << imgTL.info().height());
+    MSG_DEBUG("Got images \"" << bd.tl << "\" and \"" << bd.tl_alpha << "\" with size " << imgTL.info().width() << " x " << imgTL.info().height());
     if (!getBorderFragment(bd.l, bd.l_alpha, &imgL, color))
         return false;
 
-    MSG_DEBUG("Got images " << bd.l << " and " << bd.l_alpha << " with size " << imgL.info().width() << " x " << imgL.info().height());
+    MSG_DEBUG("Got images \"" << bd.l << "\" and \"" << bd.l_alpha << "\" with size " << imgL.info().width() << " x " << imgL.info().height());
     if (!getBorderFragment(bd.bl, bd.bl_alpha, &imgBL, color))
         return false;
 
-    MSG_DEBUG("Got images " << bd.bl << " and " << bd.bl_alpha << " with size " << imgBL.info().width() << " x " << imgBL.info().height());
+    MSG_DEBUG("Got images \"" << bd.bl << "\" and \"" << bd.bl_alpha << "\" with size " << imgBL.info().width() << " x " << imgBL.info().height());
     MSG_DEBUG("Button image size: " << (imgTL.info().width() + imgT.info().width() + imgTR.info().width()) << " x " << (imgTL.info().height() + imgL.info().height() + imgBL.info().height()));
     MSG_DEBUG("Total size: " << pinfo.width << " x " << pinfo.height);
     stretchImageWidth(&imgB, pinfo.width - imgBL.info().width() - imgBR.info().width());
@@ -1171,11 +1171,10 @@ bool TPageInterface::getBorderFragment(const string& path, const string& pathAlp
     // we want first unless this is the only image available.
     if (!endsWith(path, "alpha.png") || pathAlpha.empty())
     {
-        if (retrieveImage(path, image))
+        if (!path.empty() && retrieveImage(path, image))
         {
             haveBaseImage = true;
             // Underly the pixels with the border color
-            MSG_DEBUG("Path: " << path << ", pathAlpha: " << pathAlpha);
             if (pathAlpha.empty() || !fs::exists(pathAlpha) || path == pathAlpha)
             {
                 SkImageInfo info = image->info();
@@ -1271,6 +1270,12 @@ SkBitmap TPageInterface::retrieveBorderImage(const string& pa, const string& pb,
 bool TPageInterface::retrieveImage(const string& path, SkBitmap* image)
 {
     DECL_TRACER("TPageInterface::retrieveImage(const string& path, SkBitmap* image)");
+
+    if (path.empty() || !image)
+    {
+        MSG_WARNING("One or all of the parameters are invalid!");
+        return false;
+    }
 
     sk_sp<SkData> im;
 

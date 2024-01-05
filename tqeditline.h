@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2022 to 2024 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,7 +20,9 @@
 #define __TQEDITLINE_H__
 
 #include <string>
+
 #include <QWidget>
+#include <QColor>
 
 QT_BEGIN_NAMESPACE
 class QLineEdit;
@@ -41,12 +43,14 @@ class TQEditLine : public QWidget
         ~TQEditLine();
 
         void setText(std::string &text);
+        void setPlaceholderText(std::string& text);
         void setObjectName(const std::string& name);
         void setPasswordChar(uint c);
         std::string& getText() { return mText; }
         void setFixedSize(int w, int h);
         void setFont(QFont &font);
         void setTextColor(QColor col);
+        void setBgColor(QColor& col);
         void setPalette(QPalette &pal);
         void setBackgroundPixmap(QPixmap& pixmap);
         void grabGesture(Qt::GestureType type, Qt::GestureFlags flags = Qt::GestureFlags());
@@ -91,6 +95,7 @@ class TQEditLine : public QWidget
         TQSingleLine *mEdit{nullptr};
         TQMultiLine *mTextArea{nullptr};
         QPixmap mBackground;
+        QColor mBgColor{Qt::transparent};
 
         std::string mText;
         ulong mHandle{0};

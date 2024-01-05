@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2024 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -48,6 +48,7 @@
 //#endif
 
 #include "tbutton.h"
+#include "tbuttonstates.h"
 #include "thttpclient.h"
 #include "terror.h"
 #include "tconfig.h"
@@ -87,6 +88,7 @@ using std::unique_ptr;
 using std::map;
 using std::pair;
 using std::min;
+using std::max;
 using std::thread;
 using std::atomic;
 using std::mutex;
@@ -259,6 +261,9 @@ size_t TButton::initialize(TExpat *xml, size_t index)
     }
 
     mChanged = true;
+    int lastLevel = 0;
+    int lastJoyX = 0;
+    int lastJoyY = 0;
     vector<ATTRIBUTE_t> attrs = xml->getAttributes(index);
     string stype = xml->getAttribute("type", attrs);
     type = getButtonType(stype);
@@ -323,7 +328,7 @@ size_t TButton::initialize(TExpat *xml, size_t index)
             co = xml->convertElementToInt(content);
         else if (ename.compare("cm") == 0)          // commands to send on button hit
             cm.push_back(content);
-        else if (ename.compare("va") == 0)          // ?
+        else if (ename.compare("va") == 0)          // Level control value
             va = xml->convertElementToInt(content);
         else if (ename.compare("rm") == 0)          // State count
             rm = xml->convertElementToInt(content);
@@ -341,7 +346,7 @@ size_t TButton::initialize(TExpat *xml, size_t index)
             lu = xml->convertElementToInt(content);
         else if (ename.compare("ld") == 0)          // Animate time down (bargraph)
             ld = xml->convertElementToInt(content);
-        else if (ename.compare("rv") == 0)          // Bargraph repeat interval?
+        else if (ename.compare("rv") == 0)          // Level control repeat time
             rv = xml->convertElementToInt(content);
         else if (ename.compare("rl") == 0)          // Bargraph range low
             rl = xml->convertElementToInt(content);
@@ -353,8 +358,8 @@ size_t TButton::initialize(TExpat *xml, size_t index)
 
             if (ri > 0 && lf != "center" && lf != "dragCenter")
             {
-                mLastLevel = rh - rl;
-                mLastJoyX = mLastLevel;
+                lastLevel = rh - rl;
+                lastJoyX = lastLevel;
             }
         }
         else if (ename.compare("ji") == 0)          // Joystick aux inverted (0 = normal, 1 = inverted)
@@ -362,7 +367,7 @@ size_t TButton::initialize(TExpat *xml, size_t index)
             ji = xml->convertElementToInt(content);
 
             if (ji > 0 && lf != "center" && lf != "dragCenter")
-                mLastJoyY = rh - rl;
+                lastJoyY = rh - rl;
         }
         else if (ename.compare("rn") == 0)          // Bargraph: Range drag increment
             rn = xml->convertElementToInt(content);
@@ -370,6 +375,8 @@ size_t TButton::initialize(TExpat *xml, size_t index)
             lf = content;
         else if (ename.compare("sd") == 0)          // Name/Type of slider for a bargraph
             sd = content;
+        else if (ename.compare("vt") == 0)          // Level control type
+            vt = content;
         else if (ename.compare("cd") == 0)          // Name of cursor for a joystick
             cd = content;
         else if (ename.compare("sc") == 0)          // Color of slider (for bargraph)
@@ -516,6 +523,24 @@ size_t TButton::initialize(TExpat *xml, size_t index)
     }
 
     visible = !hd;  // set the initial visibility
+
+    if (gPageManager)
+    {
+        TButtonStates *pbs = gPageManager->addButtonState(type, ap, ad, ch, cp, lp, lv);
+
+        if (!pbs)
+        {
+            MSG_ERROR("States of actual button " << bi << " (" << na << ") are not found!");
+        }
+        else
+        {
+            mButtonID = pbs->getID();
+            MSG_DEBUG("Button ID: " << getButtonIDstr() << ", type: " << buttonTypeToString() << ", index: " << bi << ", name: " << na);
+            pbs->setLastLevel(lastLevel);
+            pbs->setLastJoyX(lastJoyX);
+            pbs->setLastJoyY(lastJoyY);
+        }
+    }
 /*
     if (sr.size() > 0 && TStreamError::checkFilter(HLOG_DEBUG))
     {
@@ -588,6 +613,10 @@ bool TButton::createSoftButton(const EXTBUTTON_t& bt)
     rn = bt.rn;
     sc = bt.sc;
     sr = bt.sr;
+
+    if (gPageManager)
+        gPageManager->addButtonState(type, ap, ad, ch, cp, lp, lv);
+
     mChanged = true;
     return true;
 }
@@ -669,7 +698,18 @@ void TButton::setBargraphLevel(int level)
         return;
     }
 
-    if (((type == BARGRAPH || type == MULTISTATE_BARGRAPH) && mLastLevel != level) ||
+    TButtonStates *buttonStates = getButtonState();
+
+    if (!buttonStates)
+    {
+        MSG_ERROR("Button states not found!");
+        TError::setError();
+        return;
+    }
+
+    int lastLevel = buttonStates->getLastLevel();
+
+    if (((type == BARGRAPH || type == MULTISTATE_BARGRAPH) && lastLevel != level) ||
         (type == MULTISTATE_BARGRAPH && mActInstance != level))
         mChanged = true;
 
@@ -678,13 +718,15 @@ void TButton::setBargraphLevel(int level)
 
     if (type == BARGRAPH)
     {
-        mLastLevel = level;
+        lastLevel = level;
+        buttonStates->setLastLevel(level);
         drawBargraph(mActInstance, level);
     }
     else if (type == MULTISTATE_BARGRAPH)
     {
-        mLastLevel = level;
+        lastLevel = level;
         mActInstance = level;
+        buttonStates->setLastLevel(level);
         drawMultistateBargraph(level);
     }
     else
@@ -706,13 +748,11 @@ void TButton::moveBargraphLevel(int x, int y)
 
     if (dr.compare("horizontal") == 0)
     {
-//        level = (ri ? (wt - x) : x);
         level = x;
         level = static_cast<int>(static_cast<double>(rh - rl) / static_cast<double>(wt) * static_cast<double>(level));
     }
     else
     {
-//        level = (ri ? y : (ht - y));
         level = ht - y;
         level = static_cast<int>(static_cast<double>(rh - rl) / static_cast<double>(ht) * static_cast<double>(level));
     }
@@ -748,24 +788,45 @@ void TButton::moveBargraphLevel(int x, int y)
     // Send the level
     if (lp && lv && gPageManager && gPageManager->getLevelSendState() && gAmxNet)
     {
-        amx::ANET_SEND scmd;
-        scmd.device = TConfig::getChannel();
-        scmd.port = lp;
-        scmd.channel = lv;
-        scmd.level = lv;
-        scmd.value = (ri ? ((rh - rl) - level) : level);
-        scmd.MC = 0x008a;
+        gPageManager->sendLevel(lp, lv, (ri ? ((rh - rl) - level) : level));
+        TButtonStates *buttonStates = nullptr;
 
-        if (mLastSendLevelX != level)
-            gAmxNet->sendCommand(scmd);
-
-        mLastSendLevelX = level;
+        if ((buttonStates = getButtonState()) != nullptr)
+            buttonStates->setLastSendLevelX(level);
     }
 }
 
 void TButton::sendJoystickLevels()
 {
     DECL_TRACER("TButton::sendJoystickLevels()");
+
+    if (type != JOYSTICK)
+        return;
+
+    if (!gAmxNet)
+    {
+        MSG_WARNING("The AMX communication thread is not initialized!");
+        return;
+    }
+
+    TButtonStates *buttonStates = getButtonState();
+    int lastJoyX = 0;
+    int lastJoyY = 0;
+    int lastSendLevelX = 0;
+    int lastSendLevelY = 0;
+
+    if (buttonStates)
+    {
+        lastJoyX = buttonStates->getLastJoyX();
+        lastJoyY = buttonStates->getLastJoyY();
+        lastSendLevelX = buttonStates->getLastSendLevelX();
+        lastSendLevelY = buttonStates->getLastSendLevelY();
+    }
+    else
+    {
+        MSG_ERROR("Button states not found!");
+        return;
+    }
 
     // Send the levels
     if (lp && lv && gPageManager && gPageManager->getLevelSendState())
@@ -776,28 +837,74 @@ void TButton::sendJoystickLevels()
         scmd.port = lp;
         scmd.channel = lv;
         scmd.level = lv;
-        scmd.value = (ri ? ((rh - rl) - mLastJoyX) : mLastJoyX);
+        scmd.value = (ri ? ((rh - rl) - lastJoyX) : lastJoyX);
         scmd.MC = 0x008a;
 
-        if (gAmxNet)
-        {
-            if (mLastSendLevelX != mLastJoyX)
-                gAmxNet->sendCommand(scmd);
+        if (lastSendLevelX != scmd.value)
+            gAmxNet->sendCommand(scmd);
 
-            mLastSendLevelX = mLastJoyX;
-        }
+        lastSendLevelX = scmd.value;
+        buttonStates->setLastSendLevelX(scmd.value);
 
         scmd.channel = lv + 1;
         scmd.level = lv + 1;
-        scmd.value = (ji ? ((rh - rl) - mLastJoyY) : mLastJoyY);
+        scmd.value = (ji ? ((rh - rl) - lastJoyY) : lastJoyY);
 
-        if (gAmxNet)
-        {
-            if (mLastSendLevelY != mLastJoyY)
-                gAmxNet->sendCommand(scmd);
+        if (lastSendLevelY != scmd.value)
+            gAmxNet->sendCommand(scmd);
 
-            mLastSendLevelY = mLastJoyY;
-        }
+        lastSendLevelY = scmd.value;
+        buttonStates->setLastSendLevelY(lastSendLevelY);
+    }
+}
+
+void TButton::sendBargraphLevel()
+{
+    DECL_TRACER("TButton::sendBargraphLevel()");
+
+    if (type != BARGRAPH && type != MULTISTATE_BARGRAPH)
+        return;
+
+    if (!gAmxNet)
+    {
+        MSG_WARNING("The AMX communication thread is not initialized!");
+        return;
+    }
+
+    TButtonStates *buttonStates = getButtonState();
+    int lastLevel = 0;
+    int lastSendLevelX = 0;
+
+    if (buttonStates)
+    {
+        lastLevel = buttonStates->getLastLevel();
+        lastSendLevelX = buttonStates->getLastSendLevelX();
+    }
+    else
+    {
+        MSG_ERROR("Button states not found!");
+        return;
+    }
+
+    // Send the level
+    if (lp && lv && gPageManager && gPageManager->getLevelSendState())
+    {
+        amx::ANET_SEND scmd;
+
+        scmd.device = TConfig::getChannel();
+        scmd.port = lp;
+        scmd.channel = lv;
+        scmd.level = lv;
+        scmd.value = (ri ? ((rh - rl) - lastLevel) : lastLevel);
+        scmd.MC = 0x008a;
+
+        if (lastSendLevelX != lastLevel)
+            gAmxNet->sendCommand(scmd);
+
+        lastSendLevelX = lastLevel;
+
+        if (buttonStates)
+            buttonStates->setLastSendLevelX(lastSendLevelX);
     }
 }
 
@@ -870,7 +977,12 @@ BUTTONTYPE TButton::getButtonType(const string& bt)
 
 string TButton::buttonTypeToString()
 {
-    switch(type)
+    return buttonTypeToString(type);
+}
+
+string TButton::buttonTypeToString(BUTTONTYPE t)
+{
+    switch(t)
     {
         case NONE:                  return "NONE";
         case GENERAL:               return "GENERAL";
@@ -1025,15 +1137,35 @@ bool TButton::makeElement(int instance)
 
     int inst = mActInstance;
 
-    if (instance >= 0 && (size_t)instance < sr.size())
+    if (instance >= 0 && static_cast<size_t>(instance) < sr.size())
     {
         if (mActInstance != instance)
             mChanged = true;
 
         inst = instance;
     }
+    else if (inst < 0 || static_cast<size_t>(inst) >= sr.size())
+        inst = mActInstance = 0;
 
     bool isSystem = isSystemButton();
+    TButtonStates *buttonStates = getButtonState();
+
+    int lastLevel = 0;
+    int lastJoyX = 0;
+    int lastJoyY = 0;
+
+    if (buttonStates)
+    {
+        lastLevel = buttonStates->getLastLevel();
+        lastJoyX = buttonStates->getLastJoyX();
+        lastJoyY = buttonStates->getLastJoyY();
+        MSG_DEBUG("lastLevel: " << lastLevel << ", lastJoyX: " << lastJoyX << ", lastJoyY: " << lastJoyY);
+    }
+    else
+    {
+        MSG_ERROR("Button states not found!");
+        return false;
+    }
 
     if (type == MULTISTATE_GENERAL && ar == 1)
         return drawButtonMultistateAni();
@@ -1042,12 +1174,12 @@ bool TButton::makeElement(int instance)
     else if (type == BARGRAPH)
     {
         if (lf == "center" || lf == "dragCenter")
-            mLastLevel = (rh - rl) / 2;
+            lastLevel = (rh - rl) / 2;
 
-        return drawBargraph(inst, mLastLevel);
+        return drawBargraph(inst, lastLevel);
     }
     else if (type == MULTISTATE_BARGRAPH)
-        return drawMultistateBargraph(mLastLevel, true);
+        return drawMultistateBargraph(lastLevel, true);
     else if (type == TEXT_INPUT)
     {
         if (isSystem && !mSystemReg)
@@ -1128,9 +1260,15 @@ bool TButton::makeElement(int instance)
     else if (type == JOYSTICK)
     {
         if (lf == "center" || lf == "dragCenter")
-            mLastJoyX = mLastJoyY = (rh - rl) / 2;
+            lastJoyX = lastJoyY = (rh - rl) / 2;
 
-        return drawJoystick(mLastJoyX, mLastJoyY);
+        if (buttonStates)
+        {
+            buttonStates->setLastJoyX(lastJoyX);
+            buttonStates->setLastJoyY(lastJoyY);
+        }
+
+        return drawJoystick(lastJoyX, lastJoyY);
     }
     else
     {
@@ -1347,6 +1485,8 @@ bool TButton::setTextOnly(const string& txt, int instance)
         MSG_ERROR("Instance " << instance << " does not exist!");
         return false;
     }
+
+    MSG_DEBUG("Setting text to: " << txt);
 
     if (instance < 0)
     {
@@ -3617,7 +3757,16 @@ void TButton::registerSystemButton()
     }
     else if (lp == 0 && lv == SYSTEM_ITEM_SYSVOLUME)        // System volume
     {
-        mLastLevel = TConfig::getSystemVolume();
+        int lastLevel = TConfig::getSystemVolume();
+
+        if (gPageManager)
+        {
+            TButtonStates *buttonStates = gPageManager->getButtonState(type, ap, ad, ch, cp, lp, lv);
+
+            if (buttonStates)
+                buttonStates->setLastLevel(lastLevel);
+        }
+
         mChanged = true;
         mSystemReg = true;
     }
@@ -3756,7 +3905,7 @@ bool TButton::buttonFill(SkBitmap* bm, int instance)
 
     if (instance < 0 || (size_t)instance >= sr.size())
     {
-        MSG_ERROR("Invalid instance " << instance);
+        MSG_ERROR("Invalid instance " << instance << " (range: " << rl << " - " << rh << " [" << sr.size() << "])");
         return false;
     }
 
@@ -4556,9 +4705,20 @@ void TButton::funcNetworkState(int level)
 
     if (level >= rl && level <= rh)
     {
-        mLastLevel = level;
+        int lastLevel = level;
+
+        if (gPageManager)
+        {
+            TButtonStates *buttonStates = gPageManager->getButtonState(type, ap, ad, ch, cp, lp, lv);
+
+            if (buttonStates)
+                buttonStates->setLastLevel(level);
+            else
+                MSG_ERROR("Button states not found!");
+        }
+
         mChanged = true;
-        drawMultistateBargraph(mLastLevel);
+        drawMultistateBargraph(lastLevel);
     }
 }
 
@@ -4618,7 +4778,7 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
 {
     DECL_TRACER("TButton::barLevel(SkBitmap* bm, int inst, int level)");
 
-    if (!sr[0].mi.empty()  && sr[0].bs.empty() && !sr[1].bm.empty())       // Chameleon image?
+    if (!sr[0].mi.empty() && sr[0].bs.empty() && !sr[1].bm.empty())       // Chameleon image?
     {
         MSG_TRACE("Chameleon image ...");
         SkBitmap bmMi, bmBm;
@@ -4642,29 +4802,14 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
         // Calculation: width / <effective pixels> * level
         // Calculation: height / <effective pixels> * level
         if (dr.compare("horizontal") == 0)
-        {
             width = static_cast<int>(static_cast<double>(width) / static_cast<double>(rh - rl) * static_cast<double>(level));
-//            startX = sr[0].mi_width - width;
-//            width = sr[0].mi_width;
-        }
         else
         {
             height = static_cast<int>(static_cast<double>(height) / static_cast<double>(rh - rl) * static_cast<double>(level));
             startY = sr[0].mi_height - height;
             height = sr[0].mi_height;
         }
-/*
-        if (ri && dr.compare("horizontal") == 0)
-        {
-            startX = sr[0].mi_width - width;
-            width = sr[0].mi_width;
-        }
-        else if (dr.compare("horizontal") != 0)
-        {
-            startY = sr[0].mi_height - height;
-            height = sr[0].mi_height;
-        }
-*/
+
         if (!allocPixels(sr[0].mi_width, sr[0].mi_height, &img))
             return false;
 
@@ -4735,7 +4880,6 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
         TImgCache::getBitmap(sr[1].bm, &image2, _BMTYPE_BITMAP, &sr[1].bm_width, &sr[1].bm_height);   // State when level = 100%
         SkCanvas can_bm(*bm, SkSurfaceProps());
 
-
         if (image1.empty())
         {
             MSG_ERROR("Error creating the image \"" << sr[0].bm << "\"!");
@@ -4754,33 +4898,19 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
         int height = sr[1].bm_height;
         int startX = 0;
         int startY = 0;
+        MSG_DEBUG("Image size: " << width << " x " << height);
 
         // Calculation: width / <effective pixels> * level
         // Calculation: height / <effective pixels> * level
         if (dr.compare("horizontal") == 0)
-        {
             width = static_cast<int>(static_cast<double>(width) / static_cast<double>(rh - rl) * static_cast<double>(level));
-//            startX = sr[0].mi_width - width;
-//            width = sr[0].mi_width;
-        }
         else
         {
             height = static_cast<int>(static_cast<double>(height) / static_cast<double>(rh - rl) * static_cast<double>(level));
-            startY = sr[0].mi_height - height;
-            height = sr[0].mi_height;
+            startY = sr[0].bm_height - height;
+            height = sr[0].bm_height;
         }
-/*
-        if (ri && dr.compare("horizontal") == 0)     // range inverted?
-        {
-            startX = sr[0].mi_width - width;
-            width = sr[0].mi_width;
-        }
-        else if (dr.compare("horizontal") != 0)
-        {
-            startY = sr[0].mi_height - height;
-            height = sr[0].mi_height;
-        }
-*/
+
         MSG_DEBUG("dr=" << dr << ", startX=" << startX << ", startY=" << startY << ", width=" << width << ", height=" << height << ", level=" << level);
         MSG_TRACE("Creating bargraph ...");
         SkBitmap img_bar;
@@ -4808,13 +4938,14 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
             }
         }
 
+        POINT_t point = getImagePosition(sr[0].bm_width, sr[0].bm_height);
         SkPaint paint;
         paint.setBlendMode(SkBlendMode::kSrc);
         sk_sp<SkImage> _image = SkImages::RasterFromBitmap(image1);
-        can_bm.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
+        can_bm.drawImage(_image, point.x, point.y, SkSamplingOptions(), &paint);
         paint.setBlendMode(SkBlendMode::kSrcATop);
         _image = SkImages::RasterFromBitmap(img_bar);
-        can_bm.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);       // Draw the above created image over the 0% image
+        can_bm.drawImage(_image, point.x, point.y, SkSamplingOptions(), &paint);       // Draw the above created image over the 0% image
     }
     else if (sr[0].bm.empty() && !sr[1].bm.empty())     // Only one bitmap in the second instance
     {
@@ -4838,29 +4969,14 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
         // Calculation: width / <effective pixels> * level
         // Calculation: height / <effective pixels> * level
         if (dr.compare("horizontal") == 0)
-        {
             width = static_cast<int>(static_cast<double>(width) / static_cast<double>(rh - rl) * static_cast<double>(level));
-//            startX = sr[1].mi_width - width;
-//            width = sr[1].mi_width;
-        }
         else
         {
             height = static_cast<int>(static_cast<double>(height) / static_cast<double>(rh - rl) * static_cast<double>(level));
-            startY = sr[1].mi_height - height;
-            height = sr[1].mi_height;
+            startY = sr[0].bm_height - height;
+            height = sr[0].bm_height;
         }
-/*
-        if (ri && dr.compare("horizontal") == 0)     // range inverted?
-        {
-            startX = sr[1].mi_width - width;
-            width = sr[1].mi_width;
-        }
-        else if (dr.compare("horizontal") != 0)
-        {
-            startY = sr[1].mi_height - height;
-            height = sr[1].mi_height;
-        }
-*/
+
         MSG_DEBUG("dr=" << dr << ", startX=" << startX << ", startY=" << startY << ", width=" << width << ", height=" << height << ", level=" << level);
         MSG_TRACE("Creating bargraph ...");
         SkBitmap img_bar;
@@ -4888,10 +5004,11 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
             }
         }
 
+        POINT_t point = getImagePosition(sr[1].bm_width, sr[1].bm_height);
         SkPaint paint;
         paint.setBlendMode(SkBlendMode::kSrcOver);
         sk_sp<SkImage> _image = SkImages::RasterFromBitmap(img_bar);
-        can_bm.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);      // Draw the above created image over the 0% image
+        can_bm.drawImage(_image, point.x, point.y, SkSamplingOptions(), &paint);      // Draw the above created image over the 0% image
     }
     else
     {
@@ -4911,18 +5028,7 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
             startY = ht - height;
             height = ht;
         }
-/*
-        if (ri && dr.compare("horizontal") == 0)
-        {
-            startX = wt - width;
-            width = wt;
-        }
-        else if (dr.compare("horizontal") != 0)
-        {
-            startY = ht - height;
-            height = ht;
-        }
-*/
+
         SkPaint paint;
         paint.setBlendMode(SkBlendMode::kSrc);
         SkCanvas can(*bm, SkSurfaceProps());
@@ -4962,9 +5068,7 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
                 scale = static_cast<double>(wt - border_size * 2) / static_cast<double>(slButton.info().width());
                 scaleW = scale;
                 scaleH = 1.0;
-
-//                if (!ri)
-                    innerH = height - innerH;
+                innerH = height - innerH;
             }
             else
             {
@@ -4972,12 +5076,8 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
                 scale = static_cast<double>(ht - border_size * 2) / static_cast<double>(slButton.info().height());
                 scaleW = 1.0;
                 scaleH = scale;
-//                innerW = static_cast<int>(static_cast<double>(width - border_size * 2 - slButton.info().width() / 2) / static_cast<double>(rh - rl) * static_cast<double>(level)) + border_size + slButton.info().width() / 2;
                 innerH = height;
                 innerW = width;
-
-//                if (!ri)
-//                    innerW = width - innerW;
             }
 
             if (scaleImage(&slButton, scaleW, scaleH))
@@ -5005,6 +5105,68 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
     }
 
     return true;
+}
+
+POINT_t TButton::getImagePosition(int width, int height)
+{
+    DECL_TRACER("TButton::getImagePosition(int width, int height)");
+
+    POINT_t point;
+
+    switch (sr[0].jb)
+    {
+        case ORI_ABSOLUT:
+            point.x = sr[0].bx;
+            point.y = ht - sr[0].by;
+        break;
+
+        case ORI_TOP_LEFT:
+            point.x = 0;
+            point.y = 0;
+        break;
+
+        case ORI_TOP_MIDDLE:
+            point.x = (wt - width) / 2;
+            point.y = 0;
+        break;
+
+        case ORI_TOP_RIGHT:
+            point.x = wt - width;
+            point.y = 0;
+        break;
+
+        case ORI_CENTER_LEFT:
+            point.x = 0;
+            point.y = (ht - height) / 2;
+        break;
+
+        case ORI_CENTER_MIDDLE:
+            point.x = (wt - width) / 2;
+            point.y = (ht - height) / 2;
+        break;
+
+        case ORI_CENTER_RIGHT:
+            point.x = wt - width;
+            point.y = (ht - height) / 2;
+        break;
+
+        case ORI_BOTTOM_LEFT:
+            point.x = 0;
+            point.y = ht - height;
+        break;
+
+        case ORI_BOTTOM_MIDDLE:
+            point.x = (wt - width) / 2;
+            point.y = ht - height;
+        break;
+
+        case ORI_BOTTOM_RIGHT:
+            point.x = wt - width;
+            point.y = ht - height;
+        break;
+    }
+
+    return point;
 }
 
 SkBitmap TButton::drawSliderButton(const string& slider, SkColor col)
@@ -5931,6 +6093,7 @@ bool TButton::drawButton(int instance, bool show, bool subview)
         return true;
     }
 
+    TError::clear();
     MSG_DEBUG("Drawing button " << bi << ", \"" << na << "\" at instance " << instance);
 
     if (!mChanged && !mLastImage.empty())
@@ -6597,6 +6760,27 @@ void TButton::setBargraphInvert(int invert)
         mChanged = true;
     }
 
+    int lastLevel = 0;
+    int lastJoyX = 0;
+    int lastJoyY = 0;
+
+    if (gPageManager)
+    {
+        TButtonStates *buttonStates = gPageManager->getButtonState(type, ap, ad, ch, cp, lp, lv);
+
+        if (buttonStates)
+        {
+            lastLevel = buttonStates->getLastLevel();
+            lastJoyX = buttonStates->getLastJoyX();
+            lastJoyY = buttonStates->getLastJoyY();
+        }
+        else
+        {
+            MSG_ERROR("Button states not found!");
+            return;
+        }
+    }
+
     if (mChanged && lp && lv)
     {
         amx::ANET_SEND scmd;
@@ -6606,9 +6790,9 @@ void TButton::setBargraphInvert(int invert)
         scmd.level = lv;
 
         if (type == BARGRAPH)
-            scmd.value = (ri > 0 ? ((rh - rl) - mLastLevel) : mLastLevel);
+            scmd.value = (ri > 0 ? ((rh - rl) - lastLevel) : lastLevel);
         else if (invert == 1 || invert == 3)
-            scmd.value = (ri > 0 ? ((rh - rl) - mLastJoyX) : mLastJoyX);
+            scmd.value = (ri > 0 ? ((rh - rl) - lastJoyX) : lastJoyX);
 
         scmd.MC = 0x008a;
 
@@ -6619,7 +6803,7 @@ void TButton::setBargraphInvert(int invert)
         {
             scmd.channel = lv;
             scmd.level = lv;
-            scmd.value = (ri > 0 ? ((rh - rl) - mLastJoyY) : mLastJoyY);
+            scmd.value = (ri > 0 ? ((rh - rl) - lastJoyY) : lastJoyY);
 
             if (gAmxNet)
                 gAmxNet->sendCommand(scmd);
@@ -6678,33 +6862,48 @@ bool TButton::drawJoystick(int x, int y)
         return false;
     }
 
+    TButtonStates *buttonStates = getButtonState();
+
+    if (!buttonStates)
+    {
+        MSG_ERROR("Button states not found!");
+        TError::setError();
+        return false;
+    }
+
+    int lastJoyX = buttonStates->getLastJoyX();
+    int lastJoyY = buttonStates->getLastJoyY();
+
     if (!_displayButton && gPageManager)
         _displayButton = gPageManager->getCallbackDB();
 
-    if (!mChanged && mLastJoyX == x && mLastJoyY == y)
+    if (!mChanged && lastJoyX == x && lastJoyY == y)
     {
         showLastButton();
         return true;
     }
 
     if (x < rl)
-        mLastJoyX = rl;
+        lastJoyX = rl;
     else if (x > rh)
-        mLastJoyX = rh;
+        lastJoyX = rh;
     else
-        mLastJoyX = x;
+        lastJoyX = x;
 
     if (y < rl)
-        mLastJoyY = rl;
+        lastJoyY = rl;
     else if (y > rh)
-        mLastJoyY = rh;
+        lastJoyY = rh;
     else
-        mLastJoyY = y;
+        lastJoyY = y;
+
+    buttonStates->setLastJoyX(lastJoyX);
+    buttonStates->setLastJoyY(lastJoyY);
 
     if (!visible || hd || !_displayButton)
     {
         bool db = (_displayButton != nullptr);
-        MSG_DEBUG("Joystick " << bi << ", \"" << na << "\" with coordinates " << mLastJoyX << "|" << mLastJoyY << " is not to draw!");
+        MSG_DEBUG("Joystick " << bi << ", \"" << na << "\" with coordinates " << lastJoyX << "|" << lastJoyY << " is not to draw!");
         MSG_DEBUG("Visible: " << (visible ? "YES" : "NO") << ", callback: " << (db ? "PRESENT" : "N/A"));
         return true;
     }
@@ -6733,7 +6932,7 @@ bool TButton::drawJoystick(int x, int y)
         }
         else if (mDOrder[i] == ORD_ELEM_BITMAP)
         {
-            if (!drawJoystickCursor(&imgButton, mLastJoyX, mLastJoyY))
+            if (!drawJoystickCursor(&imgButton, lastJoyX, lastJoyY))
                 return false;
         }
         else if (mDOrder[i] == ORD_ELEM_ICON)
@@ -7171,25 +7370,38 @@ bool TButton::drawBargraph(int instance, int level, bool show)
     if (!_displayButton && gPageManager)
         _displayButton = gPageManager->getCallbackDB();
 
-    if (!mChanged && mLastLevel == level)
+    TButtonStates *buttonStates = getButtonState();
+
+    if (!buttonStates)
     {
+        MSG_ERROR("Button states not found!");
+        return false;
+    }
+
+    int lastLevel = buttonStates->getLastLevel();
+
+    if (!mChanged && lastLevel == level)
+    {
+        MSG_DEBUG("Drawing unchanged button with level " << level);
         showLastButton();
         return true;
     }
 
     if (level < rl)
-        mLastLevel = rl;
+        lastLevel = rl;
     else if (level > rh)
-        mLastLevel = rh;
+        lastLevel = rh;
     else
-        mLastLevel = level;
+        lastLevel = level;
 
+    buttonStates->setLastLevel(lastLevel);
     int inst = instance;
+    MSG_DEBUG("drawing bargraph " << lp << ":" << lv << " with level " << lastLevel << " at instance " << inst);
 
     if (!visible || hd || instance != mActInstance || !_displayButton)
     {
         bool db = (_displayButton != nullptr);
-        MSG_DEBUG("Bargraph " << bi << ", \"" << na << "\" at instance " << instance << " with level " << mLastLevel << " is not to draw!");
+        MSG_DEBUG("Bargraph " << bi << ", \"" << na << "\" at instance " << instance << " with level " << lastLevel << " is not to draw!");
         MSG_DEBUG("Visible: " << (visible ? "YES" : "NO") << ", Instance/actual instance: " << instance << "/" << mActInstance << ", callback: " << (db ? "PRESENT" : "N/A"));
         return true;
     }
@@ -7224,7 +7436,7 @@ bool TButton::drawBargraph(int instance, int level, bool show)
         }
         else if (mDOrder[i] == ORD_ELEM_BITMAP)
         {
-            if (!barLevel(&imgButton, inst, mLastLevel))
+            if (!barLevel(&imgButton, inst, lastLevel))
                 return false;
         }
         else if (mDOrder[i] == ORD_ELEM_ICON)
@@ -8255,7 +8467,11 @@ void TButton::funcNetwork(int state)
 {
     DECL_TRACER("TButton::funcNetwork(int state)");
 
-    mLastLevel = state;
+    TButtonStates *buttonStates = getButtonState();
+
+    if (buttonStates)
+        buttonStates->setLastLevel(state);
+
     mActInstance = state;
     mChanged = true;
 
@@ -8598,6 +8814,26 @@ bool TButton::doClick(int x, int y, bool pressed)
     int instance = 0;
     int sx = x, sy = y;
     bool isSystem = isSystemButton();
+    int lastLevel = 0;
+    int lastJoyX = 0;
+    int lastJoyY = 0;
+    int lastSendLevelX = 0;
+    int lastSendLevelY = 0;
+    TButtonStates *buttonStates = getButtonState();
+
+    if (buttonStates)
+    {
+        lastLevel = buttonStates->getLastLevel();
+        lastJoyX = buttonStates->getLastJoyX();
+        lastJoyY = buttonStates->getLastJoyY();
+        lastSendLevelX = buttonStates->getLastSendLevelX();
+        lastSendLevelY = buttonStates->getLastSendLevelY();
+    }
+    else
+    {
+        MSG_ERROR("Button states not found!");
+        return false;
+    }
 
     if (pressed && gPageManager && !checkForSound() && (ch > 0 || lv > 0 || !pushFunc.empty() || isSystem))
     {
@@ -8619,8 +8855,14 @@ bool TButton::doClick(int x, int y, bool pressed)
     }
 #endif
 
-    if (_buttonPress && mActInstance >= 0 && (size_t)mActInstance < sr.size() && cp == 0 && ch > 0)
-        _buttonPress(ch, mHandle, pressed);
+    // Handle system buttons. Here the system keyboard buttons are handled.
+    if (_buttonPress && mActInstance >= 0 && static_cast<size_t>(mActInstance) < sr.size() && cp == 0 && ch > 0)
+    {
+        // Handling the keyboard buttons is very expensive. To not block too
+        // long, we let it run in a separate thread.
+        std::thread thr = std::thread([=] { _buttonPress(ch, mHandle, pressed); });
+        thr.detach();
+    }
 
     // If the button is marked as password protected, then we must display
     // a window with an input line to get the password from the user. Only if
@@ -9365,6 +9607,87 @@ bool TButton::doClick(int x, int y, bool pressed)
             else
                 MSG_WARNING("Missing global class TAmxNet. Can't send a message!");
         }
+        // If this button triggers a bargraph, we handle it here.
+        if (pressed && !vt.empty() && lp && lv && gPageManager)
+        {
+            TButton *bt = gPageManager->findBargraph(lp, lv, getParent());
+
+            if (bt)
+            {
+                int level = bt->getLevelValue();
+
+                if (vt == "rel")    // relative
+                {
+                    if (rv > 0)
+                    {
+                        mThreadRunMove = true;
+
+                        level += va;
+                        int btRh = bt->getRangeHigh();
+                        int btRl = bt->getRangeLow();
+
+                        if (level < btRl)
+                            level = btRl;
+                        else if (level > btRh)
+                            level = btRh;
+
+                        for (int i = 0; i < rv; ++i)
+                        {
+                            if (!mThreadRunMove || level > btRh || level < btRl)
+                                break;
+
+                            gPageManager->sendInternalLevel(lp, lv, level);
+
+                            if (buttonStates && level != lastSendLevelX)
+                            {
+                                gPageManager->sendLevel(lp, lv, level);
+                                buttonStates->setLastSendLevelX(level);
+                                lastSendLevelX = level;
+                            }
+
+                            level += va;
+                        }
+
+                        mThreadRunMove = false;
+                    }
+                    else
+                    {
+                        level += va;
+
+                        if (level < bt->getRangeLow())
+                            level = bt->getRangeLow();
+                        else if (level > bt->getRangeHigh())
+                            level = bt->getRangeHigh();
+
+                        gPageManager->sendInternalLevel(lp, lv, level);
+
+                        if (buttonStates && lastSendLevelX != (level))
+                        {
+                            gPageManager->sendLevel(lp, lv, level);
+                            buttonStates->setLastSendLevelX(level);
+                            lastSendLevelX = level;
+                        }
+                    }
+                }
+                else    // absolute
+                {
+                    gPageManager->sendInternalLevel(lp, lv, va);
+
+                    if (buttonStates && lastSendLevelX != va)
+                    {
+                        gPageManager->sendLevel(lp, lv, va);
+                        buttonStates->setLastSendLevelX(va);
+                        lastSendLevelX = va;
+                    }
+                }
+            }
+            else
+                MSG_DEBUG("Found no bargraph with lp=" << lp << ", lv=" << lv);
+        }
+        else if (!pressed && !vt.empty() && lp && lv)
+        {
+            mThreadRunMove = false;
+        }
     }
     else if (type == MULTISTATE_GENERAL)
     {
@@ -9465,31 +9788,25 @@ bool TButton::doClick(int x, int y, bool pressed)
 
         if (!isSystem)
         {
-            int distance = (mLastLevel > level ? (mLastLevel - level) : (level - mLastLevel));
-            bool directionUp = (mLastLevel > level);
+            int distance = (lastLevel > level ? (lastLevel - level) : (level - lastLevel));
+            bool directionUp = (lastLevel > level);
 
             if (pressed && distance > 0)
                 runBargraphMove(distance, directionUp);
             else if (!pressed)
             {
-                drawBargraph(mActInstance, level);
+                if (lf == "active")
+                    level = lastLevel;
+                else if (level != lastLevel)
+                    drawBargraph(mActInstance, level);
 
                 if (lp && lv && gPageManager && gPageManager->getLevelSendState())
                 {
-                    scmd.device = TConfig::getChannel();
-                    scmd.port = lp;
-                    scmd.channel = lv;
-                    scmd.level = lv;
-                    scmd.value = (ri ? ((rh - rl) - level) : level);
-                    scmd.MC = 0x008a;
+                    gPageManager->sendLevel(lp, lv, (ri ? ((rh - rl) - level) : level));
+                    lastSendLevelX = level;
 
-                    if (gAmxNet)
-                    {
-                        if (mLastSendLevelX != level)
-                            gAmxNet->sendCommand(scmd);
-
-                        mLastSendLevelX = level;
-                    }
+                    if (buttonStates)
+                        buttonStates->setLastSendLevelX(level);
                 }
             }
 
@@ -9516,7 +9833,7 @@ bool TButton::doClick(int x, int y, bool pressed)
     }
     else if (type == BARGRAPH && (lf == "drag" || lf == "dragCenter") && pressed)
     {
-        mBarStartLevel = mLastLevel;
+        mBarStartLevel = lastLevel;
         int level;
 
         if (dr.compare("horizontal") == 0)
@@ -9570,10 +9887,13 @@ bool TButton::doClick(int x, int y, bool pressed)
 
                 if (gAmxNet)
                 {
-                    if (mLastSendLevelX != level)
+                    if (lastSendLevelX != level)
                         gAmxNet->sendCommand(scmd);
 
-                    mLastSendLevelX = level;
+                    lastSendLevelX = level;
+
+                    if (buttonStates)
+                        buttonStates->setLastSendLevelX(level);
                 }
             }
         }
@@ -9636,27 +9956,35 @@ bool TButton::doClick(int x, int y, bool pressed)
             scmd.port = lp;
             scmd.channel = lv;
             scmd.level = lv;
-            scmd.value = (ri ? ((rh - rl) - mLastJoyX) : mLastJoyX);
+            scmd.value = (ri ? ((rh - rl) - sx) : sx);
             scmd.MC = 0x008a;
 
             if (gAmxNet)
             {
-                if (mLastSendLevelX != mLastJoyX)
+                if (lastSendLevelX != scmd.value)
                     gAmxNet->sendCommand(scmd);
 
-                mLastSendLevelX = mLastJoyX;
+                lastJoyX = sx;
+                lastSendLevelX = scmd.value;
+
+                if (buttonStates)
+                    buttonStates->setLastSendLevelX(lastSendLevelX);
             }
 
             scmd.channel = lv + 1;
             scmd.level = lv + 1;
-            scmd.value = (ji ? ((rh - rl) - mLastJoyY) : mLastJoyY);
+            scmd.value = (ji ? ((rh - rl) - sy) : sy);
 
             if (gAmxNet)
             {
-                if (mLastSendLevelY != mLastJoyY)
+                if (lastSendLevelY != scmd.value)
                     gAmxNet->sendCommand(scmd);
 
-                mLastSendLevelY = mLastJoyY;
+                lastJoyY = sy;
+                lastSendLevelY = scmd.value;
+
+                if (buttonStates)
+                    buttonStates->setLastSendLevelY(lastSendLevelY);
             }
         }
 
@@ -10385,15 +10713,37 @@ void TButton::threadBargraphMove(int distance, bool moveUp)
         return;
 
     mThreadRunMove = true;
+    TButtonStates *buttonStates = getButtonState();
+    int lLevel = 0;
+    int lastSendLevelX = 0;
+    int lastSendLevelY = 0;
 
-    int zeit = (moveUp ? lu : ld);
-    double step = static_cast<double>(zeit) / 10.0 * (static_cast<double>(distance) / 10.0);
+    if (buttonStates)
+    {
+        lLevel = buttonStates->getLastLevel();
+        lastSendLevelX = buttonStates->getLastSendLevelX();
+        lastSendLevelY = buttonStates->getLastSendLevelY();
+    }
+
+    int ispeed = (moveUp ? lu : ld);
+
+    if (ispeed <= 0)
+        ispeed = 1;
+
+    ispeed *= 100;    // Time is 1/10 of seconds but we need milliseconds
+    double speed = static_cast<double>(ispeed);
+    double total = static_cast<double>(distance) * speed;
+    double step = 1.0;
     double pos = 0.0;
-    double lastLevel = static_cast<double>(mLastLevel);
+    double lastLevel = static_cast<double>(lLevel);
     double posLevel = lastLevel;
-    std::chrono::milliseconds ms = std::chrono::milliseconds(zeit * 100);
-    std::chrono::milliseconds msStep = std::chrono::milliseconds(10);
-    MSG_DEBUG("step: " << step << ", total time (ms): " << (zeit * 100) << ", distance: " << distance);
+
+    if (step <= 0.0)
+        step = 1.0;
+
+    std::chrono::milliseconds ms = std::chrono::milliseconds(static_cast<long>(total));
+    std::chrono::milliseconds msStep = std::chrono::milliseconds(static_cast<long>(step));
+    MSG_DEBUG("step: " << step << ", total time (ms): " << total << ", distance: " << distance << ", speed: " << speed);
 
     for (std::chrono::milliseconds mi = std::chrono::milliseconds(0); mi < ms; mi += msStep)
     {
@@ -10402,7 +10752,7 @@ void TButton::threadBargraphMove(int distance, bool moveUp)
 
         lastLevel = (moveUp ? (posLevel - pos) : (posLevel + pos));
 
-        if (static_cast<int>(lastLevel) != mLastLevel)
+        if (static_cast<int>(lastLevel) != lLevel)
         {
             int level = static_cast<int>(lastLevel);
 
@@ -10421,10 +10771,13 @@ void TButton::threadBargraphMove(int distance, bool moveUp)
 
                 if (gAmxNet)
                 {
-                    if (mLastSendLevelX != level)
+                    if (lastSendLevelX != level)
                         gAmxNet->sendCommand(scmd);
 
-                    mLastSendLevelX = level;
+                    lastSendLevelX = level;
+
+                    if (buttonStates)
+                        buttonStates->setLastSendLevelX(level);
                 }
             }
         }
@@ -10437,6 +10790,101 @@ void TButton::threadBargraphMove(int distance, bool moveUp)
     }
 
     mThreadRunMove = false;
+}
+
+TButtonStates *TButton::getButtonState()
+{
+    DECL_TRACER("TButton::getButtonState()");
+
+    if (!gPageManager)
+        return nullptr;
+
+    TButtonStates *s = gPageManager->getButtonState(type, mButtonID);
+    MSG_DEBUG("Found button ID: " << getButtonIDstr(s->getID()) << ", type: " << buttonTypeToString(s->getType()) << ", lastLevel: " << s->getLastLevel() << ", lastJoyX: " << s->getLastJoyX() << ", lasJoyY: " << s->getLastJoyY());
+    return s;
+}
+
+int TButton::getLevelValue()
+{
+    DECL_TRACER("TButton::getLevelValue()");
+
+    TButtonStates *buttonStates = getButtonState();
+
+    if (!buttonStates)
+    {
+        MSG_ERROR("Button states not found!");
+        return 0;
+    }
+
+    int level = buttonStates->getLastLevel();
+
+    if (ri > 0)
+        level = (rh - rl) - level;
+
+    return level;
+}
+
+void TButton::setLevelValue(int level)
+{
+    DECL_TRACER("TButton::setLevelValue(int level)");
+
+    if (level < rl || level > rh)
+        return;
+
+    TButtonStates *buttonStates = getButtonState();
+
+    if (!buttonStates)
+        return;
+
+    buttonStates->setLastLevel(level);
+}
+
+int TButton::getLevelAxisX()
+{
+    DECL_TRACER("TButton::getLevelAxisX()");
+
+    TButtonStates *buttonStates = getButtonState();
+
+    if (!buttonStates)
+    {
+        MSG_ERROR("Button states not found!");
+        return 0;
+    }
+
+    int level = buttonStates->getLastJoyX();
+
+    if (ri > 0)
+        level = (rh - rl) - level;
+
+    return level;
+}
+
+int TButton::getLevelAxisY()
+{
+    DECL_TRACER("TButton::getLevelAxisY()");
+
+    TButtonStates *buttonStates = getButtonState();
+
+    if (!buttonStates)
+    {
+        MSG_ERROR("Button states not found!");
+        return 0;
+    }
+
+    int level = buttonStates->getLastJoyY();
+
+    if (ji > 0)
+        level = (rh - rl) - level;
+
+    return level;
+}
+
+string TButton::getButtonIDstr(uint32_t rid)
+{
+    uint32_t id = (rid == 0x1fffffff ? mButtonID : rid);
+    std::stringstream s;
+    s << std::setfill('0') << std::setw(8) << std::hex << id;
+    return s.str();
 }
 
 bool TButton::setListSource(const string &source, const vector<string>& configs)

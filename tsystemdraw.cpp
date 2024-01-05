@@ -1117,7 +1117,7 @@ CURSOR_t TSystemDraw::getCursorFiles(const CURSOR_STYLE_t& style)
  */
 bool TSystemDraw::evaluateName(const std::vector<std::string>& parts, const std::string& name)
 {
-    DECL_TRACER("TSystemDraw::evaluateName(const std::vector<std::string>& parts, const std::string& name)");
+//    DECL_TRACER("TSystemDraw::evaluateName(const std::vector<std::string>& parts, const std::string& name)");
 
     if (parts.empty())
         return false;

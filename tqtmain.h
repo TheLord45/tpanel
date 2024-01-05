@@ -392,6 +392,7 @@ class MainWindow : public QMainWindow, public TObject
         QMediaPlayer *mMediaPlayer{nullptr};// Class to play sound files.
         TQtWait *mWaitBox{nullptr};         // This is a wait dialog.
         TQGestureFilter *mGestureFilter{nullptr};   // This handles the pinch and swipe gestures
+        std::atomic<bool>mRunRedraw{false};
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
         QGeoPositionInfoSource *mSource{nullptr};   // The geo location is used on IOS to keep app running in background
         QAudioOutput *mAudioOutput{nullptr};
