@@ -121,7 +121,7 @@ void TPage::initialize(const string& nm)
 {
     DECL_TRACER("TPage::initialize(const string& name)");
 
-    string projectPath = ((gPageManager && gPageManager->isSetupActive()) ? TConfig::getSystemProjectPath() : TConfig::getProjectPath());
+    string projectPath = TConfig::getProjectPath();
 
     if (!fs::exists(projectPath + "/prj.xma"))
     {

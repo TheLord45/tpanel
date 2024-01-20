@@ -778,13 +778,6 @@ TPageManager::TPageManager()
     else
         haveSurface = true;
 
-    if (!fs::exists(pp))
-    {
-        projectPath = TConfig::getSystemProjectPath();
-        pp = projectPath + "/prj.xma";
-        mSetupActive = true;
-    }
-
     if (!haveSurface)
     {
         if (!isValidFile(pp))
@@ -804,24 +797,8 @@ TPageManager::TPageManager()
         return;
     }
 
-    if (!mSetupActive)
-    {
-        mSystemSettings = new TSettings(TConfig::getSystemProjectPath());
-
-        if (TError::isError())
-        {
-            MSG_ERROR("System settings were not read successfull!");
-            delete mTSettings;
-            mTSettings = nullptr;
-            return;
-        }
-    }
-    else
-        mSystemSettings = mTSettings;
-
     // Set the panel type from the project information
-    if (!mSetupActive)
-        TConfig::savePanelType(mTSettings->getPanelType());
+    TConfig::savePanelType(mTSettings->getPanelType());
 
     readMap();  // Start the initialisation of the AMX part.
 
@@ -858,49 +835,24 @@ TPageManager::TPageManager()
     mExternal = new TExternal();
     PAGELIST_T page;
 
-    if (!mSetupActive)
+    if (!mTSettings->getSettings().powerUpPage.empty())
     {
-        if (!mTSettings->getSettings().powerUpPage.empty())
+        if (readPage(mTSettings->getSettings().powerUpPage))
         {
-            if (readPage(mTSettings->getSettings().powerUpPage))
-            {
-                MSG_TRACE("Found power up page " << mTSettings->getSettings().powerUpPage);
-                page = findPage(mTSettings->getSettings().powerUpPage);
-                mActualPage = page.pageID;
-            }
-        }
-        else
-        {
-            MSG_WARNING("No power up page defined! Setting default page to 1.");
-            mActualPage = 1;
+            MSG_TRACE("Found power up page " << mTSettings->getSettings().powerUpPage);
+            page = findPage(mTSettings->getSettings().powerUpPage);
+            mActualPage = page.pageID;
         }
     }
     else
     {
-        if (!mSystemSettings->getSettings().powerUpPage.empty())
-        {
-            if (readPage(mSystemSettings->getSettings().powerUpPage))
-            {
-                MSG_TRACE("Found power up page " << mSystemSettings->getSettings().powerUpPage);
-                page = findPage(mSystemSettings->getSettings().powerUpPage);
-                mActualPage = page.pageID;
-            }
-        }
-        else
-        {
-            MSG_WARNING("No power up page defined! Setting default page to 5001.");
-            mActualPage = 5001;
-        }
+        MSG_WARNING("No power up page defined! Setting default page to 1.");
+        mActualPage = 1;
     }
 
     TPage *pg = getPage(mActualPage);
 
-    vector<string> popups;
-
-    if (!mSetupActive)
-        popups = mTSettings->getSettings().powerUpPopup;
-    else
-        popups = mSystemSettings->getSettings().powerUpPopup;
+    vector<string> popups = mTSettings->getSettings().powerUpPopup;
 
     if (popups.size() > 0)
     {
@@ -1538,42 +1490,6 @@ void TPageManager::showSetup()
         if (_callShowSetup)
             _callShowSetup();
 #endif
-}
-
-void TPageManager::hideSetup()
-{
-    DECL_TRACER("TPageManager::hideSetup()");
-
-    if (!mSetupActive || mSavedPage >= SYSTEM_PAGE_START)
-        return;
-
-    mSetupActive = false;
-
-    if (!mSavedPage)
-    {
-        string sPage = mTSettings->getPowerUpPage();
-
-        if (!setPage(sPage, true))
-            setPage(1, true);
-
-        return;
-    }
-
-    setPage(mSavedPage, true);
-    MSG_PROTOCOL("Activated page: " << mSavedPage);
-
-    if (mSavedSubpages.size() > 0)
-    {
-        vector<int>::iterator iter;
-
-        for (iter = mSavedSubpages.begin(); iter != mSavedSubpages.end(); ++iter)
-        {
-            showSubPage(*iter);
-            MSG_PROTOCOL("Activated subpage: " << *iter);
-        }
-
-        mSavedSubpages.clear();
-    }
 }
 
 int TPageManager::getSelectedRow(ulong handle)
@@ -2396,8 +2312,8 @@ bool TPageManager::_setPageDo(int pageID, const string& name, bool forget)
     if (mActualPage >= SYSTEM_PAGE_START && !refresh)
         reloadSystemPage(pg);
 
-    int width = (mActualPage >= SYSTEM_PAGE_START ? mSystemSettings->getWidth() : mTSettings->getWidth());
-    int height = (mActualPage >= SYSTEM_PAGE_START ? mSystemSettings->getHeight() : mTSettings->getHeight());
+    int width = mTSettings->getWidth();
+    int height = mTSettings->getHeight();
 
     if (_setPage)
         _setPage((mActualPage << 16) & 0xffff0000, width, height);
@@ -3044,10 +2960,7 @@ PAGELIST_T TPageManager::findPage(const std::string& name)
 
     vector<PAGELIST_T> pageList;
 
-    if (!mSetupActive)
-        pageList = mPageList->getPagelist();
-    else
-        pageList = mPageList->getSystemPagelist();
+    pageList = mPageList->getPagelist();
 
     if (pageList.size() > 0)
     {
@@ -3088,7 +3001,7 @@ SUBPAGELIST_T TPageManager::findSubPage(const std::string& name)
 {
     DECL_TRACER("TPageManager::findSubPage(const std::string& name)");
 
-    vector<SUBPAGELIST_T> pageList = (mSetupActive ? mPageList->getSystemSupPageList() : mPageList->getSubPageList());
+    vector<SUBPAGELIST_T> pageList = mPageList->getSubPageList();
 
     if (pageList.size() > 0)
     {
@@ -3271,12 +3184,6 @@ bool TPageManager::destroyAll()
     {
         delete mTSettings;
         mTSettings = nullptr;
-    }
-
-    if (mSystemSettings)
-    {
-        delete mSystemSettings;
-        mSystemSettings = nullptr;
     }
 
     if (mPalette)

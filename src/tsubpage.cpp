@@ -63,7 +63,7 @@ TSubPage::TSubPage(const string& name)
     DECL_TRACER("TSubPage::TSubPage(const string& path)");
     TError::clear();
 
-    string projectPath = ((gPageManager && gPageManager->isSetupActive()) ? TConfig::getSystemProjectPath() : TConfig::getProjectPath());
+    string projectPath = TConfig::getProjectPath();
 
     if (!fs::exists(projectPath + "/prj.xma"))
     {

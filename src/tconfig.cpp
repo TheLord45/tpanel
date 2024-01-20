@@ -2081,8 +2081,8 @@ bool TConfig::readConfig()
     // First initialize the defaults
     localSettings.ID = 0;
     localSettings.port = 1397;
-    localSettings.ptype = "android";
-    localSettings.version = "1.0";
+    localSettings.ptype = "Android";
+    localSettings.version = VERSION_STRING();
     localSettings.longformat = false;
     localSettings.profiling = false;
 #ifdef __ANDROID__

@@ -96,7 +96,6 @@ class MainWindow : public QMainWindow, public TObject
         void setConfigFile(const std::string& file) { mFileConfig = file; }
         void setSetChange(bool state) { settingsChanged = state; }
         void setScaleFactor(double scale) { mScaleFactor = scale; }
-        void setSetupScaleFactor(double scale) { mSetupScaleFactor = scale; }
         double getScaleFactor() { return mScaleFactor; }
         void setOrientation(Qt::ScreenOrientation ori) { mOrientation = ori; }
         void disconnectArea(TQScrollArea *area);
@@ -262,9 +261,7 @@ class MainWindow : public QMainWindow, public TObject
         void writeSettings();
 //        void playShowList();
         int scale(int value);
-        int scaleSetup(int value);
         bool isScaled();
-        bool isSetupScaled();
         bool startAnimation(TObject::OBJECT_t *obj, ANIMATION_t& ani, bool in = true);
         void downloadBar(const std::string& msg, QWidget *parent);
         void runEvents();
@@ -373,7 +370,6 @@ class MainWindow : public QMainWindow, public TObject
         std::string mFileConfig;            // Path and file name of the config file
         bool mHasFocus{true};               // If this is FALSE, no output to sceen is allowed.
         std::atomic<double> mScaleFactor{1.0}; // The actual scale factor
-        std::atomic<double> mSetupScaleFactor{1.0};     // The scale factor for the setup pages
         OBJECT_t *mLastObject{nullptr};     // This is for the hide effect of widgets.
         std::map<ulong, OBJECT_t *> mAnimObjects;   // List of started animations
         ulong mActualPageHandle{0};         // Holds the handle of the active page.

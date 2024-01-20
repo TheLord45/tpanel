@@ -378,11 +378,7 @@ vector<TMap::MAP_T> TAmxCommands::findButtons(int port, vector<int>& channels, T
 
     vector<TMap::MAP_T> map;
 
-    if (gPageManager && gPageManager->isSetupActive())
-        map = mSystemMap->findButtons(port, channels, mt);
-    else
-        map = mMap->findButtons(port, channels, mt);
-
+    map = mMap->findButtons(port, channels, mt);
     return map;
 }
 

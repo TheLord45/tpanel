@@ -160,7 +160,6 @@ class TPageManager : public TAmxCommands
 
         TPageList *getPageList() { return mPageList; }      //!< Get the list of all pages
         TSettings *getSettings() { return mTSettings; }     //!< Get the (system) settings of the panel
-        TSettings *getSystemSettings() { return mSystemSettings; } //!< Get the system settings of the setup pages
 
         TPage *getActualPage();                             //!< Get the actual page
         int getActualPageNumber() { return mActualPage; }   //!< Get the ID of the actual page
@@ -468,20 +467,9 @@ class TPageManager : public TAmxCommands
          */
         void doCommand(const amx::ANET_COMMAND& cmd);
         /**
-         * Returns the state of setup. If the setup pages are active it returns
-         * TRUE.
-         *
-         * @return State of setup pages
-         */
-        bool isSetupActive() { return mSetupActive; }
-        /**
          * Activates the setup pages unless they are not visible already.
          */
         void showSetup();
-        /**
-         * Deactivates the setup pages and restores the previous normal page.
-         */
-        void hideSetup();
         /**
          * Determines the page or subpage the handle points to and returns the
          * selected row of a list, if there is one.
@@ -953,7 +941,6 @@ class TPageManager : public TAmxCommands
         PCHAIN_T *mPchain{nullptr};                     // Pointer to chain of pages in memory
         SPCHAIN_T *mSPchain{nullptr};                   // Pointer to chain of subpages in memory for the actual page
         TSettings *mTSettings{nullptr};                 // Pointer to basic settings for the panel
-        TSettings *mSystemSettings{nullptr};            // Pointer to basic system settings for setup
         TPalette *mPalette{nullptr};                    // Pointer to the color handler
         TFont *mFonts{nullptr};                         // Pointer to the font handler
         TExternal *mExternal{nullptr};                  // Pointer to the external buttons (if any)
@@ -970,7 +957,6 @@ class TPageManager : public TAmxCommands
         double mDPI{96.0};                              // DPI (Dots Per Inch) of the primary display.
         std::atomic<bool> cmdLoop_busy{false};          // As long as this is true the command loop thread is active
         std::thread mThreadCommand;                     // Thread handle for command loop thread.
-        bool mSetupActive{false};                       // TRUE = Setup pages are active
         std::vector<int> mSavedSubpages;                // When setup pages are called this contains the actual open subpages
         std::vector<_FTP_SURFACE_t> mFtpSurface;        // Contains a list of TP4 surface files gained from a NetLinx.
         std::atomic<bool> mClickQueueRun{false};        // TRUE = The click queue thread is running. FALSE: the thread should stop or is not running.

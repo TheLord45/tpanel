@@ -227,7 +227,7 @@ SkString GetResourcePath(const char* resource, _RESOURCE_TYPE rs)
         case RESTYPE_SYSSLIDER: pth = "/__system/graphics/sliders/"; break;
     }
 
-    string projectPath = ((gPageManager && gPageManager->isSetupActive()) ? TConfig::getSystemProjectPath() : TConfig::getProjectPath());
+    string projectPath = TConfig::getProjectPath();
     string path = projectPath + pth + resource;
     return SkString(path);
 }

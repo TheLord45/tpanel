@@ -219,7 +219,6 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
     }
 #endif  // QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     double scale = 1.0;
-    double setupScaleFactor = 1.0;
     // Calculate the scale factor
     if (TConfig::getScale())
     {
@@ -229,23 +228,19 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
         // resolution of the first (built in) screen.
         // TODO: Find a way to get the screen the application will start and
         // take this screen to calculate the scale factor.
-        QRect screenGeometry = screen->availableGeometry();
+        QSize screenSize = screen->size();
         double width = 0.0;
         double height = 0.0;
-        double sysWidth = 0.0;
-        double sysHeight = 0.0;
-        gScreenWidth = std::max(screenGeometry.width(), screenGeometry.height());
-        gScreenHeight = std::min(screenGeometry.height(), screenGeometry.width());
+        gScreenWidth = std::max(screenSize.width(), screenSize.height());
+        gScreenHeight = std::min(screenSize.height(), screenSize.width());
 
-        if (screenGeometry.width() > screenGeometry.height())
+        if (screenSize.width() > screenSize.height())
             isPortrait = false;
         else
             isPortrait = true;
 
         int minWidth = pmanager->getSettings()->getWidth();
         int minHeight = pmanager->getSettings()->getHeight();
-        int minSysWidth = pmanager->getSystemSettings()->getWidth();
-        int minSysHeight = pmanager->getSystemSettings()->getHeight();
 
         if (pmanager->getSettings()->isPortrait())  // portrait?
         {
@@ -257,9 +252,6 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
             width = std::max(gScreenWidth, gScreenHeight);
             height = std::min(gScreenHeight, gScreenWidth);
         }
-        // The setup pages are always landscape
-        sysWidth = std::max(gScreenWidth, gScreenHeight);
-        sysHeight = std::min(gScreenHeight, gScreenWidth);
 
         if (!TConfig::getToolbarSuppress() && TConfig::getToolbarForce())
             minWidth += 48;
@@ -270,13 +262,9 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
         // size of the original AMX panel.
         mScaleFactorW = width / (double)minWidth;
         mScaleFactorH = height / (double)minHeight;
-        double scaleFactorW = sysWidth / (double)minSysWidth;
-        double scaleFactorH = sysHeight / (double)minSysHeight;
         scale = std::min(mScaleFactorW, mScaleFactorH);
-        setupScaleFactor = std::min(scaleFactorW, scaleFactorH);
 #ifdef __ANDROID__
-        __android_log_print(ANDROID_LOG_DEBUG, "tpanel", "scale: %f (Screen: %1.0fx%1.0f, Page: %dx%d)", scale, width, height, minWidth, minHeight);
-        __android_log_print(ANDROID_LOG_DEBUG, "tpanel", "setupScaleFactor: %f (Screen: %1.0fx%1.0f, Page: %dx%d)", setupScaleFactor, sysWidth, sysHeight, minSysWidth, minSysHeight);
+        __android_log_print(ANDROID_LOG_DEBUG, "tpanel", "INF    ##, ???????????? scale: %f (Screen: %1.0fx%1.0f, Page: %dx%d)", scale, width, height, minWidth, minHeight);
 #endif
         gScale = scale;     // The calculated scale factor
         gFullWidth = width;
@@ -301,32 +289,6 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
 #endif  // _SCALE_SKIA_
     }
 #endif  // defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
-#if not defined(Q_OS_ANDROID) && not defined(Q_OS_IOS)
-    double setupScaleFactor = 1.0;
-
-    if (pmanager->getSettings() != pmanager->getSystemSettings())
-    {
-        double width = 0.0;
-        double height = 0.0;
-        int minWidth = pmanager->getSystemSettings()->getWidth();
-        int minHeight = pmanager->getSystemSettings()->getHeight();
-
-        if (!TConfig::getToolbarSuppress() && TConfig::getToolbarForce())
-            minWidth += 48;
-
-        width = std::max(pmanager->getSettings()->getWidth(), pmanager->getSettings()->getHeight());
-        height = std::min(pmanager->getSettings()->getHeight(), pmanager->getSettings()->getWidth());
-
-        MSG_INFO("Dimension of AMX screen:" << minWidth << " x " << minHeight);
-        MSG_INFO("Screen size: " << width << " x " << height);
-        // The scale factor is always calculated in difference to the prefered
-        // size of the original AMX panel.
-        double scaleFactorW = width / static_cast<double>(minWidth);
-        double scaleFactorH = height / static_cast<double>(minHeight);
-        setupScaleFactor = std::min(scaleFactorW, scaleFactorH);
-        MSG_DEBUG("Scale factor for setup screen: " << setupScaleFactor);
-    }
-#endif
     // Initialize the application
     pmanager->setDPI(QGuiApplication::primaryScreen()->logicalDotsPerInch());
     QCoreApplication::setOrganizationName(TConfig::getProgName().c_str());
@@ -355,8 +317,6 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
 //#ifdef Q_OS_IOS
  //   mainWin.setWindowFlag(Qt::MaximizeUsingFullscreenGeometryHint, true);
 //#endif
-    if (setupScaleFactor != 1.0 && setupScaleFactor > 0.0)
-        mainWin.setSetupScaleFactor(setupScaleFactor);
 
     mainWin.show();
     return app.exec();
@@ -1306,12 +1266,7 @@ void MainWindow::mousePressEvent(QMouseEvent* event)
             }
         }
 */
-        if (gPageManager->isSetupActive() && isSetupScaled())
-        {
-            x = static_cast<int>(static_cast<double>(x) / mSetupScaleFactor);
-            y = static_cast<int>(static_cast<double>(y) / mSetupScaleFactor);
-        }
-        else if (isScaled())
+        if (isScaled())
         {
             x = static_cast<int>(static_cast<double>(x) / mScaleFactor);
             y = static_cast<int>(static_cast<double>(y) / mScaleFactor);
@@ -1398,12 +1353,7 @@ void MainWindow::mouseReleaseEvent(QMouseEvent* event)
             }
         }
 */
-        if (gPageManager->isSetupActive() && isSetupScaled())
-        {
-            x = static_cast<int>(static_cast<double>(x) / mSetupScaleFactor);
-            y = static_cast<int>(static_cast<double>(y) / mSetupScaleFactor);
-        }
-        else if (isScaled())
+        if (isScaled())
         {
             x = static_cast<int>(static_cast<double>(x) / mScaleFactor);
             y = static_cast<int>(static_cast<double>(y) / mScaleFactor);
@@ -1423,9 +1373,8 @@ void MainWindow::mouseReleaseEvent(QMouseEvent* event)
 
         x = static_cast<int>(event->position().x());
         y = static_cast<int>(event->position().y());
-        bool setupActive = gPageManager->isSetupActive();
-        int width = (setupActive ? scaleSetup(gPageManager->getSystemSettings()->getWidth()) : scale(gPageManager->getSettings()->getWidth()));
-        int height = (setupActive ? scaleSetup(gPageManager->getSystemSettings()->getHeight()) : scale(gPageManager->getSettings()->getHeight()));
+        int width = scale(gPageManager->getSettings()->getWidth());
+        int height = scale(gPageManager->getSettings()->getHeight());
         MSG_DEBUG("Coordinates: x1=" << mTouchX << ", y1=" << mTouchY << ", x2=" << x << ", y2=" << y << ", width=" << width << ", height=" << height);
 
         if (mTouchX < x && (x - mTouchX) > (width / 3))
@@ -3966,20 +3915,10 @@ void MainWindow::displayButton(ulong handle, ulong parent, TBitmap buffer, int w
 
         nobj.handle = handle;
 
-        if (gPageManager->isSetupActive())
-        {
-            nobj.width = scaleSetup(width);
-            nobj.height = scaleSetup(height);
-            nobj.left = scaleSetup(left);
-            nobj.top = scaleSetup(top);
-        }
-        else
-        {
-            nobj.width = scale(width);
-            nobj.height = scale(height);
-            nobj.left = scale(left);
-            nobj.top = scale(top);
-        }
+        nobj.width = scale(width);
+        nobj.height = scale(height);
+        nobj.left = scale(left);
+        nobj.top = scale(top);
 
         if (nobj.type == OBJ_MARQUEE)
         {
@@ -4050,22 +3989,10 @@ void MainWindow::displayButton(ulong handle, ulong parent, TBitmap buffer, int w
 
         // In case the dimensions or position has changed we calculate the
         // position and size again.
-        int lt, tp, wt, ht;
-
-        if (gPageManager->isSetupActive())
-        {
-            wt = scaleSetup(width);
-            ht = scaleSetup(height);
-            lt = scaleSetup(left);
-            tp = scaleSetup(top);
-        }
-        else
-        {
-            wt = scale(width);
-            ht = scale(height);
-            lt = scale(left);
-            tp = scale(top);
-        }
+        int wt = scale(width);
+        int ht = scale(height);
+        int lt = scale(left);
+        int tp = scale(top);
 
         if (obj->type != OBJ_INPUT && (wt != obj->width || ht != obj->height || lt != obj->left || tp != obj->top))
         {
@@ -4593,11 +4520,7 @@ void MainWindow::setPage(ulong handle, int width, int height)
     {
         QSize qs = menuBar()->sizeHint();
 
-        if (gPageManager && gPageManager->isSetupActive())
-            setMinimumSize(scaleSetup(width), scaleSetup(height) + qs.height());
-        else
-            setMinimumSize(scale(width), scale(height) + qs.height());
-
+        setMinimumSize(scale(width), scale(height) + qs.height());
         mCentralInitialized = true;
     }
 
@@ -4611,17 +4534,8 @@ void MainWindow::setPage(ulong handle, int width, int height)
         nobj.handle = handle;
         nobj.type = OBJ_PAGE;
         nobj.object.widget = nullptr;
-
-        if (gPageManager && gPageManager->isSetupActive())
-        {
-            nobj.height = scaleSetup(height);
-            nobj.width = scaleSetup(width);
-        }
-        else
-        {
-            nobj.height = scale(height);
-            nobj.width = scale(width);
-        }
+        nobj.height = scale(height);
+        nobj.width = scale(width);
 
         if (!addObject(nobj))
         {
@@ -4745,25 +4659,10 @@ void MainWindow::setSubPage(ulong handle, ulong parent, int left, int top, int w
         obj->remove = false;
     }
 
-    int scLeft = 0;
-    int scTop = 0;
-    int scWidth = 0;
-    int scHeight = 0;
-
-    if (gPageManager && gPageManager->isSetupActive())
-    {
-        scLeft = scaleSetup(left);
-        scTop = scaleSetup(top);
-        scWidth = scaleSetup(width);
-        scHeight = scaleSetup(height);
-    }
-    else
-    {
-        scLeft = scale(left);
-        scTop = scale(top);
-        scWidth = scale(width);
-        scHeight = scale(height);
-    }
+    int scLeft = scale(left);
+    int scTop = scale(top);
+    int scWidth = scale(width);
+    int scHeight = scale(height);
 
     obj->type = OBJ_SUBPAGE;
     obj->handle = handle;
@@ -4912,7 +4811,7 @@ void MainWindow::setBackground(ulong handle, TBitmap image, int width, int heigh
             MSG_DEBUG("Setting image of size " << image.getSize() << " (" << image.getWidth() << " x " << image.getHeight() << ")");
             QImage img(image.getBitmap(), image.getWidth(), image.getHeight(), image.getPixline(), QImage::Format_ARGB32);
 
-            if (isScaled() || (gPageManager && gPageManager->isSetupActive()))
+            if (isScaled())
             {
                 QSize size(obj->width, obj->height);
                 pix.convertFromImage(img.scaled(size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
@@ -5209,10 +5108,6 @@ void MainWindow::dropSubPage(ulong handle, ulong parent)
     MSG_DEBUG("Dropping subpage " << handleToString(handle));
     invalidateAllSubObjects(handle);
     obj->aniDirection = false;
-
-    if (gPageManager && gPageManager->isSetupActive())
-        obj->animate.hideEffect = SE_NONE;
-
     bool ret = startAnimation(obj, obj->animate, false);
 
     if (obj->animate.hideEffect == SE_NONE || !ret || !mLastObject)
@@ -5287,21 +5182,10 @@ void MainWindow::playVideo(ulong handle, ulong parent, int left, int top, int wi
 
         nobj.type = TObject::OBJ_VIDEO;
         nobj.handle = handle;
-
-        if (gPageManager && gPageManager->isSetupActive())
-        {
-            nobj.width = scaleSetup(width);
-            nobj.height = scaleSetup(height);
-            nobj.left = scaleSetup(left);
-            nobj.top = scaleSetup(top);
-        }
-        else
-        {
-            nobj.width = scale(width);
-            nobj.height = scale(height);
-            nobj.left = scale(left);
-            nobj.top = scale(top);
-        }
+        nobj.width = scale(width);
+        nobj.height = scale(height);
+        nobj.left = scale(left);
+        nobj.top = scale(top);
 
         nobj.object.vwidget = new QVideoWidget(par->object.widget);
         nobj.object.vwidget->installEventFilter(this);
@@ -5375,21 +5259,10 @@ void MainWindow::inputText(Button::TButton *button, QByteArray buf, int width, i
 
         nobj.type = TObject::OBJ_INPUT;
         nobj.handle = handle;
-
-        if (gPageManager && gPageManager->isSetupActive())
-        {
-            nobj.width = scaleSetup(width);
-            nobj.height = scaleSetup(height);
-            nobj.left = scaleSetup(button->getLeftPosition());
-            nobj.top = scaleSetup(button->getTopPosition());
-        }
-        else
-        {
-            nobj.width = scale(width);
-            nobj.height = scale(height);
-            nobj.left = scale(button->getLeftPosition());
-            nobj.top = scale(button->getTopPosition());
-        }
+        nobj.width = scale(width);
+        nobj.height = scale(height);
+        nobj.left = scale(button->getLeftPosition());
+        nobj.top = scale(button->getTopPosition());
 
         string text = button->getText(0);
         string placeholder = button->getText(1);
@@ -5455,9 +5328,7 @@ void MainWindow::inputText(Button::TButton *button, QByteArray buf, int width, i
         QPixmap pix(width, height);
         QImage img((uchar *)buf.data(), width, height, QImage::Format_ARGB32);
 
-        if (gPageManager && gPageManager->isSetupActive())
-            pix.convertFromImage(img.scaled(scaleSetup(width), scaleSetup(height), Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
-        else if (isScaled())
+        if (isScaled())
             pix.convertFromImage(img.scaled(scale(width), scale(height), Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
         else
             pix.convertFromImage(img);
@@ -5465,13 +5336,6 @@ void MainWindow::inputText(Button::TButton *button, QByteArray buf, int width, i
         nobj.object.plaintext->setBackgroundPixmap(pix);
         // Load the font
         QFont font = loadFont(button->getFontIndex(button->getActiveInstance()), button->getFont(), button->getFontStyle());
-
-        if (gPageManager && gPageManager->isSetupActive())
-        {
-            int eighty = static_cast<int>(static_cast<double>(button->getHeight()) / 100.0 * 85.0);
-            font.setPixelSize(scaleSetup(eighty - frame * 2));
-        }
-
         QPalette palette(this->palette());
         TColor::COLOR_T textColor = TColor::getAMXColor(button->getTextColor(instance));
         TColor::COLOR_T fillColor = TColor::getAMXColor(button->getFillColor(instance));
@@ -5565,21 +5429,10 @@ void MainWindow::listBox(Button::TButton *button, QByteArray buffer, int width, 
         nobj.handle = handle;
         nobj.rows = button->getListNumRows();
         nobj.cols = button->getListNumCols();
-
-        if (gPageManager && gPageManager->isSetupActive())
-        {
-            nobj.width = scaleSetup(width);
-            nobj.height = scaleSetup(height);
-            nobj.left = scaleSetup(button->getLeftPosition());
-            nobj.top = scaleSetup(button->getTopPosition());
-        }
-        else
-        {
-            nobj.width = scale(width);
-            nobj.height = scale(height);
-            nobj.left = scale(button->getLeftPosition());
-            nobj.top = scale(button->getTopPosition());
-        }
+        nobj.width = scale(width);
+        nobj.height = scale(height);
+        nobj.left = scale(button->getLeftPosition());
+        nobj.top = scale(button->getTopPosition());
 
         vector<string> listContent = button->getListContent();
 
@@ -5603,9 +5456,7 @@ void MainWindow::listBox(Button::TButton *button, QByteArray buffer, int width, 
         QPixmap pix(width, height);
         QImage img((uchar *)buffer.data(), width, height, QImage::Format_ARGB32);
 
-        if (gPageManager && gPageManager->isSetupActive())
-            pix.convertFromImage(img.scaled(scaleSetup(width), scaleSetup(height), Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
-        else if (isScaled())
+        if (isScaled())
             pix.convertFromImage(img.scaled(scale(width), scale(height), Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
         else
             pix.convertFromImage(img);
@@ -5642,11 +5493,7 @@ void MainWindow::listBox(Button::TButton *button, QByteArray buffer, int width, 
 
         QFont ft;
         ft.setFamily(font.name.c_str());
-
-        if (gPageManager && gPageManager->isSetupActive())
-            ft.setPointSize(scaleSetup(font.size));
-        else
-            ft.setPointSize(font.size);
+        ft.setPointSize(font.size);
 
         MSG_DEBUG("Using font \"" << font.name << "\" with size " << font.size << "pt.");
 
@@ -6128,18 +5975,6 @@ int MainWindow::scale(int value)
     return static_cast<int>(static_cast<double>(value) * s);
 }
 
-int MainWindow::scaleSetup(int value)
-{
-    DECL_TRACER("MainWindow::scaleSetup(int value)");
-
-    if (value <= 0 || mSetupScaleFactor == 1.0 || mSetupScaleFactor <= 0.0)
-        return value;
-
-    double val = static_cast<double>(static_cast<double>(value) * mSetupScaleFactor);
-
-    return static_cast<int>(val);
-}
-
 bool MainWindow::isScaled()
 {
     DECL_TRACER("MainWindow::isScaled()");
@@ -6153,13 +5988,6 @@ bool MainWindow::isScaled()
         return true;
 
     return false;
-}
-
-bool MainWindow::isSetupScaled()
-{
-    DECL_TRACER("MainWindow::isSetupScaled()");
-
-    return (mSetupScaleFactor > 0.0 && mSetupScaleFactor != 1.0);
 }
 
 bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool in)

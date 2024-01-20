@@ -9074,9 +9074,7 @@ bool TButton::doClick(int x, int y, bool pressed)
                 TConfig::saveSettings();
                 drawButton(mActInstance, true);
 
-                if (gPageManager && gPageManager->getSettings() != gPageManager->getSystemSettings())
-                    gPageManager->hideSetup();
-                else if (gPageManager && gPageManager->getDisplayMessage())
+                if (gPageManager && gPageManager->getDisplayMessage())
                     gPageManager->getDisplayMessage()("Settings were saved!", "Info");
                 else
                     MSG_INFO("Settings were saved.");
@@ -9094,9 +9092,6 @@ bool TButton::doClick(int x, int y, bool pressed)
                 mActInstance = instance = 1;
                 TConfig::reset();
                 drawButton(mActInstance, true);
-
-                if (gPageManager && gPageManager->getSettings() != gPageManager->getSystemSettings())
-                    gPageManager->hideSetup();
             }
             else
             {
