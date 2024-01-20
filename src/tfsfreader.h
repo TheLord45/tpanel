@@ -23,7 +23,7 @@
 #include <vector>
 #include <functional>
 
-#include "ftplib/ftplib.h"
+#include "../ftplib/ftplib.h"
 
 #define _BUF_SIZE   1024
 
