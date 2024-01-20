@@ -511,11 +511,10 @@ void TQScrollArea::addItem(PGSUBVIEWITEM_T& item)
  * are displayed again.
  *
  * @param items     A list of items to be displayed
- * @param intern    TRUE: The list of items is not stored internal.
  */
 void TQScrollArea::addItems(std::vector<PGSUBVIEWITEM_T>& items)
 {
-    DECL_TRACER("TQScrollArea::addItems(std::vector<PGSUBVIEWITEM_T>& items, bool intern)");
+    DECL_TRACER("TQScrollArea::addItems(std::vector<PGSUBVIEWITEM_T>& items)");
 
     if (items.empty())
         return;
@@ -534,7 +533,7 @@ void TQScrollArea::addItems(std::vector<PGSUBVIEWITEM_T>& items)
 
 void TQScrollArea::_addItems(std::vector<_ITEMS_T>& items, bool intern)
 {
-    DECL_TRACER("_addItems(std::vector<ITEMS_T>& items, bool intern)");
+//    DECL_TRACER("_addItems(std::vector<ITEMS_T>& items, bool intern)");
 
     mWrapItems = items[0].wrap;     // Endless scroll
 
@@ -563,7 +562,7 @@ void TQScrollArea::_addItems(std::vector<_ITEMS_T>& items, bool intern)
         if (mVertical || mTotalHeight <= 0)
             mTotalHeight = 0;
 
-        int num = 0;
+//        int num = 0;
 
         for (iter = items.begin(); iter != items.end(); ++iter)
         {
@@ -572,7 +571,7 @@ void TQScrollArea::_addItems(std::vector<_ITEMS_T>& items, bool intern)
             else
                 mTotalHeight += iter->height;
 
-            num++;
+//            num++;
         }
 
         if (mVertical)
@@ -590,7 +589,7 @@ void TQScrollArea::_addItems(std::vector<_ITEMS_T>& items, bool intern)
             mMain->setFixedSize(mTotalWidth, mTotalHeight);
     }
 
-    MSG_DEBUG("Number of items: " << items.size());
+//    MSG_DEBUG("Number of items: " << items.size());
 
     if (mSpace > 0)
     {
@@ -600,14 +599,14 @@ void TQScrollArea::_addItems(std::vector<_ITEMS_T>& items, bool intern)
         {
             int newHeight = space + mTotalHeight;
             mMain->setFixedHeight(newHeight);
-            MSG_DEBUG("Calculated space: " << space << " (" << mSpace << "%). Total height: " << newHeight << ", Old total height: " << mTotalHeight);
+//            MSG_DEBUG("Calculated space: " << space << " (" << mSpace << "%). Total height: " << newHeight << ", Old total height: " << mTotalHeight);
             mTotalHeight = newHeight;
         }
         else if (space > 0 && !mVertical && mHLayout && mMain)
         {
             int newWidth = space + mTotalWidth;
             mMain->setFixedWidth(newWidth);
-            MSG_DEBUG("Calculated space: " << space << " (" << mSpace << "%). Total width: " << newWidth << ", Old total width: " << mTotalWidth);
+//            MSG_DEBUG("Calculated space: " << space << " (" << mSpace << "%). Total width: " << newWidth << ", Old total width: " << mTotalWidth);
             mTotalWidth = newWidth;
         }
     }
@@ -867,7 +866,7 @@ void TQScrollArea::setScaleFactor(const double& factor)
 
 void TQScrollArea::setAtom(PGSUBVIEWATOM_T& atom, QLabel *label)
 {
-    DECL_TRACER("TQScrollArea::setAtom(PGSUBVIEWATOM_T& atom, QLabel *label)");
+//    DECL_TRACER("TQScrollArea::setAtom(PGSUBVIEWATOM_T& atom, QLabel *label)");
 
     if (!label)
         return;
@@ -1074,7 +1073,7 @@ void TQScrollArea::setPosition(QWidget* w, int position)
 
 TQScrollArea::_ITEMS_T TQScrollArea::subViewItemToItem(PGSUBVIEWITEM_T& item)
 {
-    DECL_TRACER("TQScrollArea::subViewItemToItem(PGSUBVIEWITEM_T& item)");
+//    DECL_TRACER("TQScrollArea::subViewItemToItem(PGSUBVIEWITEM_T& item)");
 
     _ITEMS_T it;
     it.handle = item.handle;
@@ -1095,7 +1094,7 @@ TQScrollArea::_ITEMS_T TQScrollArea::subViewItemToItem(PGSUBVIEWITEM_T& item)
 
 void TQScrollArea::_clearAllItems()
 {
-    DECL_TRACER("TQScrollArea::_clearAllItems()");
+//    DECL_TRACER("TQScrollArea::_clearAllItems()");
 
     if (mItems.empty())
         return;

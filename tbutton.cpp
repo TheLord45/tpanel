@@ -1147,24 +1147,28 @@ bool TButton::makeElement(int instance)
     else if (inst < 0 || static_cast<size_t>(inst) >= sr.size())
         inst = mActInstance = 0;
 
-    bool isSystem = isSystemButton();
-    TButtonStates *buttonStates = getButtonState();
-
     int lastLevel = 0;
     int lastJoyX = 0;
     int lastJoyY = 0;
+    TButtonStates *buttonStates = nullptr;
+    bool isSystem = isSystemButton();
 
-    if (buttonStates)
+    if (type == BARGRAPH || type == JOYSTICK || type == MULTISTATE_BARGRAPH)
     {
-        lastLevel = buttonStates->getLastLevel();
-        lastJoyX = buttonStates->getLastJoyX();
-        lastJoyY = buttonStates->getLastJoyY();
-        MSG_DEBUG("lastLevel: " << lastLevel << ", lastJoyX: " << lastJoyX << ", lastJoyY: " << lastJoyY);
-    }
-    else
-    {
-        MSG_ERROR("Button states not found!");
-        return false;
+        TButtonStates *buttonStates = getButtonState();
+
+        if (buttonStates)
+        {
+            lastLevel = buttonStates->getLastLevel();
+            lastJoyX = buttonStates->getLastJoyX();
+            lastJoyY = buttonStates->getLastJoyY();
+            MSG_DEBUG("lastLevel: " << lastLevel << ", lastJoyX: " << lastJoyX << ", lastJoyY: " << lastJoyY);
+        }
+        else
+        {
+            MSG_ERROR("Button states not found!");
+            return false;
+        }
     }
 
     if (type == MULTISTATE_GENERAL && ar == 1)

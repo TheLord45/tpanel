@@ -3,6 +3,8 @@ ChangeLog
 
 Release: 1.4.1
 ===============================================================================
+2024-01-11 Fixed color handling.
+
 2024-01-05 Fixed bargraphs with an image.
 
 2024-01-04 Added support for placeholder text in input lines.

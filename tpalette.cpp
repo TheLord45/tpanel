@@ -101,11 +101,10 @@ void TPalette::initialize(const std::string& file)
         return;
 
     string name, content;
+    PDATA_T pal;
 
     while ((index = xml.getNextElementFromIndex(index, &name, &content, &attrs)) != TExpat::npos)
     {
-        PDATA_T pal;
-
         if (name.compare("color") != 0)
         {
             pal.clear();
@@ -120,6 +119,9 @@ void TPalette::initialize(const std::string& file)
         {
             string sCol = "0x" + color.substr(1);
             pal.color = strtoul(sCol.c_str(), 0, 16);
+
+            if (color.length() <= 7)
+                pal.color = (pal.color << 8) | 0x000000ff;
         }
 
         if (pal.name.length() > 0)
@@ -176,7 +178,7 @@ PDATA_T TPalette::findColor(int pID)
 
     map<string, PDATA_T>::iterator iter;
 
-    for (iter = mColors.begin(); iter != mColors.end(); iter++)
+    for (iter = mColors.begin(); iter != mColors.end(); ++iter)
     {
         if (iter->second.index == pID)
             return iter->second;

@@ -16,6 +16,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
+#include "tlock.h"
 #include <vector>
 #include <thread>
 
@@ -131,11 +132,11 @@ void TLock<_TMutex>::unlock()
 
             if (mFilename.empty())
             {
-                MSG_PROTOCOL("The mutex handle " << iter->native_handle << " was released!");
+                MSG_DEBUG("The mutex handle " << iter->native_handle << " was released!");
             }
             else
             {
-                MSG_PROTOCOL("The mutex handle " << iter->native_handle << " was released on file " << mFilename << " at line " << mLineNumber << "!");
+                MSG_DEBUG("The mutex handle " << iter->native_handle << " was released on file " << mFilename << " at line " << mLineNumber << "!");
             }
 
             return;
@@ -231,11 +232,11 @@ bool TLock<_TMutex>::addLock(bool *death)
 
         if (mFilename.empty())
         {
-            MSG_PROTOCOL("Lock for mutex handle " << lc.native_handle << " was added.");
+            MSG_DEBUG("Lock for mutex handle " << lc.native_handle << " was added.");
         }
         else
         {
-            MSG_PROTOCOL("Lock for mutex handle " << lc.native_handle << " was added on file " << mFilename << " at line " << mLineNumber << ".");
+            MSG_DEBUG("Lock for mutex handle " << lc.native_handle << " was added on file " << mFilename << " at line " << mLineNumber << ".");
         }
 
         if (death)
@@ -286,11 +287,11 @@ bool TLock<_TMutex>::addLock(bool *death)
 
                 if (mFilename.empty())
                 {
-                    MSG_PROTOCOL("Lock for mutex handle " << iter->native_handle << " was reactivated.");
+                    MSG_DEBUG("Lock for mutex handle " << iter->native_handle << " was reactivated.");
                 }
                 else
                 {
-                    MSG_PROTOCOL("Lock for mutex handle " << iter->native_handle << " was reactivated on file " << mFilename << " at line " << mLineNumber << ".");
+                    MSG_DEBUG("Lock for mutex handle " << iter->native_handle << " was reactivated on file " << mFilename << " at line " << mLineNumber << ".");
                 }
 
                 return true;
@@ -302,11 +303,11 @@ bool TLock<_TMutex>::addLock(bool *death)
 
     if (mFilename.empty())
     {
-        MSG_PROTOCOL("Lock for mutex handle " << lc.native_handle << " was added.");
+        MSG_DEBUG("Lock for mutex handle " << lc.native_handle << " was added.");
     }
     else
     {
-        MSG_PROTOCOL("Lock for mutex handle " << lc.native_handle << " was added on file " << mFilename << " at line " << mLineNumber << ".");
+        MSG_DEBUG("Lock for mutex handle " << lc.native_handle << " was added on file " << mFilename << " at line " << mLineNumber << ".");
     }
 
     if (death)
@@ -349,11 +350,11 @@ bool TLock<_TMutex>::removeLock()
         {
             if (mFilename.empty())
             {
-                MSG_PROTOCOL("Lock for mutex handle " << iter->native_handle << " will be removed.");
+                MSG_DEBUG("Lock for mutex handle " << iter->native_handle << " will be removed.");
             }
             else
             {
-                MSG_PROTOCOL("Lock for mutex handle " << iter->native_handle << " will be removed on file " << mFilename << " at line " << mLineNumber << ".");
+                MSG_DEBUG("Lock for mutex handle " << iter->native_handle << " will be removed on file " << mFilename << " at line " << mLineNumber << ".");
             }
 
             bool ret = iter->state;

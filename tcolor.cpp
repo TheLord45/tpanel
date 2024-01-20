@@ -44,11 +44,11 @@ TColor::COLOR_T TColor::getAMXColor(const string& color)
     }
 
     // Check if we've an index number
-    if (color.length() <= 2 && isdigit(color[0]))
+    if (color.length() <= 3 && isdigit(color[0]))
     {
         int idx = atoi(color.c_str());
 
-        if (idx >= 0 && idx <= 88)
+        if (idx >= 0 && idx <= 255)
         {
             PDATA_T pd = mPalette->findColor(idx);
 
@@ -73,7 +73,13 @@ TColor::COLOR_T TColor::getAMXColor(const string& color)
         if (!pd.name.empty())
             return splitColors(pd);
 
-        return TColor::COLOR_T();
+        // We fill in the default transparent color
+        TColor::COLOR_T col;
+        col.red = 0;
+        col.green = 0;
+        col.blue = 0;
+        col.alpha = 0;
+        return col;
     }
 
     // There was a # in the string. We assume that the color is encoded in hex
@@ -107,12 +113,7 @@ TColor::COLOR_T TColor::splitColors(PDATA_T& pd)
     ct.red = (pd.color & 0xff000000) >> 24;
     ct.green = (pd.color & 0x00ff0000) >> 16;
     ct.blue = (pd.color & 0x0000ff00) >> 8;
-
-    if (pd.color > 0x00ffffff)
-        ct.alpha = (pd.color & 0x000000ff);
-    else
-        ct.alpha = 0x00ff;
-
+    ct.alpha = (pd.color & 0x000000ff);
     return ct;
 }
 
@@ -121,6 +122,9 @@ SkColor TColor::getSkiaColor(const std::string& color)
     DECL_TRACER("TColor::getSkiaColor(const std::string& color)");
 
     COLOR_T col = getAMXColor(color);
+
+    if (col.alpha == 0)
+        return SK_ColorTRANSPARENT;
 
     if (isBigEndian())
         return SkColorSetARGB(col.alpha, col.blue, col.green, col.red);

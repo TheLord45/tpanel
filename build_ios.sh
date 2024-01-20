@@ -13,7 +13,7 @@ QT_MACROS="${QT_PATH}/Qt?Creator.app/Contents/Resources/package-manager"
 QTBASE="${QT_PATH}/$QT_VERSION"
 QTDIR="${QTBASE}/ios"
 
-IOS_VERSION="15.0"
+IOS_VERSION="17.0"
 BUILDPATH="tpanel-ios"
 OSX_SYSROOT="iphoneos"
 #OSX_SYSROOT="iphonesimulator"

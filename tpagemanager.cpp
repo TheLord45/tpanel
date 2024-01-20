@@ -5013,6 +5013,7 @@ void TPageManager::sendKeyboard(const std::string& text)
     scmd.channel = 0;
     scmd.msg = UTF8ToCp1250(text);
     scmd.MC = 0x008b;
+    MSG_DEBUG("Sending keyboard: " << text);
 
     if (gAmxNet)
         gAmxNet->sendCommand(scmd);

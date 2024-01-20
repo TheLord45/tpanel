@@ -176,7 +176,7 @@ elseif(IOS)
     endif()
 
     if(NOT DEFINED IPHONEOS_DEPLOYMENT_TARGET)
-        set(IPHONEOS_DEPLOYMENT_TARGET "15.0")
+        set(IPHONEOS_DEPLOYMENT_TARGET "17.0")
     endif()
 
     link_libraries(z ssl crypto expat libskia.a)
