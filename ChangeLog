@@ -3,6 +3,9 @@ ChangeLog
 
 Release: 1.4.1
 ===============================================================================
+2024-01-20 Created a new branch "refactor" and refactored the directory tree.
+           Removed the system settings implemented as TP4 file.
+
 2024-01-11 Fixed color handling.
 
 2024-01-05 Fixed bargraphs with an image.

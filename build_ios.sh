@@ -1,5 +1,6 @@
 #!/bin/bash
 set -o pipefail
+SRCDIR="`pwd`"
 
 ###########################################################################
 # Adapt the below variables to your need                                  #
@@ -19,7 +20,6 @@ OSX_SYSROOT="iphoneos"
 #OSX_SYSROOT="iphonesimulator"
 SIGNING_IDENTITY="<YOUR_SIGNING_IDENTITY>"
 
-SRCDIR="`pwd`"
 LOGFILE="${SRCDIR}/build.log"
 EXT_LIB_PATH="${SRCDIR}/SDKs"
 
@@ -44,7 +44,7 @@ fi
 
 export EXT_LIB_PATH
 GENERATOR="Xcode"
-PROJECT_INCLUDE_BEFORE="${SRCDIR}/${BUILDPATH}/.qtc/package-manager/auto-setup.cmake"
+PROJECT_INCLUDE_BEFORE="${SRCDIR}/${BUILDPATH}/src/.qtc/package-manager/auto-setup.cmake"
 QMAKE="${QTDIR}/bin/qmake"
 PREFIX="${QTDIR}"
 CC="/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang"
@@ -180,9 +180,9 @@ fi
 if [ ! -d "${BUILDPATH}" ]
 then
     log "Creating directory $BUILDPATH ..."
-    mkdir -p "${BUILDPATH}/.qtc/package-manager"
+    mkdir -p "${BUILDPATH}/src/.qtc/package-manager"
     log "Copy macros from $QT_MACROS ..."
-    cp ${QT_MACROS}/* "${BUILDPATH}/.qtc/package-manager"
+    cp ${QT_MACROS}/* "${BUILDPATH}/src/.qtc/package-manager"
 fi
 
 _extra=""
