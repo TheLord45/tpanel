@@ -20,10 +20,5 @@ if(ANDROID)
     endif()
 endif(ANDROID)
 
-if(IOS)
-    add_library(ftp STATIC ftplib/ftplib.cpp)
-else()
-    add_subdirectory(ftplib)
-endif()
-
+add_subdirectory(ftplib)
 add_subdirectory(src)
