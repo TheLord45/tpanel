@@ -30,7 +30,7 @@ JAVA_HOME="/usr/lib/jvm/java-17-openjdk-amd64"
 export PATH="${QT_PATH}/Tools/Ninja:${QT_PATH}/Tools/CMake/bin:${QTDIR}/bin:$PATH"
 ANDROID_TOOLCHAIN="${ANDROID_NDK_ROOT}/build/cmake/android.toolchain.cmake"
 
-KEYSTORE="$HOME/projects/tpanel/android/android_release.keystore"
+KEYSTORE="$HOME/projects/tpanel/src/android/android_release.keystore"
 KEYALIAS="tpanel"
 PASSFILE="$HOME/.keypass"
 LOGFILE="`pwd`/build.log"
@@ -155,7 +155,7 @@ then
     then
         log "Crating new build directory \"$BUILDDIR\" ..."
         mkdir "${BUILDDIR}" > /dev/null 2>&1
-        mkdir -p "${BUILDDIR}/.qtc/package-manager" > /dev/null 2>&1
+        mkdir -p "${BUILDDIR}/src/.qtc/package-manager" > /dev/null 2>&1
 
         if [ $? -ne 0 ]
         then
@@ -164,7 +164,7 @@ then
         fi
 
         log "Copying cmake macros from $QTMACROS ..."
-        cp ${QTMACROS}/* ${BUILDDIR}/.qtc/package-manager > /dev/null 2>&1
+        cp ${QTMACROS}/* ${BUILDDIR}/src/.qtc/package-manager > /dev/null 2>&1
 
         if [ $? -ne 0 ]
         then
@@ -188,12 +188,12 @@ then
 
     if [ $OPT_VERBOSE -eq 1 ]
     then
-        echo "${CMAKE} -S ${CURDIR} -B ${CURDIR}/${BUILDDIR} -DCMAKE_GENERATOR:STRING=Ninja ${_dbg} -DCMAKE_PROJECT_INCLUDE_BEFORE:FILEPATH=${CURDIR}/${BUILDDIR}/.qtc/package-manager/auto-setup.cmake -DQT_QMAKE_EXECUTABLE:FILEPATH=${QMAKE} -DCMAKE_PREFIX_PATH:PATH=${QTDIR} -DCMAKE_C_COMPILER:FILEPATH=${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64/bin/clang -DCMAKE_CXX_COMPILER:FILEPATH=${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ -DANDROID_PLATFORM:STRING=${ANDROID_PLATFORM} -DANDROID_NDK:PATH=${ANDROID_NDK_ROOT} -DCMAKE_TOOLCHAIN_FILE:FILEPATH=${ANDROID_TOOLCHAIN} -DANDROID_USE_LEGACY_TOOLCHAIN_FILE:BOOL=OFF -DANDROID_ABI:STRING=${QT_ABI} -DANDROID_STL:STRING=c++_shared -DCMAKE_FIND_ROOT_PATH:PATH=${QTDIR} -DQT_NO_GLOBAL_APK_TARGET_PART_OF_ALL:BOOL=ON -DQT_HOST_PATH:PATH=${QTBASE}/gcc_64 -DANDROID_SDK_ROOT:PATH=${ANDROID_HOME} -DQT_ANDROID_BUILD_ALL_ABIS:BOOL=ON -DQT_ANDROID_ABIS:STRING=\"arm64-v8a;armeabi-v7a;x86;x86_64\""
+        echo "${CMAKE} -S ${CURDIR} -B ${CURDIR}/${BUILDDIR} -DCMAKE_GENERATOR:STRING=Ninja ${_dbg} -DCMAKE_PROJECT_INCLUDE_BEFORE:FILEPATH=${CURDIR}/${BUILDDIR}/src/.qtc/package-manager/auto-setup.cmake -DQT_QMAKE_EXECUTABLE:FILEPATH=${QMAKE} -DCMAKE_PREFIX_PATH:PATH=${QTDIR} -DCMAKE_C_COMPILER:FILEPATH=${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64/bin/clang -DCMAKE_CXX_COMPILER:FILEPATH=${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ -DANDROID_PLATFORM:STRING=${ANDROID_PLATFORM} -DANDROID_NDK:PATH=${ANDROID_NDK_ROOT} -DCMAKE_TOOLCHAIN_FILE:FILEPATH=${ANDROID_TOOLCHAIN} -DANDROID_USE_LEGACY_TOOLCHAIN_FILE:BOOL=OFF -DANDROID_ABI:STRING=${QT_ABI} -DANDROID_STL:STRING=c++_shared -DCMAKE_FIND_ROOT_PATH:PATH=${QTDIR} -DQT_NO_GLOBAL_APK_TARGET_PART_OF_ALL:BOOL=ON -DQT_HOST_PATH:PATH=${QTBASE}/gcc_64 -DANDROID_SDK_ROOT:PATH=${ANDROID_HOME} -DQT_ANDROID_BUILD_ALL_ABIS:BOOL=ON -DQT_ANDROID_ABIS:STRING=\"arm64-v8a;armeabi-v7a;x86;x86_64\""
     fi
 
     ${CMAKE} -S ${CURDIR} -B ${CURDIR}/${BUILDDIR} \
         -DCMAKE_GENERATOR:STRING=Ninja ${_dbg} \
-        -DCMAKE_PROJECT_INCLUDE_BEFORE:FILEPATH=${CURDIR}/${BUILDDIR}/.qtc/package-manager/auto-setup.cmake \
+        -DCMAKE_PROJECT_INCLUDE_BEFORE:FILEPATH=${CURDIR}/${BUILDDIR}/src/.qtc/package-manager/auto-setup.cmake \
         -DQT_QMAKE_EXECUTABLE:FILEPATH=${QMAKE} \
         -DCMAKE_PREFIX_PATH:PATH=${QTDIR} \
         -DCMAKE_C_COMPILER:FILEPATH=${C_COMPILER_CLANG} \
@@ -264,29 +264,35 @@ then
         read -s -p "Password of Android keystore: " _pass
     fi
 
+    _verbose=""
+
     if [ $OPT_VERBOSE -eq 1 ]
     then
-        echo "${ANDROIDDEPLOYQT} --input ${CURDIR}/${BUILDDIR}/android-tpanel-deployment-settings.json --output ${CURDIR}/${BUILDDIR}/android-build --android-platform ${ANDROID_PLATFORM} --jdk ${JAVA_HOME} --gradle --release --verbose --sign ${KEYSTORE} ${KEYALIAS} --storepass "${_pass}" ${_install}"
+        echo "${ANDROIDDEPLOYQT} --input ${CURDIR}/${BUILDDIR}/src/android-tpanel-deployment-settings.json --output ${CURDIR}/${BUILDDIR}/src/android-build --android-platform ${ANDROID_PLATFORM} --jdk ${JAVA_HOME} --gradle --release --verbose --sign ${KEYSTORE} ${KEYALIAS} --storepass "${_pass}" ${_install}"
+        _verbose="--verbose"
     fi
 
-    ${ANDROIDDEPLOYQT} --input ${CURDIR}/${BUILDDIR}/android-tpanel-deployment-settings.json \
-        --output ${CURDIR}/${BUILDDIR}/android-build \
+    ${ANDROIDDEPLOYQT} --input ${CURDIR}/${BUILDDIR}/src/android-tpanel-deployment-settings.json \
+        --output ${CURDIR}/${BUILDDIR}/src/android-build \
         --android-platform ${ANDROID_PLATFORM} \
         --jdk ${JAVA_HOME} \
-        --gradle --release \
+        --gradle --release ${_verbose} \
         --sign ${KEYSTORE} ${KEYALIAS} \
         --storepass "${_pass}" ${_install} 2>&1 | tee -a ${LOGFILE}
 else
+    _verbose=""
+
     if [ $OPT_VERBOSE -eq 1 ]
     then
-        echo "${ANDROIDDEPLOYQT} --input ${CURDIR}/${BUILDDIR}/android-tpanel-deployment-settings.json --output ${CURDIR}/${BUILDDIR}/android-build --android-platform ${ANDROID_PLATFORM} --jdk ${JAVA_HOME} --gradle --verbose ${_install}"
+        echo "${ANDROIDDEPLOYQT} --input ${CURDIR}/${BUILDDIR}/src/android-tpanel-deployment-settings.json --output ${CURDIR}/${BUILDDIR}/src/android-build --android-platform ${ANDROID_PLATFORM} --jdk ${JAVA_HOME} --gradle --verbose ${_install}"
+        _verbose="--verbose"
     fi
 
-    ${ANDROIDDEPLOYQT} --input ${CURDIR}/${BUILDDIR}/android-tpanel-deployment-settings.json \
-        --output ${CURDIR}/${BUILDDIR}/android-build \
+    ${ANDROIDDEPLOYQT} --input ${CURDIR}/${BUILDDIR}/src/android-tpanel-deployment-settings.json \
+        --output ${CURDIR}/${BUILDDIR}/src/android-build \
         --android-platform ${ANDROID_PLATFORM} \
         --jdk ${JAVA_HOME} \
-        --gradle --verbose  ${_install} 2>&1 | tee -a ${LOGFILE}
+        --gradle ${_verbose} ${_install} 2>&1 | tee -a ${LOGFILE}
 fi
 
 if [ $? -ne 0 ]

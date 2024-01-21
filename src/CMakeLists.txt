@@ -407,8 +407,6 @@ set(PROJECT_SOURCES
         tqdownload.cpp
         tqdownload.h
         download.ui
-#        tqtextedit.cpp
-#        tqtextedit.h
         tqeditline.cpp
         tqeditline.h
         tqsingleline.cpp
@@ -424,6 +422,8 @@ set(PROJECT_SOURCES
         tbitmap.h
         tintborder.cpp
         tintborder.h
+        tvector.h
+        tlock.h
         testmode.cpp
         testmode.h
         tpanel.qrc
@@ -462,7 +462,6 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         qt_add_executable(tpanel
             MANUAL_FINALIZATION
             ${PROJECT_SOURCES}
-
         )
     endif()
 
