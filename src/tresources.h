@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2024 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -115,6 +115,8 @@ bool isUTF8(const std::string& str);
 size_t utf8Strlen(const std::string& str);
 uint16_t getUint16(const unsigned char *p, bool big_endian=false);
 uint32_t getUint32(const unsigned char *p, bool big_endian=false);
+unsigned char *uint16ToBytes(uint16_t num, unsigned char *bytes=nullptr);
+unsigned char *uint32ToBytes(uint16_t num, unsigned char *bytes=nullptr);
 std::string UnicodeToUTF8(const std::wstring& ws);
 bool endsWith (const std::string &src, const std::string &end);
 bool startsWith (const std::string &src, const std::string &start);

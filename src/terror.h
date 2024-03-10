@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2024 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -159,7 +159,7 @@ class TError : public std::ostream
         static TStreamError* Current();
         static TStreamError* Current(threadID_t tid);
         static void clear() { mHaveError = false; msError.clear(); mErrType = TERRNONE; }
-        static void logHex(char *str, size_t size);
+        static void logHex(const char *str, size_t size);
         const TError& operator=(const TError& ref);
         static void displayMessage(const std::string& msg);
 

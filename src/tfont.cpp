@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2024 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -149,9 +149,11 @@ mutex mutex_font;
 // This is an internal used font cache
 map<string, sk_sp<SkTypeface> > _tfontCache;
 
-TFont::TFont()
+TFont::TFont(const string& fname, bool tp)
+    : mIsTP5(tp),
+      mFontFile(fname)
 {
-    DECL_TRACER("TFont::TFont()");
+    DECL_TRACER("TFont::TFont(const string& fname, bool tp)");
     initialize();
 }
 
@@ -306,13 +308,20 @@ void TFont::initialize()
         mFonts.insert(pair<int, FONT_T>(font.number, font));
     }
 
+    if (mFontFile.empty())
+    {
+        MSG_ERROR("Got no font file name!");
+        return;
+    }
+
     // Now the fonts for setup pages
     systemFonts(true);
 
     // read the individual fonts from file
     TError::clear();
     string projectPath = TConfig::getProjectPath();
-    string path = makeFileName(projectPath, "fnt.xma");
+
+    string path = makeFileName(projectPath, mFontFile);
 
     if (!isValidFile())
     {
@@ -323,7 +332,9 @@ void TFont::initialize()
     }
 
     TExpat xml(path);
-    xml.setEncoding(ENC_CP1250);
+
+    if (!mIsTP5)
+        xml.setEncoding(ENC_CP1250);
 
     if (!xml.parse())
     {
@@ -344,21 +355,32 @@ void TFont::initialize()
     }
 
     depth++;
+    int fnumber = 33;
 
     while ((index = xml.getNextElementIndex("font", depth)) != TExpat::npos)
     {
         string name, content;
         FONT_T ft;
-        vector<ATTRIBUTE_t> attrs = xml.getAttributes(index);
+        vector<ATTRIBUTE_t> attrs;
 
-        if (!attrs.empty())
-            ft.number = xml.getAttributeInt("number", attrs);
+        if (!mIsTP5)
+        {
+            attrs = xml.getAttributes(index);
+
+            if (!attrs.empty())
+                ft.number = xml.getAttributeInt("number", attrs);
+            else
+            {
+                MSG_ERROR("Element font contains no or invalid attribute!");
+                TError::setError();
+                mutex_font.unlock();
+                return;
+            }
+        }
         else
         {
-            MSG_ERROR("Element font contains no or invalid attribute!");
-            TError::setError();
-            mutex_font.unlock();
-            return;
+            ft.number = fnumber;
+            fnumber++;
         }
 
         while ((index = xml.getNextElementFromIndex(index, &name, &content, &attrs)) != TExpat::npos)
@@ -403,9 +425,9 @@ bool TFont::systemFonts(bool setup)
     string path;
 
     if (setup)
-        path = makeFileName(TConfig::getSystemProjectPath(), "/fnt.xma");
+        path = makeFileName(TConfig::getSystemProjectPath(), "/" + mFontFile);
     else
-        path = makeFileName(TConfig::getSystemProjectPath(), "/graphics/fnt.xma");
+        path = makeFileName(TConfig::getSystemProjectPath(), "/graphics/" + mFontFile);
 
     if (!isValidFile())
     {
@@ -415,7 +437,9 @@ bool TFont::systemFonts(bool setup)
     }
 
     TExpat xml(path);
-    xml.setEncoding(ENC_CP1250);
+
+    if (!mIsTP5)
+        xml.setEncoding(ENC_CP1250);
 
     if (!xml.parse())
         return false;
@@ -432,20 +456,31 @@ bool TFont::systemFonts(bool setup)
     }
 
     depth++;
+    int fnumber = 1;
 
     while ((index = xml.getNextElementIndex("font", depth)) != TExpat::npos)
     {
         string name, content;
         FONT_T ft;
-        vector<ATTRIBUTE_t> attrs = xml.getAttributes(index);
+        vector<ATTRIBUTE_t> attrs;
 
-        if (!attrs.empty())
-            ft.number = xml.getAttributeInt("number", attrs);
+        if (!mIsTP5)
+        {
+            attrs = xml.getAttributes(index);
+
+            if (!attrs.empty())
+                ft.number = xml.getAttributeInt("number", attrs);
+            else
+            {
+                MSG_ERROR("Element font contains no or invalid attribute!");
+                TError::setError();
+                return false;
+            }
+        }
         else
         {
-            MSG_ERROR("Element font contains no or invalid attribute!");
-            TError::setError();
-            return false;
+            ft.number = fnumber;
+            fnumber++;
         }
 
         while ((index = xml.getNextElementFromIndex(index, &name, &content, &attrs)) != TExpat::npos)
@@ -471,9 +506,11 @@ bool TFont::systemFonts(bool setup)
 
             oldIndex = index;
         }
-
+#if __cplusplus < 201703L
         mFonts.insert(pair<int, FONT_T>(ft.number, ft));
-
+#else
+        mFonts.insert_or_assign(ft.number, ft);
+#endif
         if (index == TExpat::npos)
             index = oldIndex + 1;
 
@@ -609,6 +646,22 @@ SkFontStyle TFont::getSkiaStyle(int number)
 }
 
 #define MAX_FACES   10
+
+sk_sp<SkTypeface> TFont::getTypeFace(const string& ff)
+{
+    DECL_TRACER("TFont::getTypeFace(const string& ff)");
+
+    map<int, FONT_T>::iterator iter;
+
+    for (iter = mFonts.begin(); iter != mFonts.end(); ++iter)
+    {
+        if (iter->second.file == ff)
+            return getTypeFace(iter->first);
+    }
+
+    return nullptr;
+}
+
 
 sk_sp<SkTypeface> TFont::getTypeFace(int number)
 {

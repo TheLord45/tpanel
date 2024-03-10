@@ -30,6 +30,7 @@
 //#include "tqemitqueue.h"
 #include "tpagelist.h"
 #include "tqgesturefilter.h"
+#include "tqintercom.h"
 
 extern bool prg_stopped;
 extern std::atomic<bool> killed;
@@ -156,6 +157,12 @@ class MainWindow : public QMainWindow, public TObject
         void sigStopWait();
         void sigPageFinished(uint handle);
         void sigListViewArea(ulong handle, ulong parent, Button::TButton& button, SUBVIEWLIST_T& list);
+        void sigInitializeIntercom(INTERCOM_t ic);
+        void sigIntercomStart();
+        void sigIntercomStop();
+        void sigIntercomSpkLevel(int level);
+        void sigIintercomMicLevel(int level);
+        void sigIntercomMicMute(bool mute);
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         void sigActivateSettings(const std::string& oldNetlinx, int oldPort, int oldChannelID, const std::string& oldSurface, bool oldToolbarSuppress, bool oldToolbarForce);
 #endif
@@ -254,6 +261,12 @@ class MainWindow : public QMainWindow, public TObject
 #endif
         void onPlayerError(QMediaPlayer::Error error, const QString &errorString);
         void onMediaStatusChanged(QMediaPlayer::MediaStatus status);
+        void initializeIntercom(INTERCOM_t ic);
+        void intercomStart();
+        void intercomStop();
+        void intercomSpkLevel(int level);
+        void intercomMicLevel(int level);
+        void intercomMicMute(bool mute);
 
     private:
         bool gestureEvent(QGestureEvent *event);
@@ -334,6 +347,12 @@ class MainWindow : public QMainWindow, public TObject
         void _stopWait();
         void _pageFinished(uint handle);
         void _listViewArea(ulong handle, ulong parent, Button::TButton& button, SUBVIEWLIST_T& list);
+        void _initializeIntercom(INTERCOM_t ic);
+        void _intercomStart();
+        void _intercomStop();
+        void _intercomSpkLevel(int level);
+        void _intercomMicLevel(int level);
+        void _intercomMicMute(bool mute);
         void doReleaseButton();
         void repaintObjects();
         void refresh(ulong handle);
@@ -406,6 +425,7 @@ class MainWindow : public QMainWindow, public TObject
         std::chrono::steady_clock::time_point mTouchStart;  // Time in micro seconds of the start of a touch event
         int mTouchX{0};                        // The X coordinate of the mouse pointer
         int mTouchY{0};                        // The Y coordinate of the mouse pointer
+        TQIntercom mIntercom;               // Class to handle intercom connections
 };
 
 #endif

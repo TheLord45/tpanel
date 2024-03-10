@@ -78,6 +78,35 @@ bool TSettings::loadSettings(bool initial)
 
     int depth = 0;
     size_t index = 0;
+    MSG_DEBUG("Reading version info ...");
+
+    if (xml.getElementIndex("versionInfo", &depth) == TExpat::npos)
+    {
+        MSG_ERROR("Couldn't find the project version information! Broken surface?");
+        TError::setError();
+        return false;
+    }
+
+    depth++;
+    bool valid = false;
+
+    mSetup.versionInfo.formatVersion = xml.getElementInt("formatVersion", depth);
+    mSetup.versionInfo.graphicsVersion = xml.getElementInt("graphicsVersion", depth);
+    mSetup.versionInfo.fileVersion = xml.getElement("fileVersion", depth);
+    mSetup.versionInfo.designVersion = xml.getElement("designVersion", depth);
+    mSetup.versionInfo.g5appsVersion = xml.getElementInt("g5appsVersion", depth, &valid);
+
+    if (!valid)
+    {
+        mSetup.versionInfo.g5appsVersion = 0;   // No TP5 file
+        MSG_INFO("Detected a TP4 file");
+    }
+    else
+    {
+        MSG_INFO("Detected a TP5 file");
+    }
+
+    MSG_DEBUG("Reading project info ...");
 
     if (xml.getElementIndex("projectInfo", &depth) == TExpat::npos)
     {
@@ -106,6 +135,41 @@ bool TSettings::loadSettings(bool initial)
     mProject.colorChoice = xml.getElement("colorChoice", depth);
     mProject.specifyPortCount = xml.getElementInt("specifyPortCount", depth);
     mProject.specifyChanCount = xml.getElementInt("specifyChanCount", depth);
+
+    MSG_DEBUG("Reading support file list ...");
+
+    if (xml.getElementIndex("supportFileList", &depth) == TExpat::npos)
+    {
+        MSG_ERROR("Couldn't find the support file list! Broken surface?");
+        TError::setError();
+        return false;
+    }
+
+    depth++;
+    valid = false;
+
+    mSetup.supportFiles.mapFile = xml.getElement("mapFile", depth);
+    mSetup.supportFiles.colorFile = xml.getElement("colorFile", depth);
+    mSetup.supportFiles.fontFile = xml.getElement("fontFile", depth);
+    mSetup.supportFiles.themeFile = xml.getElement("themeFile", depth);
+    mSetup.supportFiles.iconFile = xml.getElement("iconFile", depth);
+    mSetup.supportFiles.externalButtonFile = xml.getElement("externalButtonFile", depth);
+    mSetup.supportFiles.appFile = xml.getElement("appFile", depth);
+
+    MSG_DEBUG("Map file:     " << mSetup.supportFiles.mapFile);
+    MSG_DEBUG("Color file:   " << mSetup.supportFiles.colorFile);
+    MSG_DEBUG("Font file:    " << mSetup.supportFiles.fontFile);
+    MSG_DEBUG("Theme file:   " << mSetup.supportFiles.themeFile);
+    
+    if (!isTP5())
+        MSG_DEBUG("IconFile:     " << mSetup.supportFiles.iconFile);
+
+    MSG_DEBUG("Ext. buttons: " << mSetup.supportFiles.externalButtonFile);
+
+    if (isTP5())
+        MSG_DEBUG("App file:     " << mSetup.supportFiles.appFile);
+
+    MSG_DEBUG("Reading panel setup ...");
 
     if ((index = xml.getElementIndex("panelSetup", &depth)) == TExpat::npos)
     {
@@ -188,6 +252,8 @@ bool TSettings::loadSettings(bool initial)
     mSetup.setupPagesProject = xml.getElementInt("setupPagesProject", depth);
     mSetup.voipCommandPort = xml.getElementInt("voipCommandPort", depth);
 
+    MSG_DEBUG("Reading resource list ...");
+
     if ((index = xml.getElementIndex("resourceList", &depth)) == TExpat::npos)
     {
         MSG_WARNING("Missing element \"resourceList\" in file!");
@@ -266,7 +332,7 @@ bool TSettings::loadSettings(bool initial)
 
             vector<RESOURCE_LIST_T>::iterator itResList;
 
-            for (itResList = mResourceLists.begin(); itResList != mResourceLists.end(); itResList++)
+            for (itResList = mResourceLists.begin(); itResList != mResourceLists.end(); ++itResList)
             {
                 if (itResList->type.compare(type) == 0)
                 {
@@ -279,9 +345,22 @@ bool TSettings::loadSettings(bool initial)
         while ((index = xml.getNextElementIndex("resourceList", depth)) != TExpat::npos);
     }
 
+    MSG_DEBUG("Reading palette list ...");
+
     if (xml.getElementIndex("paletteList", &depth) == TExpat::npos)
     {
-        MSG_WARNING("There exists no color palette! There will be only the system colors available.");
+        if (!isTP5())
+        {
+            MSG_WARNING("There exists no color palette! There will be only the system colors available.");
+        }
+        else
+        {
+            PALETTE_SETUP ps;
+            ps.name = ps.file = mSetup.supportFiles.colorFile;
+            ps.paletteID = 1;
+            mSetup.palettes.push_back(ps);
+        }
+
         return true;
     }
 

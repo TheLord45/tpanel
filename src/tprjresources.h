@@ -74,7 +74,7 @@ class TPrjResources
         size_t getResourceIndex(const std::string& type);
         bool setResource(const std::string& name, const std::string& scheme, const std::string& host, const std::string& path, const std::string& file, const std::string& user, const std::string& pw, int refresh=-1);
         bool addResource(const std::string& name, const std::string& scheme, const std::string& host, const std::string& path, const std::string& file, const std::string& user, const std::string& pw, int refresh=-1);
-
+        std::string decryptPassword(const std::string& pw);
         static const size_t npos = static_cast<size_t>(-1);
 
     private:

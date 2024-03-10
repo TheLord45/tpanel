@@ -25,6 +25,26 @@
 #include "tvalidatefile.h"
 #include "tprjresources.h"
 
+typedef struct VERSION_INFO
+{
+    int formatVersion{0};
+    int graphicsVersion{0};
+    int g5appsVersion{0};           // Only in TP5
+    std::string fileVersion;
+    std::string designVersion;
+}VERSION_INFO;
+
+typedef struct SUPPORT_FILES
+{
+    std::string mapFile;
+    std::string colorFile;
+    std::string fontFile;
+    std::string themeFile;
+    std::string iconFile;               // Only on TP4
+    std::string externalButtonFile;
+    std::string appFile;                // Only on TP5
+}SUPPORT_FILES;
+
 typedef struct PALETTE_SETUP
 {
     std::string name;
@@ -56,6 +76,7 @@ typedef struct PROJECT_INFO
 
 typedef struct PANEL_SETUP
 {
+    VERSION_INFO versionInfo;           //!< The version information is used to tell between TP4 and TP5
     int portCount{0};                   //!< Number of total ports available
     int setupPort{0};                   //!< The number of the setup port used for setup pages. Usualy 0
     int addressCount{0};
@@ -106,6 +127,7 @@ typedef struct PANEL_SETUP
     int marqueeSpeed{0};
     int setupPagesProject{0};
     int voipCommandPort{0};
+    SUPPORT_FILES supportFiles;
     std::vector<PALETTE_SETUP> palettes;
 }PANEL_SETUP_T;
 
@@ -117,6 +139,16 @@ class TSettings : public TValidateFile
         const std::string& getPath() { return mPath; }
         PANEL_SETUP_T& getSettings() { return mSetup; }
         PROJECT_INFO& getProjectInfo() { return mProject; }
+        VERSION_INFO& getVersionInfo() { return mSetup.versionInfo; }
+        SUPPORT_FILES& getSupportFiles() { return mSetup.supportFiles; }
+        std::string& getMapFileName() { return mSetup.supportFiles.mapFile; }
+        std::string& getColorFileName() { return mSetup.supportFiles.colorFile; }
+        std::string& getFontFileName() { return mSetup.supportFiles.fontFile; }
+        std::string& getThemeFileName() { return mSetup.supportFiles.themeFile; }
+        std::string& getIconFileName() { return mSetup.supportFiles.iconFile; }
+        std::string& getExtButtonFileName() { return mSetup.supportFiles.externalButtonFile; }
+        std::string& getAppFileName() { return mSetup.supportFiles.appFile; }
+
         int getWidth() { return mSetup.screenWidth; }
         int getHeight() { return mSetup.screenHeight; }
         int getRotate() { return mSetup.screenRotate; }
@@ -127,6 +159,7 @@ class TSettings : public TValidateFile
         std::string& getPowerUpPage() { return mSetup.powerUpPage; }
         int getVoipCmdPort() { return mSetup.voipCommandPort; }
         std::string& getPanelType() { return mProject.panelType; }
+        bool isTP5() { return mSetup.versionInfo.g5appsVersion > 0; }
 
     private:
         RESOURCE_LIST_T findResourceType(const std::string& type);

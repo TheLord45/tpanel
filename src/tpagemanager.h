@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2024 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -41,6 +41,7 @@
 #include "tvector.h"
 #include "tbitmap.h"
 #include "tbuttonstates.h"
+#include "tqintercom.h"
 
 #define REG_CMD(func, name)     registerCommand(bind(&TPageManager::func, this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),name)
 
@@ -276,6 +277,12 @@ class TPageManager : public TAmxCommands
         void regHideAllSubViewItems(std::function<void (ulong handle)> hasvi) { _hideAllSubViewItems = hasvi; }
         void regHideSubViewItem(std::function<void (ulong handle, ulong parent)> hsvi) { _hideSubViewItem = hsvi; }
         void regSetSubViewPadding(std::function<void (ulong handle, int padding)> ssvp) { _setSubViewPadding = ssvp; }
+        void regInitializeIntercom(std::function<void (INTERCOM_t ic)> intercom) { _initializeIntercom = intercom; }
+        void regIntercomStart(std::function<void ()> start) { _intercomStart = start; }
+        void regIntercomStop(std::function<void ()> stop) { _intercomStop = stop; }
+        void regIntercomSpkLevel(std::function<void (int level)> spk) { _intercomSpkLevel = spk; }
+        void regIntercomMicLevel(std::function<void (int level)> mic) { _intercomSpkLevel = mic; }
+        void regIntercomMute(std::function<void (bool mute)> mute) { _intercomMute = mute; }
 
         /**
          * The following function must be called to start non graphics part
@@ -570,6 +577,7 @@ class TPageManager : public TAmxCommands
         std::function<void (ulong handle)> getHideAllSubViewItems() { return _hideAllSubViewItems; }
         std::function<void (ulong handle, ulong parent)> getHideSubViewItem() { return _hideSubViewItem; }
         std::function<void (ulong handle, int padding)> getSetSubViewPadding() { return _setSubViewPadding; }
+        std::function<void (INTERCOM_t ic)> getInitializeIntercom() { return _initializeIntercom; }
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         std::function<void (int orientation)> onOrientationChange() { return _onOrientationChange; }
         std::function<void (const std::string& oldNetlinx, int oldPort, int oldChannelID, const std::string& oldSurface, bool oldToolbarSuppress, bool oldToolbarForce)> onSettingsChanged() { return _onSettingsChanged; }
@@ -683,6 +691,12 @@ class TPageManager : public TAmxCommands
         std::function<void (ulong handle)> _hideAllSubViewItems{nullptr};
         std::function<void (ulong handle, ulong parent)> _hideSubViewItem{nullptr};
         std::function<void (ulong handle, int padding)> _setSubViewPadding{nullptr};
+        std::function<void (INTERCOM_t ic)> _initializeIntercom{nullptr};
+        std::function<void ()> _intercomStart{nullptr};
+        std::function<void ()> _intercomStop{nullptr};
+        std::function<void (int level)> _intercomSpkLevel{nullptr};
+        std::function<void (int level)> _intercomMicLevel{nullptr};
+        std::function<void (bool mute)> _intercomMute{nullptr};
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         std::function<void (int orientation)> _onOrientationChange{nullptr};
         std::function<void (const std::string& oldNetlinx, int oldPort, int oldChannelID, const std::string& oldSurface, bool oldToolbarSuppress, bool oldToolbarForce)> _onSettingsChanged{nullptr};
@@ -894,6 +908,11 @@ class TPageManager : public TAmxCommands
         void doLPC(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doLPR(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doLPS(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+
+        void getMODEL(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doICS(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doICE(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doICM(int port, std::vector<int>& channels, std::vector<std::string>& pars);
 
 #ifndef _NOSIP_
         void doPHN(int port, std::vector<int>& channels, std::vector<std::string>& pars);

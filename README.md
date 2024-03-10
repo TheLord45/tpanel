@@ -55,3 +55,6 @@ If everything compiled successful and installed, you can start the application. 
 
 - [Compile for Android](https://github.com/TheLord45/tpanel/blob/main/documentation/build_android.md)
 - [Compile for iOS](https://github.com/TheLord45/tpanel/blob/main/documentation/build_ios.md)
+
+# TPDesign 4 and 5
+**TPanel** supports currently TP4 files only. This will change with one of the next versions. Then **TPanel** will support TP5 also. To be able to unarchive TP4 and TP5 files look at [fsfreader](https://github.com/TheLord45/fsfreader). This little tool can read the files produced by TPDesign4 or TPDesign5. The file format is an archive format containing a lot of configuration files and of course the resources like images, fonts and sounds. Especially if you run **TPanel** on a desktop or laptop you may find this tool useful. Or if you be just inquisitive.

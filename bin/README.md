@@ -4,10 +4,15 @@ Because *github* doesn't allow files grater than 100 Mb. in size, I can not put 
 binary into this repository. Instead you can download it from my server. Klick on the following
 link to get the latest binary for Android:
 
-Latest **TPanel** version: [tpanel_android_v1.4.0b1](https://www.theosys.at/download/tpanel_android_v1.4.0b1.apk)
+Latest **TPanel** version: [tpanel_android_v1.4.1b2](https://www.theosys.at/download/tpanel_android_v1.4.1b2.apk)
 
 Older versions
 --------------
+* [tpanel_android_v1.4.1b1](https://www.theosys.at/download/tpanel_android_v1.4.1b1.apk)
+* [tpanel_android_v1.4.0](https://www.theosys.at/download/tpanel_android_v1.4.0.apk)
+* [tpanel_android_v1.4.0b3](https://www.theosys.at/download/tpanel_android_v1.4.0b3.apk)
+* [tpanel_android_v1.4.0b2](https://www.theosys.at/download/tpanel_android_v1.4.0b2.apk)
+* [tpanel_android_v1.4.0b1](https://www.theosys.at/download/tpanel_android_v1.4.0b1.apk)
 * [tpanel_android_v1.3.2](https://www.theosys.at/download/tpanel_android_v1.3.2.apk)
 * [tpanel_android_v1.3.2b8](https://www.theosys.at/download/tpanel_android_v1.3.2b8.apk)
 * [tpanel_android_v1.3.2b7](https://www.theosys.at/download/tpanel_android_v1.3.2b7.apk)

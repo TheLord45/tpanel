@@ -28,13 +28,13 @@
 class TMap : public TValidateFile
 {
     public:
-        TMap(const std::string &file);
+        TMap(const std::string &file, bool tp=false);
 
         typedef enum MAP_TYPE
         {
             TYPE_CM = 1,    // ON / OFF
             TYPE_AM,        // TXT, ...
-            TYPE_LM        // Bargraphs
+            TYPE_LM         // Bargraphs
         }MAP_TYPE;
 
         typedef struct MAP_T
@@ -60,9 +60,10 @@ class TMap : public TValidateFile
             int sl{0};
             std::string pn;     // page name
             std::string bn;     // button name
+            int rc{0};          // Only TP5
         }MAP_BM_T;
 
-        typedef struct MAP_PM_T
+        typedef struct MAP_PM_T     // Only TP4
         {
             int a{0};
             std::string t;      // Group name
@@ -71,6 +72,16 @@ class TMap : public TValidateFile
             std::string pn;     // page name
             std::string bn;     // button name
         }MAP_PM_T;
+
+        typedef struct MAP_EVPF_T   // Only TP5
+        {
+            int a{0};
+            std::string t;      // Group name
+            int pg{0};          // page number
+            int bt{0};          // button number
+            std::string ev;
+            int ai{0};
+        }MAP_EVPF_T;
 
         typedef struct MAPS_T
         {
@@ -81,6 +92,7 @@ class TMap : public TValidateFile
             std::vector<std::string> map_sm;    // sound file names
             std::vector<MAP_T> map_strm;        // System resources
             std::vector<MAP_PM_T> map_pm;       // Button -> text
+            std::vector<MAP_EVPF_T> map_evpf;   // Only TP5
         }MAPS_T;
 
         std::vector<MAP_T> findButtons(int port, std::vector<int>& channels, MAP_TYPE mt = TYPE_AM);
@@ -100,6 +112,7 @@ class TMap : public TValidateFile
         std::string mFile;
         MAPS_T mMap;
         bool mError{false};
+        bool mIsTP5{false};
 };
 
 #endif

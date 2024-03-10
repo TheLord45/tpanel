@@ -473,6 +473,16 @@ size_t TButton::initialize(TExpat *xml, size_t index)
                     bsr.bm = content;
                     bsr.dynamic = ((xml->getAttributeInt("dynamic", attrs) == 1) ? true : false);
                 }
+                else if (e.compare("bitmapEntry") == 0) // G5 start of bitmap table
+                {
+                    string fname;
+
+                    while ((index = xml->getNextElementFromIndex(index, &fname, &content, &attrs)) != TExpat::npos)
+                    {
+                        if (fname.compare("fileName") == 0)
+                            bsr.bitmaps.push_back(content);
+                    }
+                }
                 else if (e.compare("sd") == 0)      // Sound file
                     bsr.sd = content;
                 else if (e.compare("sb") == 0)      // index external graphic
@@ -495,6 +505,10 @@ size_t TButton::initialize(TExpat *xml, size_t index)
                     bsr.fi = xml->convertElementToInt(content);
                 else if (e.compare("te") == 0)      // Text
                     bsr.te = content;
+                else if (e.compare("ff") == 0)      // G5 font file name
+                    bsr.ff = content;
+                else if (e.compare("fs") == 0)      // G5 font size
+                    bsr.fs = xml->convertElementToInt(content);
                 else if (e.compare("jt") == 0)      // Text orientation
                     bsr.jt = (TEXT_ORIENTATION)xml->convertElementToInt(content);
                 else if (e.compare("tx") == 0)      // Absolute text position X
@@ -5417,16 +5431,32 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
         return true;
     }
 
-    MSG_DEBUG("Searching for font number " << sr[instance].fi << " with text " << sr[instance].te);
-    FONT_T font = mFonts->getFont(sr[instance].fi);
+    sk_sp<SkTypeface> typeFace;
+    FONT_T font;
 
-    if (font.file.empty())
+    if (gPageManager && !gPageManager->getSettings()->isTP5())
     {
-        MSG_WARNING("No font file name found for font " << sr[instance].fi);
-        return true;
+        MSG_DEBUG("Searching for font number " << sr[instance].fi << " with text " << sr[instance].te);
+        font = mFonts->getFont(sr[instance].fi);
+
+        if (font.file.empty())
+        {
+            MSG_WARNING("No font file name found for font " << sr[instance].fi);
+            return true;
+        }
+
+        typeFace = mFonts->getTypeFace(sr[instance].fi);
+    }
+    else
+    {
+        MSG_DEBUG("Searching for font " << sr[instance].ff << " with size " << sr[instance].fs << " and text " << sr[instance].te);
+        font.file = sr[instance].ff;
+        font.size = sr[instance].fs;
+        typeFace = mFonts->getTypeFace(sr[instance].ff);
+        SkString family;
+        font.fullName = font.name = sr[instance].ff;
     }
 
-    sk_sp<SkTypeface> typeFace = mFonts->getTypeFace(sr[instance].fi);
     SkCanvas canvas(*bm);
 
     if (!typeFace)

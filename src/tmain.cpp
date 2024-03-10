@@ -41,6 +41,8 @@ using std::cerr;
 using std::endl;
 
 bool _restart_ = false;
+std::string realPrgName;
+
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
 extern std::atomic<bool> killed;
 extern std::atomic<bool> _netRunning;
@@ -274,6 +276,7 @@ int main(int argc, char *argv[])
     string configFile;
     string testPath;
     int oldArgc = argc;
+    realPrgName = *argv;
 #if not defined(Q_OS_ANDROID) && not defined(Q_OS_IOS)
     string pname = *argv;
     size_t pos = pname.find_last_of("/");

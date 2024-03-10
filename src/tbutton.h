@@ -202,6 +202,7 @@ namespace Button
         std::string ct;         // Text Color
         std::string ec;         // Text effect color
         std::string bm;         // bitmap file name
+        std::vector<std::string> bitmaps;   // G5 table of bitmaps
         std::string sd;         // Sound file to play
         int bm_width{0};        // Width of image
         int bm_height{0};       // Height of image
@@ -219,6 +220,8 @@ namespace Button
         TEXT_ORIENTATION jt{ORI_CENTER_MIDDLE}; // Text orientation
         int tx{0};              // Text X position
         int ty{0};              // Text Y position
+        std::string ff;         // G5 font file name
+        int fs{0};              // G5 font size
         int ww{0};              // line break when 1
         int et{0};              // Text effect (^TEF)
         int oo{-1};             // Over all opacity

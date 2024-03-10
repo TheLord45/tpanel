@@ -18,13 +18,14 @@
 
 #include <chrono>
 #include <thread>
+#include <cstring>
+#include <sstream>
 
 #include "tsocket.h"
 #include "terror.h"
 #include "tconfig.h"
 #include "texcept.h"
 
-#include <string.h>
 #include <strings.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -39,14 +40,20 @@
 #include <arpa/inet.h>
 #include <signal.h>
 #include <poll.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
+#include <ifaddrs.h>
 
 using std::string;
+using std::stringstream;
 
 int _cert_callback(int preverify_ok, X509_STORE_CTX *ctx);
 
 TSocket::TSocket()
 {
     DECL_TRACER("TSocket::TSocket()")
+
+    getHost();
 }
 
 TSocket::TSocket(const string& host, int port)
@@ -55,6 +62,7 @@ TSocket::TSocket(const string& host, int port)
 
     mHost = host;
     mPort = port;
+    getHost();
 }
 
 TSocket::~TSocket()
@@ -64,6 +72,21 @@ TSocket::~TSocket()
     close();
 }
 
+bool TSocket::getHost()
+{
+    DECL_TRACER("TSocket::getHost()");
+
+    char host[4096];
+
+    if (gethostname(host, sizeof(host)))
+    {
+        MSG_ERROR("Error getting host name!");
+        return false;
+    }
+
+    mMyHostName.assign(host);
+    return true;
+}
 
 bool TSocket::connect(bool encrypt)
 {
@@ -143,6 +166,7 @@ bool TSocket::connect(bool encrypt)
         }
     }
 
+
     if (ainfo && ainfo->ai_family == AF_INET)
     {
         char str[INET_ADDRSTRLEN];
@@ -150,6 +174,7 @@ bool TSocket::connect(bool encrypt)
         socklen_t len = sizeof(addr);
         getsockname(sock, (struct sockaddr *)&addr, &len);
         mMyIP.assign(inet_ntop(AF_INET, &(addr.sin_addr), str, INET_ADDRSTRLEN));
+        determineNetmask(sock);
     }
     else
     {
@@ -158,6 +183,7 @@ bool TSocket::connect(bool encrypt)
         socklen_t len = sizeof(addr);
         getsockname(sock, (struct sockaddr *)&addr, &len);
         mMyIP.assign(inet_ntop(AF_INET6, &(addr.sin6_addr), str, INET6_ADDRSTRLEN));
+        determineNetmask(sock);
     }
 
     MSG_DEBUG("Client IP: " << mMyIP);
@@ -556,7 +582,11 @@ struct addrinfo *TSocket::lookup_host (const string& host, int port)
     hints.ai_family = AF_INET;
     hints.ai_protocol = IPPROTO_TCP;
     hints.ai_socktype = SOCK_STREAM;
+#ifdef __POSIX__
+    hints.ai_flags = AI_CANONNAME | AI_CANONIDN;
+#else
     hints.ai_flags = AI_CANONNAME;
+#endif
     snprintf(sport, sizeof(sport), "%d", port);
     int ret = 0;
 
@@ -566,7 +596,97 @@ struct addrinfo *TSocket::lookup_host (const string& host, int port)
         return nullptr;
     }
 
+    if (res->ai_canonname)
+    {
+        MSG_DEBUG("Canonical name: " << res->ai_canonname);
+    }
+
     return res;
+}
+
+bool TSocket::determineNetmask(int socket)
+{
+    DECL_TRACER("TSocket::determineNetmask(int socket)");
+
+    struct ifaddrs *ifaddr;
+    char str[INET6_ADDRSTRLEN];
+    int s, family;
+    char host[NI_MAXHOST];
+
+    if (getifaddrs(&ifaddr) == -1)
+    {
+        MSG_ERROR("Error getting devices: " << strerror(errno));
+        return false;
+    }
+
+    for (struct ifaddrs *ifa = ifaddr; ifa != nullptr; ifa = ifa->ifa_next)
+    {
+        if (ifa->ifa_addr == nullptr)
+            continue;
+
+        family = ifa->ifa_addr->sa_family;
+        size_t addrSize = family == AF_INET ? sizeof(struct sockaddr_in) : sizeof(sockaddr_in6);
+
+        if (family != AF_INET && family != AF_INET6)
+            continue;
+
+        s = getnameinfo(ifa->ifa_addr, addrSize, host, NI_MAXHOST, nullptr, 0, NI_NUMERICHOST);
+
+        if (s != 0)
+        {
+            MSG_ERROR("Nameinfo failed: " << gai_strerror(s));
+            freeifaddrs(ifaddr);
+            return false;
+        }
+
+        MSG_DEBUG("Comparing \"" << host << "\" with \"" << mMyIP << "\"");
+
+        if (mMyIP.compare(host) == 0)
+        {
+            struct ifreq ninfo;
+
+            MSG_DEBUG("Device: " << ifa->ifa_name);
+            memset(&ninfo, 0, sizeof(ninfo));
+#ifdef __POSIX__
+            strncpy(ninfo.ifr_ifrn.ifrn_name, ifa->ifa_name, IFNAMSIZ);
+            ninfo.ifr_ifrn.ifrn_name[IFNAMSIZ-1] = 0;
+#else
+            strncpy(ninfo.ifr_name, ifa->ifa_name, IFNAMSIZ);
+            ninfo.ifr_name[IFNAMSIZ-1] = 0;
+#endif
+            if (ioctl(socket, SIOCGIFNETMASK, &ninfo))
+            {
+                MSG_ERROR("Error getting netmask: " << strerror(errno));
+                freeifaddrs(ifaddr);
+                return false;
+            }
+            else
+            {
+                if (family == AF_INET)
+                {
+                    stringstream str;
+                    int mask = ((struct sockaddr_in *)&ninfo.ifr_addr)->sin_addr.s_addr;
+
+                    str << (mask & 0xff) << "." << ((mask >> 8) & 0xff) << "." << ((mask >> 16) & 0xff) << "." << ((mask >> 24) & 0xff);
+                    mMyNetmask = str.str();
+                }
+                else
+                {
+                    const char *had = nullptr;
+
+                    had = inet_ntop(AF_INET6, ((struct sockaddr_in6 *)&ninfo.ifr_addr)->sin6_addr.s6_addr, str, INET6_ADDRSTRLEN);
+                    mMyNetmask.assign(had);
+                }
+
+                MSG_DEBUG("Netmask: " << mMyNetmask);
+                freeifaddrs(ifaddr);
+                return true;
+            }
+        }
+    }
+
+    freeifaddrs(ifaddr);
+    return false;
 }
 
 void TSocket::initSSL()

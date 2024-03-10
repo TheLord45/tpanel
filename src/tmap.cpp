@@ -43,10 +43,11 @@ using std::string;
 using std::vector;
 using namespace Expat;
 
-TMap::TMap(const std::string& file)
-    : mFile(file)
+TMap::TMap(const std::string& file, bool tp)
+    : mFile(file),
+      mIsTP5(tp)
 {
-    DECL_TRACER("TMap::TMap(std::string& file)");
+    DECL_TRACER("TMap::TMap(std::string& file, bool tp)");
 
     if (!fs::exists(file))
     {
@@ -64,7 +65,16 @@ bool TMap::readMap()
     DECL_TRACER("TMap::readMap()");
 
     string path = makeFileName(mFile, "map.xma");
-    vector<string> elements = { "cm", "am", "lm", "bm", "sm", "strm", "pm" };
+    vector<string> elements = { "cm", "am", "lm", "bm" };
+
+    if (mIsTP5)
+        elements.push_back("evpf");
+    else
+    {
+        elements.push_back("sm");
+        elements.push_back("strm");
+        elements.push_back("pm");
+    }
 
     if (!isValidFile())
     {
@@ -97,6 +107,7 @@ bool TMap::readMap()
         MAP_T map;
         MAP_BM_T mapBm;
         MAP_PM_T mapPm;
+        MAP_EVPF_T mapEvpf;
         string name, content;
 
         while ((index = xml.getNextElementFromIndex(index, &name, nullptr, nullptr)) != TExpat::npos)
@@ -151,6 +162,8 @@ bool TMap::readMap()
                                 mapBm.pn = content;
                             else if (im.compare("bn") == 0)
                                 mapBm.bn = content;
+                            else if (im.compare("rc") == 0)
+                                mapBm.rc = xml.convertElementToInt(content);
 
                             oldIndex = index;
                         }
@@ -180,6 +193,21 @@ bool TMap::readMap()
                         else if (e.compare("bn") == 0)
                             mapPm.bn = content;
                     }
+                    else if (mapIter->compare("evpf") == 0)
+                    {
+                        if (e.compare("a") == 0)
+                            mapEvpf.a = xml.convertElementToInt(content);
+                        else if (e.compare("t") == 0)
+                            mapEvpf.t = content;
+                        else if (e.compare("pg") == 0)
+                            mapEvpf.pg = xml.convertElementToInt(content);
+                        else if (e.compare("bt") == 0)
+                            mapEvpf.bt = xml.convertElementToInt(content);
+                        else if (e.compare("ev") == 0)
+                            mapEvpf.ev = content;
+                        else if (e.compare("ai") == 0)
+                            mapEvpf.ai = xml.convertElementToInt(content);
+                    }
 
                     oldIndex = index;
                 }
@@ -194,6 +222,8 @@ bool TMap::readMap()
                     mMap.map_strm.push_back(map);
                 else if (mapIter->compare("pm") == 0)
                     mMap.map_pm.push_back(mapPm);
+                else if (mapIter->compare("evpf") == 0)
+                    mMap.map_evpf.push_back(mapEvpf);
 
                 if (index == TExpat::npos)
                     index = oldIndex + 1;
@@ -371,6 +401,9 @@ vector<string> TMap::findSounds()
 bool TMap::soundExist(const string& sname)
 {
     DECL_TRACER("TAmxCommands::soundExist(const string sname)");
+
+    if (mIsTP5)
+        return false;
 
     if (mMap.map_sm.size() == 0)
         return false;

@@ -1120,6 +1120,15 @@ void TAmxNet::handle_read(size_t n, R_TOKEN tk)
 
                 break;
 
+                case 0x020d:    // request network information
+                    s.MC = 0x020e;
+                    s.channel = 0;
+                    s.level = 0;
+                    s.port = 0;
+                    s.value = 0;
+                    sendCommand(s);
+                break;
+
                 case 0x0501:    // ping
                     comm.data.chan_state.device = makeWord(buff_[0], buff_[1]);
                     comm.data.chan_state.system = makeWord(buff_[2], buff_[3]);
@@ -1422,6 +1431,74 @@ bool TAmxNet::sendCommand(const ANET_SEND& s)
             com.hlen = 0x0016 - 3 + len;
             comStack.push_back(com);
             mSendReady = true;
+        break;
+
+        case 0x020c:
+        case 0x020e:
+        {
+            if (!mSocket)
+                break;
+
+            string host = mSocket->getMyHostName();
+            string netmask = mSocket->getMyNetmask();
+            string ip = mSocket->getMyIP();
+
+            size_t total = host.length() + 1 + netmask.length() + 1 + ip.length() + 1 + 1;
+
+            MSG_DEBUG("Host name (" << host.length() << "): " << host);
+            MSG_DEBUG("Host IP (" << ip.length() << "): " << ip);
+            MSG_DEBUG("Netmask (" << netmask.length() << "): " << netmask);
+            MSG_DEBUG("Total length: " << total);
+
+            if (total >= sizeof(com.data.network.data))
+            {
+                MSG_WARNING("Not enough space for sending network information!");
+                break;
+            }
+
+            memset(com.data.network.data, 0, sizeof(com.data.network.data));
+
+            com.data.network.bf = 0;    // Satic IP address
+            size_t pos = 0;
+
+            if (!host.empty())
+            {
+                pos = host.length();
+                memcpy(com.data.network.data, host.c_str(), host.length());
+                *(com.data.network.data+pos) = 0;
+            }
+
+            pos++;
+
+            if (!ip.empty())
+            {
+                memcpy(com.data.network.data+pos, ip.c_str(), ip.length());
+                pos += ip.length();
+                *(com.data.network.data+pos) = 0;
+            }
+
+            pos++;
+
+            if (!netmask.empty())
+            {
+                memcpy(com.data.network.data+pos, netmask.c_str(), netmask.length());
+                pos += netmask.length();
+                *(com.data.network.data+pos) = 0;
+            }
+
+            pos += 2;
+
+            if (TStreamError::checkFilter(HLOG_DEBUG))
+            {
+                MSG_DEBUG("Counted length: " << pos);
+                TError::logHex(com.data.network.data, total);
+            }
+
+            com.data.network.len = total;
+            com.hlen = 0x0016 - 3 + total + 1;
+            comStack.push_back(com);
+            mSendReady = true;
+        }
         break;
 
         case 0x0581:        // Pong
@@ -2127,7 +2204,7 @@ void TAmxNet::start_write()
                 continue;
             }
 
-            MSG_DEBUG("Wrote buffer with " << (mSend.hlen + 4) << " bytes.");
+            MSG_DEBUG("Wrote buffer with token 0x" << std::setw(4) << std::setfill('0') << std::hex << mSend.MC << " and " << std::setw(0) << std::setfill(' ') << std::dec << (mSend.hlen + 4) << " bytes.");
             mSocket->send((char *)buf, mSend.hlen + 4);
             delete[] buf;
         }
@@ -2644,6 +2721,16 @@ unsigned char *TAmxNet::makeBuffer(const ANET_COMMAND& s)
             }
 
             *(buf + pos) = calcChecksum(buf, pos);
+            valid = true;
+        break;
+
+        case 0x020c:
+        case 0x020e:
+            *(buf+22) = s.data.network.bf;
+            pos = 23;
+            memcpy(buf+pos, s.data.network.data, s.data.network.len);
+            pos += s.data.network.len;
+            *(buf+pos) = calcChecksum(buf, pos);
             valid = true;
         break;
 

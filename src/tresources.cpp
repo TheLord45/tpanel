@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2024 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -731,7 +731,7 @@ vector<string> splitLine(const string& str, int width, int height, SkFont& font,
     if (str.empty())
         return lines;
 
-    words = StrSplit(str, " \n");
+    words = StrSplit(str, " ");
     MSG_DEBUG("Found " << words.size() << " words.");
     vector<string>::iterator iter;
 
@@ -749,7 +749,7 @@ vector<string> splitLine(const string& str, int width, int height, SkFont& font,
         {
             size_t pos = 0;
 
-            if ((pos = iter->find("|")) != string::npos && pos > 0)
+            if (((pos = iter->find("|")) != string::npos || (pos = iter->find("\n")) != string::npos) && pos > 0)
             {
                 string left = iter->substr(0, pos);
                 string right = iter->substr(pos);
@@ -774,7 +774,7 @@ vector<string> splitLine(const string& str, int width, int height, SkFont& font,
         size_t pos;
         bool lineBreak = false;
 
-        if ((pos = iter->find("|")) != string::npos)
+        if ((pos = iter->find("|")) != string::npos || (pos = iter->find("\n")) != string::npos)
         {
             *iter = iter->substr(1);
             lineBreak = true;
@@ -808,7 +808,7 @@ vector<string> splitLine(const string& str, int width, int height, SkFont& font,
                         lines.push_back(sample.substr(0, sample.length() - 1)); // Cut off the last character because it is already out of bounds.
                         start = i;                                              // Set the new start of the string
                         i--;                                                    // We must repeat the last character
-                        p = 0;                                                // Reset the pition counter
+                        p = 0;                                                  // Reset the position counter
                         sample = sample.substr(sample.length() - 1);            // Put the last character into the part.
 
                         if (lines.size() >= (size_t)maxLines)                   // Break if we've reached the maximum of lines
@@ -989,6 +989,32 @@ uint32_t getUint32(const unsigned char *p, bool big_endian)
     }
 
     return num;
+}
+
+unsigned char *uint16ToBytes(uint16_t num, unsigned char* bytes)
+{
+    unsigned char *bt = bytes;
+
+    if (!bytes)
+        bt = new unsigned char[2];
+
+    *bt = num >> 8;
+    *(bt+1) = num;
+    return bt;
+}
+
+unsigned char * uint32ToBytes(uint16_t num, unsigned char* bytes)
+{
+    unsigned char *bt = bytes;
+
+    if (!bytes)
+        bt = new unsigned char[4];
+
+    *bt = num >> 24;
+    *(bt+1) = num >> 16;
+    *(bt+2) = num >> 8;
+    *(bt+3) = num;
+    return bt;
 }
 
 string UnicodeToUTF8(const wstring& ws)

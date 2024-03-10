@@ -47,6 +47,8 @@ typedef unsigned short          ushort;         /* Sys V compatibility */
 typedef unsigned int            uint;           /* Sys V compatibility */
 #endif
 
+extern std::string realPrgName;
+
 /**
  * @brief The TConfig class manages the configurations.
  *

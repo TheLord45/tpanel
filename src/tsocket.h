@@ -39,6 +39,8 @@ class TSocket
         bool close();
         bool isConnected() { return mConnected; }
         std::string& getMyIP() { return mMyIP; }
+        std::string& getMyHostName() { return mMyHostName; }
+        std::string& getMyNetmask() { return mMyNetmask; }
         int retrieveSSLerror(int rcode) { return SSL_get_error(mSsl, rcode); }
         int getSocket() { return mSockfd; }
 
@@ -50,6 +52,8 @@ class TSocket
         SSL_CTX *initCTX();
         void log_ssl_error();
         bool isSockValid();
+        bool getHost();
+        bool determineNetmask(int socket);
 
     private:
         std::string mHost;
@@ -63,6 +67,8 @@ class TSocket
         std::string mUser;
         std::string mPassword;
         std::string mMyIP;
+        std::string mMyHostName;
+        std::string mMyNetmask;
 };
 
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 to 2023 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2018 to 2024 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -257,6 +257,13 @@ namespace amx
         }
     } ANET_BLINK;
 
+    typedef struct ANET_NETWORK     // Setting the IP address, subnet mask and gateway of the Ethernet interface of the unit.
+    {
+        unsigned char bf;
+        char data[1024];
+        size_t len;
+    }ANET_NETWORK;
+
     typedef struct ANET_FILETRANSFER    // File transfer
     {
         uint16_t ftype;         // 0 = not used, 1=IR, 2=Firmware, 3=TP file, 4=Axcess2
@@ -288,6 +295,7 @@ namespace amx
         ANET_ADEVINFO srDeviceInfo;     // send/receive device info
         ANET_CUSTOM customEvent;
         ANET_BLINK blinkMessage;
+        ANET_NETWORK network;
         ANET_FILETRANSFER filetransfer;
     } ANET_DATA;
 

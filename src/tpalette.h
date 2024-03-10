@@ -41,8 +41,8 @@ typedef struct PDATA_T
 class TPalette : public TValidateFile
 {
     public:
-        TPalette();
-        TPalette(const std::string& file);
+        TPalette(bool tp=false);
+        TPalette(const std::string& file, bool tp=false);
         ~TPalette();
 
         void initialize(const std::string& file);
@@ -57,6 +57,7 @@ class TPalette : public TValidateFile
         std::string mPath;
         std::map<std::string, PDATA_T> mColors;
         std::vector<std::string> mPaletteNames;
+        bool mIsTP5{false};
 };
 
 #endif

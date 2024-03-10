@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2024 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -768,7 +768,7 @@ TStreamError *TError::Current(threadID_t tid)
     return Current();
 }
 
-void TError::logHex(char* str, size_t size)
+void TError::logHex(const char* str, size_t size)
 {
     if (!str || !size)
         return;

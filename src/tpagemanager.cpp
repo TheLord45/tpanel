@@ -803,7 +803,7 @@ TPageManager::TPageManager()
     readMap();  // Start the initialisation of the AMX part.
 
     gPrjResources = new TPrjResources(mTSettings->getResourcesList());
-    mPalette = new TPalette();
+    mPalette = new TPalette(mTSettings->isTP5());
     vector<PALETTE_SETUP> pal = mTSettings->getSettings().palettes;
 
     if (pal.size() > 0)
@@ -817,18 +817,21 @@ TPageManager::TPageManager()
     if (!TError::isError())
         TColor::setPalette(mPalette);
 
-    mFonts = new TFont();
+    mFonts = new TFont(mTSettings->getFontFileName(), mTSettings->isTP5());
 
     if (TError::isError())
     {
         MSG_ERROR("Initializing fonts was not successfull!");
     }
 
-    gIcons = new TIcons();
-
-    if (TError::isError())
+    if (!mTSettings->isTP5())
     {
-        MSG_ERROR("Initializing icons was not successfull!");
+        gIcons = new TIcons();
+
+        if (TError::isError())
+        {
+            MSG_ERROR("Initializing icons was not successfull!");
+        }
     }
 
     mPageList = new TPageList();
@@ -1026,6 +1029,11 @@ TPageManager::TPageManager()
     REG_CMD(doTKP, "^TKP");     // G5: Bring up a telephone keypad.
     REG_CMD(doTKP, "@VKB");     // Present a virtual keyboard
     REG_CMD(doTKP, "^VKB");     // G5: Bring up a virtual keyboard.
+    // Audio communication
+    REG_CMD(getMODEL, "^MODEL?"); // Panel model name.
+    REG_CMD(doICS, "^ICS");     // Intercom start
+    REG_CMD(doICE, "^ICE");     // Intercom end
+    REG_CMD(doICM, "^ICM");     // Intercom modify command
 #ifndef _NOSIP_
     // Here the SIP commands will take place
     REG_CMD(doPHN, "^PHN");     // SIP commands
@@ -1253,7 +1261,7 @@ void TPageManager::initialize()
     if (mFonts)
         delete mFonts;
 
-    mFonts = new TFont();
+    mFonts = new TFont(mTSettings->getFontFileName(), mTSettings->isTP5());
 
     if (TError::isError())
     {
@@ -11519,6 +11527,127 @@ void TPageManager::doVKB(int port, vector<int>& channels, vector<string>& pars)
 
     doAKP(port, channels, pars);
 }
+
+/**
+ * Panel model name. If the panel supports intercom hardware it will respond
+ * with its model name. Older hardware or newer hardware that has intercom
+ * support disabled with not respond to this command.
+ */
+void TPageManager::getMODEL(int, vector<int>&, vector<string>&)
+{
+    DECL_TRACER("TPageManager::getMODEL(int, vector<int>&, vector<string>&)");
+
+    amx::ANET_SEND scmd;
+    scmd.port = mTSettings->getSettings().voipCommandPort;
+    scmd.channel = TConfig::getChannel();
+#ifdef Q_OS_IOS
+    scmd.msg = "^MODEL-iPhonei";
+#elif defined(Q_OS_ANDROID)
+    scmd.msg = "^MODEL-Androidi";
+#else
+    scmd.msg = TConfig::getPanelType();
+#endif
+    scmd.MC = 0x008c;
+    MSG_DEBUG("Sending model: " << scmd.msg);
+
+    if (gAmxNet)
+        gAmxNet->sendCommand(scmd);
+    else
+        MSG_WARNING("Missing global class TAmxNet. Can't send model type!");
+}
+
+/**
+ * @brief Intercom start.
+ * Starts a call to the specified IP address and ports, where initial mode is
+ * either 1 (talk) or 0 (listen) or 2 (both). If no mode is specified
+ * 0 (listen) is assumed. Please note, however, that no data packets will
+ * actually flow until the intercom modify command is sent to the panel.
+ */
+void TPageManager::doICS(int, vector<int>&, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doICS(int, vector<int>&, vector<string>& pars)");
+
+    if (pars.size() < 3)
+    {
+        MSG_ERROR("Command ICS expects 3 parameters but got only " << pars.size());
+        return;
+    }
+
+    INTERCOM_t ic;
+    ic.ip = pars[0];
+    ic.txPort = atoi(pars[1].c_str());
+    ic.rxPort = atoi(pars[2].c_str());
+    ic.mode = 0;
+
+    if (pars.size() >= 4)
+        ic.mode = atoi(pars[3].c_str());
+
+    if (getInitializeIntercom())
+        getInitializeIntercom()(ic);
+}
+
+/**
+ * @brief Intercom end.
+ * This terminates an intercom call/connection.
+ */
+void TPageManager::doICE(int, vector<int>&, vector<string>&)
+{
+    DECL_TRACER("TPageManager::doICE(int, vector<int>&, vector<string>&)");
+
+    if (_intercomStop)
+        _intercomStop();
+}
+
+/**
+ * Intercom modify command.
+ */
+void TPageManager::doICM(int, vector<int>&, vector<string>& pars)
+{
+    if (pars.empty() || pars[0] == "TALK" || pars[0] == "LISTEN")
+    {
+        if (_intercomStart)
+            _intercomStart();
+    }
+    else if (pars[0] == "MICLEVEL" && pars.size() >= 2)
+    {
+        int micLevel = atoi(pars[1].c_str());
+
+        if (micLevel < 0 || micLevel > 100)
+        {
+            MSG_WARNING("Microphon level is out of range [0 ... 100]: " << micLevel);
+            return;
+        }
+
+        TConfig::saveSystemGain(micLevel);
+
+        if (_intercomMicLevel)
+            _intercomMicLevel(micLevel);
+    }
+    else if (pars[0] == "MUTEMIC" && pars.size() >= 2)
+    {
+        int mute = atoi(pars[1].c_str());
+        bool bmute = mute == 0 ? false : true;
+
+        if (_intercomMute)
+            _intercomMute(bmute);
+    }
+    else if (pars[0] == "SPEAKERLEVEL" && pars.size() >= 2)
+    {
+        int speakerLevel = atoi(pars[1].c_str());
+
+        if (speakerLevel < 0 || speakerLevel > 100)
+        {
+            MSG_WARNING("Speaker level is out of range [0 ... 100]: " << speakerLevel);
+            return;
+        }
+
+        TConfig::saveSystemVolume(speakerLevel);
+
+        if (_intercomSpkLevel)
+            _intercomSpkLevel(speakerLevel);
+    }
+}
+
 #ifndef _NOSIP_
 void TPageManager::sendPHN(vector<string>& cmds)
 {

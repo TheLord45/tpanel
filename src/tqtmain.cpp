@@ -337,6 +337,7 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
  * Qt. Especialy sliding and fading.
  */
 MainWindow::MainWindow()
+    : mIntercom(this)
 {
     DECL_TRACER("MainWindow::MainWindow()");
 
@@ -584,6 +585,12 @@ MainWindow::MainWindow()
     gPageManager->regStartWait(bind(&MainWindow::_startWait, this, std::placeholders::_1));
     gPageManager->regStopWait(bind(&MainWindow::_stopWait, this));
     gPageManager->regPageFinished(bind(&MainWindow::_pageFinished, this, std::placeholders::_1));
+    gPageManager->regInitializeIntercom(bind(&MainWindow::_initializeIntercom, this, std::placeholders::_1));
+    gPageManager->regIntercomStart(bind(&MainWindow::_intercomStart, this));
+    gPageManager->regIntercomStop(bind(&MainWindow::_intercomStop, this));
+    gPageManager->regIntercomSpkLevel(bind(&MainWindow::_intercomSpkLevel, this, std::placeholders::_1));
+    gPageManager->regIntercomMicLevel(bind(&MainWindow::_intercomMicLevel, this, std::placeholders::_1));
+    gPageManager->regIntercomMute(bind(&MainWindow::_intercomMicMute, this, std::placeholders::_1));
     gPageManager->deployCallbacks();
 
     createActions();        // Create the toolbar, if enabled by settings.
@@ -607,6 +614,7 @@ MainWindow::MainWindow()
     qRegisterMetaType<PGSUBVIEWITEM_T>("PGSUBVIEWITEM_T&");
     qRegisterMetaType<PGSUBVIEWATOM_T>("PGSUBVIEWATOM_T");
     qRegisterMetaType<TBitmap>("TBitmap");
+    qRegisterMetaType<INTERCOM_t>("INTERCOM_t");
 
     // All the callback functions doesn't act directly. Instead they emit an
     // event. Then Qt decides whether the real function is started directly and
@@ -654,6 +662,12 @@ MainWindow::MainWindow()
         connect(this, &MainWindow::sigStartWait, this, &MainWindow::startWait);
         connect(this, &MainWindow::sigStopWait, this, &MainWindow::stopWait);
         connect(this, &MainWindow::sigPageFinished, this, &MainWindow::pageFinished);
+        connect(this, &MainWindow::sigInitializeIntercom, this, &MainWindow::initializeIntercom);
+        connect(this, &MainWindow::sigIntercomStart, this, &MainWindow::intercomStart);
+        connect(this, &MainWindow::sigIntercomStop, this, &MainWindow::intercomStop);
+        connect(this, &MainWindow::sigIntercomSpkLevel, this, &MainWindow::intercomSpkLevel);
+        connect(this, &MainWindow::sigIintercomMicLevel, this, &MainWindow::intercomMicLevel);
+        connect(this, &MainWindow::sigIntercomMicMute, this, &MainWindow::intercomMicMute);
         connect(qApp, &QGuiApplication::applicationStateChanged, this, &MainWindow::onAppStateChanged);
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         QScreen *screen = QGuiApplication::primaryScreen();
@@ -3334,6 +3348,48 @@ void MainWindow::_listViewArea(ulong handle, ulong parent, Button::TButton& butt
     emit sigListViewArea(handle, parent, button, list);
 }
 
+void MainWindow::_initializeIntercom(INTERCOM_t ic)
+{
+    DECL_TRACER("MainWindow::_initializeIntercom(INTERCOM_t ic)");
+
+    emit sigInitializeIntercom(ic);
+}
+
+void MainWindow::_intercomStart()
+{
+    DECL_TRACER("MainWindow::_intercomStart()");
+
+    emit sigIntercomStart();
+}
+
+void MainWindow::_intercomStop()
+{
+    DECL_TRACER("MainWindow::_intercomStop()");
+
+    emit sigIntercomStop();
+}
+
+void MainWindow::_intercomSpkLevel(int level)
+{
+    DECL_TRACER("MainWindow::_intercomSpkLevel(int level)");
+
+    emit sigIntercomSpkLevel(level);
+}
+
+void MainWindow::_intercomMicLevel(int level)
+{
+    DECL_TRACER("MainWindow::_intercomMicLevel(int level)");
+
+    emit sigIintercomMicLevel(level);
+}
+
+void MainWindow::_intercomMicMute(bool mute)
+{
+    DECL_TRACER("MainWindow::_intercomMicMute(bool mute)");
+
+    emit sigIntercomMicMute(mute);
+}
+
 void MainWindow::doReleaseButton()
 {
     DECL_TRACER("MainWindow::doReleaseButton()");
@@ -5818,7 +5874,7 @@ void MainWindow::onMediaStatusChanged(QMediaPlayer::MediaStatus status)
 
     switch(status)
     {
-        case QMediaPlayer::NoMedia:         MSG_WARNING("The is no current media."); break;
+        case QMediaPlayer::NoMedia:         MSG_WARNING("There is no current media."); break;
         case QMediaPlayer::LoadingMedia:    MSG_INFO("The current media is being loaded."); break;
         case QMediaPlayer::LoadedMedia:     MSG_INFO("The current media has been loaded."); break;
         case QMediaPlayer::StalledMedia:    MSG_WARNING("Playback of the current media has stalled due to insufficient buffering or some other temporary interruption."); break;
@@ -5838,6 +5894,49 @@ void MainWindow::onPlayerError(QMediaPlayer::Error error, const QString &errorSt
 
     MSG_ERROR("Media player error (" << error << "): " << errorString.toStdString());
 }
+
+void MainWindow::initializeIntercom(INTERCOM_t ic)
+{
+    DECL_TRACER("MainWindow::initializeIntercom(INTERCOM_t ic)");
+
+    mIntercom.setIntercom(ic);
+}
+
+void MainWindow::intercomStart()
+{
+    DECL_TRACER("MainWindow::intercomStart()");
+
+    mIntercom.start();
+}
+
+void MainWindow::intercomStop()
+{
+    DECL_TRACER("MainWindow::intercomStop()");
+
+    mIntercom.stop();
+}
+
+void MainWindow::intercomMicLevel(int level)
+{
+    DECL_TRACER("MainWindow::intercomMicLevel(int level)");
+
+    mIntercom.setMicrophoneLevel(level);
+}
+
+void MainWindow::intercomSpkLevel(int level)
+{
+    DECL_TRACER("MainWindow::intercomSpkLevel(int level)");
+
+    mIntercom.setSpeakerLevel(level);
+}
+
+void MainWindow::intercomMicMute(bool mute)
+{
+    DECL_TRACER("MainWindow::intercomMicMute(bool mute)");
+
+    mIntercom.setMute(mute);
+}
+
 /*
 void MainWindow::playShowList()
 {

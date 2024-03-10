@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2024 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,15 +29,15 @@
 
 typedef struct FONT_T
 {
-    int number;
+    int number{0};
     std::string file;
-    int fileSize;
-    int faceIndex;
+    int fileSize{0};
+    int faceIndex{0};
     std::string name;
     std::string subfamilyName;
     std::string fullName;
-    int size;
-    int usageCount;
+    int size{0};
+    int usageCount{0};
 }FONT_T;
 
 typedef enum FONT_STYLE
@@ -60,7 +60,7 @@ typedef enum FONT_TYPE
 class TFont : public TValidateFile
 {
     public:
-        TFont();
+        TFont(const std::string& fname, bool tp=false);
         ~TFont();
 
         void initialize();
@@ -72,6 +72,8 @@ class TFont : public TValidateFile
         FONT_STYLE getStyle(FONT_T& font);
         SkFontStyle getSkiaStyle(int number);
         sk_sp<SkTypeface> getTypeFace(int number);
+        sk_sp<SkTypeface> getTypeFace(const std::string& ff);
+        void setTP5(bool tp) { mIsTP5 = tp; }
 
         static std::vector<std::string> getFontPathList();
         static SkGlyphID *textToGlyphs(const std::string& str, sk_sp<SkTypeface>& typeFace, size_t *size);
@@ -85,6 +87,8 @@ class TFont : public TValidateFile
         static void _freeCmap();
 
         std::map<int, FONT_T> mFonts;
+        bool mIsTP5{false};
+        std::string mFontFile;
 };
 
 #endif

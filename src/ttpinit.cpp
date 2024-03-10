@@ -118,6 +118,16 @@ void TTPInit::setPath(const string& p)
         createDemoPage();
 }
 
+bool TTPInit::testForTp5()
+{
+    DECL_TRACER("TTPInit::testForTp5()");
+
+    if (mPath.empty())
+        return false;
+
+    return fs::exists(mPath + "/G5Apps.xma");
+}
+
 bool TTPInit::createPanelConfigs()
 {
     DECL_TRACER("TTPInit::createPanelConfigs()");
@@ -2091,7 +2101,14 @@ bool TTPInit::createDirectoryStructure()
         return false;
     }
 
-    if (!fs::exists(mPath + "/__system/graphics/fonts/arial.ttf"))
+    string testPath;
+
+    if (mIsTP5)
+        testPath = "/__system/graphics/borders/BvlDblIM_b.png";
+    else
+        testPath = "/__system/graphics/fonts/arial.ttf";
+
+    if (!fs::exists(testPath))
         mDirStructureCreated = false;
 
     if (mDirStructureCreated)
@@ -2137,20 +2154,26 @@ bool TTPInit::createDirectoryStructure()
     if (!_makeDir(pfad))
         return false;
 
-    pfad = mPath + "/__system/graphics/fonts";
+    if (!mIsTP5)
+    {
+        pfad = mPath + "/__system/graphics/fonts";
 
-    if (!_makeDir(pfad))
-        return false;
+        if (!_makeDir(pfad))
+            return false;
+    }
 
     pfad = mPath + "/__system/graphics/images";
 
     if (!_makeDir(pfad))
         return false;
 
-    pfad = mPath + "/__system/graphics/sounds";
+    if (!mIsTP5)
+    {
+        pfad = mPath + "/__system/graphics/sounds";
 
-    if (!_makeDir(pfad))
-        return false;
+        if (!_makeDir(pfad))
+            return false;
+    }
 
     pfad = mPath + "/__system/graphics/cursors";
 

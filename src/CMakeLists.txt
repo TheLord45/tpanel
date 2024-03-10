@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-project(tpanel VERSION 1.4.0 LANGUAGES CXX)
+project(tpanel VERSION 1.4.1 LANGUAGES CXX)
 
 if(ANDROID)
     message("** Current platform (${ANDROID_ABI}): ${ANDROID_PLATFORM}")
@@ -413,6 +413,8 @@ set(PROJECT_SOURCES
         tqsingleline.h
         tqmultiline.cpp
         tqmultiline.h
+        tqintercom.cpp
+        tqintercom.h
         tqtwait.cpp
         tqtwait.h
         wait.ui
@@ -422,6 +424,8 @@ set(PROJECT_SOURCES
         tbitmap.h
         tintborder.cpp
         tintborder.h
+        tbytearray.cpp
+        tbytearray.h
         tvector.h
         tlock.h
         testmode.cpp

@@ -17,6 +17,7 @@
  */
 
 #include "tprjresources.h"
+#include "tbytearray.h"
 #include "terror.h"
 
 using std::string;
@@ -270,4 +271,20 @@ bool TPrjResources::addResource(const string& name, const string& scheme, const 
 
     itRlist->ressource.push_back(r);
     return true;
+}
+
+string TPrjResources::decryptPassword(const string& pw)
+{
+    DECL_TRACER("TPrjResources::decryptPassword(const string& pw)");
+
+    string erg;
+    size_t len;
+    unsigned char *bytes = TByteArray::hexStrToByte(pw, &len);
+
+    if (bytes == nullptr || (len % 16) != 0)
+        return erg;
+
+    // TODO: Implement DES-CBC algorithm to decrypt
+    erg.assign(reinterpret_cast<char *>(bytes), len);
+    return erg;
 }
