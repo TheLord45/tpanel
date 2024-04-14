@@ -79,6 +79,12 @@ bool TConfig::mTemporary{false};
 bool TConfig::mLogFileEnabled{false};
 std::mutex config_mutex;
 
+typedef struct _APPS_t
+{
+    string appID;       // Name corresponding to G5 apps table
+    string path;        // Path and name of the application
+}_APPS_t;
+
 /**
  * @struct SETTINGS
  * @brief The SETTINGS struct bundles the configuration options.
@@ -104,13 +110,14 @@ struct SETTINGS
 #ifdef QT_DEBUG
     string logLevel{"INFO|WARNING|ERROR|DEBUG"};   //!< The log level(s).
     uint logLevelBits{HLOG_INFO|HLOG_WARNING|HLOG_ERROR|HLOG_DEBUG};//!< The numeric bit field of the loglevel
-#else
+#else   // QT_DEBUG
     string logLevel{"NONE"};   //!< The log level(s).
     uint logLevelBits{HLOG_NONE};//!< The numeric bit field of the loglevel
-#endif
+#endif  // QT_DEBUG
 #else
     string logLevel{"PROTOCOL"};//!< The log level(s).
     uint logLevelBits{HLOG_PROTOCOL};//!< The numeric bit field of the loglevel
+    vector<_APPS_t> apps;
 #endif
     bool longformat{false};     //!< TRUE = long format
     bool noBanner{false};       //!< Startup without showing a banner on the command line.
@@ -1239,6 +1246,24 @@ void TConfig::setSIPstatus(bool state)
     mTemporary = false;
 }
 
+string TConfig::getApp(const string& id)
+{
+    DECL_TRACER("TConfig::getApp(const string& id)");
+
+    if (localSettings.apps.empty())
+        return string();
+
+    vector<_APPS_t>::iterator iter;
+
+    for (iter = localSettings.apps.begin(); iter != localSettings.apps.end(); ++iter)
+    {
+        if (iter->appID == id)
+            return iter->path;
+    }
+
+    return string();
+}
+
 bool TConfig::saveSettings()
 {
     DECL_TRACER("TConfig::saveSettings()");
@@ -1305,6 +1330,15 @@ bool TConfig::saveSettings()
         lines += string("SIP_IPHONE=") + (localSettings.sip_iphone ? "true" : "false") + "\n";
         lines += "SIP_FIREWALL=" + sipFirewallToString(localSettings.sip_firewall) + "\n";
         lines += string("SIP_ENABLED=") + (localSettings.sip_enabled ? "true" : "false") + "\n";
+
+        if (!localSettings.apps.empty())
+        {
+            vector<_APPS_t>::iterator iter;
+
+            for (iter = localSettings.apps.begin(); iter != localSettings.apps.end(); ++iter)
+                lines += "APP=" + iter->appID + ";" + iter->path + "\n";
+        }
+
         file.write(lines.c_str(), lines.size());
         file.close();
         MSG_INFO("Actual log level: " << localSettings.logLevel);
@@ -1711,6 +1745,19 @@ string TConfig::makeConfigDefault(const std::string& log, const std::string& pro
     content += "SIP_FIREWALL=" + sipFirewallToString(localSettings.sip_firewall) + "\n";
     content += "SIP_ENABLED=" + string(localSettings.sip_ipv6 ? "TRUE" : "FALSE") + "\n";
 
+#ifdef __linux__
+    content += string("APP=Calculator;/usr/bin/kcalc\n");
+    content += string("APP=PDF Viewer;/usr/bin/okular\n");
+    content += string("APP=Browser;/usr/bin/firefox\n");
+    content += string("APP=Calendar;/usr/bin/kalendar\n");
+    content += string("APP=Contacts;/usr/bin/kaddressbook\n");
+    content += string("APP=Email;/usr/bin/kmail\n");
+    content += string("APP=FileBrowser;/usr/bin/dolphin\n");
+    content += string("APP=Gallery;/usr/bin/gwenview\n");
+    content += string("APP=Excel Viewer;/usr/bin/libreoffice --calc\n");
+    content += string("APP=PowerPoint Viewer;/usr/bin/libreoffice --impress\n");
+    content += string("APP=Word Viewer;/usr/bin/libreoffice --writer\n");
+#endif
     return content;
 }
 
@@ -2282,6 +2329,18 @@ bool TConfig::readConfig()
                 localSettings.sip_firewall = sipFirewallStrToEnum(right);
             else if (caseCompare(left, "SIP_ENABLED") == 0 && !right.empty())
                 localSettings.sip_enabled = isTrue(right);
+            else if (caseCompare(left, "APP") == 0 && !right.empty())
+            {
+                _APPS_t app;
+                vector<string> parts = StrSplit(right, ";");
+
+                if (parts.size() >= 2)
+                {
+                    app.appID = parts[0];
+                    app.path = parts[1];
+                    localSettings.apps.push_back(app);
+                }
+            }
         }
     }
 
@@ -2357,6 +2416,16 @@ bool TConfig::readConfig()
         MSG_INFO("    SIP Int.Phone:" << (localSettings.sip_iphone ? "YES" : "NO"));
         MSG_INFO("    SIP firewall: " << sipFirewallToString(localSettings.sip_firewall));
         MSG_INFO("    SIP enabled:  " << (localSettings.sip_enabled ? "YES" : "NO"));
+
+        if (!localSettings.apps.empty())
+        {
+            vector<_APPS_t>::iterator iter;
+
+            for (iter = localSettings.apps.begin(); iter != localSettings.apps.end(); ++iter)
+            {
+                MSG_INFO("    Appl.:        " << iter->appID << "; " << iter->path);
+            }
+        }
     }
 
     localSettings_temp = localSettings;

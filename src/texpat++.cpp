@@ -516,6 +516,18 @@ string TExpat::getAttribute(const string& name, vector<ATTRIBUTE_t>& attrs)
     return string();
 }
 
+bool TExpat::getAttributeBool(const string& name, vector<ATTRIBUTE_t>& attrs)
+{
+    DECL_TRACER("TExpat::getAttributeBool(const string& name, vector<ATTRIBUTE_t>& attrs)");
+
+    string b = getAttribute(name, attrs);
+
+    if (b == "true" || b == "True" || b == "TRUE")
+        return true;
+
+    return false;
+}
+
 int TExpat::getAttributeInt(const string& name, vector<ATTRIBUTE_t>& attrs)
 {
     DECL_TRACER("TExpat::getAttributeInt(const string& name, vector<ATTRIBUTE_t>& attrs)");
@@ -542,6 +554,16 @@ double Expat::TExpat::getAttributeDouble(const std::string& name, std::vector<AT
     DECL_TRACER("TExpat::getAttributeDouble(const string& name, vector<ATTRIBUTE_t>& attrs)");
 
     return atof(getAttribute(name, attrs).c_str());
+}
+
+bool TExpat::convertElementToBool(const string& content)
+{
+    DECL_TRACER("TExpat::convertElementToBool(const string& content)");
+
+    if (content == "true" || content == "True" || content == "TRUE")
+        return true;
+
+    return false;
 }
 
 int TExpat::convertElementToInt(const string& content)

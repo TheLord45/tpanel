@@ -78,6 +78,8 @@ using std::ifstream;
 
 #define SYSTEM_DEFAULT      "/.system"
 
+bool TTPInit::mIsTP5 = false;
+
 TTPInit::TTPInit()
 {
     DECL_TRACER("TTPInit::TTPInit()");
@@ -2407,6 +2409,8 @@ bool TTPInit::loadSurfaceFromController(bool force)
         createDemoPage();
         return false;
     }
+
+    mIsTP5 = reader.isTP5();
 
     if (!force || !dir.exists(mPath + "/__system"))
     {

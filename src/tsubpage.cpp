@@ -292,7 +292,7 @@ void TSubPage::initialize()
                 else if (ename.compare("ww") == 0)
                     sr.ww = xml.convertElementToInt(content);
                 else if (ename.compare("jt") == 0)
-                    sr.jt = (Button::TEXT_ORIENTATION)xml.convertElementToInt(content);
+                    sr.jt = (Button::ORIENTATION)xml.convertElementToInt(content);
 
                 oldIndex = index;
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2022 to 2024 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -41,6 +41,7 @@ class TFsfReader
 
         bool copyOverFTP(const std::string& fname, const std::string& target);
         bool unpack(const std::string&fname, const std::string& path);
+        bool isTP5() { return tp5Type; }
         static void callbackLog(char *str, void* arg, bool out);
         static void callbackError(char *msg, void *arg, int err);
         static int callbackXfer(off64_t xfered, void *arg);
@@ -51,6 +52,8 @@ class TFsfReader
         ftplib *mFtpLib{nullptr};
         static std::function<int (off64_t xfered)> _progress;
         void logging(int level, const std::string& msg);
+
+        bool tp5Type{false};
 };
 
 #endif

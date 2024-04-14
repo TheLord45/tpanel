@@ -196,6 +196,9 @@ class TConfig
         static void setSIPiphone(bool state);
         static bool getSIPiphone();
 
+        // G5 extensions
+        static std::string getApp(const std::string& id);
+
     private:
         static uint logLevelStrToBits(const std::string& level);
         static std::string logLevelBitsToString(uint level);

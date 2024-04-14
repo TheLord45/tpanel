@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 to 2023 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2022 to 2024 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -181,6 +181,7 @@ bool TFsfReader::unpack(const string& fname, const string& path)
     if (!readtp4.isReady())
         return false;
 
+    tp5Type = readtp4.isTP5();
     // We must delete the old files first
     std::uintmax_t n = fs::remove_all(path);
     MSG_TRACE("Deleted " << n << " files/directories from " << path);

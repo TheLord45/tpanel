@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2022 to 2024 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -242,6 +242,7 @@ namespace reader
             bool isReady();
             bool doRead();
             std::string toHex(int num, int width);
+            bool isTP5() { return tp5Type; }
 
         private:
             void fillBlock(struct BLOCK& bl, const unsigned char *buf);
@@ -258,6 +259,7 @@ namespace reader
             static bool compareManifest(struct MANIFEST& m1, struct MANIFEST& m2);
 
             std::vector<struct MANIFEST> manifest;
+            bool tp5Type{false};
     };
 }
 

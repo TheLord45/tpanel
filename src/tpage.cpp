@@ -238,9 +238,9 @@ void TPage::initialize(const string& nm)
                 else if (ename.compare("ww") == 0)
                     bsr.ww = xml.convertElementToInt(content);
                 else if (ename.compare("jt") == 0)
-                    bsr.jt = (Button::TEXT_ORIENTATION)xml.convertElementToInt(content);
+                    bsr.jt = (Button::ORIENTATION)xml.convertElementToInt(content);
                 else if (ename.compare("jb") == 0)
-                    bsr.jb = (Button::TEXT_ORIENTATION)xml.convertElementToInt(content);
+                    bsr.jb = (Button::ORIENTATION)xml.convertElementToInt(content);
 
                 oldIndex = index;
             }

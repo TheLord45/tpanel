@@ -27,6 +27,8 @@
 #include <QUdpSocket>
 #include <QScopedPointer>
 
+#include "taudioconvert.h"
+
 typedef struct INTERCOM_t
 {
     std::string ip;         // IP address of panel to connect to
@@ -40,7 +42,7 @@ class QBuffer;
 class QTimer;
 class QTimerEvent;
 
-class TMicrophone : public QIODevice
+class TMicrophone : public QIODevice, public TAudioConvert
 {
     public:
         TMicrophone();
@@ -54,15 +56,12 @@ class TMicrophone : public QIODevice
         qint64 bytesAvailable() const override;
         qint64 size() const override { return mBuffer.size(); }
 
-    protected:
-        int8_t uLawEncode(int16_t number);
-
     private:
         qint64 mPos{0};
         QByteArray mBuffer;
 };
 
-class TQIntercom : public QObject
+class TQIntercom : public QObject, public TAudioConvert
 {
     Q_OBJECT
 
@@ -92,8 +91,6 @@ class TQIntercom : public QObject
         void onRecordPermissionGranted();
         void onMicStateChanged(QAudio::State state);
 
-        int16_t uLawDecode(int8_t number);
-        int8_t uLawEncode(int16_t number);
         qreal convertVolume(int volume);
 
     private:

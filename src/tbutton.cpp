@@ -60,6 +60,7 @@
 #include "timgcache.h"
 #include "turl.h"
 #include "tlock.h"
+#include "ttpinit.h"
 #if TESTMODE == 1
 #include "testmode.h"
 #endif
@@ -439,12 +440,45 @@ size_t TButton::initialize(TExpat *xml, size_t index)
         {
             ac_di = xml->getAttributeInt("di", attrs);  // 0 = left to right; 1 = right to left
         }
-        else if (ename.compare("pf") == 0)          // Function call
+        else if (ename.compare("pf") == 0)          // Function call TP4
         {
             PUSH_FUNC_T pf;
             pf.pfName = content;
             pf.pfType = xml->getAttribute("type", attrs);
             pushFunc.push_back(pf);
+        }
+        else if (ename.compare("er") == 0)          // Function call TP5
+        {
+            PUSH_FUNC_T pf;
+            string e;
+
+            while ((index = xml->getNextElementFromIndex(index, &e, &content, &attrs)) != TExpat::npos)
+            {
+                if (e.compare("pgFlip") == 0)
+                {
+                    pf.item = xml->getAttributeInt("item", attrs);
+                    pf.pfType = xml->getAttribute("type", attrs);
+                    pf.pfName = content;
+                    pushFunc.push_back(pf);
+                }
+            }
+        }
+        else if (ename.compare("ep") == 0)          // TP5: Call an application
+        {
+            CALL_APP_t ep;
+            string e;
+
+            while ((index = xml->getNextElementFromIndex(index, &e, &content, &attrs)) != TExpat::npos)
+            {
+                if (e.compare("launch") == 0)
+                {
+                    ep.item = xml->getAttributeInt("item", attrs);
+                    ep.action = xml->getAttribute("action", attrs);
+                    ep.id = xml->getAttributeInt("id", attrs);
+                    ep.name = content;
+                    callApp.push_back(ep);
+                }
+            }
         }
         else if (ename.compare("sr") == 0)          // Section state resources
         {
@@ -476,12 +510,21 @@ size_t TButton::initialize(TExpat *xml, size_t index)
                 else if (e.compare("bitmapEntry") == 0) // G5 start of bitmap table
                 {
                     string fname;
+                    BITMAPS_t bitmapEntry;
 
                     while ((index = xml->getNextElementFromIndex(index, &fname, &content, &attrs)) != TExpat::npos)
                     {
                         if (fname.compare("fileName") == 0)
-                            bsr.bitmaps.push_back(content);
+                            bitmapEntry.fileName = content;
+                        else if (fname.compare("justification") == 0)
+                            bitmapEntry.justification = static_cast<ORIENTATION>(xml->convertElementToInt(content));
+                        else if (fname.compare("offsetX") == 0)
+                            bitmapEntry.offsetX = xml->convertElementToInt(content);
+                        else if (fname.compare("offsetY") == 0)
+                            bitmapEntry.offsetY = xml->convertElementToInt(content);
                     }
+
+                    bsr.bitmaps.push_back(bitmapEntry);
                 }
                 else if (e.compare("sd") == 0)      // Sound file
                     bsr.sd = content;
@@ -510,7 +553,7 @@ size_t TButton::initialize(TExpat *xml, size_t index)
                 else if (e.compare("fs") == 0)      // G5 font size
                     bsr.fs = xml->convertElementToInt(content);
                 else if (e.compare("jt") == 0)      // Text orientation
-                    bsr.jt = (TEXT_ORIENTATION)xml->convertElementToInt(content);
+                    bsr.jt = (ORIENTATION)xml->convertElementToInt(content);
                 else if (e.compare("tx") == 0)      // Absolute text position X
                     bsr.tx = xml->convertElementToInt(content);
                 else if (e.compare("ty") == 0)      // Absolute text position Y
@@ -2965,7 +3008,7 @@ bool TButton::setTextJustificationOnly(int j, int x, int y, int instance)
             if (sr[i].jt != j)
                 mChanged = true;
 
-            sr[i].jt = (TEXT_ORIENTATION)j;
+            sr[i].jt = (ORIENTATION)j;
 
             if (j == 0)
             {
@@ -2979,7 +3022,7 @@ bool TButton::setTextJustificationOnly(int j, int x, int y, int instance)
         if (sr[instance].jt != j)
             mChanged = true;
 
-        sr[instance].jt = (TEXT_ORIENTATION)j;
+        sr[instance].jt = (ORIENTATION)j;
 
         if (j == 0)
         {
@@ -3875,22 +3918,11 @@ void TButton::getDrawOrder(const std::string& sdo, DRAW_ORDER *order)
 
     if (sdo.empty() || sdo.length() != 10)
     {
-/*
- *      The commented out draw order is the default defined by AMX. It has the
- *      the disadvantage that the last drawn border may destroy text and/or the
- *      the icon, if any. It depends which border was selected and about the
- *      size of the border. */
-        *order     = ORD_ELEM_FILL;
-        *(order+1) = ORD_ELEM_BITMAP;
-        *(order+2) = ORD_ELEM_ICON;
-        *(order+3) = ORD_ELEM_TEXT;
-        *(order+4) = ORD_ELEM_BORDER;
-/*
         *order     = ORD_ELEM_FILL;
         *(order+1) = ORD_ELEM_BITMAP;
         *(order+2) = ORD_ELEM_BORDER;
         *(order+3) = ORD_ELEM_ICON;
-        *(order+4) = ORD_ELEM_TEXT; */
+        *(order+4) = ORD_ELEM_TEXT;
         return;
     }
 
@@ -4010,39 +4042,73 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
         SkBitmap imgMask;
         bool haveBothImages = true;
 
-        if (!sr[instance].bm.empty())
+        if (!sr[instance].bm.empty() || (TTPInit::getTP5() && !sr[instance].bitmaps.empty()))
         {
-            if (!TImgCache::getBitmap(sr[instance].bm, &bmBm, _BMTYPE_BITMAP, &sr[instance].bm_width, &sr[instance].bm_height))
+            if (TTPInit::getTP5())
             {
-                sk_sp<SkData> data = readImage(sr[instance].bm);
-                bool loaded = false;
-
-                if (data)
+                if (!buttonBitmap5(&bmBm, instance))
+                    haveBothImages = false;
+                else
                 {
-                    DecodeDataToBitmap(data, &bmBm);
+                    sr[instance].bm_width = bm->info().width();
+                    sr[instance].bm_height = bm->info().height();
 
-                    if (!bmMi.empty())
+                    if (!imgMask.installPixels(bmBm.pixmap()))
                     {
-                        TImgCache::addImage(sr[instance].bm, bmMi, _BMTYPE_BITMAP);
-                        loaded = true;
-                        sr[instance].bm_width = bmBm.info().width();
-                        sr[instance].bm_height = bmBm.info().height();
+                        MSG_ERROR("Error installing pixmap " << sr[instance].bm << " for chameleon image!");
+
+                        if (!allocPixels(imgRed.info().width(), imgRed.info().height(), &imgMask))
+                            return false;
+
+                        imgMask.eraseColor(SK_ColorTRANSPARENT);
+                        haveBothImages = false;
+                    }
+                }
+            }
+            else
+            {
+                if (!TImgCache::getBitmap(sr[instance].bm, &bmBm, _BMTYPE_BITMAP, &sr[instance].bm_width, &sr[instance].bm_height))
+                {
+                    sk_sp<SkData> data = readImage(sr[instance].bm);
+                    bool loaded = false;
+
+                    if (data)
+                    {
+                        DecodeDataToBitmap(data, &bmBm);
+
+                        if (!bmBm.empty())
+                        {
+                            TImgCache::addImage(sr[instance].bm, bmBm, _BMTYPE_BITMAP);
+                            loaded = true;
+                            sr[instance].bm_width = bmBm.info().width();
+                            sr[instance].bm_height = bmBm.info().height();
+                        }
+                    }
+
+                    if (!loaded)
+                    {
+                        MSG_ERROR("Missing image " << sr[instance].bm << "!");
+                        TError::setError();
+                        return false;
                     }
                 }
 
-                if (!loaded)
+                if (!bmBm.empty())
                 {
-                    MSG_ERROR("Missing image " << sr[instance].bm << "!");
-                    TError::setError();
-                    return false;
-                }
-            }
+                    if (!imgMask.installPixels(bmBm.pixmap()))
+                    {
+                        MSG_ERROR("Error installing pixmap " << sr[instance].bm << " for chameleon image!");
 
-            if (!bmBm.empty())
-            {
-                if (!imgMask.installPixels(bmBm.pixmap()))
+                        if (!allocPixels(imgRed.info().width(), imgRed.info().height(), &imgMask))
+                            return false;
+
+                        imgMask.eraseColor(SK_ColorTRANSPARENT);
+                        haveBothImages = false;
+                    }
+                }
+                else
                 {
-                    MSG_ERROR("Error installing pixmap " << sr[instance].bm << " for chameleon image!");
+                    MSG_WARNING("No or invalid bitmap! Ignoring bitmap for cameleon image.");
 
                     if (!allocPixels(imgRed.info().width(), imgRed.info().height(), &imgMask))
                         return false;
@@ -4050,16 +4116,6 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
                     imgMask.eraseColor(SK_ColorTRANSPARENT);
                     haveBothImages = false;
                 }
-            }
-            else
-            {
-                MSG_WARNING("No or invalid bitmap! Ignoring bitmap for cameleon image.");
-
-                if (!allocPixels(imgRed.info().width(), imgRed.info().height(), &imgMask))
-                    return false;
-
-                imgMask.eraseColor(SK_ColorTRANSPARENT);
-                haveBothImages = false;
             }
         }
         else
@@ -4240,6 +4296,185 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
 
     return true;
 }
+
+/**
+ * @brief G5: Put all images together
+ * The method takes all defined images, scales them and put one over the other.
+ * The result could be combinated with an chameleon image, if there is one.
+ *
+ * @param bm        A pointer to the bitmap where the result shuld be drawn.
+ *                  This pointer must not be NULL.
+ * @param instances The instance where the bitmaps should be taken from.
+ */
+bool TButton::buttonBitmap5(SkBitmap* bm, int instance)
+{
+    DECL_TRACER("TButton::buttonBitmap5(SkBitmap* bm, int instance)");
+
+    if (!bm)
+    {
+        MSG_WARNING("Method parameter was NULL!");
+        return false;
+    }
+
+    if (sr[instance].bitmaps.empty())
+        return true;
+
+    vector<BITMAPS_t>::iterator iter;
+
+    for (iter = sr[instance].bitmaps.begin(); iter != sr[instance].bitmaps.end(); ++iter)
+    {
+        SkBitmap bmBm;
+        int width, height;
+
+        if (!TImgCache::getBitmap(iter->fileName, &bmBm, _BMTYPE_BITMAP, &width, &height))
+        {
+            sk_sp<SkData> data = readImage(iter->fileName);
+            bool loaded = false;
+
+            if (data)
+            {
+                DecodeDataToBitmap(data, &bmBm);
+
+                if (!bmBm.empty())
+                {
+                    TImgCache::addImage(iter->fileName, bmBm, _BMTYPE_BITMAP);
+                    loaded = true;
+                }
+            }
+
+            if (!loaded)
+            {
+                MSG_ERROR("Missing image " << iter->fileName << "!");
+                TError::setError();
+                return false;
+            }
+
+            width = bmBm.info().width();
+            height = bmBm.info().height();
+        }
+
+        if (!bmBm.empty())
+        {
+            // Map bitmap
+            SkPaint paint;
+            paint.setBlendMode(SkBlendMode::kSrcOver);
+            SkCanvas can(*bm, SkSurfaceProps());
+            // Scale bitmap
+            if (iter->justification == ORI_SCALE_FIT || iter->justification == ORI_SCALE_ASPECT)
+            {
+                SkBitmap scaled;
+
+                if (!allocPixels(wt, ht, &scaled))
+                {
+                    MSG_ERROR("Error allocating space for a bitmap!");
+                    return false;
+                }
+
+                SkIRect r;
+                r.setSize(scaled.info().dimensions());      // Set the dimensions
+                scaled.erase(SK_ColorTRANSPARENT, r);       // Initialize all pixels to transparent
+                SkCanvas canvas(scaled, SkSurfaceProps());  // Create a canvas
+                SkRect rect;
+
+                if (iter->justification == ORI_SCALE_FIT)   // Scale to fit
+                    rect = SkRect::MakeXYWH(0, 0, wt, ht);
+                else                                        // Scale but maintain aspect ratio
+                {
+                    double dbl = static_cast<double>(width) / static_cast<double>(height);
+
+                    if (static_cast<int>(static_cast<double>(ht) * dbl) <= wt)
+                    {
+                        int w = static_cast<int>(static_cast<double>(ht) * dbl);
+                        rect = SkRect::MakeXYWH((wt - w) / 2, 0, w, ht);
+                    }
+                    else
+                    {
+                        int h = static_cast<int>(static_cast<double>(wt) * dbl);
+                        rect = SkRect::MakeXYWH(0, (ht - h) / 2, wt, h);
+                    }
+                }
+
+                sk_sp<SkImage> im = SkImages::RasterFromBitmap(bmBm);
+                canvas.drawImageRect(im, rect, SkSamplingOptions(), &paint);
+                bmBm = scaled;
+                width = bmBm.info().width();
+                height = bmBm.info().height();
+            }
+
+            // Justify bitmap
+            int x, y;
+
+            switch(iter->justification)
+            {
+                case ORI_ABSOLUT:
+                    x = iter->offsetX;
+                    y = iter->offsetY;
+                break;
+
+                case ORI_BOTTOM_LEFT:
+                    x = 0;
+                    y = ht - height;
+                break;
+
+                case ORI_BOTTOM_MIDDLE:
+                    x = (wt - width) / 2;
+                    y = ht - height;
+                break;
+
+                case ORI_BOTTOM_RIGHT:
+                    x = wt - width;
+                    y = ht -height;
+                break;
+
+                case ORI_CENTER_LEFT:
+                    x = 0;
+                    y = (ht - height) / 2;
+                break;
+
+                case ORI_CENTER_MIDDLE:
+                    x = (wt - width) / 2;
+                    y = (ht - height) / 2;
+                break;
+
+                case ORI_CENTER_RIGHT:
+                    x = wt - width;
+                    y = (ht - height) / 2;
+                break;
+
+                case ORI_TOP_LEFT:
+                    x = 0;
+                    y = 0;
+                break;
+
+                case ORI_TOP_MIDDLE:
+                    x = (wt - width) / 2;
+                    y = 0;
+                break;
+
+                case ORI_TOP_RIGHT:
+                    x = wt - width;
+                    y = 0;
+                break;
+
+                default:
+                    x = 0;
+                    y = 0;
+            }
+
+            SkRect rect = SkRect::MakeXYWH(x, y, width, height);
+            sk_sp<SkImage> im = SkImages::RasterFromBitmap(bmBm);
+            can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
+        }
+        else
+        {
+            MSG_WARNING("No or invalid bitmap!");
+            return false;
+        }
+    }
+
+    return true;
+}
+
 
 bool TButton::buttonDynamic(SkBitmap* bm, int instance, bool show, bool *state)
 {
@@ -6203,7 +6438,7 @@ bool TButton::drawButton(int instance, bool show, bool subview)
                 return false;
             }
         }
-        else if (mDOrder[i] == ORD_ELEM_ICON)
+        else if (!TTPInit::getTP5() && mDOrder[i] == ORD_ELEM_ICON)
         {
             if (!buttonIcon(&imgButton, instance))
             {
@@ -7771,7 +8006,7 @@ POSITION_t TButton::calcImagePosition(int width, int height, CENTER_CODE cc, int
 
     if (TStreamError::checkFilter(HLOG_DEBUG))
     {
-        string format = getFormatString((TEXT_ORIENTATION)code);
+        string format = getFormatString((ORIENTATION)code);
         MSG_DEBUG("Type: " << dbgCC << ", format: " << format <<
             ", PosType=" << code << ", total height=" << ht << ", height object=" << height <<
             ", Position: x=" << position.left << ", y=" << position.top << ", w=" << position.width <<
@@ -7813,7 +8048,7 @@ IMAGE_SIZE_t TButton::calcImageSize(int imWidth, int imHeight, int instance, boo
     return isize;
 }
 
-string TButton::getFormatString(TEXT_ORIENTATION to)
+string TButton::getFormatString(ORIENTATION to)
 {
     DECL_TRACER("TButton::getFormatString(CENTER_CODE cc)");
 

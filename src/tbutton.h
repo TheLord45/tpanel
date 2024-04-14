@@ -74,7 +74,7 @@ namespace Button
         std::string name;
     }SYSTEF_t;
 
-    typedef enum TEXT_ORIENTATION
+    typedef enum ORIENTATION
     {
         ORI_ABSOLUT,
         ORI_TOP_LEFT,
@@ -85,8 +85,10 @@ namespace Button
         ORI_CENTER_RIGHT,
         ORI_BOTTOM_LEFT,
         ORI_BOTTOM_MIDDLE,
-        ORI_BOTTOM_RIGHT
-    } TEXT_ORIENTATION;
+        ORI_BOTTOM_RIGHT,
+        ORI_SCALE_FIT,          // G5 scale to fit
+        ORI_SCALE_ASPECT        // G5 scale maintain aspect ratio
+    }ORIENTATION;
 
     typedef enum TEXT_EFFECT
     {
@@ -189,6 +191,29 @@ namespace Button
         SVP_RIGHT_BOTTOM
     }SUBVIEW_POSITION_t;
 
+    /**
+     * Justification values:
+     *    0 = absolut
+     *    1 = top right
+     *    2 = top middle
+     *    3 = top right
+     *    4 = center left
+     *    5 = center middle (default)
+     *    6 = center right
+     *    7 = bottom left
+     *    8 = bottom middle
+     *    9 = bottom right
+     *   10 = scale to fit (ignore aspect ration)
+     *   11 = scale maintain aspect ratio
+     */
+    typedef struct BITMAPS_t    // G5 bitmap entry
+    {
+        std::string fileName;   // file name of the bitmap (replaces icons)
+        ORIENTATION justification{ORI_CENTER_MIDDLE};   // Justification of bitmap
+        int offsetX{0};         // Absolut X position (only if justification is 0)
+        int offsetY{0};         // Absolut Y position (only if justification is 0)
+    }BITMAPS_t;
+
     typedef struct SR_T
     {
         int number{0};
@@ -202,7 +227,7 @@ namespace Button
         std::string ct;         // Text Color
         std::string ec;         // Text effect color
         std::string bm;         // bitmap file name
-        std::vector<std::string> bitmaps;   // G5 table of bitmaps
+        std::vector<BITMAPS_t> bitmaps;   // G5 table of bitmaps
         std::string sd;         // Sound file to play
         int bm_width{0};        // Width of image
         int bm_height{0};       // Height of image
@@ -217,7 +242,7 @@ namespace Button
         int by{0};              // Absolute image position y
         int fi{0};              // Font index
         std::string te;         // Text
-        TEXT_ORIENTATION jt{ORI_CENTER_MIDDLE}; // Text orientation
+        ORIENTATION jt{ORI_CENTER_MIDDLE}; // Text orientation
         int tx{0};              // Text X position
         int ty{0};              // Text Y position
         std::string ff;         // G5 font file name
@@ -259,9 +284,18 @@ namespace Button
 
     typedef struct PUSH_FUNC
     {
-        std::string pfType; // command to execute when button was pushed
-        std::string pfName; // Name of popup
-    } PUSH_FUNC_T;
+        int item{0};            // TP5: Item number ordered
+        std::string pfType;     // command to execute when button was pushed
+        std::string pfName;     // Name of popup
+    }PUSH_FUNC_T;
+
+    typedef struct CALL_APP     // TP5: Call an application
+    {
+        int item{0};            // Item number
+        std::string action;     // The action to take (show, hide, ...)
+        int id{0};              // An ID for the application
+        std::string name;       // The name of the application (Calculator, ...)
+    }CALL_APP_t;
 
     typedef enum CENTER_CODE
     {
@@ -1316,6 +1350,7 @@ namespace Button
             void getDrawOrder(const std::string& sdo, DRAW_ORDER *order);
             bool buttonFill(SkBitmap *bm, int instance);
             bool buttonBitmap(SkBitmap *bm, int instance);
+            bool buttonBitmap5(SkBitmap *bm, int instance);
             bool buttonDynamic(SkBitmap *bm, int instance, bool show, bool *state=nullptr);
             bool buttonIcon(SkBitmap *bm, int instance);
             bool buttonText(SkBitmap *bm, int instance);
@@ -1330,7 +1365,7 @@ namespace Button
             static THR_REFRESH_t *_findResource(ulong handle, ulong parent, int bi);
             int calcLineHeight(const std::string& text, SkFont& font);
             bool textEffect(SkCanvas *canvas, sk_sp<SkTextBlob>& blob, SkScalar startX, SkScalar startY, int instance);
-            std::string getFormatString(TEXT_ORIENTATION to);
+            std::string getFormatString(ORIENTATION to);
             bool checkForSound();
             bool scaleImage(SkBitmap *bm, double scaleWidth, double scaleHeight);
             bool stretchImageWidth(SkBitmap *bm, int width);
@@ -1430,6 +1465,7 @@ namespace Button
             std::string op;         // String the button send
             bool visible{true};     // TRUE=Button is visible
             std::vector<PUSH_FUNC_T> pushFunc;  // Push functions: This are executed on button press
+            std::vector<CALL_APP_t> callApp;    // TP5: Call an application
             std::vector<SR_T> sr;   // The elements the button consists of
             // ListView settings (G5)
             std::string listSource; // Defines the data source for a list.

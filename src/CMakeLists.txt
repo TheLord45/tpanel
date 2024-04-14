@@ -388,6 +388,8 @@ set(PROJECT_SOURCES
         timgcache.h
         tfsfreader.cpp
         tfsfreader.h
+        tscramble.cpp
+        tscramble.h
         readtp4.cpp
         readtp4.h
         expand.cpp
@@ -415,6 +417,8 @@ set(PROJECT_SOURCES
         tqmultiline.h
         tqintercom.cpp
         tqintercom.h
+        taudioconvert.cpp
+        taudioconvert.h
         tqtwait.cpp
         tqtwait.h
         wait.ui

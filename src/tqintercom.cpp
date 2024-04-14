@@ -170,9 +170,9 @@ void TQIntercom::setIntercom(INTERCOM_t ic)
 
             for (const QAudioDevice &device : audioDevices)
             {
-                MSG_DEBUG("ID: " << device.id().toStdString());
-                MSG_DEBUG("Description: " << device.description().toStdString());
-                MSG_DEBUG("Is default: " << (device.isDefault() ? "Yes" : "No"));
+                MSG_DEBUG("In ID: " << device.id().toStdString());
+                MSG_DEBUG("In Description: " << device.description().toStdString());
+                MSG_DEBUG("In Is default: " << (device.isDefault() ? "Yes" : "No"));
             }
         }
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
@@ -207,9 +207,9 @@ void TQIntercom::setIntercom(INTERCOM_t ic)
 
             for (const QAudioDevice &device : audioDevices)
             {
-                MSG_DEBUG("ID: " << device.id().toStdString());
-                MSG_DEBUG("Description: " << device.description().toStdString());
-                MSG_DEBUG("Is default: " << (device.isDefault() ? "Yes" : "No"));
+                MSG_DEBUG("Out ID: " << device.id().toStdString());
+                MSG_DEBUG("Out Description: " << device.description().toStdString());
+                MSG_DEBUG("Out Is default: " << (device.isDefault() ? "Yes" : "No"));
 
                 if (device.isDefault())
                     mAudioMicDevice = device;
@@ -363,7 +363,7 @@ void TQIntercom::start()
                 {
                     if (!mMicOpen)
                     {
-                        QByteArray buffer(DATA_SIZE, uLawEncode(0));
+                        QByteArray buffer(DATA_SIZE, uLawEncodeDigital(0));
                         QByteArray wbuf(PACKET_SIZE, 0);
                         len = getNextBlock(&wbuf, buffer);
                         MSG_DEBUG("Writing bytes: " << len);
@@ -541,7 +541,7 @@ void TQIntercom::onReadPendingDatagrams()
                 if (i < HEADER_SIZE)
                     continue;
 
-                uint16_t word = uLawDecode(data[i]);
+                uint16_t word = muLawToLinear(data[i]);
                 uint8_t hbyte = word >> 8;
                 uint8_t lbyte = word;
                 mReadBuffer.append(hbyte);
@@ -667,55 +667,6 @@ void TQIntercom::socketErrorMessages(QAbstractSocket::SocketError socketError, c
     }
 }
 
-int16_t TQIntercom::uLawDecode(int8_t number)
-{
-//    DECL_TRACER("TQIntercom::uLawDecode(int8_t number)");
-
-    const uint16_t MULAW_BIAS = 33;
-    uint8_t sign = 0, position = 0;
-    int16_t decoded = 0;
-    number = ~number;
-
-    if (number & 0x80)
-    {
-        number &= ~(1 << 7);
-        sign = -1;
-    }
-
-    position = ((number & 0xF0) >> 4) + 5;
-    decoded = ((1 << position) | ((number & 0x0F) << (position - 4)) | (1 << (position - 5))) - MULAW_BIAS;
-    return (sign == 0) ? (decoded) : (-(decoded));
-}
-
-int8_t TQIntercom::uLawEncode(int16_t number)
-{
-    //    DECL_TRACER("TQIntercom::uLawEncode(int16_t number)");
-
-    const uint16_t MULAW_MAX = 0x1FFF;
-    const uint16_t MULAW_BIAS = 33;
-    uint16_t mask = 0x1000;
-    uint8_t sign = 0;
-    uint8_t position = 12;
-    uint8_t lsb = 0;
-
-    if (number < 0)
-    {
-        number = -number;
-        sign = 0x80;
-    }
-
-    number += MULAW_BIAS;
-
-    if (number > MULAW_MAX)
-        number = MULAW_MAX;
-
-    for (; ((number & mask) != mask && position >= 5); mask >>= 1, position--)
-        ;
-
-    lsb = (number >> (position - 4)) & 0x0f;
-    return (~(sign | ((position - 5) << 4) | lsb));
-}
-
 long TQIntercom::getNextBlock(QByteArray* target, const QByteArray& data)
 {
     DECL_TRACER("TQIntercom::getNextBlock(QByteArray* target, const QByteArray& data)");
@@ -812,7 +763,7 @@ qint64 TMicrophone::readData(char* data, qint64 len)
             else
                 word = ((lbyte << 8) & 0xff00) | hbyte;
 
-            *(data+posData) = uLawEncode(word);
+            *(data+posData) = linearToMuLaw(word);
             posData++;
         }
 
@@ -839,33 +790,4 @@ qint64 TMicrophone::bytesAvailable() const
 //    DECL_TRACER("TMicrophone::bytesAvailable() const");
 
     return (mBuffer.size() / 2) + QIODevice::bytesAvailable();
-}
-
-int8_t TMicrophone::uLawEncode(int16_t number)
-{
-//    DECL_TRACER("_audioIO::uLawEncode(int16_t number)");
-
-    const uint16_t MULAW_MAX = 0x1FFF;
-    const uint16_t MULAW_BIAS = 33;
-    uint16_t mask = 0x1000;
-    uint8_t sign = 0;
-    uint8_t position = 12;
-    uint8_t lsb = 0;
-
-    if (number < 0)
-    {
-        number = -number;
-        sign = 0x80;
-    }
-
-    number += MULAW_BIAS;
-
-    if (number > MULAW_MAX)
-        number = MULAW_MAX;
-
-    for (; ((number & mask) != mask && position >= 5); mask >>= 1, position--)
-        ;
-
-    lsb = (number >> (position - 4)) & 0x0f;
-    return (~(sign | (((position - 5) << 4) & 0xf0) | lsb));
 }

@@ -4129,7 +4129,7 @@ void MainWindow::setMarqueeText(Button::TButton* button)
     }
 
     TQMarquee *marquee = obj->object.marquee;
-    Button::TEXT_ORIENTATION to = static_cast<Button::TEXT_ORIENTATION>(button->getTextJustification(nullptr, nullptr, button->getActiveInstance()));
+    Button::ORIENTATION to = static_cast<Button::ORIENTATION>(button->getTextJustification(nullptr, nullptr, button->getActiveInstance()));
 
     switch(to)
     {

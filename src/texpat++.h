@@ -345,6 +345,17 @@ namespace Expat
              * @param name  The name of the wanted attribute.
              * @param attrs A vector list of attributes.
              *
+             * @return On success returns TRUE or FALSE depending on the
+             * content.
+             */
+            bool getAttributeBool(const std::string& name, std::vector<ATTRIBUTE_t>& attrs);
+            /**
+             * Searches in the attribute list of an attribute called \p name
+             * and returns the content.
+             *
+             * @param name  The name of the wanted attribute.
+             * @param attrs A vector list of attributes.
+             *
              * @return On success returns the content of the attribute \p name
              * as an integer value.
              * Otherwise an error text is set (TError) and 0 is returned.
@@ -386,6 +397,13 @@ namespace Expat
              * Otherwise an error text is set (TError) and 0 is returned.
              */
             double getAttributeDouble(const std::string& name, std::vector<ATTRIBUTE_t>& attrs);
+            /**
+             * Converts a string into a boolean.
+             *
+             * @param content   A string containing numbers.
+             * @return Returns the boolean value.
+             */
+            bool convertElementToBool(const std::string& content);
             /**
              * Converts a string into an integer value.
              *

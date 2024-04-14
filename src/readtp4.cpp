@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2022 to 2024 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
 
 #include "readtp4.h"
 #include "expand.h"
+#include "tscramble.h"
 #include "terror.h"
 
 #if __cplusplus < 201402L
@@ -49,6 +50,21 @@
 
 using namespace reader;
 using namespace std;
+
+/**
+ * @brief Password
+ * This definitions are the password and salt used to encrypt all XML files
+ * in a TP5 file (produced by TPDesign5).
+ * TPanel is using it to decrypt the files. All files other then XML files
+ * are not encrypted or zipped.
+ * 
+ * The encryption was done with the following settings:
+ *  Cipher: AES-128-CBC
+ *  Digest: SHA1
+ *  Iterations: 5
+ */
+string password = "8P0puxB5OVUFI6uX";
+string salt = "MarkRobs";
 
 ReadTP4::~ReadTP4()
 {
@@ -174,6 +190,7 @@ bool ReadTP4::doRead()
 
             nextBlock = act->ublock->startBlock;
             bool compressed = false;
+            bool encrypted = false;
 
             for (uint32_t i = 0; i < act->ublock->sizeBlocks; i++)
             {
@@ -183,6 +200,8 @@ bool ReadTP4::doRead()
 
                 if (i == 0 && block.abyData[0] == 0x1f && block.abyData[1] == 0x8b)
                     compressed = true;
+                else if (i == 0 && (ofile.find(".xma") != string::npos || ofile.find(".xml") != string::npos) && block.abyData[0] != '<' && block.abyData[1] != '?')
+                    encrypted = true;
 
                 nextBlock = block.nextBlock;
                 of.write(reinterpret_cast<char*>(block.abyData), block.bytesUsed);
@@ -198,6 +217,27 @@ bool ReadTP4::doRead()
 
                 if (ret != 0)
                     MSG_WARNING("File " << ofile << " was not decompressed!");
+            }
+            else if (encrypted)
+            {
+                MSG_DEBUG("Decrypting file " << ofile << " ...");
+                TScramble scramble;
+                scramble.aesInit(password, salt);
+
+                if (!scramble.aesDecodeFile(ofile))
+                {
+                    MSG_WARNING("Error decrypting file " << ofile << "!");
+                }
+                else
+                {
+                    // Write buffer to file
+                    ofstream outFile;
+                    outFile.open(ofile, ios::out | ios::binary | ios::trunc);
+                    string decr = scramble.getDecrypted();
+                    outFile.write(decr.c_str(), decr.length());
+                    outFile.close();
+                    tp5Type = true;
+                }
             }
 
             act = act->next;
