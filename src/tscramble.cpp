@@ -124,7 +124,7 @@ bool TScramble::aesInit(const string& key, const string& salt)
     memset(mAesKey, 0, AES128_KEY_SIZE);
     memset(mAesIV, 0, AES128_KEY_SIZE);
 
-    keySize = EVP_BytesToKey(pCipher, md, mAesSalt, (unsigned char *)key.c_str(), key.length(), count, mAesKey, mAesIV);
+    keySize = EVP_BytesToKey(pCipher, md, mAesSalt, (unsigned char *)key.c_str(), static_cast<int>(key.length()), count, mAesKey, mAesIV);
 
     if (keySize == AES128_KEY_SIZE)
     {
@@ -135,7 +135,7 @@ bool TScramble::aesInit(const string& key, const string& salt)
             MSG_ERROR("Error initializing: " << _get_ssl_error());
             return false;
         }
- 
+
         EVP_CIPHER_CTX_set_key_length(mCtx, AES128_KEY_SIZE);
     }
     else
@@ -232,13 +232,13 @@ bool TScramble::aesDecodeFile(ifstream& is)
             pos += len;
         }
 
-        int size2 = fileSize - (numBlocks * CHUNK_SIZE);
+        size_t size2 = fileSize - (numBlocks * CHUNK_SIZE);
 
         if (size2 > 0)      // Is there something left of the file less then CHUNK_SIZE?
         {                   // Yes, then decrypt it
             memcpy(encBuffer, buffer + numBlocks * CHUNK_SIZE, size2);
 
-            if ((ssl_errno = EVP_DecryptUpdate(mCtx, decBuffer, &len, encBuffer, size2)) != OSSL_SUCCESS)
+            if ((ssl_errno = EVP_DecryptUpdate(mCtx, decBuffer, &len, encBuffer, static_cast<int>(size2))) != OSSL_SUCCESS)
             {
                 MSG_ERROR("Error updating");
                 _print_ssl_error(ssl_errno);
@@ -253,7 +253,7 @@ bool TScramble::aesDecodeFile(ifstream& is)
     }
     else
     {
-        if ((ssl_errno = EVP_DecryptUpdate(mCtx, outBuffer, &len, buffer, fileSize)) != OSSL_SUCCESS)
+        if ((ssl_errno = EVP_DecryptUpdate(mCtx, outBuffer, &len, buffer, static_cast<int>(fileSize))) != OSSL_SUCCESS)
         {
             _print_ssl_error(ssl_errno);
             delete[] buffer;

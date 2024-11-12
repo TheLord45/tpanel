@@ -336,9 +336,9 @@ void TQIntercom::start()
                 if (mUdpTalker->state() != QUdpSocket::ConnectedState || io == nullptr)
                     return;
 
-                int len = io->bytesAvailable();
+                qint64 len = io->bytesAvailable();
                 MSG_DEBUG(len << " bytes available");
-                int chunks = len / DATA_SIZE;
+                qint64 chunks = len / DATA_SIZE;
 
                 if (chunks > 0)
                 {
@@ -464,7 +464,7 @@ bool TQIntercom::connectTalker()
     DECL_TRACER("TQIntercom::connectTalker()");
 
     // First we initialize the socket
-    QHostAddress hostAddress(QString(mIntercom.ip.c_str()));
+//    QHostAddress hostAddress(QString(mIntercom.ip.c_str()));
 
     if (mUdpTalker)
     {

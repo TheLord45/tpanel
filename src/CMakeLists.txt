@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 
 project(tpanel VERSION 1.4.1 LANGUAGES CXX)
 
@@ -516,6 +516,11 @@ if(IOS)
         Qt${QT_VERSION_MAJOR}::Sensors
         ftp ${LIBS}
     )
+    if (${QT_VERSION_MAJOR} EQUAL 6 AND ${QT_VERSION_MINOR} GREATER_EQUAL 8)
+        qt_add_ios_ffmpeg_libraries(tpanel)
+    else()
+        qt6_add_ios_ffmpeg_libraries(tpanel)
+    endif()
 elseif(ANDROID)
     target_link_libraries(tpanel PRIVATE
         Qt${QT_VERSION_MAJOR}::Widgets

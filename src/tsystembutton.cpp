@@ -460,7 +460,7 @@ TButton *TSystemButton::getSystemKey(int channel, uint handle)
         TButton *button = *iter;
 
         if (handle == 0)
-            intHandle = button->getHandle();
+            intHandle = static_cast<uint>(button->getHandle());
 
         if (button->getChannelNumber() == channel && button->getHandle() == intHandle)
         {
@@ -817,7 +817,7 @@ void TSystemButton::setKeysToBank(int bank, uint handle)
         {
             TButton *button = *iter;
             int channelNumber = button->getChannelNumber();
-            uint hdl = button->getHandle();
+            uint hdl = static_cast<uint>(button->getHandle());
             SYS_BUTTON_TYPE tp = getSystemButtonType(channelNumber, 0);
 
             if (tp == KEY_KEY)

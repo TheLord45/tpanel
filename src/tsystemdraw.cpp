@@ -156,7 +156,7 @@ bool TSystemDraw::loadConfig()
     XML_SetCharacterDataHandler(parser, &TSystemDraw::CharacterDataHandler);
     XML_SetUserData(parser, &mDraw);
 
-    if (XML_Parse(parser, buf.data(), size, done) == XML_STATUS_ERROR)
+    if (XML_Parse(parser, buf.data(), static_cast<int>(size), done) == XML_STATUS_ERROR)
     {
         MSG_ERROR(XML_ErrorString(XML_GetErrorCode(parser)) << " at line " << XML_GetCurrentLineNumber(parser));
         XML_ParserFree(parser);

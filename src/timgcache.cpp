@@ -75,7 +75,7 @@ bool TImgCache::addImage(const string& name, SkBitmap& bm, ulong handle, _IMGCAC
 
     ic.bmType = bmType;
     ic.bitmap = bm;
-    ic.handle = handle;
+    ic.handle = static_cast<uint32_t>(handle);
 
     bool ret = addImage(ic);
     _imgCache.unlock();

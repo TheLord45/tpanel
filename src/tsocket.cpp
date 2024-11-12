@@ -386,7 +386,7 @@ size_t TSocket::receive(char* buffer, size_t size, bool doPoll)
             switch (proto)
             {
                 case 0: return read(mSockfd, buffer, size);
-                case 1: return SSL_read(mSsl, buffer, size);
+                case 1: return SSL_read(mSsl, buffer, static_cast<int>(size));
             }
         }
     }
@@ -505,7 +505,7 @@ size_t TSocket::send(char* buffer, size_t size)
             switch (proto)
             {
                 case 0: return write(mSockfd, buffer, size);
-                case 1: return SSL_write(mSsl, buffer, size);
+                case 1: return SSL_write(mSsl, buffer, static_cast<int>(size));
             }
         }
     }
@@ -630,7 +630,7 @@ bool TSocket::determineNetmask(int socket)
         if (family != AF_INET && family != AF_INET6)
             continue;
 
-        s = getnameinfo(ifa->ifa_addr, addrSize, host, NI_MAXHOST, nullptr, 0, NI_NUMERICHOST);
+        s = getnameinfo(ifa->ifa_addr, static_cast<socklen_t>(addrSize), host, NI_MAXHOST, nullptr, 0, NI_NUMERICHOST);
 
         if (s != 0)
         {

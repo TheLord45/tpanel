@@ -373,11 +373,13 @@ void TQtSettings::on_kiconbutton_logFile_clicked()
               "android/net/Uri", "parse", "(Ljava/lang/String;)Landroid/net/Uri;",
               QJniObject::fromString(fileName).object<jstring>());
 
+        QJniObject context = QNativeInterface::QAndroidApplication::context();
+
         fileName =
               QJniObject::callStaticObjectMethod(
                   "org/qtproject/theosys/UriToPath", "getFileName",
                   "(Landroid/net/Uri;Landroid/content/Context;)Ljava/lang/String;",
-                  uri.object(), QNativeInterface::QAndroidApplication::context()).toString();
+                  uri.object(), &context).toString();
 #endif
         if (fileName.length() > 0)
             fname = fileName;

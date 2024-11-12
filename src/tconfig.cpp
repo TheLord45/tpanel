@@ -360,6 +360,7 @@ std::string& TConfig::getFirmVersion()
  */
 std::string& TConfig::getLogFile()
 {
+    cerr << "TRACE: TConfig::getLogFile()"  << endl;
     return mTemporary ? localSettings_temp.logFile : localSettings.logFile;
 }
 
@@ -383,6 +384,7 @@ std::string& TConfig::getLogFile()
  */
 string& TConfig::getLogLevel()
 {
+    cerr << "TRACE: TConfig::getLogLevel()" << endl;
     return mTemporary ? localSettings_temp.logLevel : localSettings.logLevel;
 }
 
@@ -809,7 +811,10 @@ void TConfig::readUserPasswords()
     string fname = localSettings.path + "/" + fileUserPasswords;
 
     if (!fs::exists(fname))
+    {
+        MSG_DEBUG("Password file \"" << fname << "\" not found!");
         return;
+    }
 
     ifstream f;
 
@@ -1250,6 +1255,7 @@ string TConfig::getApp(const string& id)
 {
     DECL_TRACER("TConfig::getApp(const string& id)");
 
+#if !defined(Q_OS_ANDROID) && !defined(Q_OS_IOS)
     if (localSettings.apps.empty())
         return string();
 
@@ -1260,7 +1266,7 @@ string TConfig::getApp(const string& id)
         if (iter->appID == id)
             return iter->path;
     }
-
+#endif
     return string();
 }
 
@@ -1330,7 +1336,7 @@ bool TConfig::saveSettings()
         lines += string("SIP_IPHONE=") + (localSettings.sip_iphone ? "true" : "false") + "\n";
         lines += "SIP_FIREWALL=" + sipFirewallToString(localSettings.sip_firewall) + "\n";
         lines += string("SIP_ENABLED=") + (localSettings.sip_enabled ? "true" : "false") + "\n";
-
+#if !defined(Q_OS_ANDROID) && !defined(Q_OS_IOS)
         if (!localSettings.apps.empty())
         {
             vector<_APPS_t>::iterator iter;
@@ -1338,7 +1344,7 @@ bool TConfig::saveSettings()
             for (iter = localSettings.apps.begin(); iter != localSettings.apps.end(); ++iter)
                 lines += "APP=" + iter->appID + ";" + iter->path + "\n";
         }
-
+#endif
         file.write(lines.c_str(), lines.size());
         file.close();
         MSG_INFO("Actual log level: " << localSettings.logLevel);
@@ -2329,6 +2335,7 @@ bool TConfig::readConfig()
                 localSettings.sip_firewall = sipFirewallStrToEnum(right);
             else if (caseCompare(left, "SIP_ENABLED") == 0 && !right.empty())
                 localSettings.sip_enabled = isTrue(right);
+#if !defined(__ANDROID__) && !(defined(__APPLE__) && (TARGET_OS_IOS || TARGET_OS_SIMULATOR))
             else if (caseCompare(left, "APP") == 0 && !right.empty())
             {
                 _APPS_t app;
@@ -2341,6 +2348,7 @@ bool TConfig::readConfig()
                     localSettings.apps.push_back(app);
                 }
             }
+#endif
         }
     }
 
@@ -2416,7 +2424,7 @@ bool TConfig::readConfig()
         MSG_INFO("    SIP Int.Phone:" << (localSettings.sip_iphone ? "YES" : "NO"));
         MSG_INFO("    SIP firewall: " << sipFirewallToString(localSettings.sip_firewall));
         MSG_INFO("    SIP enabled:  " << (localSettings.sip_enabled ? "YES" : "NO"));
-
+#if !defined(__ANDROID__) && !(defined(__APPLE__) && (TARGET_OS_IOS || TARGET_OS_SIMULATOR))
         if (!localSettings.apps.empty())
         {
             vector<_APPS_t>::iterator iter;
@@ -2426,6 +2434,7 @@ bool TConfig::readConfig()
                 MSG_INFO("    Appl.:        " << iter->appID << "; " << iter->path);
             }
         }
+#endif
     }
 
     localSettings_temp = localSettings;

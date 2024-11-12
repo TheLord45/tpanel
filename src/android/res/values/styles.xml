@@ -18,13 +18,13 @@
 -->
 <resources>
     <!-- base set of styles that apply to all versions -->
-    <style name="TPanelAppTheme" parent="Theme.AppCompat.NoActionBar">
+    <style name="TPanelAppTheme" parent="AppTheme.NoActionBar">
         <item name="android:windowActionBar">false</item>
         <item name="android:windowNoTitle">true</item>
         <!-- <item name="android:drawable/screen_background_selector_light">@nullable</item> -->
     </style>
 
     <!-- declare the theme name that's actually applied in the manifest file -->
-    <style name="AppTheme" parent="Theme.AppCompat.NoActionBar" />
+    <style name="AppTheme" parent="AppTheme.NoActionBar" />
 </resources>
 

@@ -265,13 +265,18 @@ void TStreamError::setLogLevel(const std::string& slv)
     }
 
     mLogLevel |= _getLevel(slv.substr(start));
+
 #ifdef __ANDROID__
     __android_log_print(ANDROID_LOG_INFO, "tpanel", "TStreamError::setLogLevel: New loglevel: %s", slv.c_str());
+#else
+#ifdef TARGET_OS_IOS
+    std::cout << TError::append(HLOG_INFO) << "New loglevel: " << slv << std::endl;
 #else
     if (mInitialized && mStream)
         *mStream << TError::append(HLOG_INFO) << "New loglevel: " << slv << std::endl;
     else
         std::cout << TError::append(HLOG_INFO) << "New loglevel: " << slv << std::endl;
+#endif
 #endif
 }
 
@@ -886,7 +891,7 @@ std::ostream & TError::append(int lv, std::ostream& os)
 
 std::string TError::append(int lv)
 {
-    std::lock_guard<mutex> guard(message_mutex);
+//    std::lock_guard<mutex> guard(message_mutex);
     std::string prefix, out;
 
     switch (lv)

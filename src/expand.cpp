@@ -97,7 +97,7 @@ int Expand::unzip()
 
 	do
 	{
-		strm.avail_in = fread(in, 1, CHUNK, source);
+		strm.avail_in = static_cast<uint>(fread(in, 1, CHUNK, source));
 
 		if (ferror(source))
 		{

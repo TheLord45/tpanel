@@ -59,9 +59,9 @@ void TIOSRotate::rotate(int dir)
 
     NSArray *array = [[[UIApplication sharedApplication] connectedScenes] allObjects];
 
-    if (!array)
+    if (!array || array.count <= 0)
     {
-        MSG_ERROR("Error getting the array of screnes! Will not rotate.");
+        MSG_ERROR("Error getting the array of scenes! Will not rotate.");
         return;
     }
 
@@ -69,7 +69,7 @@ void TIOSRotate::rotate(int dir)
 
     if (!scene)
     {
-        MSG_ERROR("Error getting the first scene! Will not roteate.");
+        MSG_ERROR("Error getting the first scene! Will not rotate.");
         return;
     }
 

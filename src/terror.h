@@ -176,7 +176,7 @@ class TError : public std::ostream
         static terrtype_t mErrType;
         static TStreamError *mCurrent;
         static threadID_t mThreadID;
-        std::string mHeadMsg;
+//        std::string mHeadMsg;
 };
 
 #define MSG_INFO(msg)       { if (TStreamError::checkFilter(HLOG_INFO)) { _lock(); *TError::Current(_getThreadID())->getStream() << TError::append(HLOG_INFO) << msg << std::endl; TStreamError::resetFlags(); _unlock(); }}

@@ -90,7 +90,7 @@ void TBitmap::setPixline(int pl)
         return;
 
     int width = pl / mPixelSize;
-    int height = mSize / pl;
+    int height = static_cast<int>(mSize) / pl;
 
     if ((size_t)(height * pl) > mSize)
     {
@@ -160,7 +160,7 @@ void TBitmap::setWidth(int w)
 
     mPixline = w * mPixelSize;
     mWidth = w;
-    mHeight = mSize / mPixline;
+    mHeight = static_cast<int>(mSize) / mPixline;
 }
 
 void TBitmap::setHeight(int h)
@@ -187,7 +187,7 @@ void TBitmap::setSize(int w, int h)
         return;
 
     int pixline = w * mPixelSize;
-    int maxHeight = mSize / pixline;
+    int maxHeight = static_cast<int>(mSize) / pixline;
 
     if (h > maxHeight || (size_t)(pixline * h) > mSize)
     {
@@ -217,7 +217,7 @@ void TBitmap::setPixelSize(int ps)
 
     mPixelSize = ps;
     mPixline = pixline;
-    mHeight = mSize / pixline;
+    mHeight = static_cast<int>(mSize) / pixline;
 }
 
 bool TBitmap::isValid()

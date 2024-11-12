@@ -110,7 +110,7 @@ char *THTTPClient::tcall(size_t *size, const string& URL, const string& user, co
         return nullptr;
     }
 
-    int ret = 0;
+    size_t ret = 0;
     bool repeat = false;
 
     try
@@ -125,7 +125,7 @@ char *THTTPClient::tcall(size_t *size, const string& URL, const string& user, co
                 }
                 else if (encrypt)
                 {
-                    int err = retrieveSSLerror(ret);
+                    int err = retrieveSSLerror(static_cast<int>(ret));
                     repeat = false;
 
                     switch (err)
@@ -585,7 +585,7 @@ int THTTPClient::parseHeader(const char *buffer, size_t len)
         size_t head_len = strcspn(buffer, "\r\n\r\n");
 
         if (head_len < len)
-            blen = len - head_len + 4;
+            blen = static_cast<int>(len - head_len + 4);
     }
 
     MSG_DEBUG("[" << mURL.host << "] Content length: " << blen);
@@ -676,7 +676,7 @@ string THTTPClient::makeRequest(const string& url)
     if (!mUser.empty())
     {
         string clearname = mUser + ":" + mPassword;
-        string enc = Base64::encode((BYTE *)clearname.c_str(), clearname.size());
+        string enc = Base64::encode((BYTE *)clearname.c_str(), static_cast<uint>(clearname.size()));
         request += "Authorization: Basic " + enc + "\r\n";
     }
 

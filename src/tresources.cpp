@@ -906,7 +906,7 @@ bool isUTF8(const string& str)
 {
     int c,i,ix,n,j;
 
-    for (i=0, ix = str.length(); i < ix; i++)
+    for (i = 0, ix = static_cast<int>(str.length()); i < ix; i++)
     {
         c = (unsigned char) str[i];
 
@@ -938,7 +938,7 @@ size_t utf8Strlen(const std::string& str)
     int c,i,ix;
     size_t q;
 
-    for (q = 0, i = 0, ix = str.length(); i < ix; i++, q++)
+    for (q = 0, i = 0, ix = static_cast<int>(str.length()); i < ix; i++, q++)
     {
         c = (unsigned char)str[i];
 

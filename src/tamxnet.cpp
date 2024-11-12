@@ -1628,7 +1628,7 @@ void TAmxNet::handleFTransfer(ANET_SEND &s, ANET_FILETRANSFER &ft)
             realPath = TConfig::getProjectPath() + "/" + realPath;
 
             if (dr.isFile(realPath))
-                len = dr.getFileSize(realPath);
+                len = static_cast<int>(dr.getFileSize(realPath));
         }
 
         MSG_DEBUG("0x0000/0x0100: Request directory " << fname);
@@ -1667,8 +1667,8 @@ void TAmxNet::handleFTransfer(ANET_SEND &s, ANET_FILETRANSFER &ft)
             s.value = (dr.testDirectory(df.attr)) ? 1 : 0;  // Depends on type of entry
             s.level = dr.getNumEntries();       // # entries
             s.value1 = df.count;                // counter
-            s.value2 = df.size;                 // Size of file
-            s.value3 = df.date;                 // Last modification date (epoch)
+            s.value2 = static_cast<uint32_t>(df.size);  // Size of file
+            s.value3 = static_cast<uint32_t>(df.date);  // Last modification date (epoch)
             s.msg.assign(amxpath + "/" + df.name);
             sendCommand(s);
         }
@@ -1878,7 +1878,7 @@ void TAmxNet::handleFTransfer(ANET_SEND &s, ANET_FILETRANSFER &ft)
             struct stat s;
 
             if (stat(sndFileName.c_str(), &s) == 0)
-                len = s.st_size;
+                len = static_cast<int>(s.st_size);
             else
                 len = 0;
         }
@@ -1908,7 +1908,7 @@ void TAmxNet::handleFTransfer(ANET_SEND &s, ANET_FILETRANSFER &ft)
         {
             struct stat st;
             stat(sndFileName.c_str(), &st);
-            len = st.st_size;
+            len = static_cast<int>(st.st_size);
             lenSnd = len;
             posSnd = 0;
             sndFile = fopen(sndFileName.c_str(), "r");
@@ -1943,7 +1943,7 @@ void TAmxNet::handleFTransfer(ANET_SEND &s, ANET_FILETRANSFER &ft)
         else if (sndFileName.find("/version.xma") > 0)
         {
             s.msg.assign("<version>9</version>\n");
-            len = s.msg.length();
+            len = static_cast<int>(s.msg.length());
             posSnd = len;
         }
         else
@@ -1974,7 +1974,7 @@ void TAmxNet::handleFTransfer(ANET_SEND &s, ANET_FILETRANSFER &ft)
             s.type = 0x0003;        // Next part of file
 
             if ((posSnd + MAX_CHUNK) > lenSnd)
-                len = lenSnd - posSnd;
+                len = static_cast<int>(lenSnd - posSnd);
             else
                 len = MAX_CHUNK;
 

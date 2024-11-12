@@ -8064,6 +8064,8 @@ string TButton::getFormatString(ORIENTATION to)
         case ORI_TOP_LEFT:      return "TOP/LEFT";
         case ORI_TOP_MIDDLE:    return "TOP/MIDDLE";
         case ORI_TOP_RIGHT:     return "TOP/RIGHT";
+        case ORI_SCALE_FIT:     return "SCALE/FIT";
+        case ORI_SCALE_ASPECT:  return "SCALE/ASPECT";
     }
 
     return "UNKNOWN";   // Should not happen!
@@ -9129,7 +9131,7 @@ bool TButton::doClick(int x, int y, bool pressed)
     {
         // Handling the keyboard buttons is very expensive. To not block too
         // long, we let it run in a separate thread.
-        std::thread thr = std::thread([=] { _buttonPress(ch, mHandle, pressed); });
+        std::thread thr = std::thread([=] { _buttonPress(ch, static_cast<uint>(mHandle), pressed); });
         thr.detach();
     }
 
@@ -11206,7 +11208,7 @@ bool TButton::setListSource(const string &source, const vector<string>& configs)
             return false;
         }
 
-        RESOURCE_T resource = gPrjResources->findResource(idx, source);
+        RESOURCE_T resource = gPrjResources->findResource(static_cast<int>(idx), source);
 
         if (resource.protocol.empty())
         {

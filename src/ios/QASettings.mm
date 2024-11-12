@@ -516,7 +516,9 @@ QString QASettings::getDocumentPath()
 
 QMargins QASettings::getNotchSize()
 {
-    NSArray<UIWindow *> *windows = [[UIApplication sharedApplication] windows];
+//    NSArray<UIWindow *> *windows = [[UIApplication sharedApplication] windows];   // deprecated!
+    NSArray *scenes=[[[UIApplication sharedApplication] connectedScenes] allObjects];
+    NSArray<UIWindow *> *windows=[[scenes objectAtIndex:0] windows];
     UIWindow* window = nil;
 
     for (UIWindow *w in windows)
