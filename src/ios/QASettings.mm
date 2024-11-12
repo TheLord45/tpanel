@@ -516,9 +516,24 @@ QString QASettings::getDocumentPath()
 
 QMargins QASettings::getNotchSize()
 {
-//    NSArray<UIWindow *> *windows = [[UIApplication sharedApplication] windows];   // deprecated!
-    NSArray *scenes=[[[UIApplication sharedApplication] connectedScenes] allObjects];
-    NSArray<UIWindow *> *windows=[[scenes objectAtIndex:0] windows];
+    DECL_TRACER("QASettings::getNotchSize()");
+
+    NSArray *scenes = [[[UIApplication sharedApplication] connectedScenes] allObjects];
+
+    if (scenes == nil || scenes.count <= 0)
+    {
+        MSG_WARNING("Found no scenes. Can't get the size of the notch, if there is any.");
+        return QMargins();
+    }
+
+    NSArray<UIWindow *> *windows = [[scenes objectAtIndex:0] windows];
+
+    if (windows == nil || windows.count <= 0)
+    {
+        MSG_WARNING("Found no windows! Can't calculate notch size.");
+        return QMargins();
+    }
+
     UIWindow* window = nil;
 
     for (UIWindow *w in windows)
@@ -531,9 +546,19 @@ QMargins QASettings::getNotchSize()
     }
 
     if (window == nil)
-        return QMargins();
+    {
+        MSG_WARNING("No key window detected! Will take 1st window instead ...");
+        window = [windows objectAtIndex:0];
 
-//    UIWindow* window = [[UIApplication sharedApplication] keyWindow];
+        if (window == nil)
+        {
+            MSG_WARNING("No window found! Can't get the notch size, if any.");
+            return QMargins();
+        }
+
+        MSG_DEBUG("Found first window to be a valid one.");
+    }
+
     QMargins rect;
 
     float reservedTop = window.safeAreaInsets.top;
