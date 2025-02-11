@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -69,7 +69,7 @@ class TAmxCommands : public TValidateFile
         void registerCommand(std::function<void (int port, std::vector<int>& channels, std::vector<std::string>& pars)> command, const std::string& name);
 
     protected:
-        bool readMap();
+        bool readMap(bool tp5=false);
 
     private:
         bool extractChannels(const std::string& schan, std::vector<int> *ch);

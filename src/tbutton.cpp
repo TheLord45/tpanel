@@ -272,9 +272,7 @@ size_t TButton::initialize(TExpat *xml, size_t index)
 
     while((index = xml->getNextElementFromIndex(index, &ename, &content, &attrs)) != TExpat::npos)
     {
-        MSG_DEBUG("Found element: " << ename << ", index: " << index << ", oldIndex: " << oldIndex);
-
-        if (ename.compare("bi") == 0)
+        if (ename.compare("bi") == 0)               // Button index
         {
             bi = xml->convertElementToInt(content);
             MSG_DEBUG("Processing button index: " << bi);

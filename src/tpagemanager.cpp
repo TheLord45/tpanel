@@ -800,7 +800,7 @@ TPageManager::TPageManager()
     // Set the panel type from the project information
     TConfig::savePanelType(mTSettings->getPanelType());
 
-    readMap();  // Start the initialisation of the AMX part.
+    readMap(mTSettings->isTP5());  // Start the initialisation of the AMX part.
 
     gPrjResources = new TPrjResources(mTSettings->getResourcesList());
     mPalette = new TPalette(mTSettings->isTP5());
