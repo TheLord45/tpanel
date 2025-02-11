@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -300,16 +300,16 @@ TAmxCommands::~TAmxCommands()
         delete mSystemMap;
 }
 
-bool TAmxCommands::readMap()
+bool TAmxCommands::readMap(bool tp5)
 {
-    DECL_TRACER("TAmxCommands::readMap()");
+    DECL_TRACER("TAmxCommands::readMap(bool tp5)");
 
     bool err = false;
     string projectPath = TConfig::getProjectPath();
 
     if (fs::exists(projectPath + "/prj.xma"))
     {
-        mMap = new TMap(projectPath);
+        mMap = new TMap(projectPath, tp5);
         err = mMap->haveError();
     }
 
@@ -317,7 +317,7 @@ bool TAmxCommands::readMap()
 
     if (fs::exists(projectPath + "/prj.xma"))
     {
-        mSystemMap = new TMap(projectPath);
+        mSystemMap = new TMap(projectPath, tp5);
 
         if (!err)
             err = mSystemMap->haveError();
