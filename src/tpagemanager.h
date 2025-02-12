@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2024 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -42,6 +42,7 @@
 #include "tbitmap.h"
 #include "tbuttonstates.h"
 #include "tqintercom.h"
+#include "tapps.h"
 
 #define REG_CMD(func, name)     registerCommand(bind(&TPageManager::func, this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),name)
 
@@ -963,6 +964,7 @@ class TPageManager : public TAmxCommands
         TPalette *mPalette{nullptr};                    // Pointer to the color handler
         TFont *mFonts{nullptr};                         // Pointer to the font handler
         TExternal *mExternal{nullptr};                  // Pointer to the external buttons (if any)
+        TApps *mApps{nullptr};                          // Pointer to external apps for Android (TP5)
         TSystemDraw *mSystemDraw{nullptr};              // A pointer to the (optional) system resources
         std::thread mThreadAmxNet;                      // The thread handle to the controler handler
         TVector<amx::ANET_COMMAND> mCommands;           // Command queue of commands received from controller

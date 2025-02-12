@@ -434,7 +434,8 @@ set(PROJECT_SOURCES
         tlock.h
         testmode.cpp
         testmode.h
-        tdefines.h
+        tapps.cpp
+        tapps.h
         tpanel.qrc
 )
 
