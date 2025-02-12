@@ -797,6 +797,18 @@ TPageManager::TPageManager()
         return;
     }
 
+    // Read the application file if it is TP5
+    if (mTSettings->isTP5())
+    {
+        mApps = new TApps;
+        mApps->parseApps();
+
+        if (TError::isError())
+        {
+            MSG_WARNING("Apps list was not read successfully!");
+        }
+    }
+
     // Set the panel type from the project information
     TConfig::savePanelType(mTSettings->getPanelType());
 
