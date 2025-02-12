@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -43,6 +43,7 @@ typedef struct SUPPORT_FILES
     std::string iconFile;               // Only on TP4
     std::string externalButtonFile;
     std::string appFile;                // Only on TP5
+    std::string logFile;                // Only on TP5
 }SUPPORT_FILES;
 
 typedef struct PALETTE_SETUP
@@ -159,7 +160,7 @@ class TSettings : public TValidateFile
         std::string& getPowerUpPage() { return mSetup.powerUpPage; }
         int getVoipCmdPort() { return mSetup.voipCommandPort; }
         std::string& getPanelType() { return mProject.panelType; }
-        bool isTP5() { return mSetup.versionInfo.g5appsVersion > 0; }
+        bool isTP5() { return mIsTp5; }
 
     private:
         RESOURCE_LIST_T findResourceType(const std::string& type);
@@ -168,6 +169,7 @@ class TSettings : public TValidateFile
         PANEL_SETUP_T mSetup;                           // Settings read from file prj.xma
         PROJECT_INFO mProject;                          // The project information.
         std::vector<RESOURCE_LIST_T> mResourceLists;    // Resources (cameras) read from prj.xma
+        bool mIsTp5{false};
 };
 
 

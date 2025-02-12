@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -99,10 +99,12 @@ bool TSettings::loadSettings(bool initial)
     if (!valid)
     {
         mSetup.versionInfo.g5appsVersion = 0;   // No TP5 file
+        mIsTp5 = false;
         MSG_INFO("Detected a TP4 file");
     }
     else
     {
+        mIsTp5 = true;
         MSG_INFO("Detected a TP5 file");
     }
 
@@ -152,22 +154,33 @@ bool TSettings::loadSettings(bool initial)
     mSetup.supportFiles.colorFile = xml.getElement("colorFile", depth);
     mSetup.supportFiles.fontFile = xml.getElement("fontFile", depth);
     mSetup.supportFiles.themeFile = xml.getElement("themeFile", depth);
-    mSetup.supportFiles.iconFile = xml.getElement("iconFile", depth);
+
+    if (!mIsTp5)
+        mSetup.supportFiles.iconFile = xml.getElement("iconFile", depth);
+
     mSetup.supportFiles.externalButtonFile = xml.getElement("externalButtonFile", depth);
-    mSetup.supportFiles.appFile = xml.getElement("appFile", depth);
+
+    if (mIsTp5)
+    {
+        mSetup.supportFiles.appFile = xml.getElement("appFile", depth);
+        mSetup.supportFiles.logFile = xml.getElement("logFile", depth);
+    }
 
     MSG_DEBUG("Map file:     " << mSetup.supportFiles.mapFile);
     MSG_DEBUG("Color file:   " << mSetup.supportFiles.colorFile);
     MSG_DEBUG("Font file:    " << mSetup.supportFiles.fontFile);
     MSG_DEBUG("Theme file:   " << mSetup.supportFiles.themeFile);
     
-    if (!isTP5())
+    if (!mIsTp5)
         MSG_DEBUG("IconFile:     " << mSetup.supportFiles.iconFile);
 
     MSG_DEBUG("Ext. buttons: " << mSetup.supportFiles.externalButtonFile);
 
-    if (isTP5())
+    if (mIsTp5)
+    {
         MSG_DEBUG("App file:     " << mSetup.supportFiles.appFile);
+        MSG_DEBUG("Log file:     " << mSetup.supportFiles.logFile);
+    }
 
     MSG_DEBUG("Reading panel setup ...");
 
