@@ -401,41 +401,46 @@ namespace Expat
              * Converts a string into a boolean.
              *
              * @param content   A string containing numbers.
+             * @param def Optional: A value which is returned in case of an error.
              * @return Returns the boolean value.
              */
-            bool convertElementToBool(const std::string& content);
+            bool convertElementToBool(const std::string& content, bool def=false);
             /**
              * Converts a string into an integer value.
              *
              * @param content   A string containing numbers.
+             * @param def Optional: A value which is returned in case of an error.
              * @return On success returns the value representation of the
              * \p content. If not convertable, TError is set and 0 is returned.
              */
-            int convertElementToInt(const std::string& content);
+            int convertElementToInt(const std::string& content, int def=0);
             /**
              * Converts a string into a long integer value.
              *
              * @param content   A string containing numbers.
+             * @param def Optional: A value which is returned in case of an error.
              * @return On success returns the value representation of the
              * \p content. If not convertable, TError is set and 0 is returned.
              */
-            long convertElementToLong(const std::string& content);
+            long convertElementToLong(const std::string& content, long def=0);
             /**
              * Converts a string into a floating value.
              *
              * @param content   A string containing numbers.
+             * @param def Optional: A value which is returned in case of an error.
              * @return On success returns the value representation of the
              * \p content. If not convertable, TError is set and 0 is returned.
              */
-            float convertElementToFloat(const std::string& content);
+            float convertElementToFloat(const std::string& content, float def=0.0);
             /**
              * Converts a string into a double floating value.
              *
              * @param content   A string containing numbers.
+             * @param def Optional: A value which is returned in case of an error.
              * @return On success returns the value representation of the
              * \p content. If not convertable, TError is set and 0 is returned.
              */
-            double convertElementToDouble(const std::string& content);
+            double convertElementToDouble(const std::string& content, double def=0.0);
             /**
              * Sets the internal pointer to the \p index. If this points to an
              * invalid index, the method sets an error and returns FALSE.
@@ -461,6 +466,66 @@ namespace Expat
              */
             std::vector<ATTRIBUTE_t> getAttributes(size_t index);
 
+            /**
+             * @brief bool isElementTypeStart(size_t index)
+             * Test the element the index is pointing to, for the type START.
+             * If this is true it returns TRUE. If the parameter \b index
+             * points to an invalid index, FALSE is returned.
+             *
+             * @param index The index of the element to test.
+             *
+             * @return If the element is a valid element and has a START tag it
+             * return TRUE. Otherwise FALSE is returned.
+             */
+            bool isElementTypeStart(size_t index);
+            /**
+             * @brief bool isElementTypeEnd(size_t index)
+             * Test the element the index is pointing to, for the type END. If
+             * this is true it returns TRUE. If the parameter \b index points
+             * to an invalid index, TRUE is returned.
+             *
+             * @param index The index of the element to test.
+             *
+             * @return If the element is a valid element and not an END tag it
+             * return FALSE. Otherwise TRUE is returned.
+             */
+            bool isElementTypeEnd(size_t index);
+            /**
+             * @brief bool isElementTypeAtomic(size_t index)
+             * Test the element the index is pointing to, for the type ATOMIC.
+             * If this is true it returns TRUE. If the parameter \b index
+             * points to an invalid index, FALSE is returned.
+             *
+             * @param index The index of the element to test.
+             *
+             * @return If the element is a valid element and an ATOMIC tag it
+             * return TRUE. Otherwise FALSE is returned.
+             */
+            bool isElementTypeAtomic(size_t index);
+            /**
+             * @brief bool getElementType(size_t index);
+             * Returns the internal type of the element the parameter
+             * \b index is pointing to.
+             *
+             * @param index The index of the element.
+             *
+             * @return If \b index points to a valid element the type of it is
+             * returned. If it is an invalid element it will return always
+             * _ET_END.
+             */
+            _ETYPE_t getElementType(size_t index);
+            /**
+             * @brief bool getElementTypeStr(size_t index)
+             * Returns the internal type of the element the parameter
+             * \b index is pointing to as a string.
+             *
+             * @param index The index of the element.
+             *
+             * @return If \b index points to a valid element the type of it is
+             * returned. If it is an invalid element it will return always
+             * "END".
+             */
+            std::string getElementTypeStr(size_t index);
             /**
              * Checks whether the internal pointer points to a valid entry or
              * not. If the internal pointer is valid it returns the name of the

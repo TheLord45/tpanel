@@ -556,63 +556,63 @@ double Expat::TExpat::getAttributeDouble(const std::string& name, std::vector<AT
     return atof(getAttribute(name, attrs).c_str());
 }
 
-bool TExpat::convertElementToBool(const string& content)
+bool TExpat::convertElementToBool(const string& content, bool def)
 {
-    DECL_TRACER("TExpat::convertElementToBool(const string& content)");
+    DECL_TRACER("TExpat::convertElementToBool(const string& content, bool def)");
 
-    if (content == "true" || content == "True" || content == "TRUE")
+    if (content == "true" || content == "True" || content == "TRUE" || content == "1")
         return true;
 
-    return false;
+    return def;
 }
 
-int TExpat::convertElementToInt(const string& content)
+int TExpat::convertElementToInt(const string& content, int def)
 {
-    DECL_TRACER("TExpat::convertElementToInt(const string& content)");
+    DECL_TRACER("TExpat::convertElementToInt(const string& content, int def)");
 
     if (content.empty())
     {
-        MSG_WARNING("Empty content!");
-        return 0;
+        MSG_WARNING("Error converting to INT: Empty content");
+        return def;
     }
 
     return atoi(content.c_str());
 }
 
-long TExpat::convertElementToLong(const string& content)
+long TExpat::convertElementToLong(const string& content, long def)
 {
-    DECL_TRACER("TExpat::convertElementToLong(const string& content)");
+    DECL_TRACER("TExpat::convertElementToLong(const string& content, long def)");
 
     if (content.empty())
     {
-        MSG_WARNING("Empty content!");
-        return 0;
+        MSG_WARNING("Error converting to LONG: Empty content");
+        return def;
     }
 
     return atol(content.c_str());
 }
 
-float TExpat::convertElementToFloat(const string& content)
+float TExpat::convertElementToFloat(const string& content, float def)
 {
-    DECL_TRACER("TExpat::convertElementToFloat(const string& content)");
+    DECL_TRACER("TExpat::convertElementToFloat(const string& content, float def)");
 
     if (content.empty())
     {
-        MSG_WARNING("Empty content!");
-        return 0;
+        MSG_WARNING("Error converting to FLOAT: Empty content");
+        return def;
     }
 
-    return (float)atof(content.c_str());
+    return static_cast<float>(atof(content.c_str()));
 }
 
-double TExpat::convertElementToDouble(const string& content)
+double TExpat::convertElementToDouble(const string& content, double def)
 {
-    DECL_TRACER("TExpat::convertElementToDouble(const string& content)");
+    DECL_TRACER("TExpat::convertElementToDouble(const string& content, double def)");
 
     if (content.empty())
     {
-        MSG_WARNING("Empty content!");
-        return 0;
+        MSG_WARNING("Error converting to DOUBLE: Empty content");
+        return def;
     }
 
     return atof(content.c_str());
@@ -624,7 +624,8 @@ bool TExpat::setIndex(size_t index)
 
     if (index >= mElements.size())
     {
-        MSG_WARNING("Invalid index " << index << "!");
+        MSG_ERROR("Error setting index: Invalid index " << index);
+        TError::setErrorMsg("Invalid index " + std::to_string(index) + "!");
         mLastIter = mElements.end();
         return false;
     }
@@ -665,6 +666,64 @@ vector<ATTRIBUTE_t> TExpat::getAttributes(size_t index)
         return vector<ATTRIBUTE_t>();
 
     return mElements.at(index).attrs;
+}
+
+bool TExpat::isElementTypeStart(size_t index)
+{
+    DECL_TRACER("TExpat::isElementTypeStart(size_t index)");
+
+    if (index >= mElements.size() || mElements.at(index).eType != _ET_START)
+        return false;
+
+    return true;
+}
+
+bool TExpat::isElementTypeEnd(size_t index)
+{
+    DECL_TRACER("TExpat::isElementTypeEnd(size_t index)");
+
+    if (index >= mElements.size() || mElements.at(index).eType == _ET_END)
+        return true;
+
+    return false;
+}
+
+bool TExpat::isElementTypeAtomic(size_t index)
+{
+    DECL_TRACER("TExpat::isElementTypeAtomic(size_t index)");
+
+    if (index >= mElements.size() || mElements.at(index).eType != _ET_ATOMIC)
+        return false;
+
+    return true;
+}
+
+_ETYPE_t TExpat::getElementType(size_t index)
+{
+    DECL_TRACER("TExpat::getElementType(size_t index)");
+
+    if (index >= mElements.size())
+        return _ET_END;
+
+    return mElements.at(index).eType;
+}
+
+string TExpat::getElementTypeStr(size_t index)
+{
+    DECL_TRACER("TExpat::getElementTypeStr(size_t index)");
+
+    if (index >= mElements.size())
+        return "END";
+
+    switch(mElements.at(index).eType)
+    {
+        case _ET_START:     return "START";
+        case _ET_END:       return "END";
+        case _ET_ATOMIC:    return "ATOMIC";
+    }
+
+    // Should not come here but needed to satisfy the compiler.
+    return "END";
 }
 
 string TExpat::getElementName(bool *valid)

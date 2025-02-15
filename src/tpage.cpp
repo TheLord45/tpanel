@@ -164,12 +164,14 @@ void TPage::initialize(const string& nm)
         return;
     }
 
+    TError::clear();
     depth++;
     string ename, content;
 
     while ((index = xml.getNextElementFromIndex(index, &ename, &content, &attrs)) != TExpat::npos)
     {
         string e = ename;
+        MSG_DEBUG("Element: " << ename << " at index " << index);
 
         if (e.compare("pageID") == 0)
             mPage.pageID = xml.convertElementToInt(content);
@@ -193,7 +195,7 @@ void TPage::initialize(const string& nm)
 
             if (TError::isError())
             {
-                MSG_WARNING("Button \"" << button->getButtonName() << "\" deleted because of an error!");
+                MSG_WARNING("Button \"" << button->getButtonName() << "\" deleted because of an error: " << TError::getErrorMsg());
                 delete button;
                 return;
             }
@@ -201,12 +203,15 @@ void TPage::initialize(const string& nm)
             button->setHandle(((mPage.pageID << 16) & 0xffff0000) | button->getButtonIndex());
             button->createButtons();
             addButton(button);
-            index++;        // Jump over the end tag of the button.
+            string sType = xml.getElementTypeStr(index);
+            MSG_DEBUG("Element type: " << sType);
+//            index++;        // Jump over the end tag of the button.
         }
         else if (e.compare("sr") == 0)
         {
             SR_T bsr;
             bsr.number = xml.getAttributeInt("number", attrs);
+            MSG_DEBUG("Page " << mPage.name << " at State " << bsr.number);
             index++;
 
             while ((index = xml.getNextElementFromIndex(index, &ename, &content, &attrs)) != TExpat::npos)
@@ -252,6 +257,7 @@ void TPage::initialize(const string& nm)
         }
     }
 
+    MSG_DEBUG("Setting SR with " << sr.size() << " elements");
     setSR(sr);
 
     if (TPageInterface::getButtons())
@@ -605,7 +611,16 @@ void TPage::show()
         return;
     }
 
-    target.eraseColor(TColor::getSkiaColor(sr[0].cf));
+    if (sr.empty())
+    {
+        MSG_WARNING("Page " << mPage.name << " (" << mPage.pageID << "): The SR is empty!");
+    }
+
+    if (sr.size() > 0)
+        target.eraseColor(TColor::getSkiaColor(sr[0].cf));
+    else
+        target.eraseColor(SK_ColorTRANSPARENT);
+
     // Draw the background, if any
     if (sr.size() > 0 && (!sr[0].bm.empty() || !sr[0].mi.empty()))
     {
@@ -754,7 +769,7 @@ void TPage::show()
     }
 
     // Check for a frame and draw it if there is one.
-    if (!sr[0].bs.empty())
+    if (sr.size() > 0 && !sr[0].bs.empty())
     {
         if (drawFrame(mPage, &target))
             haveImage = true;
@@ -764,11 +779,15 @@ void TPage::show()
     {
         SkImageInfo info = target.info();
         TBitmap image((unsigned char *)target.getPixels(), info.width(), info.height());
+
+        if (sr.size() > 0)
+        {
 #ifdef _OPAQUE_SKIA_
-        _setBackground(handle, image, target.info().width(), target.info().height(), TColor::getColor(sr[0].cf));
+            _setBackground(handle, image, target.info().width(), target.info().height(), TColor::getColor(sr[0].cf));
 #else
-        _setBackground(handle, image, target.info().width(), target.info().height(), TColor::getColor(sr[0].cf), sr[0].oo);
+            _setBackground(handle, image, target.info().width(), target.info().height(), TColor::getColor(sr[0].cf), sr[0].oo);
 #endif
+        }
     }
     else if (sr.size() > 0 && !haveImage)
     {

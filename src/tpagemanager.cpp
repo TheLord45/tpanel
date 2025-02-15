@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2024 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -800,6 +800,7 @@ TPageManager::TPageManager()
     // Read the application file if it is TP5
     if (mTSettings->isTP5())
     {
+        TTPInit::setTP5(true);
         mApps = new TApps;
         mApps->parseApps();
 

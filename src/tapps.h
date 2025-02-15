@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2024, 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -57,9 +57,11 @@ typedef struct APP_PAR_STRINGS_t
 typedef struct APP_PARAMETER_t
 {
     std::string name;
+    std::string fullName;
     std::string eDataType;
     std::string value;
     std::string info;
+    bool valueRequired{false};
     std::vector<APP_PAR_STRINGS_t> stringValues;
 }APP_PARAMETER_t;
 
