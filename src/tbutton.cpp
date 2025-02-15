@@ -272,6 +272,8 @@ size_t TButton::initialize(TExpat *xml, size_t index)
 
     while((index = xml->getNextElementFromIndex(index, &ename, &content, &attrs)) != TExpat::npos)
     {
+        MSG_DEBUG("Element: " << ename << " at index " << index);
+
         if (ename.compare("bi") == 0)               // Button index
         {
             bi = xml->convertElementToInt(content);
@@ -445,7 +447,7 @@ size_t TButton::initialize(TExpat *xml, size_t index)
             pf.pfType = xml->getAttribute("type", attrs);
             pushFunc.push_back(pf);
         }
-        else if (ename.compare("er") == 0 && xml->getType(index) == _ET_START)          // Function call TP5
+        else if (ename.compare("er") == 0 && xml->isElementTypeStart(index))          // Function call TP5
         {
             PUSH_FUNC_T pf;
             string e;
@@ -463,10 +465,9 @@ size_t TButton::initialize(TExpat *xml, size_t index)
                 oldIndex = index;
             }
 
-            if (index == TExpat::npos)
-                index = oldIndex + 1;
+            index = oldIndex + 1;
         }
-        else if (ename.compare("ep") == 0 && xml->getType(index) == _ET_START)          // TP5: Call an application
+        else if (ename.compare("ep") == 0 && xml->isElementTypeStart(index))          // TP5: Call an application
         {
             CALL_APP_t ep;
             string e;
@@ -488,11 +489,14 @@ size_t TButton::initialize(TExpat *xml, size_t index)
 
                 oldIndex = index;
             }
+
+            index = oldIndex + 1;
         }
         else if (ename.compare("sr") == 0)          // Section state resources
         {
             SR_T bsr;
             bsr.number = xml->getAttributeInt("number", attrs); // State number
+            MSG_DEBUG("Button: " << na << ": State element: " << bsr.number);
             string e;
 
             while ((index = xml->getNextElementFromIndex(index, &e, &content, &attrs)) != TExpat::npos)
@@ -522,6 +526,7 @@ size_t TButton::initialize(TExpat *xml, size_t index)
                 {
                     string fname;
                     BITMAPS_t bitmapEntry;
+                    MSG_DEBUG("Section: " << e);
 
                     while ((index = xml->getNextElementFromIndex(index, &fname, &content, &attrs)) != TExpat::npos)
                     {
@@ -589,25 +594,18 @@ size_t TButton::initialize(TExpat *xml, size_t index)
             }
 
             sr.push_back(bsr);
-            MSG_DEBUG("Added element <SR>: " << bsr.number);
+
+            if (index == TExpat::npos)
+                index = oldIndex + 1;
         }
 
         if (index == TExpat::npos)
             index = oldIndex + 1;
-
-        if (index != TExpat::npos && index > 0)
-        {
-            bool valid;
-            string en = xml->getElementName(index, &valid);
-            MSG_DEBUG("EName: " << en << ", valid: " << (valid ? "TRUE" : "FALSE") << ", current index: " << index << ", old index: " << oldIndex);
-
-            if (valid && en == "button")
-                break;
-
+        else if (index > oldIndex)
             oldIndex = index;
-        }
     }
 
+    MSG_DEBUG("Index after loop: " << (index == TExpat::npos ? 0 : index) << ", old index: " << oldIndex);
     visible = !hd;  // set the initial visibility
 
     if (gPageManager)
@@ -660,8 +658,9 @@ size_t TButton::initialize(TExpat *xml, size_t index)
     MSG_DEBUG("Added button " << bi << " --> " << na);
 
     if (index == TExpat::npos)
-        return oldIndex;
+        index = oldIndex + 1;
 
+    MSG_DEBUG("Returning index " << index);
     return index;
 }
 

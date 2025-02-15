@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2024, 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -90,10 +90,11 @@ bool TApps::parseApps()
 
     int depth = 0;
     size_t index = 0;
+    size_t oldIndex = 0;
 
     if ((index = xml.getElementIndex("Apps", &depth)) == TExpat::npos)
     {
-        MSG_DEBUG("File does not contain the element \"Apps\"!");
+        MSG_WARNING("File does not contain the element \"Apps\"!");
         TError::setError();
         return false;
     }
@@ -139,14 +140,22 @@ bool TApps::parseApps()
                                     ar.ratioHeight = xml.getAttributeInt("ratioHeight", attrs);
                                     app.appWindow.aspectRatios.push_back(ar);
                                 }
+
+                                oldIndex = index;
                             }
+
+                            index = oldIndex + 1;
                         }
                         else if (s.compare("AspectRatioLimits") == 0)
                         {
                             app.appWindow.aspectRatioLimits.minWidth = xml.getAttributeInt("minWidth", attrs);
                             app.appWindow.aspectRatioLimits.minHeight = xml.getAttributeInt("minHeight", attrs);
                         }
+
+                        oldIndex = index;
                     }
+
+                    index = oldIndex + 1;
                 }
                 else if (a.compare("Images") == 0)
                 {
@@ -158,95 +167,175 @@ bool TApps::parseApps()
                             app.appImages.thumbImage = content;
                         else if (i.compare("WindowImage") == 0)
                             app.appImages.windowImage = content;
+
+                        oldIndex = index;
                     }
+
+                    index = oldIndex + 1;
                 }
-                else if (name.compare("Parameters") == 0)
+                else if (a.compare("Parameters") == 0)
                 {
                     string p;
-                    APP_PARAMETER_t par;
+                    MSG_DEBUG("Section \"" << name << "\" entered");
 
                     while ((index = xml.getNextElementFromIndex(index, &p, &content, &attrs)) != TExpat::npos)
                     {
                         if (p.compare("Parameter") == 0)
                         {
+                            APP_PARAMETER_t par;
+
                             par.name = xml.getAttribute("name", attrs);
+                            par.fullName = xml.getAttribute("fullName", attrs);
                             par.eDataType = xml.getAttribute("eDataType", attrs);
                             par.value = xml.getAttribute("value", attrs);
                             par.info = xml.getAttribute("info", attrs);
-                            APP_PAR_STRINGS_t val;
-                            string v;
+                            par.valueRequired = xml.getAttributeBool("valueRequired", attrs);
 
-                            while ((index = xml.getNextElementFromIndex(index, &v, &content, &attrs)) != TExpat::npos)
+                            if (!xml.isElementTypeAtomic(index))
                             {
-                                if (v.compare("StringValues") == 0)
-                                {
-                                    string sv;
+                                APP_PAR_STRINGS_t val;
+                                string v;
 
-                                    while ((index = xml.getNextElementFromIndex(index, &sv, &content, &attrs)) != TExpat::npos)
+                                while ((index = xml.getNextElementFromIndex(index, &v, &content, &attrs)) != TExpat::npos)
+                                {
+                                    if (v.compare("StringValues") == 0)
                                     {
-                                        if (sv.compare("StringValue") == 0)
+                                        string sv;
+
+                                        while ((index = xml.getNextElementFromIndex(index, &sv, &content, &attrs)) != TExpat::npos)
                                         {
-                                            val.key = xml.getAttribute("key", attrs);
-                                            val.value = content;
-                                            par.stringValues.push_back(val);
+                                            if (sv.compare("StringValue") == 0)
+                                            {
+                                                val.key = xml.getAttribute("key", attrs);
+                                                val.value = content;
+                                                par.stringValues.push_back(val);
+                                            }
+
+                                            oldIndex = index;
                                         }
+
+                                        index = oldIndex + 1;
                                     }
+
+                                    oldIndex = index;
                                 }
+
+                                index = oldIndex + 1;
                             }
+
+                            app.parameters.push_back(par);
                         }
+
+                        oldIndex = index;
                     }
 
-                    app.parameters.push_back(par);
+                    index = oldIndex + 1;
                 }
+
+                oldIndex = index;
             }
 
             mAppSettings.push_back(app);
+            index = oldIndex + 1;
         }
-        else if (name.compare("WindowFrames") == 0)
+    }
+
+    if ((index = xml.getElementIndex("WindowFrames", &depth)) == TExpat::npos)
+    {
+        MSG_WARNING("File does not contain the element \"WindowFrames\"!");
+        TError::setError();
+        return false;
+    }
+
+    string w;
+    APP_WINDOW_FRAME_t wf;
+    depth++;
+    oldIndex = 0;
+
+    while ((index = xml.getNextElementFromIndex(index, &w, &content, &attrs)) != TExpat::npos)
+    {
+        if (w.compare("WindowFrame") == 0)
         {
-            string w;
-            APP_WINDOW_FRAME_t wf;
+            wf.eType = xml.getAttribute("eType", attrs);
+            wf.edgeSize = xml.getAttributeInt("edgeSize", attrs);
+            wf.barSize = xml.getAttributeInt("barSize", attrs);
+            string b;
 
-            while ((index = xml.getNextElementFromIndex(index, &w, &content, &attrs)) != TExpat::npos)
+            while ((index = xml.getNextElementFromIndex(index, &b, &content, &attrs)) != TExpat::npos)
             {
-                if (w.compare("WindowFrame") == 0)
+                APP_BUTTON_t button;
+
+                if (b.compare("Buttons") == 0)
                 {
-                    wf.eType = xml.getAttribute("eType", attrs);
-                    wf.edgeSize = xml.getAttributeInt("edgeSize", attrs);
-                    wf.barSize = xml.getAttributeInt("barSize", attrs);
-                    string b;
+                    string a;
 
-                    while ((index = xml.getNextElementFromIndex(index, &b, &content, &attrs)) != TExpat::npos)
+                    while ((index = xml.getNextElementFromIndex(index, &a, &content, &attrs)) != TExpat::npos)
                     {
-                        APP_BUTTON_t button;
-
-                        if (b.compare("Buttons") == 0)
+                        if (a.compare("Button") == 0)
                         {
-                            string a;
+                            button.eLocation = xml.getAttribute("eLocation", attrs);
+                            button.order = xml.getAttributeInt("order", attrs);
+                            button.spacing = xml.getAttributeInt("spacing", attrs);
+                            string i;
 
-                            while ((index = xml.getNextElementFromIndex(index, &a, &content, &attrs)) != TExpat::npos)
+                            while ((index = xml.getNextElementFromIndex(index, &i, &content, &attrs)) != TExpat::npos)
                             {
-                                if (a.compare("Button") == 0)
-                                {
-                                    button.eLocation = xml.getAttribute("eLocation", attrs);
-                                    button.order = xml.getAttributeInt("order", attrs);
-                                    button.spacing = xml.getAttributeInt("spacing", attrs);
-                                    string i;
+                                if (i.compare("ButtonImage") == 0)
+                                    button.buttonImage.push_back(content);
 
-                                    while ((index = xml.getNextElementFromIndex(index, &i, &content, &attrs)) != TExpat::npos)
-                                    {
-                                        if (i.compare("ButtonImage") == 0)
-                                            button.buttonImage.push_back(content);
-                                    }
-                                }
+                                oldIndex = index;
                             }
 
-                            wf.buttons.push_back(button);
+                            index = oldIndex + 1;
                         }
+
+                        oldIndex = index;
                     }
 
-                    mWindowFrames.push_back(wf);
+                    wf.buttons.push_back(button);
+                    index = oldIndex + 1;
                 }
+
+                oldIndex = index;
+            }
+
+            mWindowFrames.push_back(wf);
+            index = oldIndex + 1;
+        }
+    }
+
+    if (TStreamError::checkFilter(HLOG_DEBUG))
+    {
+        MSG_DEBUG("Supported apps:");
+
+        std::vector<APP_SETTINGS_t>::iterator iter;
+
+        for (iter = mAppSettings.begin(); iter != mAppSettings.end(); ++iter)
+        {
+            MSG_DEBUG("     Application:   " << iter->appName);
+            MSG_DEBUG("     App ID:        " << iter->appID);
+            MSG_DEBUG("     App info:      " << iter->appInfo);
+            MSG_DEBUG("     Parameters:    " << iter->parameters.size());
+            MSG_DEBUG("     Thumb image:   " << iter->appImages.thumbImage);
+            MSG_DEBUG("     Wind. image:   " << iter->appImages.windowImage);
+            MSG_DEBUG("     Wind. aspect:  " << (iter->appWindow.aspectFixed ? "TRUE" : "FALSE"));
+            MSG_DEBUG("     Aspect ratios: " << iter->appWindow.aspectRatios.size());
+            MSG_DEBUG("     Aspect limits: " << iter->appWindow.aspectRatioLimits.minWidth << " x " << iter->appWindow.aspectRatioLimits.minHeight << "\n");
+        }
+
+        MSG_DEBUG("Defined window frames: ");
+
+        std::vector<APP_WINDOW_FRAME_t>::iterator witer;
+
+        for (witer = mWindowFrames.begin(); witer != mWindowFrames.end(); ++witer)
+        {
+            MSG_DEBUG("     Frame type: " << witer->eType);
+            std::vector<APP_BUTTON_t>::iterator biter;
+
+            for (biter = witer->buttons.begin(); biter != witer->buttons.end(); ++biter)
+            {
+                MSG_DEBUG("         Button order:    " << biter->order);
+                MSG_DEBUG("         Button location: " << biter->eLocation);
             }
         }
     }
