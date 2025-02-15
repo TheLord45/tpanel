@@ -117,9 +117,9 @@ TColor::COLOR_T TColor::splitColors(PDATA_T& pd)
     return ct;
 }
 
-SkColor TColor::getSkiaColor(const std::string& color)
+SkColor TColor::getSkiaColor(const string& color)
 {
-    DECL_TRACER("TColor::getSkiaColor(const std::string& color)");
+    DECL_TRACER("TColor::getSkiaColor(const string& color)");
 
     COLOR_T col = getAMXColor(color);
 

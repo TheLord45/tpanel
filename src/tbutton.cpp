@@ -274,6 +274,8 @@ size_t TButton::initialize(TExpat *xml, size_t index)
 
     while((index = xml->getNextElementFromIndex(index, &ename, &content, &attrs)) != TExpat::npos)
     {
+        MSG_DEBUG("Element: " << ename << " at index " << index);
+
         if (ename.compare("bi") == 0)               // Button index
         {
             bi = xml->convertElementToInt(content);
@@ -447,7 +449,7 @@ size_t TButton::initialize(TExpat *xml, size_t index)
             pf.pfType = xml->getAttribute("type", attrs);
             pushFunc.push_back(pf);
         }
-        else if (ename.compare("er") == 0)          // Function call TP5
+        else if (ename.compare("er") == 0 && xml->isElementTypeStart(index))          // Function call TP5
         {
             PUSH_FUNC_T pf;
             string e;
@@ -461,9 +463,13 @@ size_t TButton::initialize(TExpat *xml, size_t index)
                     pf.pfName = content;
                     pushFunc.push_back(pf);
                 }
+
+                oldIndex = index;
             }
+
+            index = oldIndex + 1;
         }
-        else if (ename.compare("ep") == 0)          // TP5: Call an application
+        else if (ename.compare("ep") == 0 && xml->isElementTypeStart(index))          // TP5: Call an application
         {
             CALL_APP_t ep;
             string e;
@@ -478,12 +484,17 @@ size_t TButton::initialize(TExpat *xml, size_t index)
                     ep.name = content;
                     callApp.push_back(ep);
                 }
+
+                oldIndex = index;
             }
+
+            index = oldIndex + 1;
         }
         else if (ename.compare("sr") == 0)          // Section state resources
         {
             SR_T bsr;
             bsr.number = xml->getAttributeInt("number", attrs); // State number
+            MSG_DEBUG("Button: " << na << ": State element: " << bsr.number);
             string e;
 
             while ((index = xml->getNextElementFromIndex(index, &e, &content, &attrs)) != TExpat::npos)
@@ -511,6 +522,7 @@ size_t TButton::initialize(TExpat *xml, size_t index)
                 {
                     string fname;
                     BITMAPS_t bitmapEntry;
+                    MSG_DEBUG("Section: " << e);
 
                     while ((index = xml->getNextElementFromIndex(index, &fname, &content, &attrs)) != TExpat::npos)
                     {
@@ -522,9 +534,14 @@ size_t TButton::initialize(TExpat *xml, size_t index)
                             bitmapEntry.offsetX = xml->convertElementToInt(content);
                         else if (fname.compare("offsetY") == 0)
                             bitmapEntry.offsetY = xml->convertElementToInt(content);
+
+                        oldIndex = index;
                     }
 
                     bsr.bitmaps.push_back(bitmapEntry);
+
+                    if (index == TExpat::npos)
+                        index = oldIndex + 1;
                 }
                 else if (e.compare("sd") == 0)      // Sound file
                     bsr.sd = content;
@@ -573,12 +590,18 @@ size_t TButton::initialize(TExpat *xml, size_t index)
             }
 
             sr.push_back(bsr);
+
+            if (index == TExpat::npos)
+                index = oldIndex + 1;
         }
 
         if (index == TExpat::npos)
             index = oldIndex + 1;
+        else if (index > oldIndex)
+            oldIndex = index;
     }
 
+    MSG_DEBUG("Index after loop: " << (index == TExpat::npos ? 0 : index) << ", old index: " << oldIndex);
     visible = !hd;  // set the initial visibility
 
     if (gPageManager)
@@ -631,8 +654,9 @@ size_t TButton::initialize(TExpat *xml, size_t index)
     MSG_DEBUG("Added button " << bi << " --> " << na);
 
     if (index == TExpat::npos)
-        return oldIndex + 1;
+        index = oldIndex + 1;
 
+    MSG_DEBUG("Returning index " << index);
     return index;
 }
 
