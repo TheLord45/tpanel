@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2024 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -191,6 +191,12 @@ namespace Button
         SVP_RIGHT_BOTTOM
     }SUBVIEW_POSITION_t;
 
+    typedef enum BUTTON_ACTION_t
+    {
+        BT_ACTION_LAUNCH,
+        BT_ACTION_PGFLIP
+    }BUTTON_ACTION_t;
+
     /**
      * Justification values:
      *    0 = absolut
@@ -212,6 +218,8 @@ namespace Button
         ORIENTATION justification{ORI_CENTER_MIDDLE};   // Justification of bitmap
         int offsetX{0};         // Absolut X position (only if justification is 0)
         int offsetY{0};         // Absolut Y position (only if justification is 0)
+        int width{0};           // Internal: The width of the image
+        int height{0};          // Internal: The height of the image
     }BITMAPS_t;
 
     typedef struct SR_T
@@ -284,18 +292,13 @@ namespace Button
 
     typedef struct PUSH_FUNC
     {
-        int item{0};            // TP5: Item number ordered
+        int item{0};            // TP5: Item number
         std::string pfType;     // command to execute when button was pushed
+        std::string pfAction;   // TP5: Action; Used for launching external apps
         std::string pfName;     // Name of popup
+        BUTTON_ACTION_t action{BT_ACTION_PGFLIP};   // TP5: Button action
+        int ID{0};              // TP5: An ID for launch buttons
     }PUSH_FUNC_T;
-
-    typedef struct CALL_APP     // TP5: Call an application
-    {
-        int item{0};            // Item number
-        std::string action;     // The action to take (show, hide, ...)
-        int id{0};              // An ID for the application
-        std::string name;       // The name of the application (Calculator, ...)
-    }CALL_APP_t;
 
     typedef enum CENTER_CODE
     {
@@ -1465,7 +1468,6 @@ namespace Button
             std::string op;         // String the button send
             bool visible{true};     // TRUE=Button is visible
             std::vector<PUSH_FUNC_T> pushFunc;  // Push functions: This are executed on button press
-            std::vector<CALL_APP_t> callApp;    // TP5: Call an application
             std::vector<SR_T> sr;   // The elements the button consists of
             // ListView settings (G5)
             std::string listSource; // Defines the data source for a list.

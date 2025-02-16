@@ -56,7 +56,7 @@ class TTPInit
         void regCallbackProcessEvents(std::function<void ()> pe) { _processEvents = pe; }
         void regCallbackProgressBar(std::function<void (int percent)> pb) { _progressBar = pb; }
         static void setTP5(bool tp) { mIsTP5 = tp; }
-        static bool getTP5() { return mIsTP5; }
+        static bool isTP5() { return mIsTP5; }
 
         static bool haveSystemMarker();
 

@@ -59,7 +59,7 @@ bool TApps::parseApps()
 {
     DECL_TRACER("TApps::parseApps()");
 
-    if (!TTPInit::getTP5())
+    if (!TTPInit::isTP5())
     {
         MSG_WARNING("Can't read app configs because it's not a TP5 format!");
         return false;
