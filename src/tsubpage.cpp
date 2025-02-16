@@ -245,7 +245,13 @@ void TSubPage::initialize()
                 button->setHandle(((mSubpage.pageID << 16) & 0xffff0000) | button->getButtonIndex());
                 button->createButtons();
                 addButton(button);
-                index++;    // Jump over the end tag of the button.
+                string sType1 = xml.getElementTypeStr(index);
+                string sType2 = xml.getElementTypeStr(index+1);
+                MSG_DEBUG("Element type 1: " << sType1);
+                MSG_DEBUG("Element type 2: " << sType2);
+
+                if (xml.isElementTypeEnd(index+1))
+                    index++;        // Jump over the end tag of the button.
             }
             catch (std::exception& e)
             {
@@ -371,6 +377,7 @@ void TSubPage::show()
         }
     }
 
+    bool noSr = mSubpage.sr.empty();
     bool haveImage = false;
     ulong handle = (mSubpage.pageID << 16) & 0xffff0000;
     MSG_DEBUG("Processing subpage " << mSubpage.pageID << ": " << mSubpage.name);
@@ -392,9 +399,13 @@ void TSubPage::show()
         mSubpage.height = mSubpage.heightOrig;
     }
 
-    target.eraseColor(TColor::getSkiaColor(mSubpage.sr[0].cf));
+    if (!noSr)
+        target.eraseColor(TColor::getSkiaColor(mSubpage.sr[0].cf));
+    else
+        target.eraseColor(SK_ColorTRANSPARENT);
+
     // Draw the background, if any
-    if (mSubpage.sr.size() > 0 && (!mSubpage.sr[0].bm.empty() || !mSubpage.sr[0].mi.empty()))
+    if (!noSr && (!mSubpage.sr[0].bm.empty() || !mSubpage.sr[0].mi.empty()))
     {
         TDrawImage dImage;
         dImage.setWidth(mSubpage.width);
@@ -526,7 +537,7 @@ void TSubPage::show()
         }
     }
 
-    if (mSubpage.sr.size() > 0 && !mSubpage.sr[0].te.empty())
+    if (!noSr && !mSubpage.sr[0].te.empty())
     {
         MSG_DEBUG("Drawing a text only on background image ...");
 
@@ -535,13 +546,13 @@ void TSubPage::show()
     }
 
     // Check for a frame and draw it if there is one.
-    if (!mSubpage.sr[0].bs.empty())
+    if (!noSr && !mSubpage.sr[0].bs.empty())
     {
         if (drawFrame(mSubpage, &target))
             haveImage = true;
     }
 
-    if (haveImage)
+    if (!noSr && haveImage)
     {
 #ifdef _OPAQUE_SKIA_
         if (mSubpage.sr[0].oo < 255)
@@ -554,7 +565,7 @@ void TSubPage::show()
         _setBackground(handle, image, target.info().width(), target.info().height(), TColor::getColor(mSubpage.sr[0].cf), mSubpage.sr[0].oo);
 #endif
     }
-    else if (mSubpage.sr.size() > 0 && !haveImage)
+    else if (!noSr && !haveImage)
     {
         MSG_DEBUG("Calling \"setBackground\" with no image ...");
 #ifdef _OPAQUE_SKIA_
@@ -579,7 +590,7 @@ void TSubPage::show()
             button->button->setPalette(mPalette);
             button->button->createButtons();
 
-            if (mSubpage.sr.size() > 0)
+            if (!noSr)
                 button->button->setGlobalOpacity(mSubpage.sr[0].oo);
 
             if (mSubpage.resetPos != 0)

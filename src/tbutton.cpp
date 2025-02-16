@@ -20,6 +20,8 @@
 #include <memory>
 #include <algorithm>
 
+#include <unistd.h>
+
 #include <include/core/SkPixmap.h>
 #include <include/core/SkSize.h>
 #include <include/core/SkColor.h>
@@ -59,6 +61,7 @@
 #include "turl.h"
 #include "tlock.h"
 #include "ttpinit.h"
+#include "tlauncher.h"
 #if TESTMODE == 1
 #include "testmode.h"
 #endif
@@ -447,7 +450,7 @@ size_t TButton::initialize(TExpat *xml, size_t index)
             pf.pfType = xml->getAttribute("type", attrs);
             pushFunc.push_back(pf);
         }
-        else if (ename.compare("er") == 0 && xml->isElementTypeStart(index))          // Function call TP5
+        else if (ename.compare("ep") == 0 && xml->isElementTypeStart(index))          // Function call TP5
         {
             PUSH_FUNC_T pf;
             string e;
@@ -456,35 +459,20 @@ size_t TButton::initialize(TExpat *xml, size_t index)
             {
                 if (e.compare("pgFlip") == 0)
                 {
+                    pf.action = BT_ACTION_PGFLIP;
                     pf.item = xml->getAttributeInt("item", attrs);
                     pf.pfType = xml->getAttribute("type", attrs);
                     pf.pfName = content;
                     pushFunc.push_back(pf);
                 }
-
-                oldIndex = index;
-            }
-
-            index = oldIndex + 1;
-        }
-        else if (ename.compare("ep") == 0 && xml->isElementTypeStart(index))          // TP5: Call an application
-        {
-            CALL_APP_t ep;
-            string e;
-
-            MSG_DEBUG("(ep) Index: " << index << ", oldIndex: " << oldIndex);
-
-            while ((index = xml->getNextElementFromIndex(index, &e, &content, &attrs)) != TExpat::npos)
-            {
-                MSG_DEBUG("(ep) Element: " << e << ", index: " << index << ", oldIndex: " << oldIndex);
-
-                if (e.compare("launch") == 0)
+                else if (e.compare("launch") == 0)
                 {
-                    ep.item = xml->getAttributeInt("item", attrs);
-                    ep.action = xml->getAttribute("action", attrs);
-                    ep.id = xml->getAttributeInt("id", attrs);
-                    ep.name = content;
-                    callApp.push_back(ep);
+                    pf.action = BT_ACTION_LAUNCH;
+                    pf.item = xml->getAttributeInt("item", attrs);
+                    pf.ID = xml->getAttributeInt("id", attrs);
+                    pf.pfAction = xml->getAttribute("action", attrs);
+                    pf.pfName = content;
+                    pushFunc.push_back(pf);
                 }
 
                 oldIndex = index;
@@ -1129,76 +1117,113 @@ bool TButton::createButtons(bool force)
         if (srIter->sb > 0)
             continue;
 
-        bool bmExistMi = false;
-        bool bmExistBm = false;
-        bool reload = false;
-
-        if (!srIter->mi.empty())
+        if (!TTPInit::isTP5())
         {
-            if ((bmExistMi = TImgCache::existBitmap(srIter->mi, _BMTYPE_CHAMELEON)) == false)
+            bool bmExistMi = false;
+            bool bmExistBm = false;
+            bool reload = false;
+
+            if (!srIter->mi.empty())
             {
+                if ((bmExistMi = TImgCache::existBitmap(srIter->mi, _BMTYPE_CHAMELEON)) == false)
+                {
+                    mChanged = true;
+                    reload = true;
+                }
+            }
+
+            if (!srIter->bm.empty())
+            {
+                if ((bmExistBm = TImgCache::existBitmap(srIter->bm, _BMTYPE_BITMAP)) == false)
+                {
+                    mChanged = true;
+                    reload = true;
+                }
+            }
+
+            if (!force)
+            {
+                if (!reload)   // If the image already exist, do not load it again.
+                    continue;
+            }
+
+            if (!bmExistMi && !srIter->mi.empty())        // Do we have a chameleon image?
+            {
+                sk_sp<SkData> image;
+                SkBitmap bm;
+
+                if (!(image = readImage(srIter->mi)))
+                    return false;
+
+                DecodeDataToBitmap(image, &bm);
+
+                if (bm.empty())
+                {
+                    MSG_WARNING("Could not create a picture for element " << number << " on button " << bi << " (" << na << ")");
+                    return false;
+                }
+
+                TImgCache::addImage(srIter->mi, bm, _BMTYPE_CHAMELEON);
+                srIter->mi_width = bm.info().width();
+                srIter->mi_height = bm.info().height();
                 mChanged = true;
-                reload = true;
             }
-        }
 
-        if (!srIter->bm.empty())
-        {
-            if ((bmExistBm = TImgCache::existBitmap(srIter->bm, _BMTYPE_BITMAP)) == false)
+            if (!bmExistBm && !srIter->bm.empty())        // Do we have a bitmap?
             {
+                sk_sp<SkData> image;
+                SkBitmap bm;
+
+                if (!(image = readImage(srIter->bm)))
+                    return false;
+
+                DecodeDataToBitmap(image, &bm);
+
+                if (bm.empty())
+                {
+                    MSG_WARNING("Could not create a picture for element " << number << " on button " << bi << " (" << na << ")");
+                    return false;
+                }
+
+                TImgCache::addImage(srIter->bm, bm, _BMTYPE_BITMAP);
+                srIter->bm_width = bm.info().width();
+                srIter->bm_height = bm.info().height();
                 mChanged = true;
-                reload = true;
             }
         }
-
-        if (!force)
+        else
         {
-            if (!reload)   // If the image already exist, do not load it again.
-                continue;
-        }
-
-        if (!bmExistMi && !srIter->mi.empty())        // Do we have a chameleon image?
-        {
-            sk_sp<SkData> image;
-            SkBitmap bm;
-
-            if (!(image = readImage(srIter->mi)))
-                return false;
-
-            DecodeDataToBitmap(image, &bm);
-
-            if (bm.empty())
+            if (srIter->bitmaps.size() > 0)
             {
-                MSG_WARNING("Could not create a picture for element " << number << " on button " << bi << " (" << na << ")");
-                return false;
+                vector<BITMAPS_t>::iterator bmIter;
+                sk_sp<SkData> image;
+                SkBitmap bm;
+
+                for (bmIter = srIter->bitmaps.begin(); bmIter != srIter->bitmaps.end(); ++bmIter)
+                {
+                    if (force || !TImgCache::existBitmap(bmIter->fileName, _BMTYPE_BITMAP))
+                    {
+                        if (!(image = readImage(bmIter->fileName)))
+                        {
+                            MSG_WARNING("Error reading image " << bmIter->fileName << "!");
+                            continue;
+                        }
+
+                        DecodeDataToBitmap(image, &bm);
+
+                        if (bm.empty())
+                        {
+                            MSG_WARNING("Could not create a picture for element " << number << " on button " << bi << " (" << na << ")");
+                            continue;
+                        }
+
+                        TImgCache::addImage(bmIter->fileName, bm, _BMTYPE_BITMAP);
+                        bmIter->width = bm.info().width();
+                        bmIter->height = bm.info().height();
+                        mChanged = true;
+                    }
+                }
             }
-
-            TImgCache::addImage(srIter->mi, bm, _BMTYPE_CHAMELEON);
-            srIter->mi_width = bm.info().width();
-            srIter->mi_height = bm.info().height();
-            mChanged = true;
-        }
-
-        if (!bmExistBm && !srIter->bm.empty())        // Do we have a bitmap?
-        {
-            sk_sp<SkData> image;
-            SkBitmap bm;
-
-            if (!(image = readImage(srIter->bm)))
-                return false;
-
-            DecodeDataToBitmap(image, &bm);
-
-            if (bm.empty())
-            {
-                MSG_WARNING("Could not create a picture for element " << number << " on button " << bi << " (" << na << ")");
-                return false;
-            }
-
-            TImgCache::addImage(srIter->bm, bm, _BMTYPE_BITMAP);
-            srIter->bm_width = bm.info().width();
-            srIter->bm_height = bm.info().height();
-            mChanged = true;
         }
     }
 
@@ -4025,6 +4050,8 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
     else if ((size_t)inst >= sr.size())
         instance = (int)(sr.size() - 1);
 
+    bool tp5 = TTPInit::isTP5();   // TRUE = TP5
+
     /*
      * Here we test if we have a cameleon image. If there is a mask (sr[].mi)
      * and no frame (sr[].bs) then we have a cameleon image. A bitmap is
@@ -4032,7 +4059,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
      * Otherwise the mask may be used as an overlay for a bitmap on another
      * button below the mask.
      */
-    if (!sr[instance].mi.empty() && sr[instance].bs.empty())       // Chameleon image?
+    if (!tp5 && !sr[instance].mi.empty() && sr[instance].bs.empty())       // Chameleon image?
     {
         MSG_DEBUG("Chameleon image consisting of mask " << sr[instance].mi << " and bitmap " << (sr[instance].bm.empty() ? "NONE" : sr[instance].bm) << " ...");
 
@@ -4070,9 +4097,9 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
         SkBitmap imgMask;
         bool haveBothImages = true;
 
-        if (!sr[instance].bm.empty() || (TTPInit::getTP5() && !sr[instance].bitmaps.empty()))
+        if (!sr[instance].bm.empty() || (TTPInit::isTP5() && !sr[instance].bitmaps.empty()))
         {
-            if (TTPInit::getTP5())
+            if (TTPInit::isTP5())
             {
                 if (!buttonBitmap5(&bmBm, instance))
                     haveBothImages = false;
@@ -4227,7 +4254,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
             }
         }
     }
-    else if (!sr[instance].bm.empty())
+    else if (!tp5 && !sr[instance].bm.empty())
     {
         MSG_TRACE("Drawing normal image " << sr[instance].bm << " ...");
 
@@ -4315,6 +4342,98 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
             SkRect rect = SkRect::MakeXYWH(position.left, position.top, isize.width, isize.height);
             sk_sp<SkImage> im = SkImages::RasterFromBitmap(image);
             can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
+        }
+    }
+    else if (tp5 && sr[instance].bitmaps.size() > 0)    // TP5: Put all images together
+    {
+        MSG_TRACE("Draw TP5 image stack.");
+
+        vector<BITMAPS_t>::iterator bmIter;
+
+        for (bmIter = sr[instance].bitmaps.begin(); bmIter != sr[instance].bitmaps.end(); ++bmIter)
+        {
+            SkBitmap image;
+
+            if (!TImgCache::getBitmap(bmIter->fileName, &image, _BMTYPE_BITMAP, &bmIter->width, &bmIter->height))
+            {
+                sk_sp<SkData> data = readImage(sr[instance].bm);
+                bool loaded = false;
+
+                if (data)
+                {
+                    DecodeDataToBitmap(data, &image);
+
+                    if (!image.empty())
+                    {
+                        TImgCache::addImage(bmIter->fileName, image, _BMTYPE_BITMAP);
+                        loaded = true;
+                        bmIter->width = image.info().width();
+                        bmIter->height = image.info().height();
+                    }
+                }
+
+                if (!loaded)
+                {
+                    MSG_ERROR("Missing image " << bmIter->fileName << "!");
+                    continue;        // We want the button even without an image
+                }
+            }
+
+            if (image.empty())
+            {
+                MSG_ERROR("Error creating the image \"" << bmIter->fileName << "\"!");
+                continue;
+            }
+
+            IMAGE_SIZE_t isize = calcImageSize(image.info().width(), image.info().height(), instance, true);
+            POSITION_t position = calcImagePosition((sr[instance].sb ? isize.width : image.info().width()), (sr[instance].sb ? isize.height : image.info().height()), SC_BITMAP, instance);
+
+            if (!position.valid)
+            {
+                MSG_ERROR("Error calculating the position of the image for button number " << bi);
+                continue;
+            }
+
+            MSG_DEBUG("Putting bitmap on top of image ...");
+            SkPaint paint;
+            paint.setBlendMode(SkBlendMode::kSrcOver);
+            SkCanvas can(*bm, SkSurfaceProps());
+
+            if (sr[instance].sb == 0)   // Scale bitmap?
+            {                           // No, keep size
+                if ((bmIter->justification == ORI_ABSOLUT && bmIter->offsetX >= 0 && bmIter->offsetY >= 0) || bmIter->justification != ORI_ABSOLUT)  // Draw the full image
+                {
+                    sk_sp<SkImage> _image = SkImages::RasterFromBitmap(image);
+                    can.drawImage(_image, position.left, position.top, SkSamplingOptions(), &paint);
+                }
+                else    // We need only a subset of the image
+                {
+                    MSG_DEBUG("Create a subset of an image ...");
+
+                    // Create a new Info to have the size of the subset.
+                    SkImageInfo info = SkImageInfo::Make(position.width, position.height, kRGBA_8888_SkColorType, kPremul_SkAlphaType);
+                    size_t byteSize = info.computeMinByteSize();
+
+                    if (byteSize == 0)
+                    {
+                        MSG_ERROR("Unable to calculate size of image!");
+                        continue;
+                    }
+
+                    MSG_DEBUG("Rectangle of part: x: " << position.left << ", y: " << position.top << ", w: " << position.width << ", h: " << position.height);
+                    SkBitmap part;      // Bitmap receiving the wanted part from the whole image
+                    SkIRect irect = SkIRect::MakeXYWH(position.left, position.top, position.width, position.height);
+                    image.extractSubset(&part, irect);  // Extract the part of the image containg the pixels we want
+                    sk_sp<SkImage> _image = SkImages::RasterFromBitmap(part);
+                    can.drawImage(_image, 0, 0, SkSamplingOptions(), &paint); // Draw the image
+                }
+            }
+            else    // Scale to fit
+            {
+                SkRect rect = SkRect::MakeXYWH(position.left, position.top, isize.width, isize.height);
+                sk_sp<SkImage> im = SkImages::RasterFromBitmap(image);
+                can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
+            }
         }
     }
     else
@@ -6472,7 +6591,7 @@ bool TButton::drawButton(int instance, bool show, bool subview)
                 return false;
             }
         }
-        else if (!TTPInit::getTP5() && mDOrder[i] == ORD_ELEM_ICON)
+        else if (!TTPInit::isTP5() && mDOrder[i] == ORD_ELEM_ICON)
         {
             if (!buttonIcon(&imgButton, instance))
             {
@@ -10344,105 +10463,118 @@ bool TButton::doClick(int x, int y, bool pressed)
 
         for (iter = pushFunc.begin(); iter != pushFunc.end(); ++iter)
         {
-            MSG_DEBUG("Testing for function \"" << iter->pfType << "\"");
-
             if (fb == FB_MOMENTARY || fb == FB_NONE)
                 mActInstance = 0;
             else if (fb == FB_ALWAYS_ON || fb == FB_INV_CHANNEL)
                 mActInstance = 1;
 
-            if (strCaseCompare(iter->pfType, "SSHOW") == 0)            // show popup
+            if (!TTPInit::isTP5() || iter->action == BT_ACTION_PGFLIP)
             {
-                if (gPageManager)
-                    gPageManager->showSubPage(iter->pfName);
-            }
-            else if (strCaseCompare(iter->pfType, "SHIDE") == 0)       // hide popup
-            {
-                if (gPageManager)
-                    gPageManager->hideSubPage(iter->pfName);
-            }
-            else if (strCaseCompare(iter->pfType, "SCGROUP") == 0)     // hide group
-            {
-                if (gPageManager)
-                    gPageManager->closeGroup(iter->pfName);
-            }
-            else if (strCaseCompare(iter->pfType, "SCPAGE") == 0)      // flip to page
-            {
-                if (gPageManager && !iter->pfName.empty())
-                    gPageManager->setPage(iter->pfName);
-            }
-            else if (strCaseCompare(iter->pfType, "STAN") == 0)        // Flip to standard page
-            {
-                if (gPageManager)
-                {
-                    if (!iter->pfName.empty())
-                        gPageManager->setPage(iter->pfName);
-                    else
-                    {
-                        TPage *page = gPageManager->getActualPage();
+                MSG_DEBUG("Testing for function \"" << iter->pfType << "\"");
 
-                        if (!page)
+                if (strCaseCompare(iter->pfType, "SSHOW") == 0)            // show popup
+                {
+                    if (gPageManager)
+                        gPageManager->showSubPage(iter->pfName);
+                }
+                else if (strCaseCompare(iter->pfType, "SHIDE") == 0)       // hide popup
+                {
+                    if (gPageManager)
+                        gPageManager->hideSubPage(iter->pfName);
+                }
+                else if (strCaseCompare(iter->pfType, "SCGROUP") == 0)     // hide group
+                {
+                    if (gPageManager)
+                        gPageManager->closeGroup(iter->pfName);
+                }
+                else if (strCaseCompare(iter->pfType, "SCPAGE") == 0)      // flip to page
+                {
+                    if (gPageManager && !iter->pfName.empty())
+                        gPageManager->setPage(iter->pfName);
+                }
+                else if (strCaseCompare(iter->pfType, "STAN") == 0)        // Flip to standard page
+                {
+                    if (gPageManager)
+                    {
+                        if (!iter->pfName.empty())
+                            gPageManager->setPage(iter->pfName);
+                        else
                         {
-                            MSG_DEBUG("Internal error: No actual page found!");
-                            return false;
+                            TPage *page = gPageManager->getActualPage();
+
+                            if (!page)
+                            {
+                                MSG_DEBUG("Internal error: No actual page found!");
+                                return false;
+                            }
+
+                            TSettings *settings = gPageManager->getSettings();
+
+                            if (settings && settings->getPowerUpPage().compare(page->getName()) != 0)
+                                gPageManager->setPage(settings->getPowerUpPage());
+                        }
+                    }
+                }
+                else if (strCaseCompare(iter->pfType, "FORGET") == 0)      // Flip to page and forget
+                {
+                    if (gPageManager && !iter->pfName.empty())
+                            gPageManager->setPage(iter->pfName, true);
+                }
+                else if (strCaseCompare(iter->pfType, "PREV") == 0)        // Flip to previous page
+                {
+                    if (gPageManager)
+                    {
+                        int old = gPageManager->getPreviousPageNumber();
+
+                        if (old > 0)
+                            gPageManager->setPage(old);
+                    }
+                }
+                else if (strCaseCompare(iter->pfType, "STOGGLE") == 0)     // Toggle popup state
+                {
+                    if (!iter->pfName.empty() && gPageManager)
+                    {
+                        TSubPage *page = gPageManager->getSubPage(iter->pfName);
+
+                        if (!page)      // Is the page not in cache?
+                        {               // No, then load it
+                            gPageManager->showSubPage(iter->pfName);
+                            return true;
                         }
 
-                        TSettings *settings = gPageManager->getSettings();
-
-                        if (settings && settings->getPowerUpPage().compare(page->getName()) != 0)
-                            gPageManager->setPage(settings->getPowerUpPage());
+                        if (page->isVisible())
+                            gPageManager->hideSubPage(iter->pfName);
+                        else
+                            gPageManager->showSubPage(iter->pfName);
                     }
                 }
-            }
-            else if (strCaseCompare(iter->pfType, "FORGET") == 0)      // Flip to page and forget
-            {
-                if (gPageManager && !iter->pfName.empty())
-                        gPageManager->setPage(iter->pfName, true);
-            }
-            else if (strCaseCompare(iter->pfType, "PREV") == 0)        // Flip to previous page
-            {
-                if (gPageManager)
+                else if (strCaseCompare(iter->pfType, "SCPANEL") == 0)   // Hide all popups
                 {
-                    int old = gPageManager->getPreviousPageNumber();
-
-                    if (old > 0)
-                        gPageManager->setPage(old);
-                }
-            }
-            else if (strCaseCompare(iter->pfType, "STOGGLE") == 0)     // Toggle popup state
-            {
-                if (!iter->pfName.empty() && gPageManager)
-                {
-                    TSubPage *page = gPageManager->getSubPage(iter->pfName);
-
-                    if (!page)      // Is the page not in cache?
-                    {               // No, then load it
-                        gPageManager->showSubPage(iter->pfName);
-                        return true;
-                    }
-
-                    if (page->isVisible())
-                        gPageManager->hideSubPage(iter->pfName);
-                    else
-                        gPageManager->showSubPage(iter->pfName);
-                }
-            }
-            else if (strCaseCompare(iter->pfType, "SCPANEL") == 0)   // Hide all popups
-            {
-                if (gPageManager)
-                {
-                    TSubPage *page = gPageManager->getFirstSubPage();
-
-                    while (page)
+                    if (gPageManager)
                     {
-                        page->drop();
-                        page = gPageManager->getNextSubPage();
+                        TSubPage *page = gPageManager->getFirstSubPage();
+
+                        while (page)
+                        {
+                            page->drop();
+                            page = gPageManager->getNextSubPage();
+                        }
                     }
                 }
+                else
+                {
+                    MSG_WARNING("Unknown page flip command " << iter->pfType);
+                }
             }
-            else
+            else if (iter->action == BT_ACTION_LAUNCH)
             {
-                MSG_WARNING("Unknown page flip command " << iter->pfType);
+#ifdef __ANDROID__
+                MSG_DEBUG("Launching the external program " << iter->pfName << "...");
+#else
+
+                MSG_DEBUG("Launching the external program " << iter->pfName << "...");
+                TLauncher::launch(iter->pfName);
+#endif  // __ANDROID__
             }
         }
     }

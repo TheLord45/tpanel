@@ -436,6 +436,8 @@ set(PROJECT_SOURCES
         testmode.h
         tapps.cpp
         tapps.h
+        tlauncher.cpp
+        tlauncher.h
         tpanel.qrc
 )
 
