@@ -9775,6 +9775,12 @@ void TPageManager::doICO(int port, vector<int>& channels, vector<string>& pars)
 {
     DECL_TRACER("TPageManager::doICO(int port, vector<int>& channels, vector<string>& pars)");
 
+    if (TTPInit::isTP5())
+    {
+        MSG_INFO("Command ^ICO is not supported by TP5 standard!");
+        return;
+    }
+
     if (pars.size() < 2)
     {
         MSG_ERROR("Expecting 2 parameters but got " << pars.size() << "! Ignoring command.");
@@ -9818,6 +9824,12 @@ void TPageManager::doICO(int port, vector<int>& channels, vector<string>& pars)
 void TPageManager::getICO(int port, vector<int>& channels, vector<string>& pars)
 {
     DECL_TRACER("TPageManager::getICO(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (TTPInit::isTP5())
+    {
+        MSG_INFO("Command ?ICO is not supported by TP5 standard!");
+        return;
+    }
 
     if (pars.size() < 1)
     {

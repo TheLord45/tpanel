@@ -203,9 +203,13 @@ void TPage::initialize(const string& nm)
             button->setHandle(((mPage.pageID << 16) & 0xffff0000) | button->getButtonIndex());
             button->createButtons();
             addButton(button);
-            string sType = xml.getElementTypeStr(index);
-            MSG_DEBUG("Element type: " << sType);
-//            index++;        // Jump over the end tag of the button.
+            string sType1 = xml.getElementTypeStr(index);
+            string sType2 = xml.getElementTypeStr(index+1);
+            MSG_DEBUG("Element type 1: " << sType1);
+            MSG_DEBUG("Element type 2: " << sType2);
+
+            if (xml.isElementTypeEnd(index+1))
+                index++;        // Jump over the end tag of the button.
         }
         else if (e.compare("sr") == 0)
         {
