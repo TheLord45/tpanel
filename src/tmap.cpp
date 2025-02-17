@@ -368,14 +368,14 @@ vector<TMap::MAP_T> TMap::findBargraphs(int port, vector<int>& channels)
     vector<MAP_T> map;
     vector<int>::iterator iter;
 
-    if (channels.size() == 0)
+    if (channels.empty())
         return map;
 
     for (iter = channels.begin(); iter != channels.end(); ++iter)
     {
         vector<MAP_T>::iterator mapIter;
 
-        if (mMap.map_lm.size() > 0)
+        if (!mMap.map_lm.empty())
         {
             for (mapIter = mMap.map_lm.begin(); mapIter != mMap.map_lm.end(); ++mapIter)
             {

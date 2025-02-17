@@ -403,9 +403,6 @@ string TAmxCommands::findImage(const string& name)
 
     string str;
 
-    if (mMap)
-        str = mMap->findImage(name);
-
     if (str.empty() && mSystemMap)
         return mSystemMap->findImage(name);
 
@@ -421,11 +418,8 @@ vector<TMap::MAP_T> TAmxCommands::findButtonByName(const string& name)
     if (mMap)
         map = mMap->findButtonByName(name);
 
-    if (map.empty())
-    {
-        if (mSystemMap)
-            return mSystemMap->findButtonByName(name);
-    }
+    if (map.empty() && mSystemMap)
+        return mSystemMap->findButtonByName(name);
 
     return map;
 }
@@ -438,11 +432,8 @@ vector<TMap::MAP_T> TAmxCommands::findBargraphs(int port, vector<int>& channels)
     {
         vector<TMap::MAP_T> map = mMap->findBargraphs(port, channels);
 
-        if (map.empty())
-        {
-            if (mSystemMap)
-                return mSystemMap->findBargraphs(port, channels);
-        }
+    if (map.empty() && mSystemMap)
+        return mSystemMap->findBargraphs(port, channels);
 
         return map;
     }
