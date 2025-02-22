@@ -22,13 +22,13 @@
 #include <vector>
 #include <algorithm>
 
-#define V_MAJOR     1
-#define V_MINOR     4
-#define V_PATCH     1
-#define V_ADD       "b3"
+#define V_MAJOR     2
+#define V_MINOR     0
+#define V_PATCH     0
+#define V_ADD       "b1"
 
 #ifndef V_SERIAL
-#define V_SERIAL    "20231205TP141B"
+#define V_SERIAL    "20250222TP200B"
 #endif
 
 /**
