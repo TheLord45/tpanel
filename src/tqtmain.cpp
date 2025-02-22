@@ -197,6 +197,9 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
 #endif
 
     QApplication app(argc, argv);
+    app.setApplicationName(QString::fromStdString(TConfig::getProgName()));
+    app.setApplicationDisplayName("TPanel");
+    app.setApplicationVersion(VERSION_STRING());
     // Set the orientation
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
     QScreen *screen = QGuiApplication::primaryScreen();
@@ -1944,9 +1947,9 @@ void MainWindow::about()
     // the text in a small stripe on the left. This looks ugly and therefor
     // we construct our own about dialog.
     std::string msg = "About TPanel\n\n";
-    msg.append("Simulation of an AMX G4 panel\n");
+    msg.append("Implementation of an AMX G4/G5 panel\n");
     msg.append("Version v").append(VERSION_STRING()).append("\n");
-    msg.append("(C) Copyright 2020 to 2023 by Andreas Theofilu (andreas@theosys.at)\n");
+    msg.append("(C) Copyright 2020 to 2025 by Andreas Theofilu (andreas@theosys.at)\n");
 
     QMessageBox about(this);
     about.addButton(QMessageBox::Ok);
@@ -1957,9 +1960,9 @@ void MainWindow::about()
     about.setInformativeText(tr("This program is under the terms of GPL version 3!"));
     about.exec();
 #else
-    std::string msg = "Simulation of an AMX G4 panel\n";
+    std::string msg = "Implementation of an AMX G4/G5 panel\n";
     msg.append("Version v").append(VERSION_STRING()).append("\n");
-    msg.append("(C) Copyright 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>\n");
+    msg.append("(C) Copyright 2020 to 2025 by Andreas Theofilu <andreas@theosys.at>\n");
     msg.append("This program is under the terms of GPL version 3!");
     QMessageBox::about(this, tr("About TPanel"), tr(msg.c_str()));
 #endif
