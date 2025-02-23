@@ -7787,7 +7787,7 @@ void TPageManager::doBMC(int port, vector<int>& channels, vector<std::string>& p
 
                 switch(idx)
                 {
-                    case 0: buttons[ibuttons]->setBitmap(src_buttons[0]->getBitmapName(src_state), btState); break;
+                    case 0: buttons[ibuttons]->setBitmap(src_buttons[0]->getBitmapName(src_state), btState, 0); break;
                     case 1: buttons[ibuttons]->setBorderStyle(src_buttons[0]->getBorderStyle(src_state), btState); break;
                     case 2: buttons[ibuttons]->setBorderColor(src_buttons[0]->getBorderColor(src_state), btState); break;
                     case 3: buttons[ibuttons]->setFillColor(src_buttons[0]->getFillColor(src_state), btState); break;
@@ -8220,7 +8220,7 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
                                 content = iname;
                         }
 
-                        bt->setBitmap(content, btState);
+                        bt->setBitmap(content, btState, 0);
                     break;
 
                     case 'R':   // Set rectangle
@@ -8499,40 +8499,50 @@ void TPageManager::doBMP(int port, vector<int>& channels, vector<string>& pars)
 
                     if (slot >= 0)
                     {
-                        switch(slot)
+                        if (!TTPInit::isTP5())
                         {
-                            case 0: bt->setCameleon(bitmap, i); break;
-                            case 2: bt->setIcon(bitmap, i); break;  // On G4 we have no bitmap layer. Therefor we use layer 2 as icon layer.
-                            default:
-                                bt->setBitmap(bitmap, i);
+                            switch(slot)
+                            {
+                                case 0: bt->setCameleon(bitmap, i); break;
+                                case 2: bt->setIcon(bitmap, i); break;  // On G4 we have no bitmap layer. Therefor we use layer 2 as icon layer.
+                                default:
+                                    bt->setBitmap(bitmap, i, 0);
+                            }
                         }
+                        else
+                            bt->setBitmap(bitmap, i, slot, justify, jx, jy);
                     }
                     else
-                        bt->setBitmap(bitmap, i);
+                        bt->setBitmap(bitmap, i, 1, justify, jx, jy);
                 }
             }
             else
             {
-                if (justify >= 0)
+                if (TTPInit::isTP5())
                 {
-                    if (slot == 2)
-                        bt->setIconJustification(justify, jx, jy, btState);
-                    else
-                        bt->setBitmapJustification(justify, jx, jy, btState);
-                }
-
-                if (slot >= 0)
-                {
-                    switch(slot)
+                    if (justify >= 0)
                     {
-                        case 0: bt->setCameleon(bitmap, btState); break;
-                        case 2: bt->setIcon(bitmap, btState); break;      // On G4 we have no bitmap layer. Therefor we use layer 2 as icon layer.
-                        default:
-                            bt->setBitmap(bitmap, btState);
+                        if (slot == 2)
+                            bt->setIconJustification(justify, jx, jy, btState);
+                        else
+                            bt->setBitmapJustification(justify, jx, jy, btState);
                     }
+
+                    if (slot >= 0)
+                    {
+                        switch(slot)
+                        {
+                            case 0: bt->setCameleon(bitmap, btState); break;
+                            case 2: bt->setIcon(bitmap, btState); break;      // On G4 we have no bitmap layer. Therefor we use layer 2 as icon layer.
+                            default:
+                                bt->setBitmap(bitmap, btState, 0);
+                        }
+                    }
+                    else
+                        bt->setBitmap(bitmap, btState, 0);
                 }
                 else
-                    bt->setBitmap(bitmap, btState);
+                    bt->setBitmap(bitmap, btState, slot, justify, jx, jy);
             }
         }
     }

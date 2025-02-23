@@ -198,6 +198,27 @@ namespace Button
     }BUTTON_ACTION_t;
 
     /**
+     * @brief TP5 button events
+     * This defines the possible event types on a button.
+     */
+    typedef enum BUTTON_EVENT_t
+    {
+        EVENT_NONE,                 // No event
+        EVENT_PRESS,                // Event on button press
+        EVENT_RELEASE,              // Event on button release
+        EVENT_GUESTURE_ANY,         // Event on any guesture
+        EVENT_GUESTURE_UP,          // Event on 1 finger up guesture
+        EVENT_GUESTURE_DOWN,        // Event on 1 finger down guesture
+        EVENT_GUESTURE_LEFT,        // Event on 1 finger left guesture
+        EVENT_GUESTURE_RIGHT,       // Event on 1 finger right guesture
+        EVENT_GUESTURE_DBLTAP,      // Event on double tap
+        EVENT_GUESTURE_2FUP,        // Event on 2 finger up guesture
+        EVENT_GUESTURE_2FDN,        // Event on 2 finger down guesture
+        EVENT_GUESTURE_2FLT,        // Event on 2 finger left guesture
+        EVENT_GUESTURE_2FRT         // Event on 2 finger right guesture
+    }BUTTON_EVENT_t;
+
+    /**
      * Justification values:
      *    0 = absolut
      *    1 = top right
@@ -296,8 +317,9 @@ namespace Button
         std::string pfType;     // command to execute when button was pushed
         std::string pfAction;   // TP5: Action; Used for launching external apps
         std::string pfName;     // Name of popup
-        BUTTON_ACTION_t action{BT_ACTION_PGFLIP};   // TP5: Button action
+        BUTTON_ACTION_t action{BT_ACTION_PGFLIP};   // TP5: Button action (page flip, ...)
         int ID{0};              // TP5: An ID for launch buttons
+        BUTTON_EVENT_t event{EVENT_NONE};   // TP5: Type of event
     }PUSH_FUNC_T;
 
     typedef enum CENTER_CODE
@@ -549,9 +571,12 @@ namespace Button
              * @param file      File name of a bitmap file.
              * @param instance  The instance where to put the new bitmap. If
              *                  this is 0, the bitmap is set on all instances.
+             * @param justify   Optional; reserved for TP5: Defines the justification
+             * @param x         Optional; reserved for TP5: Defines the x origin
+             * @param y         Optional; reserved for TP5: Defines the y origin
              * @return TRUE if no errors occures, otherwise FALSE.
              */
-            bool setBitmap(const std::string& file, int instance);
+            bool setBitmap(const std::string& file, int instance, int index, int justify=5, int x=0, int y=0);
             /**
              * @brief setCameleon Sets a new cameleon bitmap to the button
              * If there was already a cameleon bitmap on this button and if this
@@ -1353,7 +1378,7 @@ namespace Button
             void getDrawOrder(const std::string& sdo, DRAW_ORDER *order);
             bool buttonFill(SkBitmap *bm, int instance);
             bool buttonBitmap(SkBitmap *bm, int instance);
-            bool buttonBitmap5(SkBitmap *bm, int instance);
+            bool buttonBitmap5(SkBitmap *bm, int instance, bool ignFirst=false);
             bool buttonDynamic(SkBitmap *bm, int instance, bool show, bool *state=nullptr);
             bool buttonIcon(SkBitmap *bm, int instance);
             bool buttonText(SkBitmap *bm, int instance);
@@ -1395,6 +1420,8 @@ namespace Button
             void runBargraphMove(int distance, bool moveUp=false);
             void threadBargraphMove(int distance, bool moveUp);
             TButtonStates *getButtonState();
+            bool isButtonEvent(const std::string& token, const std::vector<std::string>& events);               // TP5: Tests for a button event
+            BUTTON_EVENT_t getButtonEvent(const std::string& token);    // TP5: Returns the button event
 
             BUTTONTYPE type;
             int bi{0};              // button ID

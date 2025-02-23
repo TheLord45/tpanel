@@ -262,6 +262,7 @@ size_t TButton::initialize(TExpat *xml, size_t index)
         return TExpat::npos;
     }
 
+    vector<string> guestures = { "ga", "gu", "gd", "gr", "gl", "gt", "tu", "td", "tr", "tl" };
     mChanged = true;
     int lastLevel = 0;
     int lastJoyX = 0;
@@ -450,9 +451,41 @@ size_t TButton::initialize(TExpat *xml, size_t index)
             pf.pfType = xml->getAttribute("type", attrs);
             pushFunc.push_back(pf);
         }
-        else if (ename.compare("ep") == 0 && xml->isElementTypeStart(index))          // Function call TP5
+        else if ((ename.compare("ep") == 0 || ename.compare("er") == 0) && xml->isElementTypeStart(index))          // Function call TP5: Event on press/release
         {
             PUSH_FUNC_T pf;
+            pf.event = ename.compare("ep") == 0 ? EVENT_PRESS : EVENT_RELEASE;
+            string e;
+
+            while ((index = xml->getNextElementFromIndex(index, &e, &content, &attrs)) != TExpat::npos)
+            {
+                if (e.compare("pgFlip") == 0)
+                {
+                    pf.action = BT_ACTION_PGFLIP;
+                    pf.item = xml->getAttributeInt("item", attrs);
+                    pf.pfType = xml->getAttribute("type", attrs);
+                    pf.pfName = content;
+                    pushFunc.push_back(pf);
+                }
+                else if (e.compare("launch") == 0)
+                {
+                    pf.action = BT_ACTION_LAUNCH;
+                    pf.item = xml->getAttributeInt("item", attrs);
+                    pf.ID = xml->getAttributeInt("id", attrs);
+                    pf.pfAction = xml->getAttribute("action", attrs);
+                    pf.pfName = content;
+                    pushFunc.push_back(pf);
+                }
+
+                oldIndex = index;
+            }
+
+            index = oldIndex + 1;
+        }
+        else if (isButtonEvent(ename, guestures) && xml->isElementTypeStart(index))     // Fuction call TP5: Event on guesture
+        {
+            PUSH_FUNC pf;
+            pf.event = getButtonEvent(ename);
             string e;
 
             while ((index = xml->getNextElementFromIndex(index, &e, &content, &attrs)) != TExpat::npos)
@@ -2383,9 +2416,9 @@ bool TButton::setFontName(const string &name, int instance)
     return true;
 }
 
-bool TButton::setBitmap(const string& file, int instance)
+bool TButton::setBitmap(const string& file, int instance, int index, int justify, int x, int y)
 {
-    DECL_TRACER("TButton::setBitmap(const string& file, int instance)");
+    DECL_TRACER("TButton::setBitmap(const string& file, int instance, int index, int justify, int x, int y)");
 
     if (instance >= (int)sr.size())
     {
@@ -2402,38 +2435,164 @@ bool TButton::setBitmap(const string& file, int instance)
         inst = 0;
     }
 
-    for (int i = 0; i < loop; ++i)
+    if (!TTPInit::isTP5())
     {
-        if (sr[inst].bm == file)
+        for (int i = 0; i < loop; ++i)
         {
+            if (!TTPInit::isTP5())
+            {
+                if (sr[inst].bm == file)
+                {
+                    inst++;
+                    continue;
+                }
+            }
+
+            mChanged = true;
+
+            sr[inst].bm = file;
+
+            if (!file.empty() && !TImgCache::existBitmap(file, _BMTYPE_BITMAP))
+            {
+                sk_sp<SkData> image;
+                SkBitmap bm;
+
+                image = readImage(file);
+
+                if (image)
+                {
+                    DecodeDataToBitmap(image, &bm);
+
+                    if (!bm.empty())
+                    {
+                        TImgCache::addImage(file, bm, _BMTYPE_BITMAP);
+                        sr[inst].bm_width = bm.info().width();
+                        sr[inst].bm_height = bm.info().height();
+                    }
+                }
+            }
+
             inst++;
-            continue;
         }
+    }
+    else    // TP5
+    {
+        ORIENTATION just = ORI_CENTER_MIDDLE;
 
-        mChanged = true;
-        sr[inst].bm = file;
+        if (justify < 0 || justify > 11)
+            just = ORI_CENTER_MIDDLE;
+        else
+            just = static_cast<ORIENTATION>(justify);
 
-        if (!file.empty() && !TImgCache::existBitmap(file, _BMTYPE_BITMAP))
+        // Index 0 = Chameleon image
+        if (index == 0)
         {
-            sk_sp<SkData> image;
             SkBitmap bm;
 
-            image = readImage(file);
-
-            if (image)
+            if (!file.empty() && !TImgCache::existBitmap(file, _BMTYPE_CHAMELEON))
             {
-                DecodeDataToBitmap(image, &bm);
+                sk_sp<SkData> image;
 
-                if (!bm.empty())
+                image = readImage(file);
+
+                if (image)
                 {
-                    TImgCache::addImage(sr[inst].bm, bm, _BMTYPE_BITMAP);
-                    sr[inst].bm_width = bm.info().width();
-                    sr[inst].bm_height = bm.info().height();
+                    DecodeDataToBitmap(image, &bm);
+
+                    if (!bm.empty())
+                        TImgCache::addImage(file, bm, _BMTYPE_BITMAP);
+                }
+            }
+
+            if (instance < 0)   // Set to all instances?
+            {
+                for (size_t i = 0; i < sr.size(); ++i)
+                {
+                    if (sr[i].mi != file)
+                    {
+                        sr[i].mi = file;
+
+                        if (!bm.empty())
+                        {
+                            sr[i].mi_width = bm.info().width();
+                            sr[i].mi_height = bm.info().height();
+                        }
+
+                        mChanged = true;
+                    }
+                }
+            }
+            else
+            {
+                if (sr[inst].mi != file)
+                {
+                    sr[inst].mi = file;
+
+                    if (!bm.empty())
+                    {
+                        sr[inst].mi_width = bm.info().width();
+                        sr[inst].mi_height = bm.info().height();
+                    }
+
+                    mChanged = true;
                 }
             }
         }
+        else if (instance > 0)
+        {
+            if (!file.empty() && !TImgCache::existBitmap(file, _BMTYPE_BITMAP))
+            {
+                sk_sp<SkData> image;
+                SkBitmap bm;
 
-        inst++;
+                image = readImage(file);
+
+                if (image)
+                {
+                    DecodeDataToBitmap(image, &bm);
+
+                    if (!bm.empty())
+                    {
+                        TImgCache::addImage(file, bm, _BMTYPE_BITMAP);
+                        sr[inst].bm_width = bm.info().width();
+                        sr[inst].bm_height = bm.info().height();
+                    }
+                }
+            }
+
+            for (size_t i = 0; i < 5; ++i)
+            {
+                if (i >= sr[inst].bitmaps.size() && !file.empty())
+                {
+                    BITMAPS_t bm;
+
+                    if (i == (static_cast<size_t>(index - 1)))
+                    {
+                        bm.fileName = file;
+                        bm.justification = just;
+                        bm.offsetX = x;
+                        bm.offsetY = y;
+                        mChanged = true;
+                    }
+
+                    sr[inst].bitmaps.push_back(bm);
+                }
+                else if (i == static_cast<size_t>(index - 1))
+                {
+                    BITMAPS_t bm = sr[inst].bitmaps[i];
+
+                    if (bm.fileName != file)
+                    {
+                        bm.fileName = file;
+                        bm.justification = just;
+                        bm.offsetX = x;
+                        bm.offsetY = y;
+                        sr[inst].bitmaps[i] = bm;
+                        mChanged = true;
+                    }
+                }
+            }
+        }
     }
 
     if (!createButtons(true))   // We're forcing the image to load
@@ -4051,6 +4210,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
         instance = (int)(sr.size() - 1);
 
     bool tp5 = TTPInit::isTP5();   // TRUE = TP5
+    string bmFile;
 
     /*
      * Here we test if we have a cameleon image. If there is a mask (sr[].mi)
@@ -4059,10 +4219,17 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
      * Otherwise the mask may be used as an overlay for a bitmap on another
      * button below the mask.
      */
-    if (!tp5 && !sr[instance].mi.empty() && sr[instance].bs.empty())       // Chameleon image?
+    if ((!tp5 && !sr[instance].mi.empty() && sr[instance].bs.empty()) || (tp5 && !sr[instance].mi.empty()))       // Chameleon image?
     {
-        MSG_DEBUG("Chameleon image consisting of mask " << sr[instance].mi << " and bitmap " << (sr[instance].bm.empty() ? "NONE" : sr[instance].bm) << " ...");
+        if (tp5)
+        {
+            if (sr[instance].bitmaps.size() > 0)
+                bmFile = sr[instance].bitmaps[0].fileName;
+        }
+        else
+            bmFile = sr[instance].bm;
 
+        MSG_DEBUG("Chameleon image consisting of mask " << sr[instance].mi << " and bitmap " << (bmFile.empty() ? "NONE" : bmFile) << " ...");
         SkBitmap bmMi;
         SkBitmap bmBm;
 
@@ -4096,74 +4263,50 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
         SkBitmap imgRed(bmMi);
         SkBitmap imgMask;
         bool haveBothImages = true;
+        // On TP5:
+        // If we have a chameleon image the base is in field "mi", as it was it TP4 already,
+        // and the first image in the list of images is the mask. This means that we must
+        // first create the chameleon image out of this images the same as we did for TP4.
+        // The other images, if there any, will be put on top of the chameleon image.
 
-        if (!sr[instance].bm.empty() || (TTPInit::isTP5() && !sr[instance].bitmaps.empty()))
+        if (!bmFile.empty())
         {
-            if (TTPInit::isTP5())
+            if (!TImgCache::getBitmap(bmFile, &bmBm, _BMTYPE_BITMAP, &sr[instance].bm_width, &sr[instance].bm_height))
             {
-                if (!buttonBitmap5(&bmBm, instance))
-                    haveBothImages = false;
-                else
+                sk_sp<SkData> data = readImage(bmFile);
+                bool loaded = false;
+
+                if (data)
                 {
-                    sr[instance].bm_width = bm->info().width();
-                    sr[instance].bm_height = bm->info().height();
+                    DecodeDataToBitmap(data, &bmBm);
 
-                    if (!imgMask.installPixels(bmBm.pixmap()))
+                    if (!bmBm.empty())
                     {
-                        MSG_ERROR("Error installing pixmap " << sr[instance].bm << " for chameleon image!");
-
-                        if (!allocPixels(imgRed.info().width(), imgRed.info().height(), &imgMask))
-                            return false;
-
-                        imgMask.eraseColor(SK_ColorTRANSPARENT);
-                        haveBothImages = false;
+                        TImgCache::addImage(bmFile, bmBm, _BMTYPE_BITMAP);
+                        loaded = true;
+                        sr[instance].bm_width = bmBm.info().width();
+                        sr[instance].bm_height = bmBm.info().height();
                     }
+                }
+
+                if (!loaded)
+                {
+                    MSG_ERROR("Missing image " << bmFile << "!");
+                    TError::setError();
+                    return false;
                 }
             }
+/*
+            if (!buttonBitmap5(&bmBm, instance))
+                haveBothImages = false;
             else
             {
-                if (!TImgCache::getBitmap(sr[instance].bm, &bmBm, _BMTYPE_BITMAP, &sr[instance].bm_width, &sr[instance].bm_height))
+                sr[instance].bm_width = bm->info().width();
+                sr[instance].bm_height = bm->info().height();
+
+                if (!imgMask.installPixels(bmBm.pixmap()))
                 {
-                    sk_sp<SkData> data = readImage(sr[instance].bm);
-                    bool loaded = false;
-
-                    if (data)
-                    {
-                        DecodeDataToBitmap(data, &bmBm);
-
-                        if (!bmBm.empty())
-                        {
-                            TImgCache::addImage(sr[instance].bm, bmBm, _BMTYPE_BITMAP);
-                            loaded = true;
-                            sr[instance].bm_width = bmBm.info().width();
-                            sr[instance].bm_height = bmBm.info().height();
-                        }
-                    }
-
-                    if (!loaded)
-                    {
-                        MSG_ERROR("Missing image " << sr[instance].bm << "!");
-                        TError::SetError();
-                        return false;
-                    }
-                }
-
-                if (!bmBm.empty())
-                {
-                    if (!imgMask.installPixels(bmBm.pixmap()))
-                    {
-                        MSG_ERROR("Error installing pixmap " << sr[instance].bm << " for chameleon image!");
-
-                        if (!allocPixels(imgRed.info().width(), imgRed.info().height(), &imgMask))
-                            return false;
-
-                        imgMask.eraseColor(SK_ColorTRANSPARENT);
-                        haveBothImages = false;
-                    }
-                }
-                else
-                {
-                    MSG_WARNING("No or invalid bitmap! Ignoring bitmap for cameleon image.");
+                    MSG_ERROR("Error installing pixmap " << sr[instance].bm << " for chameleon image!");
 
                     if (!allocPixels(imgRed.info().width(), imgRed.info().height(), &imgMask))
                         return false;
@@ -4171,6 +4314,31 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
                     imgMask.eraseColor(SK_ColorTRANSPARENT);
                     haveBothImages = false;
                 }
+            }
+*/
+
+            if (!bmBm.empty())
+            {
+                if (!imgMask.installPixels(bmBm.pixmap()))
+                {
+                    MSG_ERROR("Error installing pixmap " << bmFile << " for chameleon image!");
+
+                    if (!allocPixels(imgRed.info().width(), imgRed.info().height(), &imgMask))
+                        return false;
+
+                    imgMask.eraseColor(SK_ColorTRANSPARENT);
+                    haveBothImages = false;
+                }
+            }
+            else
+            {
+                MSG_WARNING("No or invalid bitmap! Ignoring bitmap for cameleon image.");
+
+                if (!allocPixels(imgRed.info().width(), imgRed.info().height(), &imgMask))
+                    return false;
+
+                imgMask.eraseColor(SK_ColorTRANSPARENT);
+                haveBothImages = false;
             }
         }
         else
@@ -4182,8 +4350,8 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
 
         if (img.empty())
         {
-            MSG_ERROR("Error creating the cameleon image \"" << sr[instance].mi << "\" / \"" << sr[instance].bm << "\"!");
-            TError::SetError();
+            MSG_ERROR("Error creating the cameleon image \"" << sr[instance].mi << "\" / \"" << bmFile << "\"!");
+            TError::setError();
             return false;
         }
 
@@ -4214,7 +4382,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
                 sk_sp<SkImage> _image = SkImages::RasterFromBitmap(img);
                 can.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
 
-                if (!sr[instance].bm.empty())
+                if (!bmFile.empty())
                 {
                     imgMask.installPixels(bmBm.pixmap());
                     paint.setBlendMode(SkBlendMode::kSrcOver);
@@ -4226,6 +4394,11 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
             {
                 sk_sp<SkImage> _image = SkImages::RasterFromBitmap(img);
                 can.drawImage(_image, position.left, position.top, SkSamplingOptions(), &paint);
+                // On TP5 we must draw the other images, if there are any, on top of the one we have already.
+                if (!buttonBitmap5(bm, instance, true))
+                {
+                    MSG_WARNING("Couldn't draw all bitmaps!");
+                }
             }
         }
         else    // Scale to fit
@@ -4237,7 +4410,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
                 sk_sp<SkImage> im = SkImages::RasterFromBitmap(img);
                 can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
 
-                if (!sr[instance].bm.empty())
+                if (!bmFile.empty())
                 {
                     imgMask.installPixels(bmBm.pixmap());
                     rect.setXYWH(position.left, position.top, position.width, position.height);
@@ -4251,6 +4424,11 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
                 SkRect rect = SkRect::MakeXYWH(position.left, position.top, position.width, position.height);
                 sk_sp<SkImage> im = SkImages::RasterFromBitmap(img);
                 can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
+                // On TP5 we must draw the other images, if there are any, on top of the one we have already.
+                if (!buttonBitmap5(bm, instance, true))
+                {
+                    MSG_WARNING("Couldn't draw all bitmaps!");
+                }
             }
         }
     }
@@ -4452,10 +4630,12 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
  * @param bm        A pointer to the bitmap where the result shuld be drawn.
  *                  This pointer must not be NULL.
  * @param instances The instance where the bitmaps should be taken from.
+ * @param ignFirst  TRUE = the 1st image in list is ignored.
+ * @return TRUE on success
  */
-bool TButton::buttonBitmap5(SkBitmap* bm, int instance)
+bool TButton::buttonBitmap5(SkBitmap* bm, int instance, bool ignFirst)
 {
-    DECL_TRACER("TButton::buttonBitmap5(SkBitmap* bm, int instance)");
+    DECL_TRACER("TButton::buttonBitmap5(SkBitmap* bm, int instance, bool ignFirst)");
 
     if (!bm)
     {
@@ -4467,9 +4647,16 @@ bool TButton::buttonBitmap5(SkBitmap* bm, int instance)
         return true;
 
     vector<BITMAPS_t>::iterator iter;
+    bool first = true;
 
     for (iter = sr[instance].bitmaps.begin(); iter != sr[instance].bitmaps.end(); ++iter)
     {
+        if (ignFirst && first)
+        {
+            first = false;
+            continue;
+        }
+
         SkBitmap bmBm;
         int width, height;
 
@@ -11234,6 +11421,52 @@ TButtonStates *TButton::getButtonState()
     TButtonStates *s = gPageManager->getButtonState(type, mButtonID);
     MSG_DEBUG("Found button ID: " << getButtonIDstr(s->getID()) << ", type: " << buttonTypeToString(s->getType()) << ", lastLevel: " << s->getLastLevel() << ", lastJoyX: " << s->getLastJoyX() << ", lasJoyY: " << s->getLastJoyY());
     return s;
+}
+
+bool TButton::isButtonEvent(const string& token, const vector<string>& events)
+{
+    DECL_TRACER("TButton::isButtonEvent(const string& token, const vector<string>& events)");
+
+    if (events.empty() || token.empty())
+        return false;
+
+    vector<string>::const_iterator iter;
+
+    for (iter = events.cbegin(); iter != events.cend(); ++iter)
+    {
+        if (*iter == token)
+            return true;
+    }
+
+    return false;
+}
+
+BUTTON_EVENT_t TButton::getButtonEvent(const string& token)
+{
+    DECL_TRACER("TButton::getButtonEvent(const string& token)");
+
+    if (token == "ga")
+        return EVENT_GUESTURE_ANY;
+    else if (token == "gu")
+        return EVENT_GUESTURE_UP;
+    else if (token == "gd")
+        return EVENT_GUESTURE_DOWN;
+    else if (token == "gr")
+        return EVENT_GUESTURE_RIGHT;
+    else if (token == "gl")
+        return EVENT_GUESTURE_LEFT;
+    else if (token == "gt")
+        return EVENT_GUESTURE_DBLTAP;
+    else if (token == "tu")
+        return EVENT_GUESTURE_2FUP;
+    else if (token == "td")
+        return EVENT_GUESTURE_2FDN;
+    else if (token == "tr")
+        return EVENT_GUESTURE_2FRT;
+    else if (token == "tl")
+        return EVENT_GUESTURE_2FLT;
+
+    return EVENT_NONE;
 }
 
 int TButton::getLevelValue()
