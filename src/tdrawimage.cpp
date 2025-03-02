@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2021 to 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,6 +21,8 @@
 #include "tdrawimage.h"
 #include "tbutton.h"
 #include "terror.h"
+#include "ttpinit.h"
+#include "timgcache.h"
 #include <qglobal.h>
 
 extern bool prg_stopped;
@@ -36,6 +38,72 @@ TDrawImage::TDrawImage()
 TDrawImage::~TDrawImage()
 {
     DECL_TRACER("TDrawImage::~TDrawImage()");
+
+    if (TTPInit::isTP5() && !mBitmapStack.empty())
+        mBitmapStack.clear();
+}
+
+void TDrawImage::setImageBm(SkBitmap& bm)
+{
+    DECL_TRACER("TDrawImage::setImageBm(SkBitmap& bm)");
+
+    if (TTPInit::isTP5())
+    {
+        int width = bm.info().width();
+        int height = bm.info().height();
+        size_t index = mBitmapStack.empty() ? 0 : (mBitmapStack.size() - 1);
+
+        mBitmapStack.push_back(bm);         // Put image on the stack
+
+        if (imageBm.empty())                // If this is the 1st image, allocate the space for it
+        {
+            imageBm.allocN32Pixels(width, height);
+            imageBm.eraseColor(SK_ColorTRANSPARENT);
+        }
+
+        MSG_DEBUG("Image info: Width: " << width << ", Height: " << height << ", Instance: " << mInstance << ", Index: " << index);
+        Button::POSITION_t position = calcImagePosition(width, height, mInstance, index);
+
+        if (!position.valid)
+        {
+            MSG_ERROR("Error calculating the position of the image!");
+            TError::setError();
+            return;
+        }
+        // Draw the image to the target. If there was a previous one, the new one is blended over
+        SkPaint paint;
+        SkCanvas can(imageBm, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
+        paint.setBlendMode(SkBlendMode::kSrcOver);
+
+        if (mSr[mInstance].sb == 0)
+        {
+            sk_sp<SkImage> _image = SkImages::RasterFromBitmap(bm);
+            can.drawImage(_image, position.left, position.top, SkSamplingOptions(), &paint);
+        }
+        else    // Scale to fit
+        {
+            SkRect rect = SkRect::MakeXYWH(position.left, position.top, position.width, position.height);
+            sk_sp<SkImage> im = SkImages::RasterFromBitmap(bm);
+            can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
+        }
+    }
+    else
+        imageBm = bm;
+}
+
+SkBitmap& TDrawImage::getImageBm(size_t index)
+{
+    DECL_TRACER("TDrawImage::getImageBm(size_t index)");
+
+    if (TTPInit::isTP5())
+    {
+        if (index >= mBitmapStack.size())
+            return imageBm;
+
+        return mBitmapStack[index];
+    }
+
+    return imageBm;
 }
 
 bool TDrawImage::drawImage(SkBitmap* bm)
@@ -70,7 +138,7 @@ bool TDrawImage::drawImage(SkBitmap* bm)
         SkBitmap imgRed(imageMi);
         SkBitmap imgMask;
 
-        if (!imageBm.empty() && !mSr[instance].bm.empty())
+        if ((!TTPInit::isTP5() && !imageBm.empty() && !mSr[instance].bm.empty()) || (TTPInit::isTP5() && !imageBm.empty()))
             imgMask.installPixels(imageBm.pixmap());
         else
         {
@@ -94,7 +162,7 @@ bool TDrawImage::drawImage(SkBitmap* bm)
         sk_sp<SkImage> _image = SkImages::RasterFromBitmap(imgMask);
         ctx.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
 
-        Button::POSITION_t position = calcImagePosition(mSr[instance].mi_width, mSr[instance].mi_height, instance);
+        Button::POSITION_t position = calcImagePosition(mSr[instance].mi_width, mSr[instance].mi_height, instance, mBitmapStack.size() - 1);
 
         if (!position.valid)
         {
@@ -118,19 +186,32 @@ bool TDrawImage::drawImage(SkBitmap* bm)
             can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
         }
     }
-    else if (!imageBm.empty() && !mSr[instance].bm.empty())
+    else if ((!TTPInit::isTP5() &&!imageBm.empty() && !mSr[instance].bm.empty()) || (TTPInit::isTP5() &&!imageBm.empty()))
     {
         MSG_TRACE("Drawing normal image ...");
         SkBitmap image = imageBm;
 
         if (image.empty())
         {
-            MSG_ERROR("Error creating the image \"" << mSr[instance].bm << "\"!");
-            TError::SetError();
+            if (TTPInit::isTP5())
+            {
+                MSG_ERROR("Error creating the image \"" << mSr[instance].bitmaps[mBitmapStack.size()-1].fileName << "\"!");
+            }
+            else
+            {
+                MSG_ERROR("Error creating the image \"" << mSr[instance].bm << "\"!");
+            }
+
+            TError::setError();
             return false;
         }
 
-        Button::POSITION_t position = calcImagePosition(mSr[instance].bm_width, mSr[instance].bm_height, instance);
+        Button::POSITION_t position;
+
+        if (!TTPInit::isTP5())
+            position = calcImagePosition(mSr[instance].bm_width, mSr[instance].bm_height, instance);
+        else
+            position = calcImagePosition(imageBm.info().width(), imageBm.info().height(), instance);
 
         if (!position.valid)
         {
@@ -146,7 +227,14 @@ bool TDrawImage::drawImage(SkBitmap* bm)
 
         if (mSr[instance].sb == 0)
         {
-            if ((mSr[instance].jb == 0 && mSr[instance].bx >= 0 && mSr[instance].by >= 0) || mSr[instance].jb != 0)  // Draw the full image
+            size_t index = mBitmapStack.size() > 0 ? (mBitmapStack.size() - 1) : 0;
+            Button::BITMAPS_t bitmap;
+
+            if (mSr[instance].bitmaps.size() > index)
+                bitmap = mSr[instance].bitmaps[index];
+
+            if ((!TTPInit::isTP5() && ((mSr[instance].jb == 0 && mSr[instance].bx >= 0 && mSr[instance].by >= 0) || mSr[instance].jb != 0)) ||  // Draw the full image
+                (TTPInit::isTP5() && ((bitmap.justification == 0 && bitmap.offsetX >= 0 && bitmap.offsetY >= 0) || bitmap.justification != 0)))
             {
                 MSG_DEBUG("Drawing full image ...");
                 sk_sp<SkImage> _image = SkImages::RasterFromBitmap(image);
@@ -306,16 +394,19 @@ SkColor TDrawImage::baseColor(SkColor basePix, SkColor maskPix, SkColor col1, Sk
     return SK_ColorTRANSPARENT; // transparent pixel
 }
 
-Button::POSITION_t TDrawImage::calcImagePosition(int width, int height, int number)
+Button::POSITION_t TDrawImage::calcImagePosition(int width, int height, int number, size_t index)
 {
-    DECL_TRACER("TDrawImage::calcImagePosition(int with, int height, CENTER_CODE code, int number)");
+    DECL_TRACER("TDrawImage::calcImagePosition(int with, int height, CENTER_CODE code, int number, size_t index)");
 
     Button::SR_T act_sr;
     Button::POSITION_t position;
     int ix, iy;
 
     if (mSr.size() == 0)
+    {
+        MSG_WARNING("Found no stage element! Can't calculate position.");
         return position;
+    }
 
     if (number <= 0)
         act_sr = mSr.at(0);
@@ -331,9 +422,27 @@ Button::POSITION_t TDrawImage::calcImagePosition(int width, int height, int numb
     string dbgCC;
     int rwt = 0, rht = 0;
 
-    code = act_sr.jb;
-    ix = act_sr.bx;
-    iy = act_sr.by;
+    if (TTPInit::isTP5())
+    {
+        if (index < act_sr.bitmaps.size())
+        {
+            code = act_sr.bitmaps[index].justification;
+            ix = act_sr.bitmaps[index].offsetX;
+            iy = act_sr.bitmaps[index].offsetY;
+        }
+        else
+        {
+            code = 5;
+            ix = iy = 0;
+        }
+    }
+    else
+    {
+        code = act_sr.jb;
+        ix = act_sr.bx;
+        iy = act_sr.by;
+    }
+
     rwt = std::min(mWidth - border * 2, width);
     rht = std::min(mHeight - border_size * 2, height);
 
