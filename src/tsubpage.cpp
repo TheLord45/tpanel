@@ -27,6 +27,7 @@
 #include "tpagemanager.h"
 #include "tsubpage.h"
 #include "tdrawimage.h"
+#include "ttpinit.h"
 #include "tconfig.h"
 #include "ttpinit.h"
 #include "terror.h"
@@ -307,6 +308,32 @@ void TSubPage::initialize()
                     sr.ww = xml.convertElementToInt(content);
                 else if (ename.compare("jt") == 0)
                     sr.jt = (Button::ORIENTATION)xml.convertElementToInt(content);
+                else if (ename.compare("bitmapEntry") == 0)
+                {
+                    string fname;
+                    BITMAPS_t bitmapEntry;
+                    MSG_DEBUG("Section: " << ename);
+
+                    while ((index = xml.getNextElementFromIndex(index, &fname, &content, &attrs)) != TExpat::npos)
+                    {
+                        if (fname.compare("fileName") == 0)
+                            bitmapEntry.fileName = content;
+                        else if (fname.compare("justification") == 0)
+                            bitmapEntry.justification = static_cast<ORIENTATION>(xml.convertElementToInt(content));
+                        else if (fname.compare("offsetX") == 0)
+                            bitmapEntry.offsetX = xml.convertElementToInt(content);
+                        else if (fname.compare("offsetY") == 0)
+                            bitmapEntry.offsetY = xml.convertElementToInt(content);
+
+                        oldIndex = index;
+                    }
+
+                    MSG_DEBUG("Found image: " << bitmapEntry.fileName << ", justification: " << bitmapEntry.justification << ", Offset: " << bitmapEntry.offsetX << "x" << bitmapEntry.offsetY);
+                    sr.bitmaps.push_back(bitmapEntry);
+
+                    if (index == TExpat::npos)
+                        index = oldIndex + 1;
+                }
 
                 oldIndex = index;
             }
@@ -404,14 +431,16 @@ void TSubPage::show()
     else
         target.eraseColor(SK_ColorTRANSPARENT);
 
+    MSG_DEBUG("Number TP5 images: " << mSubpage.sr[0].bitmaps.size());
     // Draw the background, if any
-    if (!noSr && (!mSubpage.sr[0].bm.empty() || !mSubpage.sr[0].mi.empty()))
+    if (!noSr && (!mSubpage.sr[0].bm.empty() || !mSubpage.sr[0].mi.empty() || !mSubpage.sr[0].bitmaps.empty()))
     {
         TDrawImage dImage;
         dImage.setWidth(mSubpage.width);
         dImage.setHeight(mSubpage.height);
+        dImage.setSr(mSubpage.sr);
 
-        if (!mSubpage.sr[0].bm.empty())
+        if (!TTPInit::isTP5() && !mSubpage.sr[0].bm.empty())
         {
             MSG_DEBUG("Loading image " << mSubpage.sr[0].bm);
             sk_sp<SkData> rawImage = readImage(mSubpage.sr[0].bm);
@@ -436,6 +465,37 @@ void TSubPage::show()
                 else
                 {
                     MSG_WARNING("BM image " << mSubpage.sr[0].bm << " seems to be empty!");
+                }
+            }
+        }
+        else if (TTPInit::isTP5() && mSubpage.sr[0].bitmaps.size() > 0)
+        {
+            MSG_DEBUG("Loading TP5 image(s) ...");
+            vector<Button::BITMAPS_t>::iterator iter;
+
+            for (iter = mSubpage.sr[0].bitmaps.begin(); iter != mSubpage.sr[0].bitmaps.end(); ++iter)
+            {
+                sk_sp<SkData> rawImage = readImage(iter->fileName);
+                SkBitmap bm;
+
+                if (rawImage)
+                {
+                    MSG_DEBUG("Decoding image BM ...");
+
+                    if (!DecodeDataToBitmap(rawImage, &bm))
+                    {
+                        MSG_WARNING("Problem while decoding image " << iter->fileName);
+                    }
+                    else if (!bm.empty())
+                    {
+                        dImage.setImageBm(bm);
+                        SkImageInfo info = bm.info();
+                        haveImage = true;
+                    }
+                    else
+                    {
+                        MSG_WARNING("BM image " << iter->fileName << " seems to be empty!");
+                    }
                 }
             }
         }
@@ -630,6 +690,7 @@ SkBitmap& TSubPage::getBgImage()
         TDrawImage dImage;
         dImage.setWidth(mSubpage.width);
         dImage.setHeight(mSubpage.height);
+        dImage.setSr(mSubpage.sr);
 
         if (!mSubpage.sr[0].bm.empty())
         {
