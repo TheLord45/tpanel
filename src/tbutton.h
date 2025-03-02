@@ -68,7 +68,7 @@ namespace Button
 
 #   define HANDLE_UNDEF 0
 
-    typedef struct SYSTEF_t         // Text effect names
+    typedef struct SYSTEF_t     // Text effect names
     {
         int idx{0};
         std::string name;
@@ -81,7 +81,7 @@ namespace Button
         ORI_TOP_MIDDLE,
         ORI_TOP_RIGHT,
         ORI_CENTER_LEFT,
-        ORI_CENTER_MIDDLE,		// default
+        ORI_CENTER_MIDDLE,      // default
         ORI_CENTER_RIGHT,
         ORI_BOTTOM_LEFT,
         ORI_BOTTOM_MIDDLE,

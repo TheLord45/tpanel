@@ -35,6 +35,7 @@
 #include "texpat++.h"
 #include "tconfig.h"
 #include "terror.h"
+#include "ttpinit.h"
 #if TESTMODE == 1
 #include "testmode.h"
 #endif
@@ -250,6 +251,32 @@ void TPage::initialize(const string& nm)
                     bsr.jt = (Button::ORIENTATION)xml.convertElementToInt(content);
                 else if (ename.compare("jb") == 0)
                     bsr.jb = (Button::ORIENTATION)xml.convertElementToInt(content);
+                else if (ename.compare("bitmapEntry") == 0)
+                {
+                    string fname;
+                    BITMAPS_t bitmapEntry;
+                    MSG_DEBUG("Section: " << ename);
+
+                    while ((index = xml.getNextElementFromIndex(index, &fname, &content, &attrs)) != TExpat::npos)
+                    {
+                        if (fname.compare("fileName") == 0)
+                            bitmapEntry.fileName = content;
+                        else if (fname.compare("justification") == 0)
+                            bitmapEntry.justification = static_cast<ORIENTATION>(xml.convertElementToInt(content));
+                        else if (fname.compare("offsetX") == 0)
+                            bitmapEntry.offsetX = xml.convertElementToInt(content);
+                        else if (fname.compare("offsetY") == 0)
+                            bitmapEntry.offsetY = xml.convertElementToInt(content);
+
+                        oldIndex = index;
+                    }
+
+                    MSG_DEBUG("Found image: " << bitmapEntry.fileName << ", justification: " << bitmapEntry.justification << ", Offset: " << bitmapEntry.offsetX << "x" << bitmapEntry.offsetY);
+                    bsr.bitmaps.push_back(bitmapEntry);
+
+                    if (index == TExpat::npos)
+                        index = oldIndex + 1;
+                }
 
                 oldIndex = index;
             }
@@ -447,6 +474,7 @@ SkBitmap& TPage::getBgImage()
         TDrawImage dImage;
         dImage.setWidth(mPage.width);
         dImage.setHeight(mPage.height);
+        dImage.setSr(mPage.sr);
 
         if (!mPage.sr[0].bm.empty())
         {
@@ -626,13 +654,14 @@ void TPage::show()
         target.eraseColor(SK_ColorTRANSPARENT);
 
     // Draw the background, if any
-    if (sr.size() > 0 && (!sr[0].bm.empty() || !sr[0].mi.empty()))
+    if (sr.size() > 0 && (!sr[0].bm.empty() || !sr[0].mi.empty() || sr[0].bitmaps.size() > 0))
     {
         TDrawImage dImage;
         dImage.setWidth(mPage.width);
         dImage.setHeight(mPage.height);
+        dImage.setSr(sr);
 
-        if (!sr[0].bm.empty())
+        if (!TTPInit::isTP5() && !sr[0].bm.empty())
         {
             MSG_DEBUG("Loading image " << sr[0].bm);
             sk_sp<SkData> rawImage = readImage(sr[0].bm);
@@ -658,6 +687,39 @@ void TPage::show()
                 else
                 {
                     MSG_WARNING("BM image " << sr[0].bm << " seems to be empty!");
+                }
+            }
+        }
+        else if (TTPInit::isTP5() && sr[0].bitmaps.size() > 0)
+        {
+            vector<BITMAPS_t>::iterator iter;
+            SkBitmap image;
+
+            for (iter = sr[0].bitmaps.begin(); iter != sr[0].bitmaps.end(); ++iter)
+            {
+                MSG_DEBUG("Loading TP5 image " << iter->fileName);
+                sk_sp<SkData> rawImage = readImage(iter->fileName);
+                SkBitmap bm;
+
+                if (rawImage && !rawImage->isEmpty())
+                {
+                    MSG_DEBUG("Decoding image BM ...");
+
+                    if (!DecodeDataToBitmap(rawImage, &bm))
+                    {
+                        MSG_WARNING("Problem while decoding image " << iter->fileName);
+                    }
+                    else if (!bm.isNull() && !bm.empty())
+                    {
+                        dImage.setImageBm(bm);
+                        SkImageInfo info = bm.info();
+                        haveImage = true;
+                        MSG_DEBUG("Image " << iter->fileName << " has dimension " << bm.width() << " x " << bm.height());
+                    }
+                    else
+                    {
+                        MSG_WARNING("BM image " << sr[0].bm << " seems to be empty!");
+                    }
                 }
             }
         }
@@ -751,16 +813,6 @@ void TPage::show()
                 MSG_DEBUG("Scaled size of background image: " << left << ", " << top << ", " << lwidth << ", " << lheight);
             }
 #endif
-/*
-            TBitmap image((unsigned char *)target.getPixels(), target.info().width(), target.info().height());
-#ifdef _OPAQUE_SKIA_
-            if (sr[0].te.empty() && sr[0].bs.empty())
-                _setBackground(handle, image, target.info().width(), target.info().height(), TColor::getColor(sr[0].cf));
-#else
-            if (sr[0].te.empty() && sr[0].bs.empty())
-                _setBackground(handle, image, target.info().width(), target.info().height(), TColor::getColor(sr[0].cf), sr[0].oo);
-#endif
-*/
         }
     }
 

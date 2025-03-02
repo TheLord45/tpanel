@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2024 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -483,9 +483,9 @@ void TStreamError::_init(bool reinit)
     if (mLogLevel > 0)
     {
         if (TConfig::isLongFormat())
-            *mStream << "Timestamp           Type LNr., File name           , ThreadID Message" << std::endl;
+            *mStream << "Timestamp          , Type LNr., File name           , ThreadID, Message" << std::endl;
         else
-            *mStream << "Type LNr., ThreadID Message" << std::endl;
+            *mStream << "Type LNr., ThreadID, Message" << std::endl;
 
         *mStream << "-----------------------------------------------------------------" << std::endl << std::flush;
     }
@@ -695,9 +695,9 @@ TTracer::TTracer(const std::string& msg, int line, const char *file, threadID_t 
     std::lock_guard<mutex> guardm(message_mutex);
 
     if (!TConfig::isLongFormat())
-        *TError::Current()->getStream() << "TRC " << std::setw(5) << std::right << line << ", " << _threadIDtoStr(mThreadID) << " " << indent << "{entry " << msg << std::endl;
+        *TError::Current()->getStream() << "TRC, " << std::setw(5) << std::right << line << ", " << _threadIDtoStr(mThreadID) << ", " << indent << "{entry " << msg << std::endl;
     else
-        *TError::Current()->getStream() << TStreamError::getTime() <<  " TRC " << std::setw(5) << std::right << line << ", " << std::setw(20) << std::left << mFile << ", " << _threadIDtoStr(mThreadID) << " " << indent << "{entry " << msg << std::endl;
+        *TError::Current()->getStream() << TStreamError::getTime() <<  ", TRC, " << std::setw(5) << std::right << line << ", " << std::setw(20) << std::left << mFile << ", " << _threadIDtoStr(mThreadID) << ", " << indent << "{entry " << msg << std::endl;
 
     TError::Current()->incIndent();
     mHeadMsg = msg;
@@ -733,16 +733,16 @@ TTracer::~TTracer()
     if (TConfig::getProfiling())
     {
         if (!TConfig::isLongFormat())
-            *TError::Current()->getStream() << "TRC      , " << _threadIDtoStr(mThreadID) << " " << indent << "}exit " << mHeadMsg << " Elapsed time: " << nanosecs << std::endl;
+            *TError::Current()->getStream() << "TRC,      , " << _threadIDtoStr(mThreadID) << ", " << indent << "}exit " << mHeadMsg << " Elapsed time: " << nanosecs << std::endl;
         else
-            *TError::Current()->getStream() << TStreamError::getTime() << " TRC      , " << std::setw(20) << std::left << mFile << ", " << _threadIDtoStr(mThreadID) << " " << indent << "}exit " << mHeadMsg << " Elapsed time: " << nanosecs << std::endl;
+            *TError::Current()->getStream() << TStreamError::getTime() << ", TRC,      , " << std::setw(20) << std::left << mFile << ", " << _threadIDtoStr(mThreadID) << ", " << indent << "}exit " << mHeadMsg << " Elapsed time: " << nanosecs << std::endl;
     }
     else
     {
         if (!TConfig::isLongFormat())
-            *TError::Current()->getStream() << "TRC      , " << _threadIDtoStr(mThreadID) << " " << indent << "}exit " << mHeadMsg << std::endl;
+            *TError::Current()->getStream() << "TRC,      , " << _threadIDtoStr(mThreadID) << ", " << indent << "}exit " << mHeadMsg << std::endl;
         else
-            *TError::Current()->getStream() << TStreamError::getTime() << " TRC      , " << std::setw(20) << std::left << mFile << ", " << _threadIDtoStr(mThreadID) << " " << indent << "}exit " << mHeadMsg << std::endl;
+            *TError::Current()->getStream() << TStreamError::getTime() << " TRC,      , " << std::setw(20) << std::left << mFile << ", " << _threadIDtoStr(mThreadID) << ", " << indent << "}exit " << mHeadMsg << std::endl;
     }
 
     mHeadMsg.clear();
@@ -891,17 +891,16 @@ std::ostream & TError::append(int lv, std::ostream& os)
 
 std::string TError::append(int lv)
 {
-//    std::lock_guard<mutex> guard(message_mutex);
     std::string prefix, out;
 
     switch (lv)
     {
-        case HLOG_PROTOCOL: prefix = "PRT    ++, "; mErrType = TERRINFO; break;
-        case HLOG_INFO:     prefix = "INF    >>, "; mErrType = TERRINFO; break;
-        case HLOG_WARNING:  prefix = "WRN    !!, "; mErrType = TERRWARNING; break;
-        case HLOG_ERROR:    prefix = "ERR *****, "; mErrType = TERRERROR; break;
-        case HLOG_TRACE:    prefix = "TRC      , "; mErrType = TERRTRACE; break;
-        case HLOG_DEBUG:    prefix = "DBG    --, "; mErrType = TERRDEBUG; break;
+        case HLOG_PROTOCOL: prefix = "PRT,    ++, "; mErrType = TERRINFO; break;
+        case HLOG_INFO:     prefix = "INF,    >>, "; mErrType = TERRINFO; break;
+        case HLOG_WARNING:  prefix = "WRN,    !!, "; mErrType = TERRWARNING; break;
+        case HLOG_ERROR:    prefix = "ERR, *****, "; mErrType = TERRERROR; break;
+        case HLOG_TRACE:    prefix = "TRC,      , "; mErrType = TERRTRACE; break;
+        case HLOG_DEBUG:    prefix = "DBG,    --, "; mErrType = TERRDEBUG; break;
 
         default:
             prefix = "           ";
@@ -909,11 +908,11 @@ std::string TError::append(int lv)
     }
 
     if (!TConfig::isLongFormat())
-        out = prefix + _threadIDtoStr(mThreadID) + " ";
+        out = prefix + _threadIDtoStr(mThreadID) + ", ";
     else
     {
         std::stringstream s;
-        s << TStreamError::getTime() << " " << prefix << std::setw(20) << " " << ", " << _threadIDtoStr(mThreadID) << " ";
+        s << TStreamError::getTime() << ", " << prefix << std::setw(20) << " " << ", " << _threadIDtoStr(mThreadID) << ", ";
         out = s.str();
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2021 to 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,9 +19,9 @@
 #ifndef __TDRAWIMAGE__
 #define __TDRAWIMAGE__
 
-#include "tbutton.h"
+#include <include/core/SkBitmap.h>
 
-class SkBitmap;
+#include "tbutton.h"
 
 class TDrawImage
 {
@@ -33,6 +33,9 @@ class TDrawImage
          * \brief Draws an image used as the background of a page or subpage.
          * This method can draw a normal or a cameleon image. It is able to
          * detect which kind of image to draw.
+         * If it is a TP5 panel, it has a bitmap stack to hold all images. In
+         * this case the images of the stack are crunched together to one. Then,
+         * if \b imageMi is set, a cameleon can be made.
          *
          * @param bm    A pointer to the target image. The new image will be
          * drawn on top of \p bm.
@@ -49,8 +52,8 @@ class TDrawImage
         std::vector<Button::SR_T>& getSr() { return mSr; }          // Get the page resource
         void setImageMi(SkBitmap& mi) { imageMi = mi; }             // Set the optional image mask for a cameleon image
         SkBitmap& getImageMi() { return imageMi; }                  // Get the image mask
-        void setImageBm(SkBitmap& bm) { imageBm = bm; }             // Set the optional bitmap
-        SkBitmap& getImageBm() { return imageBm; }                  // Get the bitmap
+        void setImageBm(SkBitmap& bm);                              // Set the optional bitmap
+        SkBitmap& getImageBm(size_t index=0);                       // Get the bitmap
         void setBorderSize(int bs) { mBorderSize = bs; }            // Set the optional border size, if there is one
         int getBorderSize() { return mBorderSize; }                 // Get the border size
         void setWidth(int wt) { mWidth = wt; }                      // Set the total width (width of page or subpage)
@@ -61,7 +64,7 @@ class TDrawImage
     private:
         SkBitmap drawImageButton(SkBitmap& imgRed, SkBitmap& imgMask, int width, int height, SkColor col1, SkColor col2);
         SkColor baseColor(SkColor basePix, SkColor maskPix, SkColor col1, SkColor col2);
-        Button::POSITION_t calcImagePosition(int width, int height, int number);
+        Button::POSITION_t calcImagePosition(int width, int height, int number, size_t index=0);
 
         int mInstance{0};               // The instance
         int mBorderSize{0};             // Border size
@@ -70,6 +73,7 @@ class TDrawImage
         std::vector<Button::SR_T> mSr;  // Array with background definations
         SkBitmap imageMi;               // The mask image
         SkBitmap imageBm;               // The bitmap image
+        std::vector<SkBitmap> mBitmapStack; // TP5: A bitmap stack.
 };
 
 #endif
