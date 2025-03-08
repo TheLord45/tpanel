@@ -20,6 +20,7 @@
 #include "terror.h"
 #include "texpat++.h"
 #include "tconfig.h"
+#include "ttpinit.h"
 
 #if __cplusplus < 201402L
 #   error "This module requires at least C++14 standard!"
@@ -78,7 +79,11 @@ void TIcons::initialize()
     }
 
     TExpat xml(path);
-    xml.setEncoding(ENC_CP1250);
+
+    if (!TTPInit::isTP5())
+        xml.setEncoding(ENC_CP1250);
+    else
+        xml.setEncoding(Expat::ENC_UTF8);
 
     if (!xml.parse())
         return;
