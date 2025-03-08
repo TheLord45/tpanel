@@ -145,7 +145,7 @@ void TSubPage::initialize()
     TError::clear();
     TExpat xml(mFName);
 
-    if (!TTPInit::getTP5())
+    if (!TTPInit::isTP5())
         xml.setEncoding(ENC_CP1250);
     else
         xml.setEncoding(ENC_UTF8);
