@@ -84,6 +84,8 @@ void TPalette::initialize(const std::string& file)
 
     if (!mIsTP5)
         xml.setEncoding(ENC_CP1250);
+    else
+        xml.setEncoding(ENC_UTF8);
 
     if (!xml.parse(false))
         return;

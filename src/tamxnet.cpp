@@ -41,6 +41,7 @@
 #include "tsocket.h"
 #include "texcept.h"
 #include "tpagemanager.h"
+#include "ttpinit.h"
 
 using namespace amx;
 using namespace std;
@@ -1726,7 +1727,10 @@ void TAmxNet::handleFTransfer(ANET_SEND &s, ANET_FILETRANSFER &ft)
 
         // The file name is encoded as CP1250 (Windows). Because we use UTF-8 we
         // must convert the file name to get rid of non ASCII characters.
-        rcvFileName = cp1250ToUTF8(rcvFileName);
+        // For TP5 this is not necesary.
+        if (!TTPInit::isTP5())
+            rcvFileName = cp1250ToUTF8(rcvFileName);
+
         dir::TDirectory dr;
 
         if (!dr.exists(rcvFileName))

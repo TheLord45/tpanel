@@ -21,6 +21,7 @@
 #include "tresources.h"
 #include "tconfig.h"
 #include "terror.h"
+#include "ttpinit.h"
 
 #if __cplusplus < 201402L
 #   error "This module requires at least C++14 standard!"
@@ -83,7 +84,11 @@ bool TMap::readMap()
     }
 
     TExpat xml(path);
-    xml.setEncoding(ENC_CP1250);
+
+    if (!TTPInit::isTP5())
+        xml.setEncoding(ENC_CP1250);
+    else
+        xml.setEncoding(ENC_UTF8);
 
     if (!xml.parse())
         return false;

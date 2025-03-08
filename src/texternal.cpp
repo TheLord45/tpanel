@@ -20,6 +20,7 @@
 #include "terror.h"
 #include "tconfig.h"
 #include "texpat++.h"
+#include "ttpinit.h"
 
 #if __cplusplus < 201402L
 #   error "This module requires at least C++14 standard!"
@@ -90,7 +91,11 @@ void TExternal::initialize()
     DECL_TRACER("TExternal::initialize()");
 
     TExpat xml(mFileName);
-    xml.setEncoding(ENC_CP1250);
+
+    if (!TTPInit::isTP5())
+        xml.setEncoding(ENC_CP1250);
+    else
+        xml.setEncoding(ENC_UTF8);
 
     if (!xml.parse())
         return;
