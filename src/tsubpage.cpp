@@ -218,6 +218,7 @@ void TSubPage::initialize()
         {
             try
             {
+                TError::clear();
                 TButton *button = new TButton();
                 TPageInterface::registerListCallback<TSubPage>(button, this);
                 button->setPalette(mPalette);
@@ -342,6 +343,12 @@ void TSubPage::initialize()
 void TSubPage::show()
 {
     DECL_TRACER("TSubPage::show()");
+
+    if (mSubpage.sr.empty())
+    {
+        MSG_ERROR("No page elements found for page " << mSubpage.name << "!");
+        return;
+    }
 
     if (!_setBackground)
     {

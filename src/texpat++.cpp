@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2022 to 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -685,6 +685,24 @@ string TExpat::getElementName(bool *valid)
     return string();
 }
 
+string TExpat::getElementName(size_t index, bool *valid)
+{
+    DECL_TRACER("TExpat::getElementName(size_t index, bool *valid)");
+
+    if (index == npos || index >= mElements.size())
+    {
+        if (valid)
+            *valid = false;
+
+        return string();
+    }
+
+    if (valid)
+        *valid = true;
+
+    return mElements.at(index).name;
+}
+
 string TExpat::getElementContent(bool *valid)
 {
     DECL_TRACER("TExpat::getElementContent()");
@@ -773,6 +791,19 @@ double TExpat::getElementContentDouble(bool *valid)
         *valid = false;
 
     return 0.0;
+}
+
+int TExpat::getDepth(size_t index)
+{
+    DECL_TRACER("TExpat::getDepth(size_t index)");
+
+    if (index == npos || index >= mElements.size())
+        return -1;
+
+//    if (mElements.at(index).eType == _ET_END)
+//        return -1;
+
+    return mElements.at(index).depth;
 }
 
 /******************************************************************************

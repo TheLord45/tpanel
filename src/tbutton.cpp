@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2024 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,8 +19,6 @@
 #include <string>
 #include <memory>
 #include <algorithm>
-#include <codecvt>
-#include <fstream>
 
 #include <include/core/SkPixmap.h>
 #include <include/core/SkSize.h>
@@ -274,6 +272,8 @@ size_t TButton::initialize(TExpat *xml, size_t index)
 
     while((index = xml->getNextElementFromIndex(index, &ename, &content, &attrs)) != TExpat::npos)
     {
+        MSG_DEBUG("Found element: " << ename);
+
         if (ename.compare("bi") == 0)
         {
             bi = xml->convertElementToInt(content);
@@ -461,6 +461,8 @@ size_t TButton::initialize(TExpat *xml, size_t index)
                     pf.pfName = content;
                     pushFunc.push_back(pf);
                 }
+
+                oldIndex = index;
             }
         }
         else if (ename.compare("ep") == 0)          // TP5: Call an application
@@ -478,6 +480,8 @@ size_t TButton::initialize(TExpat *xml, size_t index)
                     ep.name = content;
                     callApp.push_back(ep);
                 }
+
+                oldIndex = index;
             }
         }
         else if (ename.compare("sr") == 0)          // Section state resources
@@ -488,6 +492,8 @@ size_t TButton::initialize(TExpat *xml, size_t index)
 
             while ((index = xml->getNextElementFromIndex(index, &e, &content, &attrs)) != TExpat::npos)
             {
+                MSG_DEBUG("Evaluating: " << e);
+
                 if (e.compare("do") == 0)           // Draw order
                     bsr._do = content;
                 else if (e.compare("bs") == 0)      // Frame type
@@ -573,10 +579,23 @@ size_t TButton::initialize(TExpat *xml, size_t index)
             }
 
             sr.push_back(bsr);
+            MSG_DEBUG("Added element <SR>: " << bsr.number);
         }
 
         if (index == TExpat::npos)
             index = oldIndex + 1;
+
+        if (index != TExpat::npos && index > 0)
+        {
+            bool valid;
+            string en = xml->getElementName(index, &valid);
+            MSG_DEBUG("EName: " << en << ", valid: " << (valid ? "TRUE" : "FALSE") << ", current index: " << index << ", old index: " << oldIndex);
+
+            if (valid && en == "button")
+                break;
+
+            oldIndex = index;
+        }
     }
 
     visible = !hd;  // set the initial visibility
@@ -5030,6 +5049,12 @@ bool TButton::loadImage(SkBitmap* bm, SkBitmap& image, int instance)
 bool TButton::barLevel(SkBitmap* bm, int, int level)
 {
     DECL_TRACER("TButton::barLevel(SkBitmap* bm, int inst, int level)");
+
+    if (sr.size() < 2)
+    {
+        MSG_ERROR("Not enough SR elements found! Expected at least 2 but found " << sr.size() << ".");
+        return false;
+    }
 
     if (!sr[0].mi.empty() && sr[0].bs.empty() && !sr[1].bm.empty())       // Chameleon image?
     {

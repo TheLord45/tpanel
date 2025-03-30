@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2022 to 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -476,6 +476,19 @@ namespace Expat
              */
             std::string getElementName(bool *valid=nullptr);
             /**
+             * @brief getElementName
+             * Retrievs the name of the element \b index is pointing to. If
+             * \b index is pointing to an invalid element, an empty string is
+             * returned and \b valid is set to false.
+             *
+             * @param index     The index number of the element.
+             * @param valid     The state of the element \b index is pointing to.
+             *                  FALSE = invalid element.
+             * @return The name of the element or an empty string if the element
+             * is invalid.
+             */
+            std::string getElementName(size_t index, bool *valid=nullptr);
+            /**
              * Checks whether the internal pointer points to a valid entry or
              * not. If the internal pointer is valid it returns the content of
              * the entity the pointer points to.
@@ -549,6 +562,22 @@ namespace Expat
              * FALSE.
              */
             double getElementContentDouble(bool *valid=nullptr);
+            /**
+             * @brief getDepth
+             * Returns the actual depth of the the current index.
+             *
+             * @return Return the actual depth.
+             */
+            int getDepth() { return mDepth; }
+            /**
+             * @brief getDepth
+             * Gets the depth from the element \b index is pointing to. If
+             * \b index is NPOS or pointing to an end element, -1 is returned.
+             *
+             * @param index     The index number of the element.
+             * @return The depth of the element or -1 if it is an invalid element.
+             */
+            int getDepth(size_t index);
 
             static const size_t npos = static_cast<size_t>(-1); //!< Marks an invalid index
 
