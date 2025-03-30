@@ -24,9 +24,7 @@
 #include <functional>
 #include <atomic>
 
-#if defined(__ANDROID__) || defined(__MACH__)
-typedef unsigned long int ulong;
-#endif
+#include "tdefines.h"
 
 extern bool prg_stopped;
 
