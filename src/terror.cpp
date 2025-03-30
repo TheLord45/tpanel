@@ -486,9 +486,9 @@ void TStreamError::_init(bool reinit)
     if (mLogLevel > 0)
     {
         if (TConfig::isLongFormat())
-            *mStream << "Timestamp          , Type LNr., File name           , ThreadID, Message" << std::endl;
+            *mStream << "Timestamp          , Type, LNr., File name           , ThreadID, Message" << std::endl;
         else
-            *mStream << "Type LNr., ThreadID, Message" << std::endl;
+            *mStream << "Type, LNr., ThreadID, Message" << std::endl;
 
         *mStream << "-----------------------------------------------------------------" << std::endl << std::flush;
     }
