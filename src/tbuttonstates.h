@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2023 to 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,16 +22,87 @@
 #include <cstdint>
 #include "tsystem.h"
 
+/**
+ * @brief The TButtonStates class
+ * The class holds the initial state of a button. This is needed because
+ * the states could be changed by commands. There exists also a command to
+ * restore the states of a button. Then the default values are taken from
+ * a list containing pointers of this class. So the original button state
+ * can easily be restored.
+ * To make each state collection unique, a CRC checksum is calculated. This
+ * unique number identifies each button over popups. Means, if an idendical
+ * button exists on more then 1 popup or page, the CRC will be the same and
+ * the button can be identified.
+ */
 class TButtonStates
 {
     public:
+    /**
+         * @brief TButtonStates
+         * Constructor.
+         *
+         * @param bs    A class of this type
+         */
         TButtonStates(const TButtonStates& bs);
+        /**
+         * @brief TButtonStates
+         * Constructor.
+         *
+         * @param t     Button type
+         * @param rap   Address port
+         * @param rad   Address channel
+         * @param rch   Channel number
+         * @param rcp   Channel port
+         * @param rlp   Level port
+         * @param rlv   Level code
+         */
         TButtonStates(BUTTONTYPE t, int rap, int rad, int rch, int rcp, int rlp, int rlv);
         ~TButtonStates();
 
+        /**
+         * @brief isButton
+         * Test the CRC.
+         *
+         * @param ID    CRC
+         * @return Returns TRUE if the CRC \b ID is dentical to the internal CRC.
+         */
         bool isButton(uint32_t ID) { return ID == mID; }
+        /**
+         * @brief isButton
+         * Test the type and CRC.
+         *
+         * @param t     Type of button
+         * @param ID    CRC
+         *
+         * @return Returns TRUE if the type of button \b t and the CRC \b ID is
+         * identical to the internal values.
+         */
         bool isButton(BUTTONTYPE t, uint32_t ID);
+        /**
+         * @brief isButton
+         * Test for all values.
+         *
+         * @param t     Button type
+         * @param rap   Address port
+         * @param rad   Address channel
+         * @param rch   Channel number
+         * @param rcp   Channel port
+         * @param rlp   Level port
+         * @param rlv   Level code
+         *
+         * @return If all parameters are identical to the internal values the method
+         * return TRUE.
+         */
         bool isButton(BUTTONTYPE t, int rap, int rad, int rch, int rcp, int rlp, int rlv);
+        /**
+         * @brief isButton
+         * Test for all values.
+         *
+         * @param bs    A TbuttonStates class
+         *
+         * @return If all parameters contained in \b bs are identical to the
+         * internal values of the method, it returns TRUE.
+         */
         bool isButton(const TButtonStates& bs);
         bool isButton(BUTTONTYPE t, int rap, int rad, int rch, int rcp);
         bool isButton(BUTTONTYPE t, int rlp, int rlv);
