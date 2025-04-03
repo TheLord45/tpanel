@@ -273,7 +273,7 @@ void TStreamError::setLogLevel(const std::string& slv)
     __android_log_print(ANDROID_LOG_INFO, "tpanel", "TStreamError::setLogLevel: New loglevel: %s", slv.c_str());
 #else
 #ifdef TARGET_OS_IOS
-    std::cout << TError::append(HLOG_INFO) << "New loglevel: " << slv << std::endl;
+    std::cout << TError::append(HLOG_INFO, __LINE__, __FILE__) << "New loglevel: " << slv << std::endl;
 #else
     if (mInitialized && mStream)
         *mStream << TError::append(HLOG_INFO, 0, "") << "New loglevel: " << slv << std::endl;
