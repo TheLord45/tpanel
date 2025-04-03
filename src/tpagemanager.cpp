@@ -169,7 +169,7 @@ JNIEXPORT void JNICALL Java_org_qtproject_theosys_Logger_logger(JNIEnv *env, jcl
     {
         if (TStreamError::checkFilter(mode))
         {
-            *TError::Current()->getStream() << TError::append(mode) << ret << std::endl;
+            *TError::Current()->getStream() << TError::append(mode, __LINE__, __FILE__) << ret << std::endl;
             TStreamError::resetFlags();
         }
     }
