@@ -66,7 +66,7 @@ bool TSettings::loadSettings(bool initial)
     if (!isValidFile())
     {
         MSG_ERROR("Error: File " << fname << " doesn't exist or can't be opened!");
-        TError::setError();
+        TError::SetError();
         return false;
     }
 
@@ -83,7 +83,7 @@ bool TSettings::loadSettings(bool initial)
     if (xml.getElementIndex("versionInfo", &depth) == TExpat::npos)
     {
         MSG_ERROR("Couldn't find the project version information! Broken surface?");
-        TError::setError();
+        TError::SetError();
         return false;
     }
 
@@ -111,7 +111,7 @@ bool TSettings::loadSettings(bool initial)
     if (xml.getElementIndex("projectInfo", &depth) == TExpat::npos)
     {
         MSG_ERROR("Couldn't find the project information! Broken surface?");
-        TError::setError();
+        TError::SetError();
         return false;
     }
 
@@ -141,7 +141,7 @@ bool TSettings::loadSettings(bool initial)
     if (xml.getElementIndex("supportFileList", &depth) == TExpat::npos)
     {
         MSG_ERROR("Couldn't find the support file list! Broken surface?");
-        TError::setError();
+        TError::SetError();
         return false;
     }
 
@@ -174,7 +174,7 @@ bool TSettings::loadSettings(bool initial)
     if ((index = xml.getElementIndex("panelSetup", &depth)) == TExpat::npos)
     {
         MSG_ERROR("Couldn't find the section \"panelSetup\" in file!");
-        TError::setError();
+        TError::SetError();
         return false;
     }
 

@@ -225,7 +225,7 @@ char *TNameFormat::EncodeTo(char* buf, size_t *len, const string& str, const str
 	if (cd == (iconv_t) -1)
 	{
 		MSG_ERROR("iconv_open failed!");
-		TError::setError();
+        TError::SetError();
 		return 0;
 	}
 
@@ -240,7 +240,7 @@ char *TNameFormat::EncodeTo(char* buf, size_t *len, const string& str, const str
 		if (iconv(cd, &in_buf, &in_left, &out_buf, &out_left) == (size_t) -1)
 		{
 			MSG_ERROR("iconv failed: " << strerror(errno));
-			TError::setError();
+            TError::SetError();
 			return 0;
 		}
 	}
@@ -531,7 +531,7 @@ string TNameFormat::UTF8ToCp1250(const string& str)
 	catch(std::exception& e)
 	{
 		MSG_ERROR(e.what());
-		TError::setError();
+        TError::SetError();
 		return "";
 	}
 
@@ -543,7 +543,7 @@ string TNameFormat::UTF8ToCp1250(const string& str)
 	if (conv == (iconv_t)-1)
 	{
 		MSG_ERROR("Error opening iconv!");
-		TError::setError();
+        TError::SetError();
 		delete[] pInSave;
 		return str;
 	}
@@ -555,7 +555,7 @@ string TNameFormat::UTF8ToCp1250(const string& str)
 	if (ret == (size_t)-1)
 	{
 		MSG_ERROR("Error converting a string!");
-		TError::setError();
+        TError::SetError();
 		return str;
 	}
 

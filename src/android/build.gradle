@@ -5,7 +5,8 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.6.0'
+        //noinspection AndroidGradlePluginVersion
+        classpath 'com.android.tools.build:gradle:8.8.0'
     }
 }
 
@@ -14,14 +15,15 @@ repositories {
     mavenCentral()
 }
 
-//apply plugin: 'com.android.application'
 apply plugin: qtGradlePluginType
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
-//    implementation 'com.google.android.material:material:1.0.0'
+    //noinspection GradleDependency
     implementation 'androidx.core:core:1.13.1'
-//    implementation 'androidx.preference:preference:1.1.0'
+    implementation 'androidx.appcompat:appcompat:1.1.0'
+    implementation "androidx.preference:preference:1.1.0"
+    implementation 'androidx.annotation:annotation:1.5.0'
 }
 
 android {
@@ -29,9 +31,10 @@ android {
      * The following variables:
      * - androidBuildToolsVersion,
      * - androidCompileSdkVersion
-     * - qt5AndroidDir - holds the path to qt android files
-     *                   needed to build any Qt application
-     *                   on Android.
+     * - qtAndroidDir - holds the path to qt android files
+     *                  needed to build any Qt application
+     *                  on Android.
+     * - qtGradlePluginType - whether to build an app or a library
      *
      * are defined in gradle.properties file. This file is
      * updated by QtCreator and androiddeployqt tools.
@@ -41,11 +44,11 @@ android {
 
     namespace androidPackageName
     compileSdkVersion androidCompileSdkVersion
-    buildToolsVersion androidBuildToolsVersion    /* Reserved for Qt 6.x */
-    ndkVersion androidNdkVersion                  /* Reserved for Qt 6.x */
+//    buildToolsVersion androidBuildToolsVersion
+    ndkVersion androidNdkVersion
 
     // Extract native libraries from the APK
-    packagingOptions.jniLibs.useLegacyPackaging true  /* Reserved for Qt 6.x */
+//    packagingOptions.jniLibs.useLegacyPackaging true
 
     sourceSets {
         main {
@@ -83,9 +86,10 @@ android {
         minSdkVersion = qtMinSdkVersion
         targetSdkVersion = qtTargetSdkVersion
         ndk.abiFilters = qtTargetAbiList.split(",")
-        qtMinSdkVersion = 30
-        qtTargetSdkVersion = 33
-        qtTargetAbiList = [ 'arm64-v8a', 'x86_64', 'armeabi-v7a', 'x86' ]
+        applicationId = 'org.qtproject.theosys'
+//        qtMinSdkVersion = 30
+//        qtTargetSdkVersion = 35
+//        qtTargetAbiList = [ 'arm64-v8a', 'x86_64', 'armeabi-v7a', 'x86' ]
     }
 
     packagingOptions {

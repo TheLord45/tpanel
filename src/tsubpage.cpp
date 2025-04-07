@@ -28,6 +28,7 @@
 #include "tsubpage.h"
 #include "tdrawimage.h"
 #include "tconfig.h"
+#include "ttpinit.h"
 #include "terror.h"
 #if TESTMODE == 1
 #include "testmode.h"
@@ -78,7 +79,7 @@ TSubPage::TSubPage(const string& name)
     else
     {
         MSG_ERROR("Either the path \"" << projectPath << "\" or the file name \"" << name << "\" is invalid!");
-        TError::setError();
+        TError::SetError();
         return;
     }
 
@@ -142,7 +143,11 @@ void TSubPage::initialize()
 
     TError::clear();
     TExpat xml(mFName);
-    xml.setEncoding(ENC_CP1250);
+
+    if (!TTPInit::getTP5())
+        xml.setEncoding(ENC_CP1250);
+    else
+        xml.setEncoding(ENC_UTF8);
 
     if (!xml.parse())
         return;
@@ -156,7 +161,7 @@ void TSubPage::initialize()
     if ((index = xml.getElementIndex("page", &depth)) == TExpat::npos)
     {
         MSG_ERROR("Element \"page\" with attribute \"type\" was not found! Invalid XML file!");
-        TError::setError();
+        TError::SetError();
         return;
     }
 
@@ -166,7 +171,7 @@ void TSubPage::initialize()
     if (stype.compare("subpage") != 0)
     {
         MSG_ERROR("The type " << stype << " is invalid for a subpage!");
-        TError::setError();
+        TError::SetError();
         return;
     }
 
@@ -174,6 +179,8 @@ void TSubPage::initialize()
 
     while ((index = xml.getNextElementFromIndex(index, &ename, &content, &attrs)) != TExpat::npos)
     {
+        MSG_DEBUG("Processing element: " << ename);
+
         if (ename.compare("pageID") == 0)
             mSubpage.pageID = xml.convertElementToInt(content);
         else if (ename.compare("name") == 0)
@@ -230,7 +237,7 @@ void TSubPage::initialize()
 
                 if (TError::isError())
                 {
-                    MSG_ERROR("Dropping button because of previous errors!");
+                    MSG_LASTERROR("Dropping button because of previous errors!");
                     delete button;
                     return;
                 }
@@ -243,7 +250,7 @@ void TSubPage::initialize()
             catch (std::exception& e)
             {
                 MSG_ERROR("Memory exception: " << e.what());
-                TError::setError();
+                TError::SetError();
                 return;
             }
         }

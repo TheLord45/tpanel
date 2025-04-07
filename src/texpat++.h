@@ -578,6 +578,14 @@ namespace Expat
              * @return The depth of the element or -1 if it is an invalid element.
              */
             int getDepth(size_t index);
+            /**
+             * @brief getType
+             * Retrieves the type of the element \b index is pointing to.
+             *
+             * @param index     The index number of an element.
+             * @return The type of the element.
+             */
+            _ETYPE_t getType(size_t index);
 
             static const size_t npos = static_cast<size_t>(-1); //!< Marks an invalid index
 

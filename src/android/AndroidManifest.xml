@@ -1,5 +1,9 @@
 <?xml version="1.0"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:versionName="-- %%INSERT_VERSION_NAME%% --" android:versionCode="-- %%INSERT_VERSION_CODE%% --" android:installLocation="auto" package="org.qtproject.theosys">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    android:versionName="-- %%INSERT_VERSION_NAME%% --"
+    android:versionCode="-- %%INSERT_VERSION_CODE%% --"
+    android:installLocation="auto"
+    package="org.qtproject.theosys">
     <!-- The following comment will be replaced upon deployment with default permissions based on the dependencies of the application.
          Remove the comment if you do not require these default permissions. -->
     <!-- %%INSERT_PERMISSIONS -->
@@ -8,9 +12,26 @@
          Remove the comment if you do not require these default features. -->
     <!-- %%INSERT_FEATURES -->
 
-    <supports-screens android:largeScreens="true" android:normalScreens="true" android:anyDensity="true" android:smallScreens="true"/>
-    <application android:hardwareAccelerated="true" android:name="org.qtproject.qt.android.bindings.QtApplication" android:label="-- %%INSERT_APP_NAME%% --" android:extractNativeLibs="true" android:requestLegacyExternalStorage="true" android:allowNativeHeapPointerTagging="false" android:allowBackup="true" android:fullBackupOnly="false" android:theme="@style/AppTheme.NoActionBar" android:icon="@drawable/icon">
-        <activity android:configChanges="orientation|uiMode|screenLayout|screenSize|smallestScreenSize|layoutDirection|locale|fontScale|keyboard|keyboardHidden|navigation|mcc|mnc|density" android:name="org.qtproject.qt.android.bindings.QtActivity" android:label="-- %%INSERT_APP_NAME%% --" android:launchMode="singleTop" android:screenOrientation="nosensor" android:exported="true" android:theme="@style/splashScreenTheme">
+    <supports-screens
+        android:largeScreens="true"
+        android:normalScreens="true"
+        android:anyDensity="true"
+        android:smallScreens="true"/>
+    <application
+        android:name="org.qtproject.qt.android.bindings.QtApplication"
+        android:hardwareAccelerated="true"
+        android:label="-- %%INSERT_APP_NAME%% --"
+        android:icon="-- %%INSERT_APP_ICON%% --"
+        android:requestLegacyExternalStorage="true"
+        android:allowBackup="true"
+        android:fullBackupOnly="false">
+        <activity
+            android:configChanges="orientation|uiMode|screenLayout|screenSize|smallestScreenSize|layoutDirection|locale|fontScale|keyboard|keyboardHidden|navigation|mcc|mnc|density"
+            android:name="org.qtproject.qt.android.bindings.QtActivity"
+            android:label="-- %%INSERT_APP_NAME%% --"
+            android:launchMode="singleTop"
+            android:screenOrientation="nosensor"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
@@ -35,7 +56,6 @@
             <!-- <meta-data android:name="android.app.system_libs_prefix" android:value="/system/lib/"/> -->
             <!--  Messages maps -->
             <meta-data android:value="@string/fatal_error_msg" android:name="android.app.fatal_error_msg"/>
-            <meta-data android:value="@string/unsupported_android_version" android:name="android.app.unsupported_android_version"/>
             <!--  Messages maps -->
             <!-- Splash screen -->
             <!-- Orientation-specific (portrait/landscape) data is checked first. If not available for current orientation,
@@ -65,9 +85,6 @@
                 -->
             <meta-data android:name="android.app.extract_android_style" android:value="default"/>
             <!-- extract android style -->
-            <!-- <meta-data android:name="android.app.splash_screen_drawable" android:resource="@drawable/logo"/>
-            <meta-data android:name="android.app.splash_screen_drawable_portrait" android:resource="@drawable/logo_portrait"/>
-            <meta-data android:name="android.app.splash_screen_drawable_landscape" android:resource="@drawable/logo_landscape"/> -->
             <meta-data android:name="android.app.splash_screen_drawable" android:resource="@drawable/splashscreen"/>
             <meta-data android:name="android.app.splash_screen_drawable_portrait" android:resource="@drawable/splashscreen_port"/>
             <meta-data android:name="android.app.splash_screen_drawable_landscape" android:resource="@drawable/splashscreen_land"/>
@@ -75,17 +92,13 @@
             <meta-data android:name="android.app.splash_screen_drawable_portrait" android:resource="@drawable/splashscreen_port"/>
             <meta-data android:name="android.app.splash_screen_drawable_landscape" android:resource="@drawable/splashscreen_land"/>
         </activity>
-        <activity android:name=".SettingsActivity" android:label="-- %%INSERT_APP_NAME%% --" android:parentActivityName=".QtApplication" android:screenOrientation="nosensor" android:theme="@style/splashScreenTheme">
+        <activity
+            android:name=".SettingsActivity"
+            android:label="-- %%INSERT_APP_NAME%% --"
+            android:parentActivityName=".QtApplication"
+            android:screenOrientation="nosensor"
+            android:theme="@style/Theme.AppCompat">
             <meta-data android:name="android.support.PARENT_ACTIVITY" android:value="org.qtproject.qt.android.bindings.QtApplication"/>
-            <!-- <meta-data android:name="android.app.splash_screen_drawable" android:resource="@drawable/logo"/>
-            <meta-data android:name="android.app.splash_screen_drawable_portrait" android:resource="@drawable/logo_portrait"/>
-            <meta-data android:name="android.app.splash_screen_drawable_landscape" android:resource="@drawable/logo_landscape"/> -->
-            <meta-data android:name="android.app.splash_screen_drawable" android:resource="@drawable/splashscreen"/>
-            <meta-data android:name="android.app.splash_screen_drawable_portrait" android:resource="@drawable/splashscreen_port"/>
-            <meta-data android:name="android.app.splash_screen_drawable_landscape" android:resource="@drawable/splashscreen_land"/>
-            <meta-data android:name="android.app.splash_screen_drawable" android:resource="@drawable/splashscreen"/>
-            <meta-data android:name="android.app.splash_screen_drawable_portrait" android:resource="@drawable/splashscreen_port"/>
-            <meta-data android:name="android.app.splash_screen_drawable_landscape" android:resource="@drawable/splashscreen_land"/>
         </activity>
     </application>
 
@@ -94,20 +107,15 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
     <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
-    <!-- <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/> -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.READ_CALL_LOG"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
-    <!-- <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/> -->
     <uses-permission android:name="android.permission.DEVICE_POWER"/>
     <uses-permission android:name="android.permission.FLASHLIGHT"/>
     <uses-permission android:name="android.permission.USE_SIP"/>
-    <!-- <uses-permission android:name="android.permission.INTERNET"/> -->
     <uses-permission android:name="android.permission.SET_ORIENTATION"/>
-    <!-- <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/> -->
     <uses-permission android:name="android.permission.MANAGE_APP_OPS_MODES"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
-    <!-- <uses-permission android:name="android.permission.RECORD_AUDIO"/> -->
 
     <uses-feature android:name="android.software.sip.voip" android:required="true"/>
     <uses-feature android:name="android.hardware.wifi" android:required="true"/>

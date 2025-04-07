@@ -150,7 +150,7 @@ void TPage::initialize(const string& nm)
     if ((index = xml.getElementIndex("page", &depth)) == TExpat::npos)
     {
         MSG_ERROR("Element \"page\" with attribute \"type\" was not found!");
-        TError::setError();
+        TError::SetError();
         return;
     }
 
@@ -160,7 +160,7 @@ void TPage::initialize(const string& nm)
     if (type.compare("page") != 0)
     {
         MSG_ERROR("Invalid page type \"" << type << "\"!");
-        TError::setError();
+        TError::SetError();
         return;
     }
 
@@ -818,7 +818,7 @@ bool TPage::addSubPage(TSubPage* pg)
     if (!pg)
     {
         MSG_ERROR("Parameter is NULL!");
-        TError::setError();
+        TError::SetError();
         return false;
     }
 

@@ -76,7 +76,7 @@ bool TPageInterface::drawText(PAGE_T& pinfo, SkBitmap *img)
     if (!typeFace)
     {
         MSG_ERROR("Error creating type face " << font.fullName);
-        TError::setError();
+        TError::SetError();
         return false;
     }
 
@@ -122,7 +122,7 @@ bool TPageInterface::drawText(PAGE_T& pinfo, SkBitmap *img)
         if (!position.valid)
         {
             MSG_ERROR("Error calculating the text position!");
-            TError::setError();
+            TError::SetError();
             return false;
         }
 
@@ -139,7 +139,7 @@ bool TPageInterface::drawText(PAGE_T& pinfo, SkBitmap *img)
             if (!pos.valid)
             {
                 MSG_ERROR("Error calculating the text position!");
-                TError::setError();
+                TError::SetError();
                 return false;
             }
             MSG_DEBUG("Triing to print line: " << *iter);
@@ -164,7 +164,7 @@ bool TPageInterface::drawText(PAGE_T& pinfo, SkBitmap *img)
         if (!position.valid)
         {
             MSG_ERROR("Error calculating the text position!");
-            TError::setError();
+            TError::SetError();
             return false;
         }
 
@@ -564,7 +564,7 @@ Button::BUTTONS_T *TPageInterface::addButton(Button::TButton* button)
     if (!button)
     {
         MSG_ERROR("Parameter is NULL!");
-        TError::setError();
+        TError::SetError();
         return nullptr;
     }
 
@@ -598,7 +598,7 @@ Button::BUTTONS_T *TPageInterface::addButton(Button::TButton* button)
     catch (std::exception& e)
     {
         MSG_ERROR("Memory error: " << e.what());
-        TError::setError();
+        TError::SetError();
     }
 
     return nullptr;

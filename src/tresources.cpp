@@ -279,7 +279,7 @@ sk_sp<SkData> GetResourceAsData(const char* resource, _RESOURCE_TYPE rs)
         return data;
 
     MSG_ERROR("GetResourceAsData: Resource \"" << str.c_str() << "\" not found.");
-    TError::setError();
+    TError::SetError();
 #ifdef SK_TOOLS_REQUIRE_RESOURCES
     SK_ABORT("GetResourceAsData: missing resource");
 #endif
@@ -302,7 +302,7 @@ sk_sp<SkData> readImage(const string& fname)
     if (fname.empty())
     {
         MSG_ERROR("readImage: Empty file name!");
-        TError::setError();
+        TError::SetError();
         return nullptr;
     }
 
@@ -311,7 +311,7 @@ sk_sp<SkData> readImage(const string& fname)
     if (!data)
     {
         MSG_ERROR("readImage: Error loading the image \"" << fname << "\"");
-        TError::setError();
+        TError::SetError();
     }
 
     return data;

@@ -1836,7 +1836,7 @@ bool TConfig::findConfig()
     {
         s << "Error: Environment variable HOME does not exist!";
         __android_log_print(ANDROID_LOG_ERROR, "tpanel", "%s", s.str().c_str());
-        TError::setErrorMsg(s.str());
+        TError::SetErrorMsg(s.str());
         return false;
     }
 
@@ -1846,7 +1846,7 @@ bool TConfig::findConfig()
     {
         s << "Error: Path " << localSettings.path << " does not exist!";
         __android_log_print(ANDROID_LOG_ERROR, "tpanel", "%s", s.str().c_str());
-        TError::setErrorMsg(s.str());
+        TError::SetErrorMsg(s.str());
         return false;
     }
 
@@ -1869,7 +1869,7 @@ bool TConfig::findConfig()
         {
             s << "Error: " << e.what();
             __android_log_print(ANDROID_LOG_ERROR, "tpanel" , "%s", s.str().c_str());
-            TError::setErrorMsg(TERRERROR, string("Error: ") + e.what());
+            TError::setErrorMsg(TERRERROR, string("Error: ") + e.what(), __LINE__, __FILE__);
             return false;
         }
     }
@@ -1943,7 +1943,7 @@ bool TConfig::findConfig()
         else
         {
             MSG_ERROR("TConfig::findConfig: Can't find any configuration file!");
-            TError::setError();
+            TError::SetError();
             sFileName.clear();
             localSettings.name.clear();
             localSettings.path.clear();
@@ -2162,7 +2162,7 @@ bool TConfig::readConfig()
     {
         localSettings_temp = localSettings;
         cerr << "TConfig::readConfig: Error on file " << mCFile << ": " << e.what() << endl;
-        TError::setError();
+        TError::SetError();
         return false;
     }
 

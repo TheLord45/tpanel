@@ -64,7 +64,7 @@ TColor::COLOR_T TColor::getAMXColor(const string& color)
         if (!mPalette)
         {
             MSG_ERROR("No palette was set! First set a palette to be able to get any color!");
-            TError::setError();
+            TError::SetError();
             return TColor::COLOR_T();
         }
 

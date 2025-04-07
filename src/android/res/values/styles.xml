@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
- Copyright (C) 2021 to 2023 by Andreas Theofilu <andreas@theosys.at>
+ Copyright (C) 2021 to 2025 by Andreas Theofilu <andreas@theosys.at>
 
  This program is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -18,13 +18,13 @@
 -->
 <resources>
     <!-- base set of styles that apply to all versions -->
-    <style name="TPanelAppTheme" parent="AppTheme.NoActionBar">
+    <style name="TPanelAppTheme" parent="material">
         <item name="android:windowActionBar">false</item>
         <item name="android:windowNoTitle">true</item>
         <!-- <item name="android:drawable/screen_background_selector_light">@nullable</item> -->
     </style>
 
     <!-- declare the theme name that's actually applied in the manifest file -->
-    <style name="AppTheme" parent="AppTheme.NoActionBar" />
+    <style name="material" parent="material" />
 </resources>
 

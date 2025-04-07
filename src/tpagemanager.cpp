@@ -2454,7 +2454,7 @@ bool TPageManager::readPages()
     if (!mPageList)
     {
         MSG_ERROR("Page list is not initialized!");
-        TError::setError();
+        TError::SetError();
         return false;
     }
 
@@ -3052,7 +3052,7 @@ bool TPageManager::addPage(TPage* pg)
     if (!pg)
     {
         MSG_ERROR("Parameter is NULL!");
-        TError::setError();
+        TError::SetError();
         return false;
     }
 
@@ -3086,7 +3086,7 @@ bool TPageManager::addSubPage(TSubPage* pg)
     if (!pg)
     {
         MSG_ERROR("Parameter is NULL!");
-        TError::setError();
+        TError::SetError();
         return false;
     }
 

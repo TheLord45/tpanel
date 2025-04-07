@@ -78,7 +78,7 @@ bool TExpat::parse(bool debug)
     if (!isValidFile(mFile))
     {
         MSG_ERROR("Invalid file: " << mFile);
-        TError::setError();
+        TError::SetError();
         return false;
     }
 
@@ -105,7 +105,7 @@ bool TExpat::parse(bool debug)
     catch (std::exception& e)
     {
         MSG_ERROR("File error: " << e.what());
-        TError::setError();
+        TError::SetError();
         return false;
     }
 
@@ -128,7 +128,7 @@ bool TExpat::parse(bool debug)
     {
         MSG_ERROR(XML_ErrorString(XML_GetErrorCode(parser)) << " at line " << XML_GetCurrentLineNumber(parser));
         XML_ParserFree(parser);
-        TError::setError();
+        TError::SetError();
         return false;
     }
 
@@ -572,7 +572,7 @@ int TExpat::convertElementToInt(const string& content)
 
     if (content.empty())
     {
-        TError::setErrorMsg("Empty content!");
+        MSG_WARNING("Empty content!");
         return 0;
     }
 
@@ -585,7 +585,7 @@ long TExpat::convertElementToLong(const string& content)
 
     if (content.empty())
     {
-        TError::setErrorMsg("Empty content!");
+        MSG_WARNING("Empty content!");
         return 0;
     }
 
@@ -598,7 +598,7 @@ float TExpat::convertElementToFloat(const string& content)
 
     if (content.empty())
     {
-        TError::setErrorMsg("Empty content!");
+        MSG_WARNING("Empty content!");
         return 0;
     }
 
@@ -611,7 +611,7 @@ double TExpat::convertElementToDouble(const string& content)
 
     if (content.empty())
     {
-        TError::setErrorMsg("Empty content!");
+        MSG_WARNING("Empty content!");
         return 0;
     }
 
@@ -624,7 +624,7 @@ bool TExpat::setIndex(size_t index)
 
     if (index >= mElements.size())
     {
-        TError::setErrorMsg("Invalid index " + std::to_string(index) + "!");
+        MSG_WARNING("Invalid index " << index << "!");
         mLastIter = mElements.end();
         return false;
     }
@@ -800,10 +800,17 @@ int TExpat::getDepth(size_t index)
     if (index == npos || index >= mElements.size())
         return -1;
 
-//    if (mElements.at(index).eType == _ET_END)
-//        return -1;
-
     return mElements.at(index).depth;
+}
+
+_ETYPE_t TExpat::getType(size_t index)
+{
+    DECL_TRACER("TExpat::getType(size_t index)");
+
+    if (index == npos || index >= mElements.size())
+        return _ET_ATOMIC;
+
+    return mElements.at(index).eType;
 }
 
 /******************************************************************************
@@ -1038,7 +1045,7 @@ int XMLCALL TExpat::cp1250_encoding_handler(void *, const XML_Char *encoding, XM
     if (encoding && strcmp(encoding, "CP1250") != 0)
     {
         MSG_ERROR("Invalid encoding handler (" << encoding << ")");
-        TError::setError();
+        TError::SetError();
         return XML_STATUS_ERROR;
     }
 

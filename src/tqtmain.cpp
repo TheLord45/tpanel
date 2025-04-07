@@ -5377,7 +5377,7 @@ void MainWindow::inputText(Button::TButton *button, QByteArray buf, int width, i
         if (!buf.size() || pixline == 0)
         {
             MSG_ERROR("No image!");
-            TError::setError();
+            TError::SetError();
             return;
         }
 
@@ -5505,7 +5505,7 @@ void MainWindow::listBox(Button::TButton *button, QByteArray buffer, int width, 
         if (!buffer.size() || pixline == 0)
         {
             MSG_ERROR("No image!");
-            TError::setError();
+            TError::SetError();
             return;
         }
 
@@ -5544,7 +5544,7 @@ void MainWindow::listBox(Button::TButton *button, QByteArray buffer, int width, 
         if (QFontDatabase::addApplicationFont(ffile.c_str()) == -1)
         {
             MSG_ERROR("Font " << ffile << " could not be loaded!");
-            TError::setError();
+            TError::SetError();
             return;
         }
 

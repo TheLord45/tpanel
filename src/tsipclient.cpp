@@ -108,7 +108,7 @@ TSIPClient::TSIPClient()
     if (TConfig::getSIPstatus())    // Is SIP enabled?
     {                               // Yes, try to connect to SIP proxy
         if (!init())
-            TError::setError();
+            TError::SetError();
     }
 }
 

@@ -1,45 +1,45 @@
-<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
-
-    <PreferenceCategory android:title="NetLinx">
+<PreferenceScreen
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:settings="http://schemas.android.com/apk/res/com.android.settings"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:title="Settings">
+    <PreferenceCategory
+        android:key="netlinx_category"
+        android:title="NetLinx">
 
         <EditTextPreference
-            android:id="@+id/netlinxIp"
-            android:defaultValue="0.0.0.0"
             android:key="netlinx_ip"
+            android:id="@+id/netlinxIp"
             android:title="NetLinx IP"
-            app:useSimpleSummaryProvider="true" />
+            android:defaultValue="0.0.0.0" />
 
         <EditTextPreference
+            android:key="netlinx_port"
             android:id="@+id/netlinxPort"
             android:defaultValue="1319"
-            android:key="netlinx_port"
             android:title="Network port"
-            android:maxLength="6"
-            app:useSimpleSummaryProvider="true" />
+            android:maxLength="6" />
 
         <EditTextPreference
+            android:key="netlinx_channel"
             android:id="@+id/netlinxChannel"
             android:defaultValue="10001"
-            android:key="netlinx_channel"
             android:title="Channel number"
-            android:maxLength="5"
-            app:useSimpleSummaryProvider="true" />
+            android:maxLength="5" />
 
         <EditTextPreference
+            android:key="netlinx_type"
             android:id="@+id/netlinxType"
             android:defaultValue="Android"
-            android:key="netlinx_type"
             android:title="Panel type"
-            android:maxLength="15"
-            app:useSimpleSummaryProvider="true" />
+            android:maxLength="15" />
 
         <EditTextPreference
+            android:key="netlinx_ftp_user"
             android:id="@+id/netlinxFtpUser"
             android:defaultValue="administrator"
-            android:key="netlinx_ftp_user"
-            android:title="FTP user name"
-            app:useSimpleSummaryProvider="true" />
+            android:title="FTP user name" />
 
         <EditTextPreference
             android:id="@+id/netlinxFtpPassword"
@@ -53,8 +53,7 @@
             android:key="netlinx_surface"
             android:title="Surface file name"
             android:entries="@array/reply_entries_surface"
-            android:entryValues="@array/reply_values_surface"
-            app:useSimpleSummaryProvider="true" />
+            android:entryValues="@array/reply_values_surface" />
 
         <SwitchPreference
             android:id="@+id/netlinxFtpPassive"
@@ -64,16 +63,18 @@
 
     </PreferenceCategory>
 
-    <PreferenceCategory android:title="View">
+    <PreferenceCategory
+        android:key="view_category"
+        android:title="View">
         <SwitchPreference
             android:defaultValue="true"
             android:key="view_scale"
             android:title="Scale to fit" />
-        <SwitchPreference
+        <androidx.preference.SwitchPreference
             android:defaultValue="true"
             android:key="view_toolbar"
-            android:title="Toolbar visible"
-            app:isPreferenceVisible="false" />
+            android:title="Toolbar visible" />
+        <!--    app:isPreferenceVisible="false" /> -->
         <SwitchPreference
             android:defaultValue="false"
             android:key="view_toolbar_force"
@@ -84,28 +85,27 @@
             android:title="Fixed rotation" />
     </PreferenceCategory>
 
-    <PreferenceCategory android:title="Sound">
+    <PreferenceCategory
+        android:key="sound_category"
+        android:title="Sound">
         <ListPreference
             android:defaultValue="singleBeep.wav"
             android:entries="@array/reply_entries_sound_system"
             android:entryValues="@array/reply_values_sound_system"
             android:key="sound_system"
-            android:title="System sound"
-            app:useSimpleSummaryProvider="true" />
+            android:title="System sound" />
         <ListPreference
             android:defaultValue="singleBeep.wav"
             android:entries="@array/reply_entries_sound_single"
             android:entryValues="@array/reply_values_sound_single"
             android:key="sound_single"
-            android:title="Single beep"
-            app:useSimpleSummaryProvider="true" />
+            android:title="Single beep" />
         <ListPreference
             android:defaultValue="doubleBeep.wav"
             android:entries="@array/reply_entries_sound_double"
             android:entryValues="@array/reply_values_sound_double"
             android:key="sound_double"
-            android:title="Double beep"
-            app:useSimpleSummaryProvider="true" />
+            android:title="Double beep" />
         <SwitchPreference
             android:defaultValue="true"
             android:key="sound_enable"
@@ -115,45 +115,41 @@
             android:key="sound_volume"
             android:title="Volume"
             android:max="100" />
-        <SeekBarPreference
+        <androidx.preference.SeekBarPreference
             android:defaultValue="0"
             android:key="sound_gain"
             android:title="Gain"
-            android:max="100"
-            app:showSeekBarValue="true"
-            app:isPreferenceVisible="false" />
+            android:max="100" />
+        <!--    app:showSeekBarValue="true"
+            app:isPreferenceVisible="false" /> -->
     </PreferenceCategory>
-    <PreferenceCategory android:title="SIP">
+    <PreferenceCategory
+        android:key="sip_category"
+        android:title="SIP">
         <EditTextPreference
             android:defaultValue="0.0.0.0"
             android:key="sip_proxy"
-            android:title="SIP proxy"
-            app:useSimpleSummaryProvider="true" />
+            android:title="SIP proxy" />
         <EditTextPreference
             android:defaultValue="5060"
             android:key="sip_port"
-            android:title="Network port"
-            app:useSimpleSummaryProvider="true" />
+            android:title="Network port" />
         <EditTextPreference
             android:defaultValue="0"
             android:key="sip_tls_port"
-            android:title="Network RLS port"
-            app:useSimpleSummaryProvider="true" />
+            android:title="Network RLS port" />
         <EditTextPreference
             android:defaultValue=""
             android:key="sip_stun"
-            android:title="STUN"
-            app:useSimpleSummaryProvider="true" />
+            android:title="STUN" />
         <EditTextPreference
             android:defaultValue=""
             android:key="sip_domain"
-            android:title="Domain"
-            app:useSimpleSummaryProvider="true" />
+            android:title="Domain" />
         <EditTextPreference
             android:defaultValue=""
             android:key="sip_user"
-            android:title="User"
-            app:useSimpleSummaryProvider="true" />
+            android:title="User" />
         <EditTextPreference
             android:defaultValue=""
             android:key="sip_password"
@@ -177,7 +173,9 @@
             android:key="sip_internal_phone"
             android:title="Use integrated phone" />
     </PreferenceCategory>
-    <PreferenceCategory android:title="Logging">
+    <PreferenceCategory
+        android:key="logging_category"
+        android:title="Logging">
         <SwitchPreference
             android:defaultValue="false"
             android:key="logging_info"
@@ -213,10 +211,11 @@
         <EditTextPreference
             android:defaultValue="tpanel_log.txt"
             android:key="logging_logfile"
-            android:title="Logfile"
-            app:useSimpleSummaryProvider="true" />
+            android:title="Logfile" />
     </PreferenceCategory>
-    <PreferenceCategory android:title="Passwords">
+    <PreferenceCategory
+        android:key="passwords_category"
+        android:title="Passwords">
         <EditTextPreference
             android:defaultValue="1988"
             android:key="passwords_1"

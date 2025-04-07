@@ -354,7 +354,7 @@ URL_t& THTTPClient::parseURL(const string& URL)
     if (URL.empty())
     {
         MSG_ERROR("Invalid empty URL!");
-        TError::setError();
+        TError::SetError();
         mURL.clear();
         return mURL;
     }
@@ -364,7 +364,7 @@ URL_t& THTTPClient::parseURL(const string& URL)
     if (pos == string::npos)
     {
         MSG_ERROR("Invalid URL: " << URL);
-        TError::setError();
+        TError::SetError();
         mURL.clear();
         return mURL;
     }

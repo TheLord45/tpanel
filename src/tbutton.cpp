@@ -255,7 +255,7 @@ size_t TButton::initialize(TExpat *xml, size_t index)
     if (!xml || index == TExpat::npos)
     {
         MSG_ERROR("Invalid NULL parameter passed!");
-        TError::setError();
+        TError::SetError();
         return TExpat::npos;
     }
 
@@ -272,7 +272,7 @@ size_t TButton::initialize(TExpat *xml, size_t index)
 
     while((index = xml->getNextElementFromIndex(index, &ename, &content, &attrs)) != TExpat::npos)
     {
-        MSG_DEBUG("Found element: " << ename);
+        MSG_DEBUG("Found element: " << ename << ", index: " << index << ", oldIndex: " << oldIndex);
 
         if (ename.compare("bi") == 0)
         {
@@ -447,7 +447,7 @@ size_t TButton::initialize(TExpat *xml, size_t index)
             pf.pfType = xml->getAttribute("type", attrs);
             pushFunc.push_back(pf);
         }
-        else if (ename.compare("er") == 0)          // Function call TP5
+        else if (ename.compare("er") == 0 && xml->getType(index) == _ET_START)          // Function call TP5
         {
             PUSH_FUNC_T pf;
             string e;
@@ -464,14 +464,21 @@ size_t TButton::initialize(TExpat *xml, size_t index)
 
                 oldIndex = index;
             }
+
+            if (index == TExpat::npos)
+                index = oldIndex + 1;
         }
-        else if (ename.compare("ep") == 0)          // TP5: Call an application
+        else if (ename.compare("ep") == 0 && xml->getType(index) == _ET_START)          // TP5: Call an application
         {
             CALL_APP_t ep;
             string e;
 
+            MSG_DEBUG("(ep) Index: " << index << ", oldIndex: " << oldIndex);
+
             while ((index = xml->getNextElementFromIndex(index, &e, &content, &attrs)) != TExpat::npos)
             {
+                MSG_DEBUG("(ep) Element: " << e << ", index: " << index << ", oldIndex: " << oldIndex);
+
                 if (e.compare("launch") == 0)
                 {
                     ep.item = xml->getAttributeInt("item", attrs);
@@ -528,9 +535,14 @@ size_t TButton::initialize(TExpat *xml, size_t index)
                             bitmapEntry.offsetX = xml->convertElementToInt(content);
                         else if (fname.compare("offsetY") == 0)
                             bitmapEntry.offsetY = xml->convertElementToInt(content);
+
+                        oldIndex = index;
                     }
 
                     bsr.bitmaps.push_back(bitmapEntry);
+
+                    if (index == TExpat::npos)
+                        index = oldIndex + 1;
                 }
                 else if (e.compare("sd") == 0)      // Sound file
                     bsr.sd = content;
@@ -650,7 +662,7 @@ size_t TButton::initialize(TExpat *xml, size_t index)
     MSG_DEBUG("Added button " << bi << " --> " << na);
 
     if (index == TExpat::npos)
-        return oldIndex + 1;
+        return oldIndex;
 
     return index;
 }
@@ -779,7 +791,7 @@ void TButton::setBargraphLevel(int level)
     if (!buttonStates)
     {
         MSG_ERROR("Button states not found!");
-        TError::setError();
+        TError::SetError();
         return;
     }
 
@@ -2216,7 +2228,7 @@ bool TButton::setBargraphSliderName(const string& name)
     if (!gPageManager)
     {
         MSG_ERROR("Page manager was not initialized!");
-        TError::setError();
+        TError::SetError();
         return false;
     }
 
@@ -3954,7 +3966,7 @@ void TButton::getDrawOrder(const std::string& sdo, DRAW_ORDER *order)
         if (e < 1 || e > 5)
         {
             MSG_ERROR("Invalid draw order \"" << sdo << "\"!");
-            TError::setError();
+            TError::SetError();
             return;
         }
 
@@ -4051,7 +4063,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
             if(!loaded)
             {
                 MSG_ERROR("Missing image " << sr[instance].mi << "!");
-                TError::setError();
+                TError::SetError();
                 return false;
             }
         }
@@ -4107,7 +4119,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
                     if (!loaded)
                     {
                         MSG_ERROR("Missing image " << sr[instance].bm << "!");
-                        TError::setError();
+                        TError::SetError();
                         return false;
                     }
                 }
@@ -4147,7 +4159,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
         if (img.empty())
         {
             MSG_ERROR("Error creating the cameleon image \"" << sr[instance].mi << "\" / \"" << sr[instance].bm << "\"!");
-            TError::setError();
+            TError::SetError();
             return false;
         }
 
@@ -4164,7 +4176,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
         if (!position.valid)
         {
             MSG_ERROR("Error calculating the position of the image for button number " << bi << ": " << na);
-            TError::setError();
+            TError::SetError();
             return false;
         }
 
@@ -4252,7 +4264,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
         if (image.empty())
         {
             MSG_ERROR("Error creating the image \"" << sr[instance].bm << "\"!");
-            TError::setError();
+            TError::SetError();
             return false;
         }
 
@@ -4262,7 +4274,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
         if (!position.valid)
         {
             MSG_ERROR("Error calculating the position of the image for button number " << bi);
-            TError::setError();
+            TError::SetError();
             return false;
         }
 
@@ -4289,7 +4301,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
                 if (byteSize == 0)
                 {
                     MSG_ERROR("Unable to calculate size of image!");
-                    TError::setError();
+                    TError::SetError();
                     return false;
                 }
 
@@ -4364,7 +4376,7 @@ bool TButton::buttonBitmap5(SkBitmap* bm, int instance)
             if (!loaded)
             {
                 MSG_ERROR("Missing image " << iter->fileName << "!");
-                TError::setError();
+                TError::SetError();
                 return false;
             }
 
@@ -4567,7 +4579,7 @@ bool TButton::buttonDynamic(SkBitmap* bm, int instance, bool show, bool *state)
         if (!position.valid)
         {
             MSG_ERROR("Error calculating the position of the image for button number " << bi);
-            TError::setError();
+            TError::SetError();
             return false;
         }
 
@@ -4593,7 +4605,7 @@ bool TButton::buttonDynamic(SkBitmap* bm, int instance, bool show, bool *state)
                 if (byteSize == 0)
                 {
                     MSG_ERROR("Unable to calculate size of image!");
-                    TError::setError();
+                    TError::SetError();
                     return false;
                 }
 
@@ -5125,7 +5137,7 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
         if (img.empty())
         {
             MSG_ERROR("Error creating the cameleon image \"" << sr[0].mi << "\" / \"" << sr[0].bm << "\"!");
-            TError::setError();
+            TError::SetError();
             return false;
         }
 
@@ -5140,7 +5152,7 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
         if (!position.valid)
         {
             MSG_ERROR("Error calculating the position of the image for button number " << bi << ": " << na);
-            TError::setError();
+            TError::SetError();
             return false;
         }
 
@@ -5161,14 +5173,14 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
         if (image1.empty())
         {
             MSG_ERROR("Error creating the image \"" << sr[0].bm << "\"!");
-            TError::setError();
+            TError::SetError();
             return false;
         }
 
         if (image2.empty())
         {
             MSG_ERROR("Error creating the image \"" << sr[1].bm << "\"!");
-            TError::setError();
+            TError::SetError();
             return false;
         }
 
@@ -5235,7 +5247,7 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
         if (image.empty())
         {
             MSG_ERROR("Error creating the image \"" << sr[1].bm << "\"!");
-            TError::setError();
+            TError::SetError();
             return false;
         }
 
@@ -5636,7 +5648,7 @@ bool TButton::buttonIcon(SkBitmap* bm, int instance)
     if (!position.valid)
     {
         MSG_ERROR("Error calculating the position of the image for button number " << bi);
-        TError::setError();
+        TError::SetError();
         return false;
     }
 
@@ -5798,7 +5810,7 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
             if (!pos.valid)
             {
                 MSG_ERROR("Error calculating the text position!");
-                TError::setError();
+                TError::SetError();
                 return false;
             }
 
@@ -5866,7 +5878,7 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
         if (!position.valid)
         {
             MSG_ERROR("Error calculating the text position!");
-            TError::setError();
+            TError::SetError();
             return false;
         }
 
@@ -6366,7 +6378,7 @@ bool TButton::drawButton(int instance, bool show, bool subview)
     if ((size_t)instance >= sr.size() || instance < 0)
     {
         MSG_ERROR("Instance " << instance << " is out of bounds!");
-        TError::setError();
+        TError::SetError();
 #if TESTMODE == 1
         setScreenDone();
 #endif
@@ -6637,7 +6649,7 @@ bool TButton::drawTextArea(int instance)
     if ((size_t)instance >= sr.size() || instance < 0)
     {
         MSG_ERROR("Instance " << instance << " is out of bounds!");
-        TError::setError();
+        TError::SetError();
 #if TESTMODE == 1
         setScreenDone();
 #endif
@@ -7145,14 +7157,14 @@ bool TButton::drawJoystick(int x, int y)
     if (type != JOYSTICK)
     {
         MSG_ERROR("Element is no joystick!");
-        TError::setError();
+        TError::SetError();
         return false;
     }
 
     if (sr.empty())
     {
         MSG_ERROR("Joystick has no element!");
-        TError::setError();
+        TError::SetError();
         return false;
     }
 
@@ -7161,7 +7173,7 @@ bool TButton::drawJoystick(int x, int y)
     if (!buttonStates)
     {
         MSG_ERROR("Button states not found!");
-        TError::setError();
+        TError::SetError();
         return false;
     }
 
@@ -7657,7 +7669,7 @@ bool TButton::drawBargraph(int instance, int level, bool show)
     if ((size_t)instance >= sr.size() || instance < 0)
     {
         MSG_ERROR("Instance " << instance << " is out of bounds!");
-        TError::setError();
+        TError::SetError();
         return false;
     }
 

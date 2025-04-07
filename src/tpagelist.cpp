@@ -101,7 +101,7 @@ void TPageList::initialize(bool system)
 
     if (sProject.empty() || !isValidFile(sProject))
     {
-        TError::setErrorMsg("Empty or invalid project file! <" + sProject + ">");
+        TError::SetErrorMsg("Empty or invalid project file! <" + sProject + ">");
         MSG_ERROR(TError::getErrorMsg());
         return;
     }
@@ -118,7 +118,7 @@ void TPageList::initialize(bool system)
     if (xml.getElementIndex("pageList", &depth) == TExpat::npos)
     {
         MSG_ERROR("Couldn't find the section \"pageList\" in file!");
-        TError::setError();
+        TError::SetError();
         return;
     }
 
@@ -129,13 +129,13 @@ void TPageList::initialize(bool system)
 
         if (attribute.empty())
         {
-            TError::setErrorMsg("Missing element \"pageList\" in file " + sProject);
+            TError::SetErrorMsg("Missing element \"pageList\" in file " + sProject);
             MSG_ERROR(TError::getErrorMsg());
             return;
         }
         else if (attribute.compare("page") != 0 && attribute.compare("subpage") != 0)
         {
-            TError::setErrorMsg("Invalid page type " + attribute + " found!");
+            TError::SetErrorMsg("Invalid page type " + attribute + " found!");
             MSG_ERROR(TError::getErrorMsg());
             return;
         }
@@ -322,8 +322,8 @@ PAGELIST_T TPageList::findPage(const std::string& name, bool system)
         }
     }
 
-    TError::setErrorMsg("Page " + name + " not found!");
-    TError::setError();
+    TError::SetErrorMsg("Page " + name + " not found!");
+    TError::SetError();
     return page;
 }
 
@@ -357,8 +357,8 @@ PAGELIST_T TPageList::findPage(int pageID)
         }
     }
 
-    TError::setErrorMsg("Page " + std::to_string(pageID) + " not found!");
-    TError::setError();
+    TError::SetErrorMsg("Page " + std::to_string(pageID) + " not found!");
+    TError::SetError();
     return page;
 }
 
@@ -392,8 +392,8 @@ SUBPAGELIST_T TPageList::findSubPage(const std::string& name, bool system)
         }
     }
 
-    TError::setErrorMsg("Subpage " + name + " not found!");
-    TError::setError();
+    TError::SetErrorMsg("Subpage " + name + " not found!");
+    TError::SetError();
     return page;
 }
 
@@ -427,8 +427,8 @@ SUBPAGELIST_T TPageList::findSubPage(int pageID)
         }
     }
 
-    TError::setErrorMsg("Subpage " + std::to_string(pageID) + " not found!");
-    TError::setError();
+    TError::SetErrorMsg("Subpage " + std::to_string(pageID) + " not found!");
+    TError::SetError();
     return page;
 }
 

@@ -73,7 +73,7 @@ void TIcons::initialize()
     if (!isValidFile())
     {
         MSG_ERROR("File " << path << " doesn't exist or is not readable!");
-        TError::setError();
+        TError::SetError();
         return;
     }
 
@@ -89,7 +89,7 @@ void TIcons::initialize()
     if ((index = xml.getElementIndex("iconList", &depth)) == TExpat::npos)
     {
         MSG_DEBUG("File does not contain the element \"iconList\"!");
-        TError::setError();
+        TError::SetError();
         return;
     }
 

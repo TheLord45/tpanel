@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -378,7 +378,9 @@ vector<TMap::MAP_T> TAmxCommands::findButtons(int port, vector<int>& channels, T
 
     vector<TMap::MAP_T> map;
 
-    map = mMap->findButtons(port, channels, mt);
+    if (mMap)
+        map = mMap->findButtons(port, channels, mt);
+
     return map;
 }
 
@@ -386,19 +388,25 @@ string TAmxCommands::findImage(int bt, int page, int instance)
 {
     DECL_TRACER("TAmxCommands::findImage(int bt, int page, int instance)");
 
-    if (page < SYSTEM_PAGE_START)
+    if (mMap && page < SYSTEM_PAGE_START)
         return mMap->findImage(bt, page, instance);
 
-    return mSystemMap->findImage(bt, page, instance);
+    if (mSystemMap)
+        return mSystemMap->findImage(bt, page, instance);
+    else
+        return string();
 }
 
 string TAmxCommands::findImage(const string& name)
 {
     DECL_TRACER("TAmxCommands::findImage(const string& name)");
 
-    string str = mMap->findImage(name);
+    string str;
 
-    if (str.empty())
+    if (mMap)
+        str = mMap->findImage(name);
+
+    if (str.empty() && mSystemMap)
         return mSystemMap->findImage(name);
 
     return str;
@@ -408,10 +416,16 @@ vector<TMap::MAP_T> TAmxCommands::findButtonByName(const string& name)
 {
     DECL_TRACER("TAmxCommands::findButtonByName(const string& name)");
 
-    vector<TMap::MAP_T> map = mMap->findButtonByName(name);
+    vector<TMap::MAP_T> map;
+
+    if (mMap)
+        map = mMap->findButtonByName(name);
 
     if (map.empty())
-        return mSystemMap->findButtonByName(name);
+    {
+        if (mSystemMap)
+            return mSystemMap->findButtonByName(name);
+    }
 
     return map;
 }
@@ -420,26 +434,40 @@ vector<TMap::MAP_T> TAmxCommands::findBargraphs(int port, vector<int>& channels)
 {
     DECL_TRACER("TAmxCommands::findBargraphs(int port, vector<int>& channels)");
 
-    vector<TMap::MAP_T> map = mMap->findBargraphs(port, channels);
+    if (mMap)
+    {
+        vector<TMap::MAP_T> map = mMap->findBargraphs(port, channels);
 
-    if (map.empty())
-        return mSystemMap->findBargraphs(port, channels);
+        if (map.empty())
+        {
+            if (mSystemMap)
+                return mSystemMap->findBargraphs(port, channels);
+        }
 
-    return map;
+        return map;
+    }
+    else
+        return vector<TMap::MAP_T>();
 }
 
 vector<string> TAmxCommands::findSounds()
 {
     DECL_TRACER("TAmxCommands::findSounds()");
 
-    return mMap->findSounds();      // This is enough because there are no sounds in the system settings
+    if (mMap)
+        return mMap->findSounds();      // This is enough because there are no sounds in the system settings
+    else
+        return vector<string>();
 }
 
 bool TAmxCommands::soundExist(const string& sname)
 {
     DECL_TRACER("TAmxCommands::soundExist(const string sname)");
 
-    return mMap->soundExist(sname);
+    if (mMap)
+        return mMap->soundExist(sname);
+    else
+        return false;
 }
 
 bool TAmxCommands::parseCommand(int device, int port, const string& cmd)

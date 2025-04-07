@@ -326,7 +326,7 @@ void TFont::initialize()
     if (!isValidFile())
     {
         MSG_ERROR("File " << path << " doesn't exist or is not readable!");
-        TError::setError();
+        TError::SetError();
         mutex_font.unlock();
         return;
     }
@@ -349,7 +349,7 @@ void TFont::initialize()
     if (xml.getElementIndex("fontList", &depth) == TExpat::npos)
     {
         MSG_DEBUG("File does not contain the element \"fontList\"!");
-        TError::setError();
+        TError::SetError();
         mutex_font.unlock();
         return;
     }
@@ -372,7 +372,7 @@ void TFont::initialize()
             else
             {
                 MSG_ERROR("Element font contains no or invalid attribute!");
-                TError::setError();
+                TError::SetError();
                 mutex_font.unlock();
                 return;
             }
@@ -432,7 +432,7 @@ bool TFont::systemFonts(bool setup)
     if (!isValidFile())
     {
         MSG_ERROR("File " << path << " doesn't exist or is not readable!");
-        TError::setError();
+        TError::SetError();
         return false;
     }
 
@@ -451,7 +451,7 @@ bool TFont::systemFonts(bool setup)
     if (xml.getElementIndex("fontList", &depth) == TExpat::npos)
     {
         MSG_DEBUG("File does not contain the element \"fontList\"!");
-        TError::setError();
+        TError::SetError();
         return false;
     }
 
@@ -473,7 +473,7 @@ bool TFont::systemFonts(bool setup)
             else
             {
                 MSG_ERROR("Element font contains no or invalid attribute!");
-                TError::setError();
+                TError::SetError();
                 return false;
             }
         }
@@ -672,7 +672,7 @@ sk_sp<SkTypeface> TFont::getTypeFace(int number)
     if (iter == mFonts.end())
     {
         MSG_ERROR("No font with index " << number << " found!");
-        TError::setError();
+        TError::SetError();
         return nullptr;
     }
 
@@ -737,7 +737,7 @@ sk_sp<SkTypeface> TFont::getTypeFace(int number)
         string perms = getPermissions(path);
         MSG_ERROR("Error loading font \"" << path << "\" [" << perms << "]");
         MSG_PROTOCOL("Trying with alternative function ...");
-        TError::setError();
+        TError::SetError();
 
         tf = SkTypeface::MakeFromName(iter->second.fullName.c_str(), getSkiaStyle(number));
 

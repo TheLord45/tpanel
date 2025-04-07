@@ -146,11 +146,13 @@ class TTracer
 class TError : public std::ostream
 {
     public:
-        static void setErrorMsg(const std::string& msg);
-        static void setErrorMsg(terrtype_t t, const std::string& msg);
-        static void setError() { mHaveError = true; }
+    static void setErrorMsg(const std::string& msg, int line, const std::string& file);
+        static void setErrorMsg(terrtype_t t, const std::string& msg, int line=0, const std::string& file="");
+        static void setError(int line, const std::string& file);
         static std::string& getErrorMsg() { return msError; }
         static bool isError() { return mHaveError; }
+        static int getLastLine() { return mLastLine; }
+        static std::string& getLastFile() { return mLastFile; }
         static bool haveErrorMsg() { return !msError.empty(); }
         static terrtype_t getErrorType() { return mErrType; }
         static void setErrorType(terrtype_t et) { mErrType = et; }
@@ -158,7 +160,7 @@ class TError : public std::ostream
         static std::string append(int lv, int line, const std::string& file);
         static TStreamError* Current();
         static TStreamError* Current(threadID_t tid);
-        static void clear() { mHaveError = false; msError.clear(); mErrType = TERRNONE; }
+        static void clear() { mHaveError = false; msError.clear(); mErrType = TERRNONE; mLastLine = 0; mLastFile.clear(); }
         static void logHex(const char *str, size_t size);
         const TError& operator=(const TError& ref);
         static void displayMessage(const std::string& msg);
@@ -176,6 +178,8 @@ class TError : public std::ostream
         static terrtype_t mErrType;
         static TStreamError *mCurrent;
         static threadID_t mThreadID;
+        static int mLastLine;
+        static std::string mLastFile;
 //        std::string mHeadMsg;
 };
 
@@ -211,5 +215,9 @@ class TError : public std::ostream
 #define START_TEMPORARY_LOG(level)
 #define END_TEMPORARY_LOG()
 #endif
+
+#define SetErrorMsg(msg)        setErrorMsg(msg, __LINE__, __FILE__)
+#define SetError()              setError(__LINE__, __FILE__)
+#define MSG_LASTERROR(msg)      { if (TStreamError::checkFilter(HLOG_ERROR)) { _lock(); *TError::Current(_getThreadID())->getStream() << TError::append(HLOG_ERROR, __LINE__, __FILE__) << "(" << TError::getLastLine() << ", " << TError::getLastFile() << ") " << msg << std::endl; TStreamError::resetFlags(); _unlock(); }}
 
 #endif

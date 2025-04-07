@@ -74,6 +74,8 @@ bool TError::mHaveError{false};
 terrtype_t TError::mErrType{TERRNONE};
 TStreamError *TError::mCurrent{nullptr};
 std::string TError::msError;
+int TError::mLastLine{0};
+string TError::mLastFile;
 #ifdef __ANDROID__
 threadID_t TError::mThreadID;
 #else
@@ -857,7 +859,7 @@ string TError::strToHex(const char *str, size_t size, int width, bool format, in
     return out;
 }
 
-void TError::setErrorMsg(const std::string& msg)
+void TError::setErrorMsg(const std::string& msg, int line, const string& file)
 {
     if (msg.empty())
         return;
@@ -865,9 +867,17 @@ void TError::setErrorMsg(const std::string& msg)
     msError = msg;
     mHaveError = true;
     mErrType = TERRERROR;
+    mLastLine = line;
+    string f = file;
+    size_t pos = f.find_last_of("/");
+
+    if (pos != string::npos)
+        f = f.substr(pos + 1);
+
+    mLastFile = f;
 }
 
-void TError::setErrorMsg(terrtype_t t, const std::string& msg)
+void TError::setErrorMsg(terrtype_t t, const std::string& msg, int line, const string& file)
 {
     if (msg.empty())
         return;
@@ -875,6 +885,27 @@ void TError::setErrorMsg(terrtype_t t, const std::string& msg)
     msError = msg;
     mHaveError = true;
     mErrType = t;
+    mLastLine = line;
+    string f = file;
+    size_t pos = f.find_last_of("/");
+
+    if (pos != string::npos)
+        f = f.substr(pos + 1);
+
+    mLastFile = f;
+}
+
+void TError::setError(int line, const std::string& file)
+{
+    mHaveError = true;
+    mLastLine = line;
+    string f = file;
+    size_t pos = f.find_last_of("/");
+
+    if (pos != string::npos)
+        f = f.substr(pos + 1);
+
+    mLastFile = f;
 }
 
 std::ostream & TError::append(int lv, int line, const std::string& file, std::ostream& os)

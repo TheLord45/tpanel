@@ -94,7 +94,7 @@ void TPalette::initialize(const std::string& file)
     if ((index = xml.getElementIndex("paletteData", &depth)) == TExpat::npos)
     {
         MSG_ERROR("Element \"paletteData\" was not found!");
-        TError::setError();
+        TError::SetError();
         return;
     }
 

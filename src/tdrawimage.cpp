@@ -83,7 +83,7 @@ bool TDrawImage::drawImage(SkBitmap* bm)
         if (img.empty())
         {
             MSG_ERROR("Error creating the cameleon image \"" << mSr[instance].mi << "\" / \"" << mSr[instance].bm << "\"!");
-            TError::setError();
+            TError::SetError();
             return false;
         }
 
@@ -99,7 +99,7 @@ bool TDrawImage::drawImage(SkBitmap* bm)
         if (!position.valid)
         {
             MSG_ERROR("Error calculating the position of the image!");
-            TError::setError();
+            TError::SetError();
             return false;
         }
 
@@ -126,7 +126,7 @@ bool TDrawImage::drawImage(SkBitmap* bm)
         if (image.empty())
         {
             MSG_ERROR("Error creating the image \"" << mSr[instance].bm << "\"!");
-            TError::setError();
+            TError::SetError();
             return false;
         }
 
@@ -135,7 +135,7 @@ bool TDrawImage::drawImage(SkBitmap* bm)
         if (!position.valid)
         {
             MSG_ERROR("Error calculating the position of the image.");
-            TError::setError();
+            TError::SetError();
             return false;
         }
 
@@ -163,7 +163,7 @@ bool TDrawImage::drawImage(SkBitmap* bm)
                 if (byteSize == 0)
                 {
                     MSG_ERROR("Unable to calculate size of image!");
-                    TError::setError();
+                    TError::SetError();
                     return false;
                 }
 
