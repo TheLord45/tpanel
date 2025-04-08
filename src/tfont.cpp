@@ -335,8 +335,6 @@ void TFont::initialize()
 
     if (!mIsTP5)
         xml.setEncoding(ENC_CP1250);
-    else
-        xml.setEncoding(ENC_UTF8);
 
     if (!xml.parse())
     {
@@ -442,8 +440,6 @@ bool TFont::systemFonts(bool setup)
 
     if (!mIsTP5)
         xml.setEncoding(ENC_CP1250);
-    else
-        xml.setEncoding(ENC_UTF8);
 
     if (!xml.parse())
         return false;

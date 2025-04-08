@@ -106,9 +106,9 @@ SkBitmap& TDrawImage::getImageBm(size_t index)
     return imageBm;
 }
 
-bool TDrawImage::drawImage(SkBitmap* bm)
+bool TDrawImage::drawImage(SkBitmap* bm, int idx)
 {
-    DECL_TRACER("TDrawImage::drawImage(SkBitmap* bm)");
+    DECL_TRACER("TDrawImage::drawImage(SkBitmap* bm, int idx)");
 
     if (prg_stopped)
         return false;
@@ -186,7 +186,7 @@ bool TDrawImage::drawImage(SkBitmap* bm)
             can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
         }
     }
-    else if ((!TTPInit::isTP5() &&!imageBm.empty() && !mSr[instance].bm.empty()) || (TTPInit::isTP5() &&!imageBm.empty()))
+    else if ((!TTPInit::isTP5() && !imageBm.empty() && !mSr[instance].bm.empty()) || (TTPInit::isTP5() && !imageBm.empty()))
     {
         MSG_TRACE("Drawing normal image ...");
         SkBitmap image = imageBm;
@@ -227,10 +227,16 @@ bool TDrawImage::drawImage(SkBitmap* bm)
 
         if (mSr[instance].sb == 0)
         {
-            size_t index = mBitmapStack.size() > 0 ? (mBitmapStack.size() - 1) : 0;
+            int index = 0;
+
+            if (idx < 0 || idx > 4)
+                index = mBitmapStack.size() > 0 ? (mBitmapStack.size() - 1) : 0;
+            else
+                index = idx;
+
             Button::BITMAPS_t bitmap;
 
-            if (mSr[instance].bitmaps.size() > index)
+            if (!mSr[instance].bitmaps[index].fileName.empty())
                 bitmap = mSr[instance].bitmaps[index];
 
             if ((!TTPInit::isTP5() && ((mSr[instance].jb == 0 && mSr[instance].bx >= 0 && mSr[instance].by >= 0) || mSr[instance].jb != 0)) ||  // Draw the full image
@@ -394,9 +400,9 @@ SkColor TDrawImage::baseColor(SkColor basePix, SkColor maskPix, SkColor col1, Sk
     return SK_ColorTRANSPARENT; // transparent pixel
 }
 
-Button::POSITION_t TDrawImage::calcImagePosition(int width, int height, int number, size_t index)
+Button::POSITION_t TDrawImage::calcImagePosition(int width, int height, int number, int index)
 {
-    DECL_TRACER("TDrawImage::calcImagePosition(int with, int height, CENTER_CODE code, int number, size_t index)");
+    DECL_TRACER("TDrawImage::calcImagePosition(int with, int height, CENTER_CODE code, int number, int index)");
 
     Button::SR_T act_sr;
     Button::POSITION_t position;
@@ -424,7 +430,7 @@ Button::POSITION_t TDrawImage::calcImagePosition(int width, int height, int numb
 
     if (TTPInit::isTP5())
     {
-        if (index < act_sr.bitmaps.size())
+        if (index >= 0 && index < 5)
         {
             code = act_sr.bitmaps[index].justification;
             ix = act_sr.bitmaps[index].offsetX;

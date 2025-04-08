@@ -82,8 +82,6 @@ void TIcons::initialize()
 
     if (!TTPInit::isTP5())
         xml.setEncoding(ENC_CP1250);
-    else
-        xml.setEncoding(Expat::ENC_UTF8);
 
     if (!xml.parse())
         return;

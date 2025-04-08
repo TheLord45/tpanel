@@ -40,6 +40,9 @@
 #include "tsystemdraw.h"
 
 #define ORD_ELEM_COUNT  5
+#ifndef MAX_IMAGES
+#define MAX_IMAGES      5
+#endif
 
 extern bool prg_stopped;
 extern bool _restart_;
@@ -236,6 +239,7 @@ namespace Button
     typedef struct BITMAPS_t    // G5 bitmap entry
     {
         std::string fileName;   // file name of the bitmap (replaces icons)
+        int index{-1};          // The bitmap index number
         ORIENTATION justification{ORI_CENTER_MIDDLE};   // Justification of bitmap
         int offsetX{0};         // Absolut X position (only if justification is 0)
         int offsetY{0};         // Absolut Y position (only if justification is 0)
@@ -256,7 +260,7 @@ namespace Button
         std::string ct;         // Text Color
         std::string ec;         // Text effect color
         std::string bm;         // bitmap file name
-        std::vector<BITMAPS_t> bitmaps;   // G5 table of bitmaps
+        BITMAPS_t bitmaps[5];   // G5 table of bitmaps
         std::string sd;         // Sound file to play
         int bm_width{0};        // Width of image
         int bm_height{0};       // Height of image
@@ -1328,6 +1332,7 @@ namespace Button
             int getBorderSize(const std::string& name);
             void setPassword(const std::string& pw) { mPassword = pw; }
             void setUserName(const std::string& user);
+            bool haveImage(const SR_T& sr);
 
         protected:
             BUTTONTYPE getButtonType(const std::string& bt);

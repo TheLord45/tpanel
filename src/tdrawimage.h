@@ -39,12 +39,13 @@ class TDrawImage
          *
          * @param bm    A pointer to the target image. The new image will be
          * drawn on top of \p bm.
+         * @param idx   In case of TP5 this is the bitmap index.
          *
          * @return If everything went well TRUE is returned. Otherwise FALSE.
          * If there was an error it is documented into the logfile if the
          * loglevel ERROR and WARNING was set.
          */
-        bool drawImage(SkBitmap* bm);
+        bool drawImage(SkBitmap* bm, int idx=-1);
 
         void setInstance(int instance) { mInstance = instance; }    // Set the instance to use (always 0 for background images)
         int getInstance() { return mInstance; }                     // Get the instance in use
@@ -64,7 +65,7 @@ class TDrawImage
     private:
         SkBitmap drawImageButton(SkBitmap& imgRed, SkBitmap& imgMask, int width, int height, SkColor col1, SkColor col2);
         SkColor baseColor(SkColor basePix, SkColor maskPix, SkColor col1, SkColor col2);
-        Button::POSITION_t calcImagePosition(int width, int height, int number, size_t index=0);
+        Button::POSITION_t calcImagePosition(int width, int height, int number, int index=0);
 
         int mInstance{0};               // The instance
         int mBorderSize{0};             // Border size
