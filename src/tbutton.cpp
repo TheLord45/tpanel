@@ -267,6 +267,7 @@ size_t TButton::initialize(TExpat *xml, size_t index)
     int lastLevel = 0;
     int lastJoyX = 0;
     int lastJoyY = 0;
+    int bmIndex = 0;
     vector<ATTRIBUTE_t> attrs = xml->getAttributes(index);
     string stype = xml->getAttribute("type", attrs);
     type = getButtonType(stype);
@@ -519,6 +520,7 @@ size_t TButton::initialize(TExpat *xml, size_t index)
             bsr.number = xml->getAttributeInt("number", attrs); // State number
             MSG_DEBUG("Button: " << na << ": State element: " << bsr.number);
             string e;
+            bmIndex = 0;
 
             while ((index = xml->getNextElementFromIndex(index, &e, &content, &attrs)) != TExpat::npos)
             {
@@ -552,18 +554,18 @@ size_t TButton::initialize(TExpat *xml, size_t index)
                     while ((index = xml->getNextElementFromIndex(index, &fname, &content, &attrs)) != TExpat::npos)
                     {
                         if (fname.compare("fileName") == 0)
-                            bitmapEntry.fileName = content;
+                            bsr.bitmaps[bmIndex].fileName = content;
                         else if (fname.compare("justification") == 0)
-                            bitmapEntry.justification = static_cast<ORIENTATION>(xml->convertElementToInt(content));
+                            bsr.bitmaps[bmIndex].justification = static_cast<ORIENTATION>(xml->convertElementToInt(content));
                         else if (fname.compare("offsetX") == 0)
-                            bitmapEntry.offsetX = xml->convertElementToInt(content);
+                            bsr.bitmaps[bmIndex].offsetX = xml->convertElementToInt(content);
                         else if (fname.compare("offsetY") == 0)
-                            bitmapEntry.offsetY = xml->convertElementToInt(content);
+                            bsr.bitmaps[bmIndex].offsetY = xml->convertElementToInt(content);
 
                         oldIndex = index;
                     }
 
-                    bsr.bitmaps.push_back(bitmapEntry);
+                    bmIndex++;
 
                     if (index == TExpat::npos)
                         index = oldIndex + 1;
@@ -1226,19 +1228,21 @@ bool TButton::createButtons(bool force)
         }
         else
         {
-            if (srIter->bitmaps.size() > 0)
+            if (haveImage(*srIter))
             {
-                vector<BITMAPS_t>::iterator bmIter;
                 sk_sp<SkData> image;
                 SkBitmap bm;
 
-                for (bmIter = srIter->bitmaps.begin(); bmIter != srIter->bitmaps.end(); ++bmIter)
+                for (int i = 0; i < MAX_IMAGES; ++i)
                 {
-                    if (force || !TImgCache::existBitmap(bmIter->fileName, _BMTYPE_BITMAP))
+                    if (srIter->bitmaps[i].fileName.empty())
+                        continue;
+
+                    if (force || !TImgCache::existBitmap(srIter->bitmaps[i].fileName, _BMTYPE_BITMAP))
                     {
-                        if (!(image = readImage(bmIter->fileName)))
+                        if (!(image = readImage(srIter->bitmaps[i].fileName)))
                         {
-                            MSG_WARNING("Error reading image " << bmIter->fileName << "!");
+                            MSG_WARNING("Error reading image " << srIter->bitmaps[i].fileName << "!");
                             continue;
                         }
 
@@ -1250,9 +1254,9 @@ bool TButton::createButtons(bool force)
                             continue;
                         }
 
-                        TImgCache::addImage(bmIter->fileName, bm, _BMTYPE_BITMAP);
-                        bmIter->width = bm.info().width();
-                        bmIter->height = bm.info().height();
+                        TImgCache::addImage(srIter->bitmaps[i].fileName, bm, _BMTYPE_BITMAP);
+                        srIter->bitmaps[i].width = bm.info().width();
+                        srIter->bitmaps[i].height = bm.info().height();
                         mChanged = true;
                     }
                 }
@@ -2435,17 +2439,14 @@ bool TButton::setBitmap(const string& file, int instance, int index, int justify
         inst = 0;
     }
 
-    if (!TTPInit::isTP5())
+    if (!TTPInit::isTP5())  // TP4
     {
         for (int i = 0; i < loop; ++i)
         {
-            if (!TTPInit::isTP5())
+            if (sr[inst].bm == file)
             {
-                if (sr[inst].bm == file)
-                {
-                    inst++;
-                    continue;
-                }
+                inst++;
+                continue;
             }
 
             mChanged = true;
@@ -2478,16 +2479,18 @@ bool TButton::setBitmap(const string& file, int instance, int index, int justify
     else    // TP5
     {
         ORIENTATION just = ORI_CENTER_MIDDLE;
+        int width = 0, height = 0;
 
-        if (justify < 0 || justify > 11)
-            just = ORI_CENTER_MIDDLE;
-        else
+        if (justify >= 0 && justify < 12)
             just = static_cast<ORIENTATION>(justify);
 
         // Index 0 = Chameleon image
+        // This kind of image is stored in the field MI of the SR stack.
         if (index == 0)
         {
             SkBitmap bm;
+
+            MSG_DEBUG("TP5 chameleon image detected.");
 
             if (!file.empty() && !TImgCache::existBitmap(file, _BMTYPE_CHAMELEON))
             {
@@ -2500,9 +2503,15 @@ bool TButton::setBitmap(const string& file, int instance, int index, int justify
                     DecodeDataToBitmap(image, &bm);
 
                     if (!bm.empty())
-                        TImgCache::addImage(file, bm, _BMTYPE_BITMAP);
+                    {
+                        TImgCache::addImage(file, bm, _BMTYPE_CHAMELEON);
+                        width = bm.info().width();
+                        height = bm.info().height();
+                    }
                 }
             }
+            else
+                TImgCache::getBitmap(file, &bm, _BMTYPE_CHAMELEON, &width, &height);
 
             if (instance < 0)   // Set to all instances?
             {
@@ -2514,8 +2523,8 @@ bool TButton::setBitmap(const string& file, int instance, int index, int justify
 
                         if (!bm.empty())
                         {
-                            sr[i].mi_width = bm.info().width();
-                            sr[i].mi_height = bm.info().height();
+                            sr[i].mi_width = width;
+                            sr[i].mi_height = height;
                         }
 
                         mChanged = true;
@@ -2530,67 +2539,63 @@ bool TButton::setBitmap(const string& file, int instance, int index, int justify
 
                     if (!bm.empty())
                     {
-                        sr[inst].mi_width = bm.info().width();
-                        sr[inst].mi_height = bm.info().height();
+                        sr[inst].mi_width = width;
+                        sr[inst].mi_height = height;
                     }
 
                     mChanged = true;
                 }
             }
         }
-        else if (instance > 0)
+        else
         {
-            if (!file.empty() && !TImgCache::existBitmap(file, _BMTYPE_BITMAP))
+            // There can be a maximum of 5 images. They are drawn one over
+            // the other ordered by their index.
+            int idx = index - 1;
+            SkBitmap bm;
+
+            if (idx < 0)
+                idx = 0;
+            else if (idx > 4)
+                idx = 4;
+
+            for (int i = 0; i < loop; ++i)
             {
-                sk_sp<SkData> image;
-                SkBitmap bm;
-
-                image = readImage(file);
-
-                if (image)
+                if (sr[inst].bitmaps[idx].fileName == file)
                 {
-                    DecodeDataToBitmap(image, &bm);
+                    inst++;
+                    continue;
+                }
 
-                    if (!bm.empty())
+                if (!file.empty() && !TImgCache::existBitmap(file, _BMTYPE_BITMAP)) // Load the image from file if not already in cache.
+                {
+                    sk_sp<SkData> image;
+
+                    image = readImage(file);
+
+                    if (image)
                     {
-                        TImgCache::addImage(file, bm, _BMTYPE_BITMAP);
-                        sr[inst].bm_width = bm.info().width();
-                        sr[inst].bm_height = bm.info().height();
+                        DecodeDataToBitmap(image, &bm);
+
+                        if (!bm.empty())
+                        {
+                            TImgCache::addImage(file, bm, _BMTYPE_BITMAP);
+                            width = bm.info().width();
+                            height = bm.info().height();
+                        }
                     }
                 }
-            }
+                else if (!file.empty())
+                    TImgCache::getBitmap(file, &bm, _BMTYPE_BITMAP, &width, &height);
 
-            for (size_t i = 0; i < 5; ++i)
-            {
-                if (i >= sr[inst].bitmaps.size() && !file.empty())
-                {
-                    BITMAPS_t bm;
-
-                    if (i == (static_cast<size_t>(index - 1)))
-                    {
-                        bm.fileName = file;
-                        bm.justification = just;
-                        bm.offsetX = x;
-                        bm.offsetY = y;
-                        mChanged = true;
-                    }
-
-                    sr[inst].bitmaps.push_back(bm);
-                }
-                else if (i == static_cast<size_t>(index - 1))
-                {
-                    BITMAPS_t bm = sr[inst].bitmaps[i];
-
-                    if (bm.fileName != file)
-                    {
-                        bm.fileName = file;
-                        bm.justification = just;
-                        bm.offsetX = x;
-                        bm.offsetY = y;
-                        sr[inst].bitmaps[i] = bm;
-                        mChanged = true;
-                    }
-                }
+                sr[inst].bitmaps[idx].fileName = file;
+                sr[inst].bitmaps[idx].index = idx;
+                sr[inst].bitmaps[idx].justification = just;
+                sr[inst].bitmaps[idx].offsetX = x;
+                sr[inst].bitmaps[idx].offsetY = y;
+                sr[inst].bitmaps[idx].width = width;
+                sr[inst].bitmaps[idx].height = height;
+                inst++;
             }
         }
     }
@@ -4223,7 +4228,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
     {
         if (tp5)
         {
-            if (sr[instance].bitmaps.size() > 0)
+            if (haveImage(sr[instance]))
                 bmFile = sr[instance].bitmaps[0].fileName;
         }
         else
@@ -4522,17 +4527,19 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
             can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
         }
     }
-    else if (tp5 && sr[instance].bitmaps.size() > 0)    // TP5: Put all images together
+    else if (tp5 && haveImage(sr[instance]))    // TP5: Put all images together
     {
         MSG_TRACE("Draw TP5 image stack.");
 
-        vector<BITMAPS_t>::iterator bmIter;
-
-        for (bmIter = sr[instance].bitmaps.begin(); bmIter != sr[instance].bitmaps.end(); ++bmIter)
+//        for (bmIter = sr[instance].bitmaps.begin(); bmIter != sr[instance].bitmaps.end(); ++bmIter)
+        for (int i = 0; i < MAX_IMAGES; ++i)
         {
+            if (sr[instance].bitmaps[i].fileName.empty())
+                continue;
+
             SkBitmap image;
 
-            if (!TImgCache::getBitmap(bmIter->fileName, &image, _BMTYPE_BITMAP, &bmIter->width, &bmIter->height))
+            if (!TImgCache::getBitmap(sr[instance].bitmaps[i].fileName, &image, _BMTYPE_BITMAP, &sr[instance].bitmaps[i].width, &sr[instance].bitmaps[i].height))
             {
                 sk_sp<SkData> data = readImage(sr[instance].bm);
                 bool loaded = false;
@@ -4543,23 +4550,23 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
 
                     if (!image.empty())
                     {
-                        TImgCache::addImage(bmIter->fileName, image, _BMTYPE_BITMAP);
+                        TImgCache::addImage(sr[instance].bitmaps[i].fileName, image, _BMTYPE_BITMAP);
                         loaded = true;
-                        bmIter->width = image.info().width();
-                        bmIter->height = image.info().height();
+                        sr[instance].bitmaps[i].width = image.info().width();
+                        sr[instance].bitmaps[i].height = image.info().height();
                     }
                 }
 
                 if (!loaded)
                 {
-                    MSG_ERROR("Missing image " << bmIter->fileName << "!");
+                    MSG_ERROR("Missing image " << sr[instance].bitmaps[i].fileName << "!");
                     continue;        // We want the button even without an image
                 }
             }
 
             if (image.empty())
             {
-                MSG_ERROR("Error creating the image \"" << bmIter->fileName << "\"!");
+                MSG_ERROR("Error creating the image \"" << sr[instance].bitmaps[i].fileName << "\"!");
                 continue;
             }
 
@@ -4579,7 +4586,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
 
             if (sr[instance].sb == 0)   // Scale bitmap?
             {                           // No, keep size
-                if ((bmIter->justification == ORI_ABSOLUT && bmIter->offsetX >= 0 && bmIter->offsetY >= 0) || bmIter->justification != ORI_ABSOLUT)  // Draw the full image
+                if ((sr[instance].bitmaps[i].justification == ORI_ABSOLUT && sr[instance].bitmaps[i].offsetX >= 0 && sr[instance].bitmaps[i].offsetY >= 0) || sr[instance].bitmaps[i].justification != ORI_ABSOLUT)  // Draw the full image
                 {
                     sk_sp<SkImage> _image = SkImages::RasterFromBitmap(image);
                     can.drawImage(_image, position.left, position.top, SkSamplingOptions(), &paint);
@@ -4643,14 +4650,17 @@ bool TButton::buttonBitmap5(SkBitmap* bm, int instance, bool ignFirst)
         return false;
     }
 
-    if (sr[instance].bitmaps.empty())
+    if (!haveImage(sr[instance]))
         return true;
 
-    vector<BITMAPS_t>::iterator iter;
     bool first = true;
 
-    for (iter = sr[instance].bitmaps.begin(); iter != sr[instance].bitmaps.end(); ++iter)
+//    for (iter = sr[instance].bitmaps.begin(); iter != sr[instance].bitmaps.end(); ++iter)
+    for (int i = 0; i < MAX_IMAGES; ++i)
     {
+        if (sr[instance].bitmaps[i].fileName.empty())
+            continue;
+
         if (ignFirst && first)
         {
             first = false;
@@ -4660,9 +4670,9 @@ bool TButton::buttonBitmap5(SkBitmap* bm, int instance, bool ignFirst)
         SkBitmap bmBm;
         int width, height;
 
-        if (!TImgCache::getBitmap(iter->fileName, &bmBm, _BMTYPE_BITMAP, &width, &height))
+        if (!TImgCache::getBitmap(sr[instance].bitmaps[i].fileName, &bmBm, _BMTYPE_BITMAP, &width, &height))
         {
-            sk_sp<SkData> data = readImage(iter->fileName);
+            sk_sp<SkData> data = readImage(sr[instance].bitmaps[i].fileName);
             bool loaded = false;
 
             if (data)
@@ -4671,15 +4681,15 @@ bool TButton::buttonBitmap5(SkBitmap* bm, int instance, bool ignFirst)
 
                 if (!bmBm.empty())
                 {
-                    TImgCache::addImage(iter->fileName, bmBm, _BMTYPE_BITMAP);
+                    TImgCache::addImage(sr[instance].bitmaps[i].fileName, bmBm, _BMTYPE_BITMAP);
                     loaded = true;
                 }
             }
 
             if (!loaded)
             {
-                MSG_ERROR("Missing image " << iter->fileName << "!");
-                TError::SetError();
+                MSG_ERROR("Missing image " << sr[instance].bitmaps[i].fileName << "!");
+                TError::setError();
                 return false;
             }
 
@@ -4694,7 +4704,7 @@ bool TButton::buttonBitmap5(SkBitmap* bm, int instance, bool ignFirst)
             paint.setBlendMode(SkBlendMode::kSrcOver);
             SkCanvas can(*bm, SkSurfaceProps());
             // Scale bitmap
-            if (iter->justification == ORI_SCALE_FIT || iter->justification == ORI_SCALE_ASPECT)
+            if (sr[instance].bitmaps[i].justification == ORI_SCALE_FIT || sr[instance].bitmaps[i].justification == ORI_SCALE_ASPECT)
             {
                 SkBitmap scaled;
 
@@ -4710,7 +4720,7 @@ bool TButton::buttonBitmap5(SkBitmap* bm, int instance, bool ignFirst)
                 SkCanvas canvas(scaled, SkSurfaceProps());  // Create a canvas
                 SkRect rect;
 
-                if (iter->justification == ORI_SCALE_FIT)   // Scale to fit
+                if (sr[instance].bitmaps[i].justification == ORI_SCALE_FIT)   // Scale to fit
                     rect = SkRect::MakeXYWH(0, 0, wt, ht);
                 else                                        // Scale but maintain aspect ratio
                 {
@@ -4738,11 +4748,11 @@ bool TButton::buttonBitmap5(SkBitmap* bm, int instance, bool ignFirst)
             // Justify bitmap
             int x, y;
 
-            switch(iter->justification)
+            switch(sr[instance].bitmaps[i].justification)
             {
                 case ORI_ABSOLUT:
-                    x = iter->offsetX;
-                    y = iter->offsetY;
+                    x = sr[instance].bitmaps[i].offsetX;
+                    y = sr[instance].bitmaps[i].offsetY;
                 break;
 
                 case ORI_BOTTOM_LEFT:
@@ -8437,6 +8447,19 @@ void TButton::setUserName(const string& user)
         return;
 
     mUser = user;
+}
+
+bool TButton::haveImage(const SR_T& sr)
+{
+    DECL_TRACER("TButton::haveImage(const SR_T& sr)");
+
+    for (int i = 0; i < MAX_IMAGES; ++i)
+    {
+        if (!sr.bitmaps[i].fileName.empty())
+            return true;
+    }
+
+    return false;
 }
 
 void TButton::calcImageSizePercent(int imWidth, int imHeight, int btWidth, int btHeight, int btFrame, int *realX, int *realY)

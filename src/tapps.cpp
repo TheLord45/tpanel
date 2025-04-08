@@ -84,7 +84,7 @@ bool TApps::parseApps()
 
     TExpat xml(path);
 
-    if (!TTPInit::isTP5())
+    if (TTPInit::isTP5())
         xml.setEncoding(ENC_UTF8);
 
     if (!xml.parse())

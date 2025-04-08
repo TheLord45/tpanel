@@ -1136,6 +1136,19 @@ string TPageInterface::getSelectedItem(ulong handle)
     return string();
 }
 
+bool TPageInterface::haveImage(const Button::SR_T& sr)
+{
+    DECL_TRACER("TPageInterface::haveImage(const Button::SR_T& sr)");
+
+    for (int i = 0; i < MAX_IMAGES; ++i)
+    {
+        if (!sr.bitmaps[i].fileName.empty())
+            return true;
+    }
+
+    return false;
+}
+
 /**
  * @brief getBorderFragment - get part of border
  * The method reads a border image fragment from the disk and converts it to
