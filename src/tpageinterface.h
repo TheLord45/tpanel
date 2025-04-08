@@ -133,6 +133,8 @@
 #define SYSTEM_ITEM_VIEWTOOLBAR         2073
 #define SYSTEM_ITEM_VIEWROTATE          2074
 
+#define MAX_IMAGES                      5       // TP5: maximum number of images
+
 class TSubPage;
 
 enum SHOWEFFECT
@@ -231,6 +233,7 @@ class TPageInterface : public TSystemButton
         void setSelectedRow(ulong handle, int row);
         int getSelectedRow(ulong handle);
         std::string getSelectedItem(ulong handle);
+        bool haveImage(const Button::SR_T& sr);
 
         template<typename T>
         inline void registerListCallback(Button::TButton *button, T *pg)

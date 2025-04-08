@@ -147,8 +147,6 @@ void TSubPage::initialize()
 
     if (!TTPInit::isTP5())
         xml.setEncoding(ENC_CP1250);
-    else
-        xml.setEncoding(ENC_UTF8);
 
     if (!xml.parse())
         return;
@@ -177,6 +175,7 @@ void TSubPage::initialize()
     }
 
     mSubpage.popupType = xml.getAttribute("popupType", attrs);  // popup or subpage
+    int bmIndex = 0;
 
     while ((index = xml.getNextElementFromIndex(index, &ename, &content, &attrs)) != TExpat::npos)
     {
@@ -265,6 +264,7 @@ void TSubPage::initialize()
         {
             SR_T sr;
             sr.number = xml.getAttributeInt("number", attrs);
+            bmIndex = 0;
 
             while ((index = xml.getNextElementFromIndex(index, &ename, &content, &attrs)) != TExpat::npos)
             {
@@ -317,19 +317,23 @@ void TSubPage::initialize()
                     while ((index = xml.getNextElementFromIndex(index, &fname, &content, &attrs)) != TExpat::npos)
                     {
                         if (fname.compare("fileName") == 0)
-                            bitmapEntry.fileName = content;
+                            sr.bitmaps[bmIndex].fileName = content;
                         else if (fname.compare("justification") == 0)
-                            bitmapEntry.justification = static_cast<ORIENTATION>(xml.convertElementToInt(content));
+                            sr.bitmaps[bmIndex].justification = static_cast<ORIENTATION>(xml.convertElementToInt(content));
                         else if (fname.compare("offsetX") == 0)
-                            bitmapEntry.offsetX = xml.convertElementToInt(content);
+                            sr.bitmaps[bmIndex].offsetX = xml.convertElementToInt(content);
                         else if (fname.compare("offsetY") == 0)
-                            bitmapEntry.offsetY = xml.convertElementToInt(content);
+                            sr.bitmaps[bmIndex].offsetY = xml.convertElementToInt(content);
 
                         oldIndex = index;
                     }
 
-                    MSG_DEBUG("Found image: " << bitmapEntry.fileName << ", justification: " << bitmapEntry.justification << ", Offset: " << bitmapEntry.offsetX << "x" << bitmapEntry.offsetY);
-                    sr.bitmaps.push_back(bitmapEntry);
+                    MSG_DEBUG("Found image: " << sr.bitmaps[bmIndex].fileName <<
+                              ", justification: " << sr.bitmaps[bmIndex].justification <<
+                              ", Offset: " << sr.bitmaps[bmIndex].offsetX <<
+                              "x" << sr.bitmaps[bmIndex].offsetY);
+                    sr.bitmaps[bmIndex].index = bmIndex + 1;
+                    bmIndex++;
 
                     if (index == TExpat::npos)
                         index = oldIndex + 1;
@@ -405,7 +409,7 @@ void TSubPage::show()
     }
 
     bool noSr = mSubpage.sr.empty();
-    bool haveImage = false;
+    bool isImage = false;
     ulong handle = (mSubpage.pageID << 16) & 0xffff0000;
     MSG_DEBUG("Processing subpage " << mSubpage.pageID << ": " << mSubpage.name);
     SkBitmap target;
@@ -431,9 +435,8 @@ void TSubPage::show()
     else
         target.eraseColor(SK_ColorTRANSPARENT);
 
-    MSG_DEBUG("Number TP5 images: " << mSubpage.sr[0].bitmaps.size());
     // Draw the background, if any
-    if (!noSr && (!mSubpage.sr[0].bm.empty() || !mSubpage.sr[0].mi.empty() || !mSubpage.sr[0].bitmaps.empty()))
+    if (!noSr && (!mSubpage.sr[0].bm.empty() || !mSubpage.sr[0].mi.empty() || haveImage(mSubpage.sr[0])))
     {
         TDrawImage dImage;
         dImage.setWidth(mSubpage.width);
@@ -460,7 +463,7 @@ void TSubPage::show()
                     SkImageInfo info = bm.info();
                     mSubpage.sr[0].bm_width = info.width();
                     mSubpage.sr[0].bm_height = info.height();
-                    haveImage = true;
+                    isImage = true;
                 }
                 else
                 {
@@ -468,33 +471,35 @@ void TSubPage::show()
                 }
             }
         }
-        else if (TTPInit::isTP5() && mSubpage.sr[0].bitmaps.size() > 0)
+        else if (TTPInit::isTP5() && haveImage(mSubpage.sr[0]))
         {
             MSG_DEBUG("Loading TP5 image(s) ...");
-            vector<Button::BITMAPS_t>::iterator iter;
 
-            for (iter = mSubpage.sr[0].bitmaps.begin(); iter != mSubpage.sr[0].bitmaps.end(); ++iter)
+            for (int i = 0; i < MAX_IMAGES; ++i)
             {
-                sk_sp<SkData> rawImage = readImage(iter->fileName);
+                if (mSubpage.sr[0].bitmaps[i].fileName.empty())
+                    continue;
+
+                sk_sp<SkData> rawImage = readImage(mSubpage.sr[0].bitmaps[i].fileName);
                 SkBitmap bm;
 
                 if (rawImage)
                 {
-                    MSG_DEBUG("Decoding image BM ...");
+                    MSG_DEBUG("Decoding image " << mSubpage.sr[0].bitmaps[i].fileName << "...");
 
                     if (!DecodeDataToBitmap(rawImage, &bm))
                     {
-                        MSG_WARNING("Problem while decoding image " << iter->fileName);
+                        MSG_WARNING("Problem while decoding image " << mSubpage.sr[0].bitmaps[i].fileName);
                     }
                     else if (!bm.empty())
                     {
                         dImage.setImageBm(bm);
                         SkImageInfo info = bm.info();
-                        haveImage = true;
+                        isImage = true;
                     }
                     else
                     {
-                        MSG_WARNING("BM image " << iter->fileName << " seems to be empty!");
+                        MSG_WARNING("BM image " << mSubpage.sr[0].bitmaps[i].fileName << " seems to be empty!");
                     }
                 }
             }
@@ -520,7 +525,7 @@ void TSubPage::show()
                     SkImageInfo info = mi.info();
                     mSubpage.sr[0].mi_width = info.width();
                     mSubpage.sr[0].mi_height = info.height();
-                    haveImage = true;
+                    isImage = true;
                 }
                 else
                 {
@@ -529,7 +534,7 @@ void TSubPage::show()
             }
         }
 
-        if (haveImage)
+        if (isImage)
         {
             dImage.setSr(mSubpage.sr);
 
@@ -602,17 +607,17 @@ void TSubPage::show()
         MSG_DEBUG("Drawing a text only on background image ...");
 
         if (drawText(mSubpage, &target))
-            haveImage = true;
+            isImage = true;
     }
 
     // Check for a frame and draw it if there is one.
     if (!noSr && !mSubpage.sr[0].bs.empty())
     {
         if (drawFrame(mSubpage, &target))
-            haveImage = true;
+            isImage = true;
     }
 
-    if (!noSr && haveImage)
+    if (!noSr && isImage)
     {
 #ifdef _OPAQUE_SKIA_
         if (mSubpage.sr[0].oo < 255)
@@ -625,7 +630,7 @@ void TSubPage::show()
         _setBackground(handle, image, target.info().width(), target.info().height(), TColor::getColor(mSubpage.sr[0].cf), mSubpage.sr[0].oo);
 #endif
     }
-    else if (!noSr && !haveImage)
+    else if (!noSr && !isImage)
     {
         MSG_DEBUG("Calling \"setBackground\" with no image ...");
 #ifdef _OPAQUE_SKIA_
