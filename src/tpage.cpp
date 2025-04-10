@@ -199,6 +199,7 @@ void TPage::initialize(const string& nm)
 
             if (TError::isError())
             {
+                PRINT_LAST_ERROR();
                 MSG_WARNING("Button \"" << button->getButtonName() << "\" deleted because of an error: " << TError::getErrorMsg());
                 delete button;
                 return;
@@ -351,6 +352,7 @@ void TPage::addProgress()
 
     if (TError::isError())
     {
+        PRINT_LAST_ERROR();
         MSG_WARNING("Button \"" << button->getButtonName() << "\" deleted because of an error!");
         delete button;
         return;
@@ -376,6 +378,7 @@ void TPage::addProgress()
 
     if (TError::isError())
     {
+        PRINT_LAST_ERROR();
         MSG_WARNING("Button \"" << button->getButtonName() << "\" deleted because of an error!");
         delete button;
         return;
@@ -421,6 +424,7 @@ void TPage::addProgress()
 
     if (TError::isError())
     {
+        PRINT_LAST_ERROR();
         MSG_WARNING("Button \"" << button->getButtonName() << "\" deleted because of an error!");
         delete button;
         return;
@@ -447,6 +451,7 @@ void TPage::addProgress()
 
     if (TError::isError())
     {
+        PRINT_LAST_ERROR();
         MSG_WARNING("Button \"" << button->getButtonName() << "\" deleted because of an error!");
         delete button;
         return;

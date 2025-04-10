@@ -793,6 +793,7 @@ TPageManager::TPageManager()
 
     if (TError::isError())
     {
+        PRINT_LAST_ERROR();
         MSG_ERROR("Settings were not read successfull!");
         return;
     }
@@ -806,6 +807,7 @@ TPageManager::TPageManager()
 
         if (TError::isError())
         {
+            PRINT_LAST_ERROR();
             MSG_WARNING("Apps list was not read successfully!");
         }
     }
@@ -834,6 +836,7 @@ TPageManager::TPageManager()
 
     if (TError::isError())
     {
+        PRINT_LAST_ERROR();
         MSG_ERROR("Initializing fonts was not successfull!");
     }
 
@@ -843,6 +846,7 @@ TPageManager::TPageManager()
 
         if (TError::isError())
         {
+            PRINT_LAST_ERROR();
             MSG_ERROR("Initializing icons was not successfull!");
         }
     }
@@ -1096,6 +1100,7 @@ TPageManager::TPageManager()
 
     if (TError::isError())
     {
+        PRINT_LAST_ERROR();
         MSG_ERROR("Error initializing the SIP client!");
         TConfig::setSIPstatus(false);
     }
@@ -1241,6 +1246,7 @@ void TPageManager::initialize()
 
     if (TError::isError())
     {
+        PRINT_LAST_ERROR();
         surface_mutex.unlock();
         return;
     }
@@ -1278,6 +1284,7 @@ void TPageManager::initialize()
 
     if (TError::isError())
     {
+        PRINT_LAST_ERROR();
         MSG_ERROR("Initializing fonts was not successfull!");
         surface_mutex.unlock();
         return;
@@ -1290,6 +1297,7 @@ void TPageManager::initialize()
 
     if (TError::isError())
     {
+        PRINT_LAST_ERROR();
         MSG_ERROR("Initializing icons was not successfull!");
         surface_mutex.unlock();
         return;
@@ -2484,6 +2492,7 @@ bool TPageManager::readPages()
 
             if (TError::isError())
             {
+                PRINT_LAST_ERROR();
                 delete page;
                 return false;
             }
@@ -2511,6 +2520,7 @@ bool TPageManager::readPages()
 
             if (TError::isError())
             {
+                PRINT_LAST_ERROR();
                 delete page;
                 return false;
             }
@@ -2552,6 +2562,7 @@ bool TPageManager::readPage(const std::string& name)
 
     if (TError::isError())
     {
+        PRINT_LAST_ERROR();
         delete pg;
         return false;
     }
@@ -2590,6 +2601,7 @@ bool TPageManager::readPage(int ID)
 
     if (TError::isError())
     {
+        PRINT_LAST_ERROR();
         delete pg;
         return false;
     }
@@ -2626,6 +2638,7 @@ bool TPageManager::readSubPage(const std::string& name)
 
     if (TError::isError())
     {
+        PRINT_LAST_ERROR();
         delete pg;
         return false;
     }
@@ -2664,6 +2677,7 @@ bool TPageManager::readSubPage(int ID)
 
     if (TError::isError())
     {
+        PRINT_LAST_ERROR();
         delete pg;
         return false;
     }
@@ -4237,7 +4251,7 @@ void TPageManager::runClickQueue()
                         if (mClickQueue[0].coords)
                             _mouseEvent(mClickQueue[0].x, mClickQueue[0].y, mClickQueue[0].pressed);
                         else
-                            _mouseEvent(mClickQueue[0].handle, mClickQueue[0].handle);
+                            _mouseEvent(mClickQueue[0].handle, mClickQueue[0].pressed); // mClickQueue[0].handle);
                     }
                     else  if (mClickQueue[0].eventType == _EVENT_MOUSE_MOVE)
                         _mouseMoveEvent(mClickQueue[0].x, mClickQueue[0].y);
@@ -5625,6 +5639,7 @@ void TPageManager::doON(int port, vector<int>&, vector<string>& pars)
 
     if (TError::isError() || map.empty())
     {
+        PRINT_LAST_ERROR();
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -5741,6 +5756,7 @@ void TPageManager::doLEVEL(int port, vector<int>&, vector<string>& pars)
 
     if (TError::isError() || map.empty())
     {
+        PRINT_LAST_ERROR();
         MSG_WARNING("No bargraphs found!");
 #if TESTMODE == 1
         setAllDone();
@@ -5833,6 +5849,7 @@ void TPageManager::doBLINK(int, vector<int>&, vector<string>& pars)
 
     if (TError::isError() || map.empty())
     {
+        PRINT_LAST_ERROR();
         MSG_WARNING("No system buttons found.");
 #if TESTMODE == 1
         setAllDone();
@@ -6879,6 +6896,7 @@ void TPageManager::doBAT(int port, vector<int> &channels, vector<string> &pars)
 
     if (TError::isError() || map.empty())
     {
+        PRINT_LAST_ERROR();
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -7038,6 +7056,7 @@ void TPageManager::doBAU(int port, vector<int>& channels, vector<string>& pars)
 
     if (TError::isError() || map.empty())
     {
+        PRINT_LAST_ERROR();
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -7099,6 +7118,7 @@ void TPageManager::doBCB(int port, vector<int> &channels, vector<string> &pars)
 
     if (TError::isError() || map.empty())
     {
+        PRINT_LAST_ERROR();
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -7150,6 +7170,7 @@ void TPageManager::getBCB(int port, vector<int> &channels, vector<string> &pars)
 
     if (TError::isError() || map.empty())
     {
+        PRINT_LAST_ERROR();
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -7242,6 +7263,7 @@ void TPageManager::doBCF(int port, vector<int>& channels, vector<std::string>& p
 
     if (TError::isError() || map.empty())
     {
+        PRINT_LAST_ERROR();
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -7293,6 +7315,7 @@ void TPageManager::getBCF(int port, vector<int> &channels, vector<string> &pars)
 
     if (TError::isError() || map.empty())
     {
+        PRINT_LAST_ERROR();
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -7385,6 +7408,7 @@ void TPageManager::doBCT(int port, vector<int>& channels, vector<string>& pars)
 
     if (TError::isError() || map.empty())
     {
+        PRINT_LAST_ERROR();
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -7436,6 +7460,7 @@ void TPageManager::getBCT(int port, vector<int> &channels, vector<string> &pars)
 
     if (TError::isError() || map.empty())
     {
+        PRINT_LAST_ERROR();
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -7550,6 +7575,7 @@ void TPageManager::doBDO(int port, vector<int>& channels, vector<std::string>& p
 
     if (TError::isError() || map.empty())
     {
+        PRINT_LAST_ERROR();
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -7616,6 +7642,7 @@ void TPageManager::doBFB(int port, vector<int>& channels, vector<std::string>& p
 
     if (TError::isError() || map.empty())
     {
+        PRINT_LAST_ERROR();
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -7665,6 +7692,7 @@ void TPageManager::doBIM(int port, vector<int>& channels, vector<std::string>& p
 
     if (TError::isError() || map.empty())
     {
+        PRINT_LAST_ERROR();
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -7855,6 +7883,7 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
 
     if (TError::isError() || map.empty())
     {
+        PRINT_LAST_ERROR();
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -8448,7 +8477,7 @@ void TPageManager::doBMP(int port, vector<int>& channels, vector<string>& pars)
     }
 
     TError::clear();
-    int btState = atoi(pars[0].c_str());
+    int btState = atoi(pars[0].c_str()) - 1;
     string bitmap = pars[1];
     // If this is a G5 command, we may have up to 2 additional parameters.
     int slot = -1, justify = -1, jx = 0, jy = 0;
@@ -8486,7 +8515,6 @@ void TPageManager::doBMP(int port, vector<int>& channels, vector<string>& pars)
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
             Button::TButton *bt = *mapIter;
-//            setButtonCallbacks(bt);
 
             int bst = bt->getNumberInstances();
             MSG_DEBUG("Setting bitmap " << bitmap << " on all " << bst << " instances...");
@@ -8494,9 +8522,9 @@ void TPageManager::doBMP(int port, vector<int>& channels, vector<string>& pars)
             if (justify >= 0)
             {
                 if (slot == 2 && !TTPInit::isTP5())
-                    bt->setIconJustification(justify, jx, jy, btState - 1);
+                    bt->setIconJustification(justify, jx, jy, btState);
                 else
-                    bt->setBitmapJustification(justify, jx, jy, btState - 1);
+                    bt->setBitmapJustification(justify, jx, jy, btState);
             }
 
             if (slot >= 0)
@@ -8505,8 +8533,8 @@ void TPageManager::doBMP(int port, vector<int>& channels, vector<string>& pars)
                 {
                     switch(slot)
                     {
-                        case 0: bt->setCameleon(bitmap, btState - 1); break;
-                        case 2: bt->setIcon(bitmap, btState - 1); break;  // On G4 we have no bitmap layer. Therefor we use layer 2 as icon layer.
+                        case 0: bt->setCameleon(bitmap, btState); break;
+                        case 2: bt->setIcon(bitmap, btState); break;  // On G4 we have no bitmap layer. Therefor we use layer 2 as icon layer.
                         default:
                             bt->setBitmap(bitmap, btState, 1);
                     }
@@ -8601,6 +8629,7 @@ void TPageManager::doBOP(int port, vector<int>& channels, vector<string>& pars)
 
     if (TError::isError() || map.empty())
     {
+        PRINT_LAST_ERROR();
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -8725,6 +8754,7 @@ void TPageManager::doBOR(int port, vector<int>& channels, vector<string>& pars)
 
     if (TError::isError() || map.empty())
     {
+        PRINT_LAST_ERROR();
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -9012,6 +9042,7 @@ void TPageManager::doBSM(int port, vector<int>& channels, vector<string>&)
 
     if (TError::isError() || map.empty())
     {
+        PRINT_LAST_ERROR();
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -9314,6 +9345,7 @@ void TPageManager::doENA(int port, vector<int>& channels, vector<string>& pars)
 
     if (TError::isError() || map.empty())
     {
+        PRINT_LAST_ERROR();
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -9411,6 +9443,7 @@ void TPageManager::getFON(int port, vector<int>& channels, vector<string>& pars)
 
     if (TError::isError() || map.empty())
     {
+        PRINT_LAST_ERROR();
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -10439,6 +10472,7 @@ void TPageManager::doTXT(int port, vector<int>& channels, vector<string>& pars)
 
     if (TError::isError() || map.empty())
     {
+        PRINT_LAST_ERROR();
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -10573,6 +10607,7 @@ void TPageManager::doUNI(int port, vector<int>& channels, vector<string>& pars)
 
     if (TError::isError() || map.empty())
     {
+        PRINT_LAST_ERROR();
 #if TESTMODE == 1
         setAllDone();
 #endif

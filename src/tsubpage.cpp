@@ -233,6 +233,7 @@ void TSubPage::initialize()
 
                 if (TError::isError())
                 {
+                    PRINT_LAST_ERROR();
                     MSG_ERROR("Dropping button because of previous errors!");
                     delete button;
                     return;

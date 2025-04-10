@@ -73,7 +73,9 @@ std::mutex _macro_mutex;
 bool TError::mHaveError{false};
 terrtype_t TError::mErrType{TERRNONE};
 TStreamError *TError::mCurrent{nullptr};
-std::string TError::msError;
+string TError::msError;
+int TError::mLastLine{0};
+string TError::mLastFile;
 #ifdef __ANDROID__
 threadID_t TError::mThreadID;
 #else
@@ -865,6 +867,13 @@ void TError::setErrorMsg(const std::string& msg)
     msError = msg;
     mHaveError = true;
     mErrType = TERRERROR;
+}
+
+void TError::_setErrorMsg(const std::string& msg, int line, const std::string& file)
+{
+    mLastLine = line;
+    mLastFile = file;
+    setErrorMsg(msg);
 }
 
 void TError::setErrorMsg(terrtype_t t, const std::string& msg)
