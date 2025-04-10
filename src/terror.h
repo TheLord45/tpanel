@@ -146,9 +146,11 @@ class TTracer
 class TError : public std::ostream
 {
     public:
-    static void setErrorMsg(const std::string& msg, int line, const std::string& file);
-        static void setErrorMsg(terrtype_t t, const std::string& msg, int line=0, const std::string& file="");
-        static void setError(int line, const std::string& file);
+        static void setErrorMsg(const std::string& msg);
+        static void _setErrorMsg(const std::string& msg, int line=0, const std::string& file="");
+        static void setErrorMsg(terrtype_t t, const std::string& msg);
+        static void setError() { mHaveError = true; mErrType = TERRERROR; }
+        static void setError(int line, const std::string& file) { mHaveError = true; mLastLine = line; mLastFile = file; }
         static std::string& getErrorMsg() { return msError; }
         static bool isError() { return mHaveError; }
         static int getLastLine() { return mLastLine; }
@@ -160,10 +162,12 @@ class TError : public std::ostream
         static std::string append(int lv, int line, const std::string& file);
         static TStreamError* Current();
         static TStreamError* Current(threadID_t tid);
-        static void clear() { mHaveError = false; msError.clear(); mErrType = TERRNONE; mLastLine = 0; mLastFile.clear(); }
+        static void clear() { mHaveError = false; msError.clear(); mErrType = TERRNONE; mLastLine = 0; mLastFile = ""; }
         static void logHex(const char *str, size_t size);
         const TError& operator=(const TError& ref);
         static void displayMessage(const std::string& msg);
+        static int getLastLine() { return mLastLine; }
+        static std::string& getLastFile() { return mLastFile; }
 
     protected:
         static std::string strToHex(const char *str, size_t size, int width, bool format, int indent);
@@ -195,6 +199,23 @@ class TError : public std::ostream
 #define MSG_PROTOCOL(msg)   { if (TStreamError::checkFilter(HLOG_PROTOCOL)) { _lock(); *TError::Current(_getThreadID())->getStream() << TError::append(HLOG_PROTOCOL, __LINE__, __FILE__) << msg << std::endl; TStreamError::resetFlags(); _unlock(); }}
 
 #define DECL_TRACER(msg)    TTracer _hidden_tracer(msg, __LINE__, static_cast<const char *>(__FILE__), _getThreadID());
+
+#define SET_ERROR()         TError::setError(__LINE__, __FILE__)
+#define SET_ERROR_MSG(msg)  TError::_setErrorMsg(msg, __LINE__, __FILE__)
+
+#define PRINT_LAST_ERROR()  {\
+            if (TStreamError::checkFilter(TError::getErrorType()))\
+            {\
+                if (TError::haveErrorMsg())\
+                    *TError::Current(_getThreadID())->getStream()\
+                        << TError::append(TError::getErrorType(), TError::getLastLine(), TError::getLastFile())\
+                        << TError::getErrorMsg() << std::endl;\
+                else if (TError::isError())\
+                    *TError::Current(_getThreadID())->getStream()\
+                        << TError::append(TError::getErrorType(), TError::getLastLine(), TError::getLastFile())\
+                        << "Unknown error occured!" << std::endl;\
+            }\
+        }
 
 #define IS_LOG_INFO()       TStreamError::checkFilter(HLOG_INFO)
 #define IS_LOG_WARNING()    TStreamError::checkFilter(HLOG_WARNING)

@@ -258,7 +258,7 @@ size_t TButton::initialize(TExpat *xml, size_t index)
     if (!xml || index == TExpat::npos)
     {
         MSG_ERROR("Invalid NULL parameter passed!");
-        TError::SetError();
+        SET_ERROR();
         return TExpat::npos;
     }
 
@@ -811,7 +811,7 @@ void TButton::setBargraphLevel(int level)
     if (!buttonStates)
     {
         MSG_ERROR("Button states not found!");
-        TError::SetError();
+        SET_ERROR();
         return;
     }
 
@@ -2287,7 +2287,7 @@ bool TButton::setBargraphSliderName(const string& name)
     if (!gPageManager)
     {
         MSG_ERROR("Page manager was not initialized!");
-        TError::SetError();
+        SET_ERROR();
         return false;
     }
 
@@ -2420,11 +2420,39 @@ bool TButton::setFontName(const string &name, int instance)
     return true;
 }
 
+/**
+ * @brief TButton::setBitmap - Set a bitmap
+ * This method sets a bitmap either for TP4 or TP5. For TP4 the bitmap file
+ * name is written to the field bm.
+ * The TP5 protocol may have up to 5 bitmaps. The parameter \b index defines
+ * the index number where to put the file name. If this parameter is 0, the
+ * bitmap is the mask of a chameleon image. Then the image is written to the
+ * field mi. Otherwise the file name is written to the apropriate image slot.
+ *
+ * @param file      The file name of a bitmap file.
+ *
+ * @param instance  The instance of the object where to write the image. If
+ * this is 0, the file name is written to all instances.
+ *
+ * @param index     Only TP5: The index of the image stack. If this is 0, the
+ * image is the mask of a chameleon image and is written to the field mi.
+ * Otherwise the number is an index pointing to a slot in array bitmaps.
+ *
+ * @param justify   Only TP5: Defines the justification of the image.
+ *
+ * @param x         Only TP5: Defines the upper left corner of an absolute
+ * positioned image.
+ *
+ * @param y         Only TP5: Defines the upper left corner of an absolute
+ * positioned image.
+ *
+ * @return TRUE if everything went well.
+ */
 bool TButton::setBitmap(const string& file, int instance, int index, int justify, int x, int y)
 {
     DECL_TRACER("TButton::setBitmap(const string& file, int instance, int index, int justify, int x, int y)");
 
-    if (instance >= (int)sr.size())
+    if (instance > (int)sr.size())
     {
         MSG_ERROR("Invalid parameters!");
         return false;
@@ -2586,7 +2614,11 @@ bool TButton::setBitmap(const string& file, int instance, int index, int justify
                     }
                 }
                 else if (!file.empty())
+                {
                     TImgCache::getBitmap(file, &bm, _BMTYPE_BITMAP, &width, &height);
+                    width = bm.info().width();
+                    height = bm.info().height();
+                }
 
                 sr[inst].bitmaps[idx].fileName = file;
                 sr[inst].bitmaps[idx].index = idx;
@@ -2595,6 +2627,7 @@ bool TButton::setBitmap(const string& file, int instance, int index, int justify
                 sr[inst].bitmaps[idx].offsetY = y;
                 sr[inst].bitmaps[idx].width = width;
                 sr[inst].bitmaps[idx].height = height;
+                MSG_DEBUG("Set Bitmap " << file << " for instance " << inst << " at index " << idx);
                 inst++;
             }
         }
@@ -4152,7 +4185,7 @@ void TButton::getDrawOrder(const std::string& sdo, DRAW_ORDER *order)
         if (e < 1 || e > 5)
         {
             MSG_ERROR("Invalid draw order \"" << sdo << "\"!");
-            TError::SetError();
+            SET_ERROR();
             return;
         }
 
@@ -4259,7 +4292,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
             if(!loaded)
             {
                 MSG_ERROR("Missing image " << sr[instance].mi << "!");
-                TError::SetError();
+                SET_ERROR();
                 return false;
             }
         }
@@ -4297,7 +4330,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
                 if (!loaded)
                 {
                     MSG_ERROR("Missing image " << bmFile << "!");
-                    TError::setError();
+                    SET_ERROR();
                     return false;
                 }
             }
@@ -4356,7 +4389,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
         if (img.empty())
         {
             MSG_ERROR("Error creating the cameleon image \"" << sr[instance].mi << "\" / \"" << bmFile << "\"!");
-            TError::setError();
+            SET_ERROR();
             return false;
         }
 
@@ -4373,7 +4406,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
         if (!position.valid)
         {
             MSG_ERROR("Error calculating the position of the image for button number " << bi << ": " << na);
-            TError::SetError();
+            SET_ERROR();
             return false;
         }
 
@@ -4471,7 +4504,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
         if (image.empty())
         {
             MSG_ERROR("Error creating the image \"" << sr[instance].bm << "\"!");
-            TError::SetError();
+            SET_ERROR();
             return false;
         }
 
@@ -4481,7 +4514,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
         if (!position.valid)
         {
             MSG_ERROR("Error calculating the position of the image for button number " << bi);
-            TError::SetError();
+            SET_ERROR();
             return false;
         }
 
@@ -4508,7 +4541,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
                 if (byteSize == 0)
                 {
                     MSG_ERROR("Unable to calculate size of image!");
-                    TError::SetError();
+                    SET_ERROR();
                     return false;
                 }
 
@@ -4655,7 +4688,6 @@ bool TButton::buttonBitmap5(SkBitmap* bm, int instance, bool ignFirst)
 
     bool first = true;
 
-//    for (iter = sr[instance].bitmaps.begin(); iter != sr[instance].bitmaps.end(); ++iter)
     for (int i = 0; i < MAX_IMAGES; ++i)
     {
         if (sr[instance].bitmaps[i].fileName.empty())
@@ -4689,7 +4721,7 @@ bool TButton::buttonBitmap5(SkBitmap* bm, int instance, bool ignFirst)
             if (!loaded)
             {
                 MSG_ERROR("Missing image " << sr[instance].bitmaps[i].fileName << "!");
-                TError::setError();
+                SET_ERROR();
                 return false;
             }
 
@@ -4707,10 +4739,11 @@ bool TButton::buttonBitmap5(SkBitmap* bm, int instance, bool ignFirst)
             if (sr[instance].bitmaps[i].justification == ORI_SCALE_FIT || sr[instance].bitmaps[i].justification == ORI_SCALE_ASPECT)
             {
                 SkBitmap scaled;
+                MSG_DEBUG("Scaling image " << sr[instance].bitmaps[i].fileName << " ...");
 
                 if (!allocPixels(wt, ht, &scaled))
                 {
-                    MSG_ERROR("Error allocating space for a bitmap!");
+                    MSG_ERROR("Error allocating space for bitmap " << sr[instance].bitmaps[i].fileName << "!");
                     return false;
                 }
 
@@ -4808,6 +4841,8 @@ bool TButton::buttonBitmap5(SkBitmap* bm, int instance, bool ignFirst)
             SkRect rect = SkRect::MakeXYWH(x, y, width, height);
             sk_sp<SkImage> im = SkImages::RasterFromBitmap(bmBm);
             can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
+            MSG_DEBUG("Bitmap " << sr[instance].bitmaps[i].fileName << " at index " << i << " was mapped.");
+            MSG_DEBUG("Size of Bitmap: " << bm->info().width() << " x " << bm->info().height());
         }
         else
         {
@@ -4892,7 +4927,7 @@ bool TButton::buttonDynamic(SkBitmap* bm, int instance, bool show, bool *state)
         if (!position.valid)
         {
             MSG_ERROR("Error calculating the position of the image for button number " << bi);
-            TError::SetError();
+            SET_ERROR();
             return false;
         }
 
@@ -4918,7 +4953,7 @@ bool TButton::buttonDynamic(SkBitmap* bm, int instance, bool show, bool *state)
                 if (byteSize == 0)
                 {
                     MSG_ERROR("Unable to calculate size of image!");
-                    TError::SetError();
+                    SET_ERROR();
                     return false;
                 }
 
@@ -5375,19 +5410,18 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
 {
     DECL_TRACER("TButton::barLevel(SkBitmap* bm, int inst, int level)");
 
-    if (sr.size() < 2)
-    {
-        MSG_ERROR("Not enough SR elements found! Expected at least 2 but found " << sr.size() << ".");
-        return false;
-    }
-
-    if (!sr[0].mi.empty() && sr[0].bs.empty() && !sr[1].bm.empty())       // Chameleon image?
+    if ((!TTPInit::isTP5() && !sr[0].mi.empty() && sr[0].bs.empty() && !sr[1].bm.empty()) || (TTPInit::isTP5() && !sr[0].mi.empty() && sr[0].bs.empty() && haveImage(sr[1])))       // Chameleon image?
     {
         MSG_TRACE("Chameleon image ...");
         SkBitmap bmMi, bmBm;
 
         TImgCache::getBitmap(sr[0].mi, &bmMi, _BMTYPE_CHAMELEON, &sr[0].mi_width, &sr[0].mi_height);
-        TImgCache::getBitmap(sr[1].bm, &bmBm, _BMTYPE_BITMAP, &sr[1].bm_width, &sr[1].bm_height);
+
+        if (!TTPInit::isTP5())
+            TImgCache::getBitmap(sr[1].bm, &bmBm, _BMTYPE_BITMAP, &sr[1].bm_width, &sr[1].bm_height);
+        else
+            buttonBitmap5(&bmBm, 1);
+
         SkBitmap imgRed(bmMi);
         SkBitmap imgMask(bmBm);
 
@@ -5449,8 +5483,9 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
 
         if (img.empty())
         {
-            MSG_ERROR("Error creating the cameleon image \"" << sr[0].mi << "\" / \"" << sr[0].bm << "\"!");
-            TError::SetError();
+            string name = getBitmapNames(sr[1]);
+            MSG_ERROR("Error creating the cameleon image \"" << sr[0].mi << "\" / \"" << name << "\"!");
+            SET_ERROR();
             return false;
         }
 
@@ -5465,7 +5500,7 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
         if (!position.valid)
         {
             MSG_ERROR("Error calculating the position of the image for button number " << bi << ": " << na);
-            TError::SetError();
+            SET_ERROR();
             return false;
         }
 
@@ -5474,33 +5509,55 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
         _image = SkImages::RasterFromBitmap(img);
         can.drawImage(_image, position.left, position.top, SkSamplingOptions(), &paint);
     }
-    else if (!sr[0].bm.empty() && !sr[1].bm.empty())
+    else if ((!TTPInit::isTP5() && !sr[0].bm.empty() && !sr[1].bm.empty()) || (TTPInit::isTP5() && haveImage(sr[0]) && haveImage(sr[1])))
     {
         MSG_TRACE("Drawing normal image ...");
         SkBitmap image1, image2;
 
-        TImgCache::getBitmap(sr[0].bm, &image1, _BMTYPE_BITMAP, &sr[0].bm_width, &sr[0].bm_height);   // State when level = 0%
-        TImgCache::getBitmap(sr[1].bm, &image2, _BMTYPE_BITMAP, &sr[1].bm_width, &sr[1].bm_height);   // State when level = 100%
+        if (TTPInit::isTP5())
+        {
+            buttonBitmap5(&image1, 0);
+            buttonBitmap5(&image2, 1);
+        }
+        else
+        {
+            TImgCache::getBitmap(sr[0].bm, &image1, _BMTYPE_BITMAP, &sr[0].bm_width, &sr[0].bm_height);   // State when level = 0%
+            TImgCache::getBitmap(sr[1].bm, &image2, _BMTYPE_BITMAP, &sr[1].bm_width, &sr[1].bm_height);   // State when level = 100%
+        }
+
         SkCanvas can_bm(*bm, SkSurfaceProps());
 
         if (image1.empty())
         {
-            MSG_ERROR("Error creating the image \"" << sr[0].bm << "\"!");
-            TError::SetError();
+            string name = getBitmapNames(sr[0]);
+            MSG_ERROR("Error creating the image \"" << name << "\"!");
+            SET_ERROR();
             return false;
         }
 
         if (image2.empty())
         {
-            MSG_ERROR("Error creating the image \"" << sr[1].bm << "\"!");
-            TError::SetError();
+            string name = getBitmapNames(sr[1]);
+            MSG_ERROR("Error creating the image \"" << name << "\"!");
+            SET_ERROR();
             return false;
         }
 
-        int width = sr[1].bm_width;
-        int height = sr[1].bm_height;
+        int width, height;
         int startX = 0;
         int startY = 0;
+
+        if (!TTPInit::isTP5())
+        {
+            width = sr[1].bm_width;
+            height = sr[1].bm_height;
+        }
+        else
+        {
+            width = image2.info().width();
+            height = image2.info().height();
+        }
+
         MSG_DEBUG("Image size: " << width << " x " << height);
 
         // Calculation: width / <effective pixels> * level
@@ -5510,8 +5567,17 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
         else
         {
             height = static_cast<int>(static_cast<double>(height) / static_cast<double>(rh - rl) * static_cast<double>(level));
-            startY = sr[0].bm_height - height;
-            height = sr[0].bm_height;
+
+            if (!TTPInit::isTP5())
+            {
+                startY = sr[0].bm_height - height;
+                height = sr[0].bm_height;
+            }
+            else
+            {
+                startY = image1.info().height() - height;
+                height = image1.info().height();
+            }
         }
 
         MSG_DEBUG("dr=" << dr << ", startX=" << startX << ", startY=" << startY << ", width=" << width << ", height=" << height << ", level=" << level);
@@ -5523,10 +5589,22 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
 
         img_bar.eraseColor(SK_ColorTRANSPARENT);
         SkCanvas bar(img_bar, SkSurfaceProps());
+        int bm_width, bm_height;
 
-        for (int ix = 0; ix < sr[1].bm_width; ix++)
+        if (!TTPInit::isTP5())
         {
-            for (int iy = 0; iy < sr[1].bm_height; iy++)
+            bm_width = sr[1].bm_width;
+            bm_height = sr[1].bm_height;
+        }
+        else
+        {
+            bm_width = image2.info().width();
+            bm_height = image2.info().height();
+        }
+
+        for (int ix = 0; ix < bm_width; ix++)
+        {
+            for (int iy = 0; iy < bm_height; iy++)
             {
                 SkPaint paint;
                 SkColor pixel;
@@ -5541,8 +5619,14 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
             }
         }
 
-        POINT_t point = getImagePosition(sr[0].bm_width, sr[0].bm_height);
+        POINT_t point;
         SkPaint paint;
+
+        if (!TTPInit::isTP5())
+            point = getImagePosition(sr[0].bm_width, sr[0].bm_height);
+        else
+            point = getImagePosition(image1.info().width(), image1.info().height());
+
         paint.setBlendMode(SkBlendMode::kSrc);
         sk_sp<SkImage> _image = SkImages::RasterFromBitmap(image1);
         can_bm.drawImage(_image, point.x, point.y, SkSamplingOptions(), &paint);
@@ -5550,24 +5634,44 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
         _image = SkImages::RasterFromBitmap(img_bar);
         can_bm.drawImage(_image, point.x, point.y, SkSamplingOptions(), &paint);       // Draw the above created image over the 0% image
     }
-    else if (sr[0].bm.empty() && !sr[1].bm.empty())     // Only one bitmap in the second instance
+    else if ((!TTPInit::isTP5() && sr[0].bm.empty() && !sr[1].bm.empty()) || (TTPInit::isTP5() && !haveImage(sr[0]) && haveImage(sr[1])))     // Only one bitmap in the second instance
     {
-        MSG_TRACE("Drawing second image " << sr[1].bm << " ...");
+        {
+            string names = getBitmapNames(sr[1]);
+            MSG_TRACE("Drawing second image " << names << " ...");
+        }
+
         SkBitmap image;
-        TImgCache::getBitmap(sr[1].bm, &image, _BMTYPE_BITMAP, &sr[1].bm_width, &sr[1].bm_height);   // State when level = 100%
+
+        if (!TTPInit::isTP5())
+            TImgCache::getBitmap(sr[1].bm, &image, _BMTYPE_BITMAP, &sr[1].bm_width, &sr[1].bm_height);   // State when level = 100%
+        else
+            buttonBitmap5(&image, 1);
+
         SkCanvas can_bm(*bm, SkSurfaceProps());
 
         if (image.empty())
         {
-            MSG_ERROR("Error creating the image \"" << sr[1].bm << "\"!");
-            TError::SetError();
+            string names = getBitmapNames(sr[1]);
+            MSG_ERROR("Error creating the image \"" << names << "\"!");
+            SET_ERROR();
             return false;
         }
 
-        int width = sr[1].bm_width;
-        int height = sr[1].bm_height;
+        int width, height;
         int startX = 0;
         int startY = 0;
+
+        if (!TTPInit::isTP5())
+        {
+            width = sr[1].bm_width;
+            height = sr[1].bm_height;
+        }
+        else
+        {
+            width = image.info().width();
+            height = image.info().height();
+        }
 
         // Calculation: width / <effective pixels> * level
         // Calculation: height / <effective pixels> * level
@@ -5576,24 +5680,47 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
         else
         {
             height = static_cast<int>(static_cast<double>(height) / static_cast<double>(rh - rl) * static_cast<double>(level));
-            startY = sr[0].bm_height - height;
-            height = sr[0].bm_height;
+
+            if (!TTPInit::isTP5())
+            {
+                startY = sr[0].bm_height - height;
+                height = sr[0].bm_height;
+            }
+            else
+            {
+                startY = image.info().height() - height;
+                height = image.info().height();
+            }
         }
 
         MSG_DEBUG("dr=" << dr << ", startX=" << startX << ", startY=" << startY << ", width=" << width << ", height=" << height << ", level=" << level);
         MSG_TRACE("Creating bargraph ...");
         SkBitmap img_bar;
 
-        if (!allocPixels(sr[1].bm_width, sr[1].bm_height, &img_bar))
+        if (!TTPInit::isTP5() && !allocPixels(sr[1].bm_width, sr[1].bm_height, &img_bar))
+            return false;
+        else if (TTPInit::isTP5() && !allocPixels(image.info().width(), image.info().height(), &img_bar))
             return false;
 
         img_bar.eraseColor(SK_ColorTRANSPARENT);
         SkCanvas bar(img_bar, SkSurfaceProps());
         SkPaint pt;
+        int bm_width, bm_height;
 
-        for (int ix = 0; ix < sr[1].bm_width; ix++)
+        if (!TTPInit::isTP5())
         {
-            for (int iy = 0; iy < sr[1].bm_height; iy++)
+            bm_width = sr[1].bm_width;
+            bm_height = sr[1].bm_height;
+        }
+        else
+        {
+            bm_width = image.info().width();
+            bm_height = image.info().height();
+        }
+
+        for (int ix = 0; ix < bm_width; ix++)
+        {
+            for (int iy = 0; iy < bm_height; iy++)
             {
                 SkColor pixel;
 
@@ -5607,7 +5734,7 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
             }
         }
 
-        POINT_t point = getImagePosition(sr[1].bm_width, sr[1].bm_height);
+        POINT_t point = getImagePosition(bm_width, bm_height);
         SkPaint paint;
         paint.setBlendMode(SkBlendMode::kSrcOver);
         sk_sp<SkImage> _image = SkImages::RasterFromBitmap(img_bar);
@@ -5961,7 +6088,7 @@ bool TButton::buttonIcon(SkBitmap* bm, int instance)
     if (!position.valid)
     {
         MSG_ERROR("Error calculating the position of the image for button number " << bi);
-        TError::SetError();
+        SET_ERROR();
         return false;
     }
 
@@ -6123,7 +6250,7 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
             if (!pos.valid)
             {
                 MSG_ERROR("Error calculating the text position!");
-                TError::SetError();
+                SET_ERROR();
                 return false;
             }
 
@@ -6191,7 +6318,7 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
         if (!position.valid)
         {
             MSG_ERROR("Error calculating the text position!");
-            TError::SetError();
+            SET_ERROR();
             return false;
         }
 
@@ -6691,7 +6818,7 @@ bool TButton::drawButton(int instance, bool show, bool subview)
     if ((size_t)instance >= sr.size() || instance < 0)
     {
         MSG_ERROR("Instance " << instance << " is out of bounds!");
-        TError::SetError();
+        SET_ERROR();
 #if TESTMODE == 1
         setScreenDone();
 #endif
@@ -6962,7 +7089,7 @@ bool TButton::drawTextArea(int instance)
     if ((size_t)instance >= sr.size() || instance < 0)
     {
         MSG_ERROR("Instance " << instance << " is out of bounds!");
-        TError::SetError();
+        SET_ERROR();
 #if TESTMODE == 1
         setScreenDone();
 #endif
@@ -7470,14 +7597,14 @@ bool TButton::drawJoystick(int x, int y)
     if (type != JOYSTICK)
     {
         MSG_ERROR("Element is no joystick!");
-        TError::SetError();
+        SET_ERROR();
         return false;
     }
 
     if (sr.empty())
     {
         MSG_ERROR("Joystick has no element!");
-        TError::SetError();
+        SET_ERROR();
         return false;
     }
 
@@ -7486,7 +7613,7 @@ bool TButton::drawJoystick(int x, int y)
     if (!buttonStates)
     {
         MSG_ERROR("Button states not found!");
-        TError::SetError();
+        SET_ERROR();
         return false;
     }
 
@@ -7982,7 +8109,7 @@ bool TButton::drawBargraph(int instance, int level, bool show)
     if ((size_t)instance >= sr.size() || instance < 0)
     {
         MSG_ERROR("Instance " << instance << " is out of bounds!");
-        TError::SetError();
+        SET_ERROR();
         return false;
     }
 
@@ -9250,7 +9377,9 @@ bool TButton::isPixelTransparent(int x, int y)
     DECL_TRACER("TButton::isPixelTransparent(int x, int y)");
 
     // If there is no image we treat it as a non transpararent pixel.
-    if (sr[mActInstance].mi.empty() && sr[mActInstance].bm.empty())
+    if (!TTPInit::isTP5() && sr[mActInstance].mi.empty() && sr[mActInstance].bm.empty())
+        return false;
+    else if (TTPInit::isTP5() && sr[mActInstance].mi.empty() && !haveImage(sr[mActInstance]))
         return false;
 
     // The mLastImage must never be empty! Although this should never be true,
@@ -11490,6 +11619,29 @@ BUTTON_EVENT_t TButton::getButtonEvent(const string& token)
         return EVENT_GUESTURE_2FLT;
 
     return EVENT_NONE;
+}
+
+string TButton::getBitmapNames(const SR_T& sr)
+{
+    DECL_TRACER("TButton::getImageNames(const SR_T& sr)");
+
+    if (!TTPInit::isTP5())
+        return sr.bm;
+
+    string names;
+
+    for (int i = 0; i < MAX_IMAGES; ++i)
+    {
+        if (sr.bitmaps[i].fileName.empty())
+            continue;
+
+        if (!names.empty())
+            names.append(", ");
+
+        names.append(sr.bitmaps[i].fileName);
+    }
+
+    return names;
 }
 
 int TButton::getLevelValue()
