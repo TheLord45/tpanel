@@ -1428,6 +1428,9 @@ namespace Button
             bool isButtonEvent(const std::string& token, const std::vector<std::string>& events);               // TP5: Tests for a button event
             BUTTON_EVENT_t getButtonEvent(const std::string& token);    // TP5: Returns the button event
             std::string getBitmapNames(const SR_T& sr);
+            SkRect justifyBitmap5(int instance, int index, int width, int height);
+            std::string getFirstImageName(const SR_T& sr);
+            int getBitmapFirstIndex(const SR_T& sr);
 
             BUTTONTYPE type;
             int bi{0};              // button ID
