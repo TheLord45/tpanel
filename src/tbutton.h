@@ -1431,6 +1431,7 @@ namespace Button
             SkRect justifyBitmap5(int instance, int index, int width, int height);
             std::string getFirstImageName(const SR_T& sr);
             int getBitmapFirstIndex(const SR_T& sr);
+            void moveBitmapToBm(SR_T& sr, int index=-1);
 
             BUTTONTYPE type;
             int bi{0};              // button ID
