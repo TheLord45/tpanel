@@ -4248,7 +4248,6 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
         instance = (int)(sr.size() - 1);
 
     bool tp5 = TTPInit::isTP5();   // TRUE = TP5
-    string bmFile;
 
     /*
      * Here we test if we have a chameleon image. If there is a mask (sr[].mi)
@@ -4259,15 +4258,25 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
      */
     if (!sr[instance].mi.empty() && sr[instance].bs.empty())       // Chameleon image?
     {
+        /*
+         * A chameleon image has always a mask. This mask is an image with red and
+         * green pixels, where the red pixels are colored with the fill color (cf)
+         * and the green ones with the border color (cb). All other pixels are
+         * left as they are.
+         * If there exist a bitmap image, it is drawn over the mask. The combination
+         * results in a new bitmap. This allows to change the color of an image on
+         * the fly even during runtime.
+         * While with TP4 the bitmap is in the field bm, we have a stack of bitmaps
+         * for TP5. There can be up to 5 images. But only the first image in the
+         * stack is the bitmap drawn over the mask (mi).
+         */
         if (tp5)
         {
             if (haveImage(sr[instance]))
-                bmFile = getFirstImageName(sr[instance]);
+                moveBitmapToBm(sr[instance]);
         }
-        else
-            bmFile = sr[instance].bm;
 
-        MSG_DEBUG("Chameleon image consisting of mask " << sr[instance].mi << " and bitmap " << (bmFile.empty() ? "NONE" : bmFile) << " ...");
+        MSG_DEBUG("Chameleon image consisting of mask " << sr[instance].mi << " and bitmap " << (sr[instance].bm.empty() ? "NONE" : sr[instance].bm) << " ...");
         SkBitmap bmMi;
         SkBitmap bmBm;
 
@@ -4298,19 +4307,15 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
         }
 
         MSG_DEBUG("Chameleon image size: " << bmMi.info().width() << " x " << bmMi.info().height());
-        SkBitmap imgRed(bmMi);
+        SkBitmap imgRed(bmMi);      // This the mask image consisting of red and/or green pixels.
         SkBitmap imgMask;
         bool haveBothImages = true;
-        // On TP5:
-        // If we have a chameleon image the base is in field "mi", as it was it TP4 already,
-        // and the images in the list of images is the mask. All images is the bitmap stack
-        // will be put into 1 image, which is then the mask. The resulting image must be
-        // scaled to the size of the base, if necessary.
-        if (!bmFile.empty())
+
+        if (!sr[instance].bm.empty())
         {
-            if (!tp5 && !TImgCache::getBitmap(bmFile, &bmBm, _BMTYPE_BITMAP, &sr[instance].bm_width, &sr[instance].bm_height))
+            if (!TImgCache::getBitmap(sr[instance].bm, &bmBm, _BMTYPE_BITMAP, &sr[instance].bm_width, &sr[instance].bm_height))
             {
-                sk_sp<SkData> data = readImage(bmFile);
+                sk_sp<SkData> data = readImage(sr[instance].bm);
                 bool loaded = false;
 
                 if (data)
@@ -4319,7 +4324,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
 
                     if (!bmBm.empty())
                     {
-                        TImgCache::addImage(bmFile, bmBm, _BMTYPE_BITMAP);
+                        TImgCache::addImage(sr[instance].bm, bmBm, _BMTYPE_BITMAP);
                         loaded = true;
                         sr[instance].bm_width = bmBm.info().width();
                         sr[instance].bm_height = bmBm.info().height();
@@ -4328,35 +4333,9 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
 
                 if (!loaded)
                 {
-                    MSG_ERROR("Missing image " << bmFile << "!");
+                    MSG_ERROR("Missing image " << sr[instance].bm << "!");
                     SET_ERROR();
                     return false;
-                }
-            }
-            else if (tp5)
-            {
-                if (!buttonBitmap5(&bmBm, instance))
-                    haveBothImages = false;
-                else
-                {
-                    if (bmBm.info().width() != sr[instance].mi_width || bmBm.info().height() != sr[instance].mi_height)
-                    {
-                        // Here we scale the bitmap to the size of the mask.
-                        MSG_DEBUG("Scaling bitmap to mask ...");
-                        SkBitmap newBm;
-                        allocPixels(bmMi.info().width(), bmMi.info().height(), &newBm);
-                        SkCanvas can(newBm);
-                        SkRect rect;
-                        rect.setXYWH(0, 0, bmMi.info().width(), bmMi.info().height());
-                        sk_sp<SkImage> im = SkImages::RasterFromBitmap(bmBm);
-                        SkPaint paint;
-                        paint.setBlendMode(SkBlendMode::kSrcOver);
-                        can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
-                        bmBm = newBm;
-                    }
-
-                    sr[instance].bm_width = bmBm.info().width();
-                    sr[instance].bm_height = bmBm.info().height();
                 }
             }
 
@@ -4364,7 +4343,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
             {
                 if (!imgMask.installPixels(bmBm.pixmap()))
                 {
-                    MSG_ERROR("Error installing pixmap " << bmFile << " for chameleon image!");
+                    MSG_ERROR("Error installing pixmap " << sr[instance].bm << " for chameleon image!");
 
                     if (!allocPixels(imgRed.info().width(), imgRed.info().height(), &imgMask))
                         return false;
@@ -4375,7 +4354,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
             }
             else
             {
-                MSG_WARNING("No or invalid bitmap! Ignoring bitmap for cameleon image.");
+                MSG_WARNING("No or invalid bitmap! Ignoring bitmap for chameleon image.");
 
                 if (!allocPixels(imgRed.info().width(), imgRed.info().height(), &imgMask))
                     return false;
@@ -4387,13 +4366,13 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
         else
             haveBothImages = false;
 
-        MSG_DEBUG("Bitmap image size: " << bmBm.info().width() << " x " << bmBm.info().height());
+        MSG_DEBUG("Bitmap image size: " << imgRed.info().width() << " x " << imgRed.info().height());
         MSG_DEBUG("Bitmap mask size: " << imgMask.info().width() << " x " << imgMask.info().height());
         SkBitmap img = drawImageButton(imgRed, imgMask, sr[instance].mi_width, sr[instance].mi_height, TColor::getSkiaColor(sr[instance].cf), TColor::getSkiaColor(sr[instance].cb));
 
         if (img.empty())
         {
-            MSG_ERROR("Error creating the cameleon image \"" << sr[instance].mi << "\" / \"" << bmFile << "\"!");
+            MSG_ERROR("Error creating the chameleon image \"" << sr[instance].mi << "\" / \"" << sr[instance].bm << "\"!");
             SET_ERROR();
             return false;
         }
@@ -4425,7 +4404,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
                 sk_sp<SkImage> _image = SkImages::RasterFromBitmap(img);
                 can.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
 
-                if (!bmFile.empty())
+                if (!sr[instance].bm.empty())
                 {
                     imgMask.installPixels(bmBm.pixmap());
                     paint.setBlendMode(SkBlendMode::kSrcOver);
@@ -4448,7 +4427,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
                 sk_sp<SkImage> im = SkImages::RasterFromBitmap(img);
                 can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
 
-                if (!bmFile.empty())
+                if (!sr[instance].bm.empty())
                 {
                     imgMask.installPixels(bmBm.pixmap());
                     rect.setXYWH(position.left, position.top, position.width, position.height);
@@ -4463,6 +4442,12 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
                 sk_sp<SkImage> im = SkImages::RasterFromBitmap(img);
                 can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
             }
+        }
+
+        // If we've a TP5 protocol, we must draw all other images in the stack, if there are any.
+        if (!buttonBitmap5(bm, instance, true))
+        {
+            MSG_WARNING("Problem drawing images over chameleon image!");
         }
     }
     else if ((!tp5 && !sr[instance].bm.empty()) || (tp5 && haveImage(sr[instance])))
@@ -4564,100 +4549,6 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
             can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
         }
     }
-/*    else if (tp5 && haveImage(sr[instance]))    // TP5: Put all images together
-    {
-        MSG_TRACE("Draw TP5 image stack.");
-
-//        for (bmIter = sr[instance].bitmaps.begin(); bmIter != sr[instance].bitmaps.end(); ++bmIter)
-        for (int i = 0; i < MAX_IMAGES; ++i)
-        {
-            if (sr[instance].bitmaps[i].fileName.empty())
-                continue;
-
-            SkBitmap image;
-
-            if (!TImgCache::getBitmap(sr[instance].bitmaps[i].fileName, &image, _BMTYPE_BITMAP, &sr[instance].bitmaps[i].width, &sr[instance].bitmaps[i].height))
-            {
-                sk_sp<SkData> data = readImage(sr[instance].bm);
-                bool loaded = false;
-
-                if (data)
-                {
-                    DecodeDataToBitmap(data, &image);
-
-                    if (!image.empty())
-                    {
-                        TImgCache::addImage(sr[instance].bitmaps[i].fileName, image, _BMTYPE_BITMAP);
-                        loaded = true;
-                        sr[instance].bitmaps[i].width = image.info().width();
-                        sr[instance].bitmaps[i].height = image.info().height();
-                    }
-                }
-
-                if (!loaded)
-                {
-                    MSG_ERROR("Missing image " << sr[instance].bitmaps[i].fileName << "!");
-                    continue;        // We want the button even without an image
-                }
-            }
-
-            if (image.empty())
-            {
-                MSG_ERROR("Error creating the image \"" << sr[instance].bitmaps[i].fileName << "\"!");
-                continue;
-            }
-
-            IMAGE_SIZE_t isize = calcImageSize(image.info().width(), image.info().height(), instance, true);
-            POSITION_t position = calcImagePosition((sr[instance].sb ? isize.width : image.info().width()), (sr[instance].sb ? isize.height : image.info().height()), SC_BITMAP, instance);
-
-            if (!position.valid)
-            {
-                MSG_ERROR("Error calculating the position of the image for button number " << bi);
-                continue;
-            }
-
-            MSG_DEBUG("Putting bitmap on top of image ...");
-            SkPaint paint;
-            paint.setBlendMode(SkBlendMode::kSrcOver);
-            SkCanvas can(*bm, SkSurfaceProps());
-
-            if (sr[instance].sb == 0)   // Scale bitmap?
-            {                           // No, keep size
-                if ((sr[instance].bitmaps[i].justification == ORI_ABSOLUT && sr[instance].bitmaps[i].offsetX >= 0 && sr[instance].bitmaps[i].offsetY >= 0) || sr[instance].bitmaps[i].justification != ORI_ABSOLUT)  // Draw the full image
-                {
-                    sk_sp<SkImage> _image = SkImages::RasterFromBitmap(image);
-                    can.drawImage(_image, position.left, position.top, SkSamplingOptions(), &paint);
-                }
-                else    // We need only a subset of the image
-                {
-                    MSG_DEBUG("Create a subset of an image ...");
-
-                    // Create a new Info to have the size of the subset.
-                    SkImageInfo info = SkImageInfo::Make(position.width, position.height, kRGBA_8888_SkColorType, kPremul_SkAlphaType);
-                    size_t byteSize = info.computeMinByteSize();
-
-                    if (byteSize == 0)
-                    {
-                        MSG_ERROR("Unable to calculate size of image!");
-                        continue;
-                    }
-
-                    MSG_DEBUG("Rectangle of part: x: " << position.left << ", y: " << position.top << ", w: " << position.width << ", h: " << position.height);
-                    SkBitmap part;      // Bitmap receiving the wanted part from the whole image
-                    SkIRect irect = SkIRect::MakeXYWH(position.left, position.top, position.width, position.height);
-                    image.extractSubset(&part, irect);  // Extract the part of the image containg the pixels we want
-                    sk_sp<SkImage> _image = SkImages::RasterFromBitmap(part);
-                    can.drawImage(_image, 0, 0, SkSamplingOptions(), &paint); // Draw the image
-                }
-            }
-            else    // Scale to fit
-            {
-                SkRect rect = SkRect::MakeXYWH(position.left, position.top, isize.width, isize.height);
-                sk_sp<SkImage> im = SkImages::RasterFromBitmap(image);
-                can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
-            }
-        }
-    } */
     else
     {
         MSG_DEBUG("No bitmap defined.");
@@ -4926,6 +4817,37 @@ int TButton::getBitmapFirstIndex(const SR_T& sr)
     }
 
     return -1;
+}
+
+void TButton::moveBitmapToBm(SR_T& sr, int index)
+{
+    DECL_TRACER("TButton::moveBitmapToBm(SR_T& sr, int index)");
+
+    if (index < 0)
+    {
+        for (int i = 0; i < MAX_IMAGES; ++i)
+        {
+            if (!sr.bitmaps[i].fileName.empty())
+            {
+                sr.bm = sr.bitmaps[i].fileName;
+                sr.jb = sr.bitmaps[i].justification;
+                sr.bx = sr.bitmaps[i].offsetX;
+                sr.by = sr.bitmaps[i].offsetY;
+                sr.bm_width = sr.bitmaps[i].width;
+                sr.bm_height = sr.bitmaps[i].height;
+                break;
+            }
+        }
+    }
+    else if (index < MAX_IMAGES)
+    {
+        sr.bm = sr.bitmaps[index].fileName;
+        sr.jb = sr.bitmaps[index].justification;
+        sr.bx = sr.bitmaps[index].offsetX;
+        sr.by = sr.bitmaps[index].offsetY;
+        sr.bm_width = sr.bitmaps[index].width;
+        sr.bm_height = sr.bitmaps[index].height;
+    }
 }
 
 bool TButton::buttonDynamic(SkBitmap* bm, int instance, bool show, bool *state)
