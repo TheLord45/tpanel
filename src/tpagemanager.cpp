@@ -8488,15 +8488,15 @@ void TPageManager::doBMP(int port, vector<int>& channels, vector<string>& pars)
 
         if (pars.size() >= 4)
         {
-            justify = atoi(pars[4].c_str());
+            justify = atoi(pars[3].c_str());
 
             if (justify == 0)
             {
                 if (pars.size() >= 5)
-                    jx = atoi(pars[5].c_str());
+                    jx = atoi(pars[4].c_str());
 
                 if (pars.size() >= 6)
-                    jy = atoi(pars[6].c_str());
+                    jy = atoi(pars[5].c_str());
             }
         }
     }
