@@ -4168,11 +4168,23 @@ void TButton::getDrawOrder(const std::string& sdo, DRAW_ORDER *order)
 
     if (sdo.empty() || sdo.length() != 10)
     {
-        *order     = ORD_ELEM_FILL;
-        *(order+1) = ORD_ELEM_BITMAP;
-        *(order+2) = ORD_ELEM_BORDER;
-        *(order+3) = ORD_ELEM_ICON;
-        *(order+4) = ORD_ELEM_TEXT;
+        if (!TTPInit::isTP5())
+        {
+            *order     = ORD_ELEM_FILL;
+            *(order+1) = ORD_ELEM_BITMAP;
+            *(order+2) = ORD_ELEM_BORDER;
+            *(order+3) = ORD_ELEM_ICON;
+            *(order+4) = ORD_ELEM_TEXT;
+        }
+        else
+        {
+            *order     = ORD_ELEM_FILL;
+            *(order+1) = ORD_ELEM_BITMAP;
+            *(order+2) = ORD_ELEM_BORDER;
+            *(order+3) = ORD_ELEM_TEXT;
+            *(order+4) = ORD_ELEM_NONE;
+        }
+
         return;
     }
 
@@ -4366,8 +4378,6 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
         else
             haveBothImages = false;
 
-        MSG_DEBUG("Bitmap image size: " << imgRed.info().width() << " x " << imgRed.info().height());
-        MSG_DEBUG("Bitmap mask size: " << imgMask.info().width() << " x " << imgMask.info().height());
         SkBitmap img = drawImageButton(imgRed, imgMask, sr[instance].mi_width, sr[instance].mi_height, TColor::getSkiaColor(sr[instance].cf), TColor::getSkiaColor(sr[instance].cb));
 
         if (img.empty())
@@ -4498,7 +4508,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
         }
 
         IMAGE_SIZE_t isize = calcImageSize(image.info().width(), image.info().height(), instance, true);
-        POSITION_t position = calcImagePosition((sr[instance].sb ? isize.width : image.info().width()), (sr[instance].sb ? isize.height : image.info().height()), SC_BITMAP, instance);
+        POSITION_t position = calcImagePosition((!tp5 && sr[instance].sb ? isize.width : image.info().width()), (!tp5 && sr[instance].sb ? isize.height : image.info().height()), SC_BITMAP, instance);
 
         if (!position.valid)
         {
@@ -4512,9 +4522,9 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
         paint.setBlendMode(SkBlendMode::kSrcOver);
         SkCanvas can(*bm, SkSurfaceProps());
 
-        if (sr[instance].sb == 0)   // Scale bitmap?
+        if (tp5 || sr[instance].sb == 0)   // Scale bitmap?
         {                           // No, keep size
-            if ((sr[instance].jb == 0 && sr[instance].bx >= 0 && sr[instance].by >= 0) || sr[instance].jb != 0)  // Draw the full image
+            if (tp5 || (sr[instance].jb == 0 && sr[instance].bx >= 0 && sr[instance].by >= 0) || sr[instance].jb != 0)  // Draw the full image
             {
                 sk_sp<SkImage> _image = SkImages::RasterFromBitmap(image);
                 can.drawImage(_image, position.left, position.top, SkSamplingOptions(), &paint);
@@ -4542,7 +4552,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
                 can.drawImage(_image, 0, 0, SkSamplingOptions(), &paint); // Draw the image
             }
         }
-        else    // Scale to fit
+        else if (!tp5)    // Scale to fit
         {
             SkRect rect = SkRect::MakeXYWH(position.left, position.top, isize.width, isize.height);
             sk_sp<SkImage> im = SkImages::RasterFromBitmap(image);
@@ -4582,7 +4592,7 @@ bool TButton::buttonBitmap5(SkBitmap* bm, int instance, bool ignFirst)
         return true;
 
     bool first = true;
-    int oldIndex = 0;
+    int border_size = getBorderSize(sr[instance].bs);
 
     for (int i = 0; i < MAX_IMAGES; ++i)
     {
@@ -4633,34 +4643,12 @@ bool TButton::buttonBitmap5(SkBitmap* bm, int instance, bool ignFirst)
             // If the target image was not allocated, we do this now
             if (bm->empty())
             {
-                if (!allocPixels(width, height, bm))
+                if (!allocPixels(wt, ht, bm))
                 {
                     SET_ERROR_MSG("Allocation for image failed!");
                     return false;
                 }
             }
-            else if (bm->info().width() < width || bm->info().height() < height)
-            {
-                // The actual image is larger then the size of the base image.
-                // Therefor we must increase it's size.
-                SkBitmap newBm;
-
-                if (!allocPixels(width, height, &newBm))
-                {
-                    SET_ERROR_MSG("Reallocation for image failed!");
-                    return false;
-                }
-
-                SkCanvas can(newBm, SkSurfaceProps());
-                // Justify bitmap
-                SkPaint paint;
-                paint.setBlendMode(SkBlendMode::kSrcOver);
-                SkRect rect = justifyBitmap5(instance, oldIndex, width, height);
-                sk_sp<SkImage> im = SkImages::RasterFromBitmap(bmBm);
-                can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
-                bmBm = newBm;
-            }
-
             // Map bitmap
             SkPaint paint;
             paint.setBlendMode(SkBlendMode::kSrcOver);
@@ -4670,6 +4658,9 @@ bool TButton::buttonBitmap5(SkBitmap* bm, int instance, bool ignFirst)
             {
                 SkBitmap scaled;
                 MSG_DEBUG("Scaling image " << sr[instance].bitmaps[i].fileName << " ...");
+                MSG_DEBUG("Size of bitmap: " << width << "x" << height);
+                MSG_DEBUG("Size of button: " << wt << "x" << ht);
+                MSG_DEBUG("Will scale to " << (sr[instance].bitmaps[i].justification == ORI_SCALE_FIT ? "scale to fit" : "keep aspect"));
 
                 if (!allocPixels(wt, ht, &scaled))
                 {
@@ -4684,23 +4675,38 @@ bool TButton::buttonBitmap5(SkBitmap* bm, int instance, bool ignFirst)
                 SkRect rect;
 
                 if (sr[instance].bitmaps[i].justification == ORI_SCALE_FIT)   // Scale to fit
-                    rect = SkRect::MakeXYWH(0, 0, wt, ht);
-                else                                        // Scale but maintain aspect ratio
+                    rect = SkRect::MakeXYWH(0, 0, wt - border_size * 2, ht - border_size * 2);
+                else                                        // Scale but keep aspect ratio
                 {
-                    double dbl = static_cast<double>(width) / static_cast<double>(height);
+                    double factor = 0.0;
 
-                    if (static_cast<int>(static_cast<double>(ht) * dbl) <= wt)
+                    if (wt > width)
                     {
-                        int w = static_cast<int>(static_cast<double>(ht) * dbl);
-                        rect = SkRect::MakeXYWH((wt - w) / 2, 0, w, ht);
+                        if (wt > ht)
+                            factor = static_cast<double>(wt + border_size * 2) / static_cast<double>(ht + border_size * 2);
+                        else
+                            factor = static_cast<double>(ht + border_size * 2) / static_cast<double>(wt + border_size * 2);
                     }
                     else
                     {
-                        int h = static_cast<int>(static_cast<double>(wt) * dbl);
-                        rect = SkRect::MakeXYWH(0, (ht - h) / 2, wt, h);
+                        if (wt > ht)
+                            factor = static_cast<double>(ht + border_size * 2) / static_cast<double>(wt + border_size * 2);
+                        else
+                            factor = static_cast<double>(wt + border_size * 2) / static_cast<double>(ht + border_size * 2);
                     }
+
+                    int w = static_cast<int>(static_cast<double>(width) * factor);
+                    int h = static_cast<int>(static_cast<double>(height) * factor);
+                    // Calculate center of image
+                    int x, y;
+                    x = (wt - w) / 2;
+                    y = (ht - h) / 2;
+                    // initialize the rectangle
+                    rect = SkRect::MakeXYWH(x, y, w, h);
                 }
 
+                border_size = 0;    // If scaled, we don't need to calculate the border, if any.
+                MSG_DEBUG("Using rect to scale: " << rect.x() << ", " << rect.y() << ", " << rect.width() << ", " << rect.height());
                 sk_sp<SkImage> im = SkImages::RasterFromBitmap(bmBm);
                 canvas.drawImageRect(im, rect, SkSamplingOptions(), &paint);
                 bmBm = scaled;
@@ -4710,28 +4716,28 @@ bool TButton::buttonBitmap5(SkBitmap* bm, int instance, bool ignFirst)
             }
 
             // Justify bitmap
-            SkRect rect = justifyBitmap5(instance, i, width, height);
+            SkRect rect = justifyBitmap5(instance, i, width, height, border_size);
             sk_sp<SkImage> im = SkImages::RasterFromBitmap(bmBm);
             can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
-            MSG_DEBUG("Bitmap " << sr[instance].bitmaps[i].fileName << " at index " << i << " was mapped.");
+            MSG_DEBUG("Bitmap " << sr[instance].bitmaps[i].fileName << " at index " << i << " was mapped to position " << rect.x() << ", " << rect.y() << ", " << rect.width() << ", " << rect.height());
         }
         else
         {
             MSG_WARNING("No or invalid bitmap!");
             return false;
         }
-
-        oldIndex = i;
     }
 
     return true;
 }
 
-SkRect TButton::justifyBitmap5(int instance, int index, int width, int height)
+SkRect TButton::justifyBitmap5(int instance, int index, int width, int height, int border_size)
 {
-    DECL_TRACER("TButton::justifyBitmap5(int instance, int index, int width, int height)");
+    DECL_TRACER("TButton::justifyBitmap5(int instance, int index, int width, int height, int border_size)");
 
     int x, y;
+    int bwt = wt - border_size;
+    int bht = ht - border_size;
 
     switch(sr[instance].bitmaps[index].justification)
     {
@@ -4741,23 +4747,23 @@ SkRect TButton::justifyBitmap5(int instance, int index, int width, int height)
         break;
 
         case ORI_BOTTOM_LEFT:
-            x = 0;
-            y = ht - height;
+            x = border_size;
+            y = bht - height;
         break;
 
         case ORI_BOTTOM_MIDDLE:
             x = (wt - width) / 2;
-            y = ht - height;
+            y = bht - height;
         break;
 
         case ORI_BOTTOM_RIGHT:
-            x = wt - width;
-            y = ht -height;
+            x = bwt - width;
+            y = bht -height;
         break;
 
         case ORI_CENTER_LEFT:
-            x = 0;
-            y = (ht - height) / 2;
+            x = border_size;
+            y = (bht - height) / 2;
         break;
 
         case ORI_CENTER_MIDDLE:
@@ -4766,31 +4772,31 @@ SkRect TButton::justifyBitmap5(int instance, int index, int width, int height)
         break;
 
         case ORI_CENTER_RIGHT:
-            x = wt - width;
+            x = bwt - width;
             y = (ht - height) / 2;
         break;
 
         case ORI_TOP_LEFT:
-            x = 0;
-            y = 0;
+            x = border_size;
+            y = border_size;
         break;
 
         case ORI_TOP_MIDDLE:
             x = (wt - width) / 2;
-            y = 0;
+            y = border_size;
         break;
 
         case ORI_TOP_RIGHT:
-            x = wt - width;
-            y = 0;
+            x = bwt - width;
+            y = border_size;
         break;
 
         default:
-            x = 0;
-            y = 0;
+            x = border_size;
+            y = border_size;
     }
 
-    return SkRect::MakeXYWH(x, y, width, height);
+    return SkRect::MakeXYWH(x + border_size, y + border_size, width, height);
 }
 
 string TButton::getFirstImageName(const SR_T& sr)
@@ -6946,7 +6952,7 @@ bool TButton::drawButton(int instance, bool show, bool subview)
                 return false;
             }
         }
-        else if (!TTPInit::isTP5() && mDOrder[i] == ORD_ELEM_ICON)
+        else if (mDOrder[i] == ORD_ELEM_ICON)
         {
             if (!buttonIcon(&imgButton, instance))
             {
@@ -8388,7 +8394,7 @@ POSITION_t TButton::calcImagePosition(int width, int height, CENTER_CODE cc, int
 
     switch (code)
     {
-        case 0: // absolute position
+        case ORI_ABSOLUT: // absolute position
             position.left = ix;
             position.top = iy;
 
@@ -8402,7 +8408,7 @@ POSITION_t TButton::calcImagePosition(int width, int height, CENTER_CODE cc, int
             position.height = rht;
         break;
 
-        case 1: // top, left
+        case ORI_TOP_LEFT: // top, left
             if (cc == SC_TEXT)
             {
                 position.left = border;
@@ -8413,7 +8419,7 @@ POSITION_t TButton::calcImagePosition(int width, int height, CENTER_CODE cc, int
             position.height = rht;
         break;
 
-        case 2: // center, top
+        case ORI_TOP_MIDDLE: // center, top
             if (cc == SC_TEXT)
                 position.top = border; // ht - ((ht - rht) / 2) - height * ln;
 
@@ -8422,7 +8428,7 @@ POSITION_t TButton::calcImagePosition(int width, int height, CENTER_CODE cc, int
             position.width = rwt;
         break;
 
-        case 3: // right, top
+        case ORI_TOP_RIGHT: // right, top
             position.left = wt - rwt;
 
             if (cc == SC_TEXT)
@@ -8435,7 +8441,7 @@ POSITION_t TButton::calcImagePosition(int width, int height, CENTER_CODE cc, int
             position.height = rht;
         break;
 
-        case 4: // left, middle
+        case ORI_CENTER_LEFT: // left, middle
             if (cc == SC_TEXT)
             {
                 position.left = border;
@@ -8448,7 +8454,7 @@ POSITION_t TButton::calcImagePosition(int width, int height, CENTER_CODE cc, int
             position.height = rht;
         break;
 
-        case 6: // right, middle
+        case ORI_CENTER_RIGHT: // right, middle
             position.left = wt - rwt;
 
             if (cc == SC_TEXT)
@@ -8463,7 +8469,7 @@ POSITION_t TButton::calcImagePosition(int width, int height, CENTER_CODE cc, int
             position.height = rht;
         break;
 
-        case 7: // left, bottom
+        case ORI_BOTTOM_LEFT: // left, bottom
             if (cc == SC_TEXT)
             {
                 position.left = border_size;
@@ -8476,7 +8482,7 @@ POSITION_t TButton::calcImagePosition(int width, int height, CENTER_CODE cc, int
             position.height = rht;
         break;
 
-        case 8: // center, bottom
+        case ORI_BOTTOM_MIDDLE: // center, bottom
             position.left = (wt - rwt) / 2;
 
             if (cc == SC_TEXT)
@@ -8488,7 +8494,7 @@ POSITION_t TButton::calcImagePosition(int width, int height, CENTER_CODE cc, int
             position.height = rht;
         break;
 
-        case 9: // right, bottom
+        case ORI_BOTTOM_RIGHT: // right, bottom
             position.left = wt - rwt;
 
             if (cc == SC_TEXT)
@@ -8500,7 +8506,7 @@ POSITION_t TButton::calcImagePosition(int width, int height, CENTER_CODE cc, int
                 position.top = ht - rht;
         break;
 
-        default: // center, middle
+        default: // center, middle, TP5: scale to fit and scale by keeping the aspect ratio
             position.left = (wt - rwt) / 2;
 
             if (cc == SC_TEXT)
