@@ -554,7 +554,10 @@ size_t TButton::initialize(TExpat *xml, size_t index)
                     while ((index = xml->getNextElementFromIndex(index, &fname, &content, &attrs)) != TExpat::npos)
                     {
                         if (fname.compare("fileName") == 0)
+                        {
                             bsr.bitmaps[bmIndex].fileName = content;
+                            bsr.bitmaps[bmIndex].dynamic = ((xml->getAttributeInt("dynamic", attrs) == 1) ? true : false);
+                        }
                         else if (fname.compare("justification") == 0)
                             bsr.bitmaps[bmIndex].justification = static_cast<ORIENTATION>(xml->convertElementToInt(content));
                         else if (fname.compare("offsetX") == 0)
@@ -1292,7 +1295,7 @@ bool TButton::makeElement(int instance)
         inst = instance;
     }
     else if (inst < 0 || static_cast<size_t>(inst) >= sr.size())
-        inst = mActInstance = 0;
+        inst = mActInstance = sr.size() - 1;
 
     int lastLevel = 0;
     int lastJoyX = 0;
@@ -4592,7 +4595,6 @@ bool TButton::buttonBitmap5(SkBitmap* bm, int instance, bool ignFirst)
         return true;
 
     bool first = true;
-    int border_size = getBorderSize(sr[instance].bs);
 
     for (int i = 0; i < MAX_IMAGES; ++i)
     {
@@ -4675,25 +4677,15 @@ bool TButton::buttonBitmap5(SkBitmap* bm, int instance, bool ignFirst)
                 SkRect rect;
 
                 if (sr[instance].bitmaps[i].justification == ORI_SCALE_FIT)   // Scale to fit
-                    rect = SkRect::MakeXYWH(0, 0, wt - border_size * 2, ht - border_size * 2);
+                    rect = SkRect::MakeXYWH(0, 0, wt, ht);
                 else                                        // Scale but keep aspect ratio
                 {
                     double factor = 0.0;
 
-                    if (wt > width)
-                    {
-                        if (wt > ht)
-                            factor = static_cast<double>(wt + border_size * 2) / static_cast<double>(ht + border_size * 2);
-                        else
-                            factor = static_cast<double>(ht + border_size * 2) / static_cast<double>(wt + border_size * 2);
-                    }
+                    if (width > height)
+                        factor = static_cast<double>(min(wt, width)) / static_cast<double>(max(wt, width));
                     else
-                    {
-                        if (wt > ht)
-                            factor = static_cast<double>(ht + border_size * 2) / static_cast<double>(wt + border_size * 2);
-                        else
-                            factor = static_cast<double>(wt + border_size * 2) / static_cast<double>(ht + border_size * 2);
-                    }
+                        factor = static_cast<double>(min(ht, height)) / static_cast<double>(max(ht, height));
 
                     int w = static_cast<int>(static_cast<double>(width) * factor);
                     int h = static_cast<int>(static_cast<double>(height) * factor);
@@ -4705,7 +4697,6 @@ bool TButton::buttonBitmap5(SkBitmap* bm, int instance, bool ignFirst)
                     rect = SkRect::MakeXYWH(x, y, w, h);
                 }
 
-                border_size = 0;    // If scaled, we don't need to calculate the border, if any.
                 MSG_DEBUG("Using rect to scale: " << rect.x() << ", " << rect.y() << ", " << rect.width() << ", " << rect.height());
                 sk_sp<SkImage> im = SkImages::RasterFromBitmap(bmBm);
                 canvas.drawImageRect(im, rect, SkSamplingOptions(), &paint);
@@ -4716,7 +4707,7 @@ bool TButton::buttonBitmap5(SkBitmap* bm, int instance, bool ignFirst)
             }
 
             // Justify bitmap
-            SkRect rect = justifyBitmap5(instance, i, width, height, border_size);
+            SkRect rect = justifyBitmap5(instance, i, width, height, 0);
             sk_sp<SkImage> im = SkImages::RasterFromBitmap(bmBm);
             can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
             MSG_DEBUG("Bitmap " << sr[instance].bitmaps[i].fileName << " at index " << i << " was mapped to position " << rect.x() << ", " << rect.y() << ", " << rect.width() << ", " << rect.height());
@@ -10940,6 +10931,12 @@ bool TButton::doClick(int x, int y, bool pressed)
                 else
                 {
                     MSG_WARNING("Unknown page flip command " << iter->pfType);
+                }
+
+                if (TError::isError())
+                {
+                    PRINT_LAST_ERROR();
+                    TError::clear();
                 }
             }
             else if (iter->action == BT_ACTION_LAUNCH)
