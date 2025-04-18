@@ -1385,7 +1385,7 @@ namespace Button
             bool buttonFill(SkBitmap *bm, int instance);
             bool buttonBitmap(SkBitmap *bm, int instance);
             bool buttonBitmap5(SkBitmap *bm, int instance, bool ignFirst=false);
-            bool buttonDynamic(SkBitmap *bm, int instance, bool show, bool *state=nullptr);
+            bool buttonDynamic(SkBitmap *bm, int instance, bool show, bool *state=nullptr, int index=-1);
             bool buttonIcon(SkBitmap *bm, int instance);
             bool buttonText(SkBitmap *bm, int instance);
             bool buttonBorder(SkBitmap *bm, int instance, TSystemDraw::LINE_TYPE_t lnType=TSystemDraw::LT_OFF);
@@ -1433,6 +1433,7 @@ namespace Button
             std::string getFirstImageName(const SR_T& sr);
             int getBitmapFirstIndex(const SR_T& sr);
             void moveBitmapToBm(SR_T& sr, int index=-1);
+            int getDynamicBmIndex(const SR_T& sr);
 
             BUTTONTYPE type;
             int bi{0};              // button ID
