@@ -1146,6 +1146,7 @@ bool TButton::createButtons(bool force)
     if (sr.empty())
         return true;
 
+    bool tp5 = TTPInit::isTP5();
     vector<SR_T>::iterator srIter;
 
     for (srIter = sr.begin(); srIter != sr.end(); ++srIter)
@@ -1155,115 +1156,88 @@ bool TButton::createButtons(bool force)
         if (srIter->sb > 0)
             continue;
 
-        if (!TTPInit::isTP5())
+        bool bmExistMi = false;
+        bool bmExistBm = false;
+        bool reload = false;
+
+        if (!srIter->mi.empty())
         {
-            bool bmExistMi = false;
-            bool bmExistBm = false;
-            bool reload = false;
-
-            if (!srIter->mi.empty())
+            if ((bmExistMi = TImgCache::existBitmap(srIter->mi, _BMTYPE_CHAMELEON)) == false)
             {
-                if ((bmExistMi = TImgCache::existBitmap(srIter->mi, _BMTYPE_CHAMELEON)) == false)
-                {
-                    mChanged = true;
-                    reload = true;
-                }
-            }
-
-            if (!srIter->bm.empty())
-            {
-                if ((bmExistBm = TImgCache::existBitmap(srIter->bm, _BMTYPE_BITMAP)) == false)
-                {
-                    mChanged = true;
-                    reload = true;
-                }
-            }
-
-            if (!force)
-            {
-                if (!reload)   // If the image already exist, do not load it again.
-                    continue;
-            }
-
-            if (!bmExistMi && !srIter->mi.empty())        // Do we have a chameleon image?
-            {
-                sk_sp<SkData> image;
-                SkBitmap bm;
-
-                if (!(image = readImage(srIter->mi)))
-                    return false;
-
-                DecodeDataToBitmap(image, &bm);
-
-                if (bm.empty())
-                {
-                    MSG_WARNING("Could not create a picture for element " << number << " on button " << bi << " (" << na << ")");
-                    return false;
-                }
-
-                TImgCache::addImage(srIter->mi, bm, _BMTYPE_CHAMELEON);
-                srIter->mi_width = bm.info().width();
-                srIter->mi_height = bm.info().height();
                 mChanged = true;
-            }
-
-            if (!bmExistBm && !srIter->bm.empty())        // Do we have a bitmap?
-            {
-                sk_sp<SkData> image;
-                SkBitmap bm;
-
-                if (!(image = readImage(srIter->bm)))
-                    return false;
-
-                DecodeDataToBitmap(image, &bm);
-
-                if (bm.empty())
-                {
-                    MSG_WARNING("Could not create a picture for element " << number << " on button " << bi << " (" << na << ")");
-                    return false;
-                }
-
-                TImgCache::addImage(srIter->bm, bm, _BMTYPE_BITMAP);
-                srIter->bm_width = bm.info().width();
-                srIter->bm_height = bm.info().height();
-                mChanged = true;
+                reload = true;
             }
         }
-        else
+
+        if (!tp5 && !srIter->bm.empty())
         {
-            if (haveImage(*srIter))
+            if ((bmExistBm = TImgCache::existBitmap(srIter->bm, _BMTYPE_BITMAP)) == false)
             {
-                sk_sp<SkData> image;
-                SkBitmap bm;
-
-                for (int i = 0; i < MAX_IMAGES; ++i)
-                {
-                    if (srIter->bitmaps[i].fileName.empty())
-                        continue;
-
-                    if (force || !TImgCache::existBitmap(srIter->bitmaps[i].fileName, _BMTYPE_BITMAP))
-                    {
-                        if (!(image = readImage(srIter->bitmaps[i].fileName)))
-                        {
-                            MSG_WARNING("Error reading image " << srIter->bitmaps[i].fileName << "!");
-                            continue;
-                        }
-
-                        DecodeDataToBitmap(image, &bm);
-
-                        if (bm.empty())
-                        {
-                            MSG_WARNING("Could not create a picture for element " << number << " on button " << bi << " (" << na << ")");
-                            continue;
-                        }
-
-                        TImgCache::addImage(srIter->bitmaps[i].fileName, bm, _BMTYPE_BITMAP);
-                        srIter->bitmaps[i].width = bm.info().width();
-                        srIter->bitmaps[i].height = bm.info().height();
-                        mChanged = true;
-                    }
-                }
+                mChanged = true;
+                reload = true;
             }
+        }
+        else if (tp5 && haveImage(*srIter))
+        {
+            int index = getBitmapFirstIndex(*srIter);
+
+            if (index >= 0 && (bmExistBm = TImgCache::existBitmap(srIter->bitmaps[index].fileName, _BMTYPE_BITMAP)) == false)
+            {
+                mChanged = true;
+                reload = true;
+            }
+
+            moveBitmapToBm(*srIter, index);
+        }
+
+        if (!force)
+        {
+            if (!reload)   // If the image already exist, do not load it again.
+                continue;
+        }
+
+        if (!bmExistMi && !srIter->mi.empty())        // Do we have a chameleon image?
+        {
+            sk_sp<SkData> image;
+            SkBitmap bm;
+
+            if (!(image = readImage(srIter->mi)))
+                return false;
+
+            DecodeDataToBitmap(image, &bm);
+
+            if (bm.empty())
+            {
+                MSG_WARNING("Could not create a picture for element " << number << " on button " << bi << " (" << na << ")");
+                return false;
+            }
+
+            TImgCache::addImage(srIter->mi, bm, _BMTYPE_CHAMELEON);
+            srIter->mi_width = bm.info().width();
+            srIter->mi_height = bm.info().height();
+            mChanged = true;
+        }
+
+        if (!bmExistBm && !srIter->bm.empty() && !srIter->dynamic)        // Do we have a bitmap?
+        {
+            sk_sp<SkData> image;
+            SkBitmap bm;
+
+            if (!(image = readImage(srIter->bm)))
+                return false;
+
+            DecodeDataToBitmap(image, &bm);
+
+            if (bm.empty())
+            {
+                MSG_WARNING("Could not create a picture for element " << number << " on button " << bi << " (" << na << ")");
+                return false;
+            }
+
+            TImgCache::addImage(srIter->bm, bm, _BMTYPE_BITMAP);
+            srIter->bm_width = bm.info().width();
+            srIter->bm_height = bm.info().height();
+            mChanged = true;
         }
     }
 
@@ -4827,6 +4801,7 @@ void TButton::moveBitmapToBm(SR_T& sr, int index)
             if (!sr.bitmaps[i].fileName.empty())
             {
                 sr.bm = sr.bitmaps[i].fileName;
+                sr.dynamic = sr.bitmaps[i].dynamic;
                 sr.jb = sr.bitmaps[i].justification;
                 sr.bx = sr.bitmaps[i].offsetX;
                 sr.by = sr.bitmaps[i].offsetY;
@@ -4839,6 +4814,7 @@ void TButton::moveBitmapToBm(SR_T& sr, int index)
     else if (index < MAX_IMAGES)
     {
         sr.bm = sr.bitmaps[index].fileName;
+        sr.dynamic = sr.bitmaps[index].dynamic;
         sr.jb = sr.bitmaps[index].justification;
         sr.bx = sr.bitmaps[index].offsetX;
         sr.by = sr.bitmaps[index].offsetY;
@@ -4847,9 +4823,25 @@ void TButton::moveBitmapToBm(SR_T& sr, int index)
     }
 }
 
-bool TButton::buttonDynamic(SkBitmap* bm, int instance, bool show, bool *state)
+int TButton::getDynamicBmIndex(const SR_T& sr)
 {
-    DECL_TRACER("TButton::buttonDynamic(SkBitmap* bm, int instance, bool show, bool *state)");
+    DECL_TRACER("TButton::getDynamicBmIndex(const SR_T& sr)");
+
+    for (int i = 0; i < MAX_IMAGES; ++i)
+    {
+        if (sr.bitmaps[i].fileName.empty())
+            continue;
+
+        if (sr.bitmaps[i].dynamic)
+            return i;
+    }
+
+    return -1;
+}
+
+bool TButton::buttonDynamic(SkBitmap* bm, int instance, bool show, bool *state, int index)
+{
+    DECL_TRACER("TButton::buttonDynamic(SkBitmap* bm, int instance, bool show, bool *state, int index)");
 
     if (prg_stopped)
         return false;
@@ -4866,10 +4858,18 @@ bool TButton::buttonDynamic(SkBitmap* bm, int instance, bool show, bool *state)
         return false;
     }
 
-    if (!sr[instance].dynamic)
+    bool tp5 = TTPInit::isTP5();
+
+    if (tp5 && index < 0)
+    {
+        MSG_WARNING("Button " << bi << ": \"" << na << "\" is not a dynamic image!");
+        return true;
+    }
+
+    if ((!tp5 && !sr[instance].dynamic) || (tp5 && index >= 0 && !sr[instance].bitmaps[index].dynamic))
     {
         MSG_WARNING("Button " << bi << ": \"" << na << "\" is not for remote image!");
-        return false;
+        return true;
     }
 
     if (!visible)
@@ -4887,11 +4887,24 @@ bool TButton::buttonDynamic(SkBitmap* bm, int instance, bool show, bool *state)
         return false;
     }
 
-    RESOURCE_T resource = gPrjResources->findResource((int)idx, sr[instance].bm);
+    RESOURCE_T resource;
+
+    if (tp5)
+        resource = gPrjResources->findResource(static_cast<int>(idx), sr[instance].bitmaps[index].fileName);
+    else
+        resource = gPrjResources->findResource(static_cast<int>(idx), sr[instance].bm);
 
     if (resource.protocol.empty())
     {
-        MSG_WARNING("Resource " << sr[instance].bm << " not found!");
+        if (tp5)
+        {
+            MSG_WARNING("Resource " << sr[instance].bitmaps[index].fileName << " not found!");
+        }
+        else
+        {
+            MSG_WARNING("Resource " << sr[instance].bm << " not found!");
+        }
+
         return true;
     }
 
@@ -6868,6 +6881,7 @@ bool TButton::drawButton(int instance, bool show, bool subview)
     }
 
     TError::clear();
+    bool tp5 = TTPInit::isTP5();
     MSG_DEBUG("Drawing button " << bi << ", \"" << na << "\" at instance " << instance);
 
     if (!mChanged && !mLastImage.empty())
@@ -6928,14 +6942,19 @@ bool TButton::drawButton(int instance, bool show, bool subview)
         }
         else if (mDOrder[i] == ORD_ELEM_BITMAP)
         {
-            if (!sr[instance].dynamic && !buttonBitmap(&imgButton, instance))
+            int dynIndex = -1;
+
+            if (tp5)
+                dynIndex = getDynamicBmIndex(sr[instance]);
+
+            if (!sr[instance].dynamic && dynIndex < 0 && !buttonBitmap(&imgButton, instance))
             {
 #if TESTMODE == 1
                 setScreenDone();
 #endif
                 return false;
             }
-            else if (sr[instance].dynamic && !buttonDynamic(&imgButton, instance, show, &dynState))
+            else if ((sr[instance].dynamic || dynIndex >= 0) && !buttonDynamic(&imgButton, instance, show, &dynState, dynIndex))
             {
 #if TESTMODE == 1
                 setScreenDone();
