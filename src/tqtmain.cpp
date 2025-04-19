@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2024 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -5222,7 +5222,6 @@ void MainWindow::setSizeMainWindow(int width, int height)
 
 void MainWindow::playVideo(ulong handle, ulong parent, int left, int top, int width, int height, const string& url, const string& user, const string& pw)
 {
-//    TLOCKER(draw_mutex);
     DECL_TRACER("MainWindow::playVideo(ulong handle, const string& url, const string& user, const string& pw))");
 
     TObject::OBJECT_t *obj = findObject(handle);

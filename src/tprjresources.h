@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,11 +27,11 @@
 typedef struct RESOURCE_T
 {
     std::string name;           // Name of resource
-    std::string protocol;       // With TP4 this is either HTTP of FTP
+    std::string protocol;       // With TP4 this is either HTTP of FTP. TP5: HTTP of HTTPS
     std::string user;           // Optional: User name
     std::string password;       // Optional: Password (usualy encrypted)
     bool encrypted{false};      // If a password exist and this is TRUE the password is encrypted
-    std::string host;           // The name of the the machine where the source is located (<host>:<port>)
+    std::string host;           // The name of the machine where the source is located (<host>:<port>)
     std::string path;           // Optional: The path of the URL
     std::string file;           // The file or path and file of the URL
     int refresh{0};             // if > 0 then it defines the time in seconds to reread the source
