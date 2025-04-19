@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021, 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2021 to 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -332,7 +332,7 @@ string THTTPClient::makeURL(const string& scheme, const string& host, int port, 
     string url = scheme + "://" + host;
 
     if (port > 0)
-        url += std::to_string(port);
+        url += ":" + std::to_string(port);
 
     url += "/" + path;
     MSG_DEBUG("URL: " << url);
