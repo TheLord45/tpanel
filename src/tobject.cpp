@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -148,13 +148,21 @@ void TObject::dropContent(OBJECT_t* obj, bool lock)
             break;
 
             case OBJ_VIDEO:
-                if (obj->object.vwidget)
+                if (obj->vwidget)
                 {
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
                     if (obj->player)
                         delete obj->player;
 #endif
-                    obj->object.vwidget = nullptr;
+                    if (obj->player &&
+                        (obj->player->playbackState() == QMediaPlayer::PlayingState ||
+                         obj->player->playbackState() == QMediaPlayer::PausedState))
+                    {
+                        obj->player->stop();
+                        MSG_DEBUG("Player was stopped!")
+                    }
+
+                    obj->vwidget = nullptr;
                     obj->player = nullptr;
                 }
 
@@ -515,6 +523,12 @@ void TObject::invalidateAllObjects()
     {
         iter->second.remove = false;
         iter->second.invalid = true;
+
+        if (iter->second.type == OBJ_VIDEO && iter->second.player)
+        {
+            iter->second.player->stop();
+            iter->second.player->setSource(QUrl());
+        }
     }
 }
 
@@ -532,6 +546,12 @@ void TObject::invalidateObject(ulong handle)
     {
         iter->second.remove = false;
         iter->second.invalid = true;
+
+        if (iter->second.type == OBJ_VIDEO && iter->second.player)
+        {
+            iter->second.player->stop();
+            iter->second.player->setSource(QUrl());
+        }
     }
 }
 
@@ -543,7 +563,7 @@ void TObject::invalidateAllSubObjects(ulong handle)
         return;
 
     TLOCKER(mutex_obj);
-
+    MSG_DEBUG("Invalidating (sub)page " << handleToString(handle) << "...");
     map<ulong, OBJECT_t>::iterator iter;
     bool first = true;
 
@@ -570,6 +590,12 @@ void TObject::invalidateAllSubObjects(ulong handle)
             {
                 iter->second.connected = false;
                 mMainWindow->disconnectList(iter->second.object.list);
+            }
+            else if (iter->second.type == OBJ_VIDEO && iter->second.player)
+            {
+                iter->second.player->stop();
+                iter->second.player->setSource(QUrl());
+                MSG_DEBUG("Player was stopped.");
             }
         }
     }

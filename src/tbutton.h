@@ -1434,6 +1434,7 @@ namespace Button
             int getBitmapFirstIndex(const SR_T& sr);
             void moveBitmapToBm(SR_T& sr, int index=-1);
             int getDynamicBmIndex(const SR_T& sr);
+            bool startVideo(const SR_T& sr);
 
             BUTTONTYPE type;
             int bi{0};              // button ID

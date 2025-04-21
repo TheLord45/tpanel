@@ -2583,8 +2583,8 @@ void MainWindow::pageFinished(ulong handle)
                         break;
 
                         case OBJ_VIDEO:
-                            if (obj->object.vwidget && obj->object.vwidget->isHidden())
-                                obj->object.vwidget->show();
+                            if (obj->vwidget && obj->vwidget->isHidden())
+                                obj->vwidget->show();
                         break;
 
                         default:
@@ -5151,7 +5151,7 @@ void MainWindow::dropSubPage(ulong handle, ulong parent)
         return;
     }
 
-    QWidget *w = par->object.widget->findChild<QWidget *>(QString("Subpage_%1").arg(handleToString(handle).c_str()));
+    QWidget *w = par->object.widget->findChild<QWidget *>(QString("Subpage_%1").arg(QString::fromStdString(handleToString(handle))));
 
     if (!w)
     {
@@ -5246,8 +5246,9 @@ void MainWindow::playVideo(ulong handle, ulong parent, int left, int top, int wi
         nobj.left = scale(left);
         nobj.top = scale(top);
 
-        nobj.object.vwidget = new QVideoWidget(par->object.widget);
-        nobj.object.vwidget->installEventFilter(this);
+        nobj.vwidget = new QVideoWidget(par->object.widget);
+        nobj.vwidget->installEventFilter(this);
+        nobj.vwidget->setGeometry(nobj.left, nobj.top, nobj.width, nobj.height);
 
         if (!addObject(nobj))
         {
@@ -5257,32 +5258,46 @@ void MainWindow::playVideo(ulong handle, ulong parent, int left, int top, int wi
 
         obj = findObject(handle);
     }
-    else
+    else if (obj->type != OBJ_VIDEO)
+    {
+        obj->type = OBJ_VIDEO;
+
+        if (!obj->vwidget)
+        {
+            obj->vwidget = new QVideoWidget(par->object.widget);
+            obj->vwidget->installEventFilter(this);
+            obj->vwidget->setGeometry(obj->left, obj->top, obj->width, obj->height);
+        }
+
         MSG_DEBUG("Object " << handleToString(handle) << " of type " << objectToString(obj->type) << " found!");
+    }
 
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QMediaPlaylist *playlist = new QMediaPlaylist;
 #endif
-    QUrl qurl(url.c_str());
+    QUrl qurl(QString::fromStdString(url));
 
     if (!user.empty())
-        qurl.setUserName(user.c_str());
+        qurl.setUserName(QString::fromStdString(user));
 
     if (!pw.empty())
-        qurl.setPassword(pw.c_str());
+        qurl.setPassword(QString::fromStdString(pw));
 
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     playlist->addMedia(qurl);
 #endif
-    obj->player = new QMediaPlayer;
+    if (!obj->player)
+    {
+        obj->player = new QMediaPlayer;
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    obj->player->setPlaylist(playlist);
+        obj->player->setPlaylist(playlist);
 #else
-    obj->player->setSource(qurl);
+        obj->player->setSource(qurl);
 #endif
-    obj->player->setVideoOutput(obj->object.vwidget);
+        obj->player->setVideoOutput(obj->vwidget);
+    }
 
-    obj->object.vwidget->show();
+    obj->vwidget->show();
     obj->player->play();
 }
 
