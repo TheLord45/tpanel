@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -58,8 +58,8 @@ class TObject
 
         typedef union _OBJ
         {
-            QVideoWidget *vwidget{nullptr}; // A video window
-            QLabel *label;                  // For buttons
+//            QVideoWidget *vwidget{nullptr}; // A video window
+            QLabel *label{nullptr};         // For buttons
             TQMarquee *marquee;             // For marquee lines
             QWidget *widget;                // For subpage
             TQEditLine *plaintext;          // For text input
@@ -73,6 +73,7 @@ class TObject
             OBJECT_TYPE type{OBJ_NONE};
             ulong handle{0};
             _OBJ object;
+            QVideoWidget *vwidget{nullptr}; // Pointer to a video widget. Used to play videos
             QMediaPlayer *player{nullptr};  // Pointer to video player if this is a video button
             int left{0};
             int top{0};

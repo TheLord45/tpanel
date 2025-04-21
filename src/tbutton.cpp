@@ -4839,6 +4839,46 @@ int TButton::getDynamicBmIndex(const SR_T& sr)
     return -1;
 }
 
+bool TButton::startVideo(const SR_T& sr)
+{
+    DECL_TRACER("TButton::startVideo(const SR_T& sr)");
+
+    int index = getDynamicBmIndex(sr);
+    RESOURCE_T resource;
+    size_t idx = 0;
+
+    if ((idx = gPrjResources->getResourceIndex("image")) == TPrjResources::npos)
+    {
+        MSG_ERROR("There exists no image resource!");
+        return false;
+    }
+
+    resource = gPrjResources->findResource(static_cast<int>(idx), sr.bitmaps[index].fileName);
+    string path = resource.path;
+
+    if (!resource.file.empty())
+        path += "/" + resource.file;
+
+    string url = THTTPClient::makeURLs(toLower(resource.protocol), resource.host, 0, path);
+
+    if (url.empty())
+    {
+        MSG_DEBUG("No URL, no bitmap!");
+        return true;    // We have no image but the button still exists
+    }
+
+    ulong parent = mHandle & 0xffff0000;
+
+    if (_playVideo)
+        _playVideo(mHandle, parent, lt, tp, wt, ht, url, resource.user, resource.password);
+    else
+    {
+        MSG_WARNING("No callback for playing a video registered!");
+    }
+
+    return true;
+}
+
 bool TButton::buttonDynamic(SkBitmap* bm, int instance, bool show, bool *state, int index, bool *video)
 {
     DECL_TRACER("TButton::buttonDynamic(SkBitmap* bm, int instance, bool show, bool *state, int index, bool *video)");
@@ -7097,40 +7137,7 @@ bool TButton::drawButton(int instance, bool show, bool subview)
             MSG_DEBUG("Button type: " << buttonTypeToString());
             MSG_DEBUG("TP5: " << (tp5 ? "TRUE" : "FALSE") << ", video: " << (video ? "TRUE" : "FALSE"));
 
-            if (tp5 && !prg_stopped && gPrjResources && video)
-            {
-                int index = getDynamicBmIndex(sr[instance]);
-                RESOURCE_T resource;
-                size_t idx = 0;
-
-                if ((idx = gPrjResources->getResourceIndex("image")) == TPrjResources::npos)
-                {
-                    MSG_ERROR("There exists no image resource!");
-                    return false;
-                }
-
-                resource = gPrjResources->findResource(static_cast<int>(idx), sr[instance].bitmaps[index].fileName);
-                string path = resource.path;
-
-                if (!resource.file.empty())
-                    path += "/" + resource.file;
-
-                string url = THTTPClient::makeURLs(toLower(resource.protocol), resource.host, 0, path);
-
-                if (url.empty())
-                {
-                    MSG_DEBUG("No URL, no bitmap!");
-                    return true;    // We have no image but the button still exists
-                }
-
-                if (_playVideo)
-                    _playVideo(mHandle, parent, lt, tp, wt, ht, url, resource.user, resource.password);
-                else
-                {
-                    MSG_WARNING("No callback for playing a video registered!");
-                }
-            }
-            else if (type != SUBPAGE_VIEW && !mSubViewPart)
+            if (type != SUBPAGE_VIEW && !mSubViewPart)
             {
                 TBitmap image((unsigned char *)imgButton.getPixels(), imgButton.info().width(), imgButton.info().height());
                 _displayButton(mHandle, parent, image, rwidth, rheight, rleft, rtop, isPassThrough(), sr[mActInstance].md, sr[mActInstance].mr);
@@ -7139,6 +7146,12 @@ bool TButton::drawButton(int instance, bool show, bool subview)
                 {
                     if (gPageManager && gPageManager->getSetMarqueeText())
                         gPageManager->getSetMarqueeText()(this);
+                }
+
+                if (!prg_stopped && gPrjResources && video)
+                {
+                    if (!startVideo(sr[instance]))
+                        return false;
                 }
             }
             else if (type != SUBPAGE_VIEW && mSubViewPart)
