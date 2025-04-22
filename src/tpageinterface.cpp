@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022, 2023 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2022 to 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@
 #include "tresources.h"
 #include "tpagemanager.h"
 #include "tintborder.h"
+#include "timgcache.h"
 #include "terror.h"
 
 #if __cplusplus < 201402L
@@ -53,6 +54,8 @@ namespace fs = std::filesystem;
 
 using std::string;
 using std::vector;
+using std::min;
+using std::max;
 
 bool TPageInterface::drawText(PAGE_T& pinfo, SkBitmap *img)
 {
@@ -1147,6 +1150,224 @@ bool TPageInterface::haveImage(const Button::SR_T& sr)
     }
 
     return false;
+}
+
+/**
+ * @brief G5: Put all images together
+ * The method takes all defined images, scales them and put one over the other.
+ * The result could be combinated with a chameleon image, if there is one.
+ *
+ * @param sr        The section containing the image credentials
+ * @oaram ignFirst  Default: FALSE; If TRUE the first image is ignored.
+ * @return TRUE on success
+ */
+bool TPageInterface::tp5Image(SkBitmap *bm, Button::SR_T& sr, int wt, int ht, bool ignFirst)
+{
+    DECL_TRACER("TPageInterface::tp5Image(SkBitmap *bm, Button::SR_T& sr, int wt, int ht, bool ignFirst)");
+
+    if (!bm)
+    {
+        MSG_ERROR("Have no valid image pointer!");
+        return false;
+    }
+
+    if (!haveImage(sr))
+        return true;
+
+    bool first = true;
+
+    for (int i = 0; i < MAX_IMAGES; ++i)
+    {
+        if (sr.bitmaps[i].fileName.empty())
+            continue;
+
+        if (ignFirst && first)
+        {
+            first = false;
+            continue;
+        }
+
+        SkBitmap bmBm;
+        int width, height;
+
+        if (!TImgCache::getBitmap(sr.bitmaps[i].fileName, &bmBm, _BMTYPE_BITMAP, &width, &height))
+        {
+            sk_sp<SkData> data = readImage(sr.bitmaps[i].fileName);
+            bool loaded = false;
+
+            if (data)
+            {
+                DecodeDataToBitmap(data, &bmBm);
+
+                if (!bmBm.empty())
+                {
+                    TImgCache::addImage(sr.bitmaps[i].fileName, bmBm, _BMTYPE_BITMAP);
+                    loaded = true;
+                }
+            }
+
+            if (!loaded)
+            {
+                MSG_ERROR("Missing image " << sr.bitmaps[i].fileName << "!");
+                SET_ERROR();
+                return false;
+            }
+
+            sr.bitmaps[i].index = i;
+            sr.bitmaps[i].width = bmBm.info().width();
+            sr.bitmaps[i].height = bmBm.info().height();
+        }
+
+        if (!bmBm.empty())
+        {
+            width = bmBm.info().width();
+            height = bmBm.info().height();
+            // If the target image was not allocated, we do this now
+            if (bm->empty())
+            {
+                if (!allocPixels(wt, ht, bm))
+                {
+                    SET_ERROR_MSG("Allocation for image failed!");
+                    return false;
+                }
+            }
+            // Map bitmap
+            SkPaint paint;
+            paint.setBlendMode(SkBlendMode::kSrcOver);
+            SkCanvas can(*bm, SkSurfaceProps());
+            // Scale bitmap
+            if (sr.bitmaps[i].justification == Button::ORI_SCALE_FIT || sr.bitmaps[i].justification == Button::ORI_SCALE_ASPECT)
+            {
+                SkBitmap scaled;
+                MSG_DEBUG("Scaling image " << sr.bitmaps[i].fileName << " ...");
+                MSG_DEBUG("Size of bitmap: " << width << "x" << height);
+                MSG_DEBUG("Size of button: " << wt << "x" << ht);
+                MSG_DEBUG("Will scale to " << (sr.bitmaps[i].justification == Button::ORI_SCALE_FIT ? "scale to fit" : "keep aspect"));
+
+                if (!allocPixels(wt, ht, &scaled))
+                {
+                    MSG_ERROR("Error allocating space for bitmap " << sr.bitmaps[i].fileName << "!");
+                    return false;
+                }
+
+                SkIRect r;
+                r.setSize(scaled.info().dimensions());      // Set the dimensions
+                scaled.erase(SK_ColorTRANSPARENT, r);       // Initialize all pixels to transparent
+                SkCanvas canvas(scaled, SkSurfaceProps());  // Create a canvas
+                SkRect rect;
+
+                if (sr.bitmaps[i].justification == Button::ORI_SCALE_FIT)   // Scale to fit
+                    rect = SkRect::MakeXYWH(0, 0, wt, ht);
+                else                                        // Scale but keep aspect ratio
+                {
+                    double factor = 0.0;
+
+                    if (width > height)
+                        factor = static_cast<double>(min(wt, width)) / static_cast<double>(max(wt, width));
+                    else
+                        factor = static_cast<double>(min(ht, height)) / static_cast<double>(max(ht, height));
+
+                    int w = static_cast<int>(static_cast<double>(width) * factor);
+                    int h = static_cast<int>(static_cast<double>(height) * factor);
+                    // Calculate center of image
+                    int x, y;
+                    x = (wt - w) / 2;
+                    y = (ht - h) / 2;
+                    // initialize the rectangle
+                    rect = SkRect::MakeXYWH(x, y, w, h);
+                }
+
+                MSG_DEBUG("Using rect to scale: " << rect.x() << ", " << rect.y() << ", " << rect.width() << ", " << rect.height());
+                sk_sp<SkImage> im = SkImages::RasterFromBitmap(bmBm);
+                canvas.drawImageRect(im, rect, SkSamplingOptions(), &paint);
+                bmBm = scaled;
+                width = bmBm.info().width();
+                height = bmBm.info().height();
+                MSG_DEBUG("Scaled image " << sr.bitmaps[i].fileName << " has dimensions " << width << " x " << height);
+            }
+
+            // Justify bitmap
+            SkRect rect = justifyBitmap5(sr, wt, ht, i, width, height, 0);
+            sk_sp<SkImage> im = SkImages::RasterFromBitmap(bmBm);
+            can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
+            MSG_DEBUG("Bitmap " << sr.bitmaps[i].fileName << " at index " << i << " was mapped to position " << rect.x() << ", " << rect.y() << ", " << rect.width() << ", " << rect.height());
+        }
+        else
+        {
+            MSG_WARNING("No or invalid bitmap!");
+            return false;
+        }
+    }
+
+    return true;
+}
+
+SkRect TPageInterface::justifyBitmap5(Button::SR_T& sr, int wt, int ht, int index, int width, int height, int border_size)
+{
+    DECL_TRACER("TPageInterface::justifyBitmap5(Button::SR_T& sr, int wt, int ht, int index, int width, int height, int border_size)");
+
+    int x, y;
+    int bwt = wt - border_size;
+    int bht = ht - border_size;
+
+    switch(sr.bitmaps[index].justification)
+    {
+        case Button::ORI_ABSOLUT:
+            x = sr.bitmaps[index].offsetX;
+            y = sr.bitmaps[index].offsetY;
+            break;
+
+        case Button::ORI_BOTTOM_LEFT:
+            x = border_size;
+            y = bht - height;
+            break;
+
+        case Button::ORI_BOTTOM_MIDDLE:
+            x = (wt - width) / 2;
+            y = bht - height;
+            break;
+
+        case Button::ORI_BOTTOM_RIGHT:
+            x = bwt - width;
+            y = bht -height;
+            break;
+
+        case Button::ORI_CENTER_LEFT:
+            x = border_size;
+            y = (bht - height) / 2;
+            break;
+
+        case Button::ORI_CENTER_MIDDLE:
+            x = (wt - width) / 2;
+            y = (ht - height) / 2;
+            break;
+
+        case Button::ORI_CENTER_RIGHT:
+            x = bwt - width;
+            y = (ht - height) / 2;
+            break;
+
+        case Button::ORI_TOP_LEFT:
+            x = border_size;
+            y = border_size;
+            break;
+
+        case Button::ORI_TOP_MIDDLE:
+            x = (wt - width) / 2;
+            y = border_size;
+            break;
+
+        case Button::ORI_TOP_RIGHT:
+            x = bwt - width;
+            y = border_size;
+            break;
+
+        default:
+            x = border_size;
+            y = border_size;
+    }
+
+    return SkRect::MakeXYWH(x + border_size, y + border_size, width, height);
 }
 
 /**

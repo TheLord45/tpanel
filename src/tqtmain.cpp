@@ -5283,6 +5283,7 @@ void MainWindow::playVideo(ulong handle, ulong parent, int left, int top, int wi
     if (!pw.empty())
         qurl.setPassword(QString::fromStdString(pw));
 
+    obj->videoUrl = qurl;
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     playlist->addMedia(qurl);
 #endif

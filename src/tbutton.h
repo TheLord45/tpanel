@@ -257,11 +257,13 @@ namespace Button
         int mi_width{0};        // Width of image
         int mi_height{0};       // Height of image
         std::string cb;         // Border color
+        std::string ft;         // TP5: Fill type for gradient colors.
         std::string cf;         // Fill color
         std::string ct;         // Text Color
         std::string ec;         // Text effect color
         std::string bm;         // bitmap file name
         BITMAPS_t bitmaps[5];   // G5 table of bitmaps
+        std::vector<std::string> gradientColors;  // G5 optional gradient colors
         std::string sd;         // Sound file to play
         int bm_width{0};        // Width of image
         int bm_height{0};       // Height of image

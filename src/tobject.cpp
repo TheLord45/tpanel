@@ -633,6 +633,11 @@ bool TObject::enableObject(ulong handle)
             mMainWindow->reconnectList(iter->second.object.list);
             iter->second.connected = true;
         }
+        else if (iter->second.type == OBJ_VIDEO)
+        {
+            iter->second.player->setSource(iter->second.videoUrl);
+            iter->second.player->play();
+        }
 
         return true;                         // We can savely return here because a handle is unique
     }

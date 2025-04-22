@@ -4061,6 +4061,34 @@ void TPageManager::showSubPage(const string& name)
         }
 
         pg->show();
+        // If the page requires other pages to show or hide we do this here.
+        // The loop is calling this method recursively.
+        if (TTPInit::isTP5())
+        {
+            PAGE_T page = pg->getSubPage();
+
+            if (!page.eventShow.empty())
+            {
+                vector<EVENT_t>::iterator iter;
+
+                for (iter = page.eventShow.begin(); iter != page.eventShow.end(); ++iter)
+                {
+                    if (iter->evType == EV_PGFLIP)
+                        showSubPage(iter->name);
+                }
+            }
+
+            if (!page.eventHide.empty())
+            {
+                vector<EVENT_t>::iterator iter;
+
+                for (iter = page.eventHide.begin(); iter != page.eventHide.end(); ++iter)
+                {
+                    if (iter->evType == EV_PGFLIP)
+                        hideSubPage(iter->name);
+                }
+            }
+        }
     }
 }
 

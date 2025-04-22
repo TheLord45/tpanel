@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022, 2023 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2022 to 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -161,6 +161,25 @@ typedef struct ANIMATION_t
     int hideTime{0};
 }ANIMATION_t;
 
+// The following enum is for TP5 only
+typedef enum
+{
+    EV_NONE,                        // Invalid event
+    EV_PGFLIP,                      // Do a page flip
+    EV_COMMAND,                     // Execute a command (can be a self feed command)
+    EV_LAUNCH                       // Launch an external application.
+}EVENT_TYPE_t;
+
+typedef struct EVENT_t
+{
+    EVENT_TYPE_t evType{EV_NONE};
+    int item{0};                    // The position; Lines are sorted by this number
+    std::string evAction;           // The action to take on type EV_PGFLIP (sShow, ...).
+    std::string name;               // The page/program to take the action on if type is EV_PGFLIP or EV_LAUNCH
+    int ID{0};                      // The ID of an application to launch
+    int port{0};                    // The port number if the type is EV_COMMAND.
+}EVENT_t;
+
 typedef struct PAGE_T
 {
     std::string popupType;                  // The type of the popup (popup only)
@@ -187,6 +206,8 @@ typedef struct PAGE_T
     int hideY{0};                           // End of hide effect position (by default "top"); (popup only)
     int resetPos{0};                        // If this is 1 the popup is reset to it's original position and size on open
     std::vector<Button::SR_T> sr;           // Page/Popup description
+    std::vector<EVENT_t> eventShow;         // TP5: Events to start showing
+    std::vector<EVENT_t> eventHide;         // TP5: Events to start hiding
 }PAGE_T;
 
 /**
@@ -234,6 +255,8 @@ class TPageInterface : public TSystemButton
         int getSelectedRow(ulong handle);
         std::string getSelectedItem(ulong handle);
         bool haveImage(const Button::SR_T& sr);
+        bool tp5Image(SkBitmap *bm, Button::SR_T& sr, int wt, int ht, bool ignFirst=false);
+        SkRect justifyBitmap5(Button::SR_T& sr, int wt, int ht, int index, int width, int height, int border_size);
 
         template<typename T>
         inline void registerListCallback(Button::TButton *button, T *pg)

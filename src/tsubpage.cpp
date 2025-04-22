@@ -345,6 +345,78 @@ void TSubPage::initialize()
 
             mSubpage.sr.push_back(sr);
         }
+        else if (ename.compare("eventShow") == 0)
+        {
+            EVENT_t event;
+            string fname;
+
+            while ((index = xml.getNextElementFromIndex(index, &fname, &content, &attrs)) != TExpat::npos)
+            {
+                if (fname.compare("pgFlip") == 0)
+                {
+                    event.evType = EV_PGFLIP;
+                    event.item = xml.getAttributeInt("item", attrs);
+                    event.evAction = xml.getAttribute("type", attrs);
+                    event.name = content;
+                    mSubpage.eventShow.push_back(event);
+                }
+                else if (fname.compare("launch") == 0)
+                {
+                    event.evType = EV_LAUNCH;
+                    event.item = xml.getAttributeInt("item", attrs);
+                    event.ID = xml.getAttributeInt("id", attrs);
+                    event.evAction = xml.getAttribute("action", attrs);
+                    event.name = content;
+                    mSubpage.eventShow.push_back(event);
+                }
+                else if (fname.compare("command") == 0)
+                {
+                    event.evType = EV_COMMAND;
+                    event.item = xml.getAttributeInt("item", attrs);
+                    event.port = xml.getAttributeInt("port", attrs);
+                    event.name = content;
+                    mSubpage.eventShow.push_back(event);
+                }
+
+                oldIndex = index;
+            }
+        }
+        else if (ename.compare("eventHide") == 0)
+        {
+            EVENT_t event;
+            string fname;
+
+            while ((index = xml.getNextElementFromIndex(index, &fname, &content, &attrs)) != TExpat::npos)
+            {
+                if (fname.compare("pgFlip") == 0)
+                {
+                    event.evType = EV_PGFLIP;
+                    event.item = xml.getAttributeInt("item", attrs);
+                    event.evAction = xml.getAttribute("type", attrs);
+                    event.name = content;
+                    mSubpage.eventHide.push_back(event);
+                }
+                else if (fname.compare("launch") == 0)
+                {
+                    event.evType = EV_LAUNCH;
+                    event.item = xml.getAttributeInt("item", attrs);
+                    event.ID = xml.getAttributeInt("id", attrs);
+                    event.evAction = xml.getAttribute("action", attrs);
+                    event.name = content;
+                    mSubpage.eventHide.push_back(event);
+                }
+                else if (fname.compare("command") == 0)
+                {
+                    event.evType = EV_COMMAND;
+                    event.item = xml.getAttributeInt("item", attrs);
+                    event.port = xml.getAttributeInt("port", attrs);
+                    event.name = content;
+                    mSubpage.eventHide.push_back(event);
+                }
+
+                oldIndex = index;
+            }
+        }
 
         if (index == TExpat::npos)
             index = oldIndex + 1;
@@ -476,33 +548,18 @@ void TSubPage::show()
         {
             MSG_DEBUG("Loading TP5 image(s) ...");
 
-            for (int i = 0; i < MAX_IMAGES; ++i)
+            SkBitmap bm;
+
+            if (!tp5Image(&bm, mSubpage.sr[0], mSubpage.width, mSubpage.height))
             {
-                if (mSubpage.sr[0].bitmaps[i].fileName.empty())
-                    continue;
-
-                sk_sp<SkData> rawImage = readImage(mSubpage.sr[0].bitmaps[i].fileName);
-                SkBitmap bm;
-
-                if (rawImage)
-                {
-                    MSG_DEBUG("Decoding image " << mSubpage.sr[0].bitmaps[i].fileName << "...");
-
-                    if (!DecodeDataToBitmap(rawImage, &bm))
-                    {
-                        MSG_WARNING("Problem while decoding image " << mSubpage.sr[0].bitmaps[i].fileName);
-                    }
-                    else if (!bm.empty())
-                    {
-                        dImage.setImageBm(bm);
-                        SkImageInfo info = bm.info();
-                        isImage = true;
-                    }
-                    else
-                    {
-                        MSG_WARNING("BM image " << mSubpage.sr[0].bitmaps[i].fileName << " seems to be empty!");
-                    }
-                }
+                MSG_WARNING("Problem loading one or more images!");
+            }
+            else
+            {
+                dImage.setImageBm(bm);
+                mSubpage.sr[0].bm_width = bm.info().width();
+                mSubpage.sr[0].bm_height = bm.info().height();
+                isImage = true;
             }
         }
 
