@@ -75,6 +75,7 @@ class TObject
             _OBJ object;
             QVideoWidget *vwidget{nullptr}; // Pointer to a video widget. Used to play videos
             QMediaPlayer *player{nullptr};  // Pointer to video player if this is a video button
+            QUrl videoUrl;                  // Holds the URL used for the button if it is of type OBJ_VIDEO.
             int left{0};
             int top{0};
             int width{0};

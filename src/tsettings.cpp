@@ -98,17 +98,21 @@ bool TSettings::loadSettings(bool initial)
     mSetup.versionInfo.fileVersion = xml.getElement("fileVersion", depth);
     mSetup.versionInfo.designVersion = xml.getElement("designVersion", depth);
     mSetup.versionInfo.g5appsVersion = xml.getElementInt("g5appsVersion", depth, &valid);
+    MSG_DEBUG("formatVersion: " << mSetup.versionInfo.formatVersion << ", graphicsVersion: " << mSetup.versionInfo.graphicsVersion << ", valid: " << (valid ? "TRUE" : "FALSE"));
 
-    if (!valid)
+    if (mSetup.versionInfo.formatVersion >= 20 && mSetup.versionInfo.graphicsVersion >= 20)
+    {
+        mIsTp5 = true;
+        MSG_INFO("Detected a TP5 file");
+
+        if (!valid)
+            mSetup.versionInfo.g5appsVersion = 1;
+    }
+    else
     {
         mSetup.versionInfo.g5appsVersion = 0;   // No TP5 file
         mIsTp5 = false;
         MSG_INFO("Detected a TP4 file");
-    }
-    else
-    {
-        mIsTp5 = true;
-        MSG_INFO("Detected a TP5 file");
     }
 
     MSG_DEBUG("Reading project info ...");
@@ -173,7 +177,7 @@ bool TSettings::loadSettings(bool initial)
     MSG_DEBUG("Color file:   " << mSetup.supportFiles.colorFile);
     MSG_DEBUG("Font file:    " << mSetup.supportFiles.fontFile);
     MSG_DEBUG("Theme file:   " << mSetup.supportFiles.themeFile);
-    
+
     if (!mIsTp5)
         MSG_DEBUG("IconFile:     " << mSetup.supportFiles.iconFile);
 

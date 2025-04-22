@@ -477,6 +477,11 @@ size_t TButton::initialize(TExpat *xml, size_t index)
                     pf.pfName = content;
                     pushFunc.push_back(pf);
                 }
+                else if (e.compare("command") == 0)
+                {
+                    cm.push_back(content);
+                    ap = xml->getAttributeInt("port", attrs);
+                }
 
                 oldIndex = index;
             }
@@ -545,6 +550,8 @@ size_t TButton::initialize(TExpat *xml, size_t index)
                     bsr.bm = content;
                     bsr.dynamic = ((xml->getAttributeInt("dynamic", attrs) == 1) ? true : false);
                 }
+                else if (e.compare("ft") == 0)      // TP5: Fill type for gradient colors
+                    bsr.ft = content;
                 else if (e.compare("bitmapEntry") == 0) // G5 start of bitmap table
                 {
                     string fname;
@@ -569,6 +576,25 @@ size_t TButton::initialize(TExpat *xml, size_t index)
                     }
 
                     bmIndex++;
+
+                    if (index == TExpat::npos)
+                        index = oldIndex + 1;
+                }
+                else if (e.compare("gradientColors") == 0)  // G5 gradient colors
+                {
+                    string fname;
+                    MSG_DEBUG("Section: " << e);
+
+                    while ((index = xml->getNextElementFromIndex(index, &fname, &content, &attrs)) != TExpat::npos)
+                    {
+                        if (fname.compare("gradientColor") == 0)
+                        {
+                            bsr.gradientColors.push_back(content);
+                            MSG_DEBUG("Added gradient color \"" << content << "\"");
+                        }
+
+                        oldIndex = index;
+                    }
 
                     if (index == TExpat::npos)
                         index = oldIndex + 1;
