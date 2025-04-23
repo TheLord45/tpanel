@@ -1507,6 +1507,9 @@ bool TButton::setIcon(const string& icon, int instance)
 {
     DECL_TRACER("TButton::setIcon(const string& icon, int instance)");
 
+    if (TTPInit::isTP5())
+        return true;
+
     if (instance >= 0 && (size_t)instance >= sr.size())
     {
         MSG_ERROR("Instance " << instance << " does not exist!");
@@ -3108,7 +3111,7 @@ void TButton::setBitmapJustification(int j, int x, int y, int instance)
 {
     DECL_TRACER("TButton::setBitmapJustification(int j, int instance)");
 
-    if (j < 0 || j > 9 || instance >= (int)sr.size())
+    if (TTPInit::isTP5() || j < 0 || j > 9 || instance >= (int)sr.size())
     {
 #if TESTMODE == 1
         setScreenDone();
@@ -3172,7 +3175,7 @@ void TButton::setIconJustification(int j, int x, int y, int instance)
 {
     DECL_TRACER("TButton::setIconJustification(int j, int x, int y, int instance)");
 
-    if (j < 0 || j > 9 || instance >= (int)sr.size())
+    if (TTPInit::isTP5() || j < 0 || j > 9 || instance >= (int)sr.size())
     {
 #if TESTMODE == 1
         setScreenDone();
