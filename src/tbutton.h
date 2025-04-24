@@ -221,6 +221,21 @@ namespace Button
         EVENT_GUESTURE_2FRT         // Event on 2 finger right guesture
     }BUTTON_EVENT_t;
 
+    typedef enum
+    {
+        GRAD_SOLID,                 //  0: Solid; No gradient!
+        GRAD_SWEEP,                 //  1: Sweep
+        GRAD_RADIAL,                //  2: Radial
+        GRAD_CLCR,                  //  3: Left to right
+        GRAD_TLBR,                  //  4: Top-left to Bottom-right
+        GRAD_CTCB,                  //  5: Top to bottom
+        GRAD_TRBL,                  //  6: Top-right to Bottom-left
+        GRAD_CRCL,                  //  7: Right to left
+        GRAD_BRTL,                  //  8: Bottom-right to top-left
+        GRAD_CBCT,                  //  9: Bottom to top
+        GRAD_BLTR                   // 10: Bottom-left to top-right
+    }GRAD_TYPE_t;
+
     /**
      * Justification values:
      *    0 = absolut
@@ -264,6 +279,9 @@ namespace Button
         std::string bm;         // bitmap file name
         BITMAPS_t bitmaps[5];   // G5 table of bitmaps
         std::vector<std::string> gradientColors;  // G5 optional gradient colors
+        int gr{15};             // G5 Gradient radius
+        int gx{50};             // G5 Gradient center X in percent
+        int gy{50};             // G5 Gradient center Y in percent
         std::string sd;         // Sound file to play
         int bm_width{0};        // Width of image
         int bm_height{0};       // Height of image
@@ -1437,6 +1455,8 @@ namespace Button
             void moveBitmapToBm(SR_T& sr, int index=-1);
             int getDynamicBmIndex(const SR_T& sr);
             bool startVideo(const SR_T& sr);
+            bool drawGradientImage(SkBitmap *bm, const SR_T& sr, int width, int height);
+            GRAD_TYPE_t getGradientType(const std::string& grad);
 
             BUTTONTYPE type;
             int bi{0};              // button ID
