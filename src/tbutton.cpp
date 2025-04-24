@@ -41,6 +41,8 @@
 //#include <include/core/SkImageEncoder.h>
 #include <include/core/SkRRect.h>
 #include <include/core/SkBlurTypes.h>
+#include <include/effects/SkRuntimeEffect.h>
+#include <include/effects/SkGradientShader.h>
 
 //#ifdef __ANDROID__
 //#include <QtAndroidExtras/QAndroidJniObject>
@@ -173,6 +175,23 @@ SYSTEF_t sysTefs[] = {
     { 55, "Hard Drop Shadow 7 with outline" },
     { 56, "Hard Drop Shadow 8 with outline" },
     { 0,  "\0" }
+};
+
+/*
+ * The following tokens define the possibilities to draw gradients. This is only
+ * G5 possible. The gradients may have any number of colors.
+ */
+vector<string> grTypes = {
+    "sweep",                // 00: Sweep
+    "radial",               // 01: Radial
+    "linearCLCR",           // 02: Left to right
+    "linearTLBR",           // 03: Top-left to Bottom-right
+    "linearCTCB",           // 04: Top to bottom
+    "linearTRBL",           // 05: Top-right to Bottom-left
+    "linearCRCL",           // 06: Right to left
+    "linearBRTL",           // 07: Bottom-right to top-left
+    "linearCBCT",           // 08: Bottom to top
+    "linearBLTR"            // 09: Bottom-left to top-right
 };
 
 TButton::TButton()
@@ -550,7 +569,7 @@ size_t TButton::initialize(TExpat *xml, size_t index)
                     bsr.bm = content;
                     bsr.dynamic = ((xml->getAttributeInt("dynamic", attrs) == 1) ? true : false);
                 }
-                else if (e.compare("ft") == 0)      // TP5: Fill type for gradient colors
+                else if (e.compare("ft") == 0)      // G5: Fill type for gradient colors (default: solid)
                     bsr.ft = content;
                 else if (e.compare("bitmapEntry") == 0) // G5 start of bitmap table
                 {
@@ -599,13 +618,19 @@ size_t TButton::initialize(TExpat *xml, size_t index)
                     if (index == TExpat::npos)
                         index = oldIndex + 1;
                 }
+                else if (e.compare("gr") == 0)      // G5 Gradient radius (default: 15)
+                    bsr.gr = xml->convertElementToInt(content);
+                else if (e.compare("gx") == 0)      // G5 Gradient center X% (default: 50)
+                    bsr.gx = xml->convertElementToInt(content);
+                else if (e.compare("gy") == 0)      // G5 Gradient center Y% (default: 50)
+                    bsr.gy = xml->convertElementToInt(content);
                 else if (e.compare("sd") == 0)      // Sound file
                     bsr.sd = content;
                 else if (e.compare("sb") == 0)      // index external graphic
                     bsr.sb = xml->convertElementToInt(content);
-                else if (e.compare("ii") == 0)      // Icon index
+                else if (e.compare("ii") == 0)      // G4: Icon index
                     bsr.ii = xml->convertElementToInt(content);
-                else if (e.compare("ji") == 0)      // Icon/bitmap orientation
+                else if (e.compare("ji") == 0)      // G4: Icon/bitmap orientation
                     bsr.ji = xml->convertElementToInt(content);
                 else if (e.compare("jb") == 0)      // Bitmap orientation
                     bsr.jb = xml->convertElementToInt(content);
@@ -613,9 +638,9 @@ size_t TButton::initialize(TExpat *xml, size_t index)
                     bsr.bx = xml->convertElementToInt(content);
                 else if (e.compare("by") == 0)      // Absolute image position Y
                     bsr.by = xml->convertElementToInt(content);
-                else if (e.compare("ix") == 0)      // Absolute Icon position X
+                else if (e.compare("ix") == 0)      // G4: Absolute Icon position X
                     bsr.ix = xml->convertElementToInt(content);
-                else if (e.compare("iy") == 0)      // Absolute Icon position Y
+                else if (e.compare("iy") == 0)      // G4: Absolute Icon position Y
                     bsr.iy = xml->convertElementToInt(content);
                 else if (e.compare("fi") == 0)      // Font index
                     bsr.fi = xml->convertElementToInt(content);
@@ -4227,6 +4252,10 @@ bool TButton::buttonFill(SkBitmap* bm, int instance)
         return false;
     }
 
+    // If there is a gradient color defined, we draw it now
+    if (TTPInit::isTP5() && !sr[instance].ft.empty())
+        return drawGradientImage(bm, sr[instance], bm->info().width(), bm->info().height());
+
     SkColor color = TColor::getSkiaColor(sr[instance].cf);
     MSG_DEBUG("Fill color[" << instance << "]: " << sr[instance].cf << " (#" << std::setw(8) << std::setfill('0') << std::hex << color << ")" << std::dec << std::setfill(' ') << std::setw(1));
     // We create a new bitmap and fill it with the given fill color. Then
@@ -4460,7 +4489,7 @@ bool TButton::buttonBitmap(SkBitmap* bm, int inst)
             }
         }
 
-        // If we've a TP5 protocol, we must draw all other images in the stack, if there are any.
+        // If we've a G5 protocol, we must draw all other images in the stack, if there are any.
         if (!buttonBitmap5(bm, instance, true))
         {
             MSG_WARNING("Problem drawing images over chameleon image!");
@@ -4850,6 +4879,207 @@ void TButton::moveBitmapToBm(SR_T& sr, int index)
         sr.bm_width = sr.bitmaps[index].width;
         sr.bm_height = sr.bitmaps[index].height;
     }
+}
+
+bool TButton::drawGradientImage(SkBitmap *bm, const SR_T& sr, int width, int height)
+{
+    DECL_TRACER("TButton::drawGradientImage(SkBitmap *bm, const SR_T& sr, int width, int height)");
+
+    if (!bm)
+    {
+        SET_ERROR_MSG("Got no bitmap to draw to!");
+        return false;
+    }
+
+    if ((!width || !height) && bm->empty())
+    {
+        SET_ERROR_MSG("Got no size to create an image!");
+        return false;
+    }
+    else if (!bm->empty())
+    {
+        width = bm->info().width();
+        height = bm->info().height();
+    }
+
+    if (bm->empty() && !allocPixels(width, height, bm))
+    {
+        SET_ERROR();
+        return false;
+    }
+
+//    SkBitmap image;
+
+//    if (!allocPixels(width, height, bm))
+//    {
+//        SET_ERROR();
+//        return false;
+//    }
+
+//    SkCanvas canvas(image);                                                     // Create a new canvas to draw the gradient
+    SkCanvas canvas(*bm);
+    canvas.drawColor(SK_ColorTRANSPARENT);                                      // Initialize with transparent color
+    SkPoint linearPoints[2];                                                    // Start and end point of linear gradient
+
+    // Grab all colors and put them into an array
+    SkColor *colors = new SkColor[sr.gradientColors.size()];                    // Allocate space for colors
+    vector<string>::const_iterator iter;                                        // Define an iterator to loop through colors
+    int idx = 0;                                                                // The counter used for color array
+
+    for (iter = sr.gradientColors.begin(); iter != sr.gradientColors.end(); ++iter)
+    {
+        MSG_DEBUG("Decoding color: \"" << *iter << "\"");
+        colors[idx] = TColor::getSkiaColor(*iter);
+        idx++;
+    }
+
+    // Define the coordinates
+    GRAD_TYPE_t gradType = getGradientType(sr.ft);                              // The gradient type
+    MSG_DEBUG("Gradient type: " << gradType);
+    SkScalar lineWidth = 1.0;
+
+    switch(gradType)
+    {
+        case GRAD_SOLID:
+            return true;
+
+        case GRAD_SWEEP:
+            linearPoints[0] = SkPoint::Make(static_cast<SkScalar>(width / 2), static_cast<SkScalar>(height / 2));
+            linearPoints[1] = SkPoint::Make(static_cast<SkScalar>(width), static_cast<SkScalar>(height / 2));
+        break;
+
+        case GRAD_RADIAL:
+            linearPoints[0] = SkPoint::Make(static_cast<SkScalar>(width / 2), static_cast<SkScalar>(height / 2));
+            linearPoints[1] = SkPoint::Make(static_cast<SkScalar>(width), static_cast<SkScalar>(height));
+        break;
+
+        case GRAD_CLCR: // Left to right
+            linearPoints[0] = SkPoint::Make(static_cast<SkScalar>(0), static_cast<SkScalar>(height / 2));
+            linearPoints[1] = SkPoint::Make(static_cast<SkScalar>(width), static_cast<SkScalar>(height / 2));
+            lineWidth = static_cast<SkScalar>(height);
+        break;
+
+        case GRAD_TLBR: // Top-left to bottom right
+            linearPoints[0] = SkPoint::Make(static_cast<SkScalar>(0), static_cast<SkScalar>(0));
+            linearPoints[1] = SkPoint::Make(static_cast<SkScalar>(width), static_cast<SkScalar>(height));
+            lineWidth = static_cast<SkScalar>(sqrt(pow(static_cast<double>(width), 2.0) + pow(static_cast<double>(height), 2.0)));
+        break;
+
+        case GRAD_CTCB: // Top to bottom
+            linearPoints[0] = SkPoint::Make(static_cast<SkScalar>(width / 2), static_cast<SkScalar>(0));
+            linearPoints[1] = SkPoint::Make(static_cast<SkScalar>(width / 2), static_cast<SkScalar>(height));
+            lineWidth = static_cast<SkScalar>(width);
+        break;
+
+        case GRAD_TRBL: // Top-right to bottom-left
+            linearPoints[0] = SkPoint::Make(static_cast<SkScalar>(width), static_cast<SkScalar>(0));
+            linearPoints[1] = SkPoint::Make(static_cast<SkScalar>(0), static_cast<SkScalar>(height));
+            lineWidth = static_cast<SkScalar>(sqrt(pow(static_cast<double>(width), 2.0) + pow(static_cast<double>(height), 2.0)));
+        break;
+
+        case GRAD_CRCL: // Right to left
+            linearPoints[0] = SkPoint::Make(static_cast<SkScalar>(width), static_cast<SkScalar>(height / 2));
+            linearPoints[1] = SkPoint::Make(static_cast<SkScalar>(0), static_cast<SkScalar>(height / 2));
+            lineWidth = static_cast<SkScalar>(height);
+        break;
+
+        case GRAD_BLTR: // Bottom-left to top-right
+            linearPoints[0] = SkPoint::Make(static_cast<SkScalar>(0), static_cast<SkScalar>(height));
+            linearPoints[1] = SkPoint::Make(static_cast<SkScalar>(width), static_cast<SkScalar>(0));
+            lineWidth = static_cast<SkScalar>(sqrt(pow(static_cast<double>(width), 2.0) + pow(static_cast<double>(height), 2.0)));
+        break;
+
+        case GRAD_CBCT: // Bottom to top
+            linearPoints[0] = SkPoint::Make(static_cast<SkScalar>(width / 2), static_cast<SkScalar>(height));
+            linearPoints[1] = SkPoint::Make(static_cast<SkScalar>(width / 2), static_cast<SkScalar>(0));
+            lineWidth = static_cast<SkScalar>(width);
+        break;
+
+        case GRAD_BRTL: // Bottom-right to top-left
+            linearPoints[0] = SkPoint::Make(static_cast<SkScalar>(width), static_cast<SkScalar>(height));
+            linearPoints[1] = SkPoint::Make(static_cast<SkScalar>(0), static_cast<SkScalar>(0));
+            lineWidth = static_cast<SkScalar>(sqrt(pow(static_cast<double>(width), 2.0) + pow(static_cast<double>(height), 2.0)));
+        break;
+    }
+
+    MSG_DEBUG("Start point: " << linearPoints[0].x() << ", " << linearPoints[0].y());
+    MSG_DEBUG("End point: " << linearPoints[1].x() << ", " << linearPoints[1].y());
+
+    sk_sp<SkShader> shader = SkGradientShader::MakeLinear(                      // Create the shader
+        linearPoints, colors, NULL, sr.gradientColors.size(),
+        SkTileMode::kMirror);
+    SkPaint paint;                                                              // The painter
+    paint.setAntiAlias(true);                                                   // Make it look better
+
+    if (gradType == GRAD_SWEEP)                                                 // This is some kind of circle
+    {
+        paint.setShader(shader);                                                    // Deploy the shader
+        canvas.drawColor(colors[sr.gradientColors.size() - 1]);                 // Draw the base color first
+        paint.setStrokeWidth(1.0);
+        SkScalar site = max(width, height);
+
+        for (int deg = 0; deg < 360; ++deg)
+        {
+//            canvas.save();
+            canvas.rotate(deg, linearPoints[0].x(), linearPoints[0].y());
+            canvas.drawLine(linearPoints[0], linearPoints[1], paint);
+//            canvas.restore();
+        }
+
+        canvas.drawArc(SkRect::MakeXYWH(0, height * -1, site, site), 0, 360, true, paint);       // Draw the arc
+    }
+    else if (gradType == GRAD_RADIAL)                                           // This is also a circle but with defined center and radius
+    {
+        paint.setShader(SkGradientShader::MakeRadial(linearPoints[0], 180.0, colors, nullptr, sr.gradientColors.size(), SkTileMode::kClamp, 0, nullptr));
+        canvas.drawPaint(paint);
+/*
+//        paint.setStroke(true);
+//        paint.setStrokeWidth(2.0);
+        canvas.drawColor(colors[sr.gradientColors.size() - 1]);                 // Draw the base color first
+        SkScalar px = static_cast<SkScalar>(sr.gx) / 100.0 * static_cast<SkScalar>(width);
+        SkScalar py = static_cast<SkScalar>(sr.gy) / 100.0 * static_cast<SkScalar>(height);
+
+        for (int deg = 0; deg < 360; ++deg)
+        {
+//            canvas.save();
+            canvas.rotate(deg, px, py);
+            canvas.drawLine(SkPoint::Make(px, py), SkPoint::Make(px, py + sr.gr), paint);
+//            canvas.restore();
+        }
+
+//        canvas.drawArc(SkRect::MakeXYWH(px - sr.gr, py - sr.gr, sr.gr * 2, sr.gr * 2), 0, 360, false, paint);
+//        canvas.drawCircle(px, py, sr.gr, paint);
+//        canvas.drawOval(SkRect::MakeXYWH(px - sr.gr, py - sr.gr, sr.gr * 2, sr.gr * 2), paint);
+*/
+    }
+    else
+    {
+        paint.setShader(shader);                                                    // Deploy the shader
+        paint.setStrokeWidth(lineWidth);                                        // Set the line width
+        canvas.drawLine(linearPoints[0], linearPoints[1], paint);               // Draw a simple line
+    }
+
+    delete[] colors;                                                            // We don't need the color array any more
+    paint.setShader(NULL);                                                      // Detach shader
+    return true;
+}
+
+GRAD_TYPE_t TButton::getGradientType(const std::string& grad)
+{
+    DECL_TRACER("TButton::getGradientType(const std::string& grad)");
+
+    vector<string>::iterator iter;
+    int idx = 0;
+
+    for (iter = grTypes.begin(); iter != grTypes.end(); ++iter)
+    {
+        if (grad == *iter)
+            return static_cast<GRAD_TYPE_t>(idx + 1);
+
+        idx++;
+    }
+
+    return GRAD_SOLID;
 }
 
 int TButton::getDynamicBmIndex(const SR_T& sr)
