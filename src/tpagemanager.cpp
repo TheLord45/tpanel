@@ -936,6 +936,9 @@ TPageManager::TPageManager()
     REG_CMD(doPST, "@PST");     // Set the show effect time for the specified popup page.
     REG_CMD(doPAGE, "PAGE");    // Flip to a specified page.
     REG_CMD(doPAGE, "^PGE");    // G5: Flip to a specified page.
+    REG_CMD(doPCL, "^PCL");     // G5: Collapse Collapsible Popup Command
+    REG_CMD(doPCT, "^PCT");     // G5: Collapsible Popup Custom Toggle Command
+    REG_CMD(doPTC, "^PTC");     // G5: Toggle Collapsible Popup Collapsed Command
 
     REG_CMD(doANI, "^ANI");     // Run a button animation (in 1/10 second).
     REG_CMD(doAPF, "^APF");     // Add page flip action to a button if it does not already exist.
@@ -4236,6 +4239,38 @@ void TPageManager::hideSubPage(const string& name)
     }
 }
 
+TSubPage *TPageManager::loadSubPage(const string& name)
+{
+    DECL_TRACER("TPageManager::loadSubPage(const string& name)");
+
+    if (name.empty())
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
+        return nullptr;
+    }
+
+    TPage *page = nullptr;
+    TSubPage *pg = deliverSubPage(name, &page);
+
+    if (!pg)
+    {
+#if TESTMODE == 1
+        setScreenDone();
+#endif
+        return nullptr;
+    }
+
+    if (page)
+    {
+        pg->setParent(page->getHandle());
+        page->addSubPage(pg);
+    }
+
+    return pg;
+}
+
 /**
  * @brief TPageManager::runClickQueue - Processing mouse clicks
  * The following method is starting a thread which tests a queue containing
@@ -6787,6 +6822,275 @@ void TPageManager::doPAGE(int, std::vector<int>&, std::vector<std::string>& pars
 
     setDone();
 #endif
+}
+
+/**
+ * @brief TPageManager::doPCL - Collapse Collapsible Popup Command
+ * Moves the named closeable popup to the collapsed position.
+ * Syntax:
+ *      "'^PCL-<popup name>;[optional target page]'"
+ * Variables:
+ *      Popup name = the name of the popup to collapse
+ *      Target page = name of the page hosting the popup to affect the change upon. If target page is not specified, the command
+ *                    is applied to the current page.
+ * Examples :
+ *      SEND_COMMAND Panel,"'^PCL-Contacts'"
+ *          Collapse the Contacts popup on the current page.
+ *      SEND_COMMAND Panel,"'^PCL-Contacts;Teleconference Control'"
+ *          Collapse the Contacts popup on the Teleconference Control page.
+ */
+void TPageManager::doPCL(int port, vector<int>& channels, vector<std::string>& pars)
+{
+    DECL_TRACER("TPageManager::doPCL(int port, vector<int>& channels, vector<std::string>& pars)");
+
+    if (pars.empty())
+    {
+        MSG_WARNING("Got no page parameter!");
+#if TESTMODE == 1
+        setAllDone();
+#endif
+        return;
+    }
+
+    TError::clear();
+    string popup = pars[0];
+    string page;
+
+    if (pars.size() >= 2)
+        page = pars[1];
+
+    TSubPage *sp = loadSubPage(popup);
+
+    if (!sp || !sp->isCollapsible())
+        return;
+
+    if (!page.empty())
+    {
+        TPage *pg = getPage(page);
+
+        if (pg)
+            pg->removeSubPage(popup);
+    }
+    else
+        sp->drop();
+}
+
+/**
+ * @brief TPageManager::doPCT - Collapsible Popup Custom Toggle Command
+ * This is an advanced "toggle" command for collapsible popups, working with a
+ * comma-separated list of commands. This list is parsed and a command table is
+ * created. Based on the current state of the collapsible popup, the correct
+ * command is executed.
+ * Syntax:
+ *      "'^PCT-<popup>,<custom toggle commands>;[optional target page]'"
+ * Variables:
+ *      Popup = popup name
+ *      Custom toggle commands = a comma separated list of commands. This list
+ *          is parsed and a command table is created. The state letters are as follows:
+ *              o - open
+ *              c - collapsed
+ *              d - dynamic, followed by an integer indicating the offset.
+ *              * - wildcard, always last in the list
+ *          Before and after states are separated by -> characters.
+ *      Target page = name of the page hosting the popup to affect the change
+ *              upon. If target page is not specified, the command is applied
+ *              to the current page.
+ * Example:
+ *      SEND_COMMAND Panel,"'^PCT-RightSlider,c->o,o->d100,*->c'"
+ * The RightSlider open if collapsed, move to d100 if open, and collapse otherwise.
+ */
+void TPageManager::doPCT(int port, vector<int>& channels, vector<std::string>& pars)
+{
+    DECL_TRACER("TPageManager::doPCT(int port, vector<int>& channels, vector<std::string>& pars)");
+
+    if (pars.empty())
+    {
+        MSG_WARNING("Got no page parameter!");
+#if TESTMODE == 1
+        setAllDone();
+#endif
+        return;
+    }
+
+    TError::clear();
+
+    if (pars.size() < 2)
+    {
+        MSG_WARNING("Expected at least 2 parameters but got " << pars.size() << "!");
+#if TESTMODE == 1
+        setAllDone();
+#endif
+        return;
+    }
+
+    string popup = pars[0];
+    string page;
+
+    TSubPage *sp = loadSubPage(popup);
+
+    if (!sp || !sp->isCollapsible())
+        return;
+
+    // Parse the command table
+    mCmdTable.clear();
+    vector<string>::iterator iter;
+    int idx = 0;
+
+    for (iter = pars.begin(); iter != pars.end(); ++iter)
+    {
+        if (idx == 0)
+        {
+            idx++;
+            continue;
+        }
+
+        size_t pos;
+
+        if ((pos = iter->find_first_of(';')) != string::npos)
+        {
+            page = iter->substr(pos+1);
+            *iter = iter->substr(0, pos);
+        }
+
+        pos = iter->find("->");
+
+        if (pos == string::npos)
+        {
+            idx++;
+            continue;
+        }
+
+        string from = iter->substr(0, pos);
+        string to = iter->substr(pos+2);
+        trim(from);
+        trim(to);
+        MSG_DEBUG("Command from: " << from << ", to: " << to);
+        SUBCOMMAND_t sc;
+
+        switch(from[0])
+        {
+            case 'o':
+            case 'O': sc.from = POPSTATE_OPEN; break;
+            case 'c':
+            case 'C': sc.from = POPSTATE_CLOSED; break;
+
+            case 'd':
+            case 'D':
+                sc.from = POPSTATE_DYNAMIC;
+                sc.offset = atoi(from.substr(1).c_str());
+            break;
+
+            case '*': sc.from = POPSTATE_ANY; break;
+            default:
+                sc.from = POPSTATE_UNKNOWN;
+        }
+
+        switch(to[0])
+        {
+            case 'o':
+            case 'O': sc.to = POPSTATE_OPEN; break;
+            case 'c':
+            case 'C': sc.to = POPSTATE_CLOSED; break;
+
+            case 'd':
+            case 'D':
+                sc.to = POPSTATE_DYNAMIC;
+                sc.offset = atoi(to.substr(1).c_str());
+            break;
+
+            case '*': sc.to = POPSTATE_ANY; break;
+            default:
+                sc.from = POPSTATE_UNKNOWN;
+        }
+
+        mCmdTable.push_back(sc);
+        idx++;
+    }
+
+    if (TStreamError::checkFilter(HLOG_DEBUG))
+    {
+        vector<SUBCOMMAND_t>::iterator dbgIter;
+
+        for (dbgIter = mCmdTable.begin(); dbgIter != mCmdTable.end(); ++dbgIter)
+        {
+            MSG_DEBUG("States from: " << dbgIter->from << ", to: " << dbgIter->to << ", offset: " << dbgIter->offset);
+        }
+    }
+
+    bool visible = sp->isVisible();
+
+    // Go through command table and execute it
+    vector<SUBCOMMAND_t>::iterator cmdIter;
+
+    for (cmdIter = mCmdTable.begin(); cmdIter != mCmdTable.end(); ++cmdIter)
+    {
+        if (!visible && cmdIter->to != POPSTATE_CLOSED)
+        {
+            showSubPage(popup);
+            break;
+        }
+        else if (visible && (cmdIter->to == POPSTATE_CLOSED || cmdIter->to == POPSTATE_ANY))
+        {
+            sp->drop();
+            break;
+        }
+    }
+
+    // TODO: Add code to honor the "page", if there is one.
+}
+
+/**
+ * @brief TPageManager::doPTC - Toggle Collapsible Popup Collapsed Command
+ * Toggles the named collapsible popup between the open and collapsed positions.
+ * More specifically, if the popup is not fully collapsed, it is collapsed.                                              *
+ * Syntax:
+ *      "'^PTC-<popup>;[optional target page]'"
+ * Variables:
+ *      Popup = the name of the popup to toggle
+ *      Target page = name of the page hosting the popup to affect the change
+ *                    upon. If target page is not specified, the command is
+ *                    applied to the current page.
+ * Examples:
+ *      SEND_COMMAND Panel,"'^PTC-Contacts'"
+ *  Toggle the Contacts popup collapsed on the current page.
+ *      SEND_COMMAND Panel,"'^PTC-Contacts;Teleconference Control'"
+ *  Toggle the Contacts popup collapsed on the Teleconference Control page.
+ *  Note: Collapsible popup send commands do not automatically show the popup
+ *        on the target page. The popup must be first shown with a standard
+ *        show command. This applies even when the collapsible popup is a
+ *        member of a popup group. For all of these commands, if the target
+ *        page is blank, the current page is used. If the named popup is not
+ *        collapsible, the commands are ignored.
+ */
+void TPageManager::doPTC(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doPTC(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.empty())
+    {
+        MSG_WARNING("Expect at least 1 parameter but got none!");
+        return;
+    }
+
+    string popup = pars[0];
+    string page;
+
+    if (pars.size() > 1)
+        page = pars[1];
+
+    TSubPage *sp = loadSubPage(popup);
+
+    if (!sp || !sp->isCollapsible())
+        return;
+
+    bool visible = sp->isVisible();
+
+    if (!visible)
+        showSubPage(popup);
+    else
+        sp->drop();
+
+    // TODO: Add code to honor the "page", if there is one.
 }
 
 /**

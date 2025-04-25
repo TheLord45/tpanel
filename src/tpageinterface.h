@@ -194,6 +194,10 @@ typedef struct PAGE_T
     int height{0};                          // Height of popup
     int heightOrig{0};                      // The original height of the popup
     int modal{0};                           // 0 = Popup/Page = non modal
+    int showLockX{0};                       // G5 ?
+    int collapseDirection{1};               // G5: The direction the popup should move on collapse
+    int collapseOffset{0};                  // G5: The offset to collapse to.
+    bool collapsible{false};                // G5: Internal use: TRUE = popup is collapsible.
     std::string group;                      // Name of the group the popup belongs (popup only)
     int timeout{0};                         // Time after the popup hides in 1/10 seconds (popup only)
     SHOWEFFECT showEffect{SE_NONE};         // The effect when the popup is shown (popup only)

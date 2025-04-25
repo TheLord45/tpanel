@@ -1,8 +1,40 @@
 ChangeLog
 =========
 
+Release: 2.0.0
+===============================================================================
+2025-04-25 Added G5 commands ^PCL, ^PCT and ^PTC.
+
+2025-04-24 Added support for G5 gradient fill of buttons.
+
+2025-04-21 Added support for video playing
+
+2025-04-18 Added support for G5 dynamic images.
+
+2025-04-15 Added support for bitmap scaling of G5 bitmaps.
+
+2025-04-11 Added support for G5 bargraphs.
+
+2025-04-10 Added support for G5 chameleon images and transparency detection.
+
+2025-03-08 Added support for UTF8 with G5.
+
+2025-03-02 Added support for G5 background images.
+
+2025-02-23 Added support for G5 bitmaps.
+
+2025-02-15 Added support for standard apps in Linux. Starting of apps on Android
+           is supported out of the box.
+
+2025-02-12 Added application table. Defined apps can be read.
+
 Release: 1.4.1
 ===============================================================================
+2024-11-12 Upgrade to support Qt6.8.0. Fixed notch detection on iOS.
+           Last commit for this version. Start of implementig G5 protocol.
+
+2024-04-14 Upgraded build scripts.
+
 2024-03-10 Improved intercom to be able to convert audio as needed.
 
 2024-03-03 Implemented an intercom class.

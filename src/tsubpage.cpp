@@ -205,6 +205,17 @@ void TSubPage::initialize()
             mSubpage.height = xml.convertElementToInt(content);
             mSubpage.heightOrig = mSubpage.height;
         }
+        else if (ename.compare("showLocX") == 0)
+            mSubpage.showLockX = xml.convertElementToInt(content);
+        else if (ename.compare("collapseDirection") == 0)
+            mSubpage.collapseDirection = xml.convertElementToInt(content);
+        else if (ename.compare("collapseOffset") == 0)
+        {
+            mSubpage.collapseOffset = xml.convertElementToInt(content);
+
+            if (mSubpage.collapseOffset > 0)
+                mSubpage.collapsible = true;
+        }
         else if (ename.compare("group") == 0)
             mSubpage.group = content;
         else if (ename.compare("modal") == 0)
@@ -546,7 +557,7 @@ void TSubPage::show()
         }
         else if (TTPInit::isTP5() && haveImage(mSubpage.sr[0]))
         {
-            MSG_DEBUG("Loading TP5 image(s) ...");
+            MSG_DEBUG("Loading G5 image(s) ...");
 
             SkBitmap bm;
 
