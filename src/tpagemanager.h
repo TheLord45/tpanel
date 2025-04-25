@@ -122,6 +122,25 @@ typedef struct PGSUBVIEWITEM_T
     }
 }PGSUBVIEWITEM_T;
 
+// G5 command table for animating a popup (open, close)
+//    Note: Animation of opening or closing is currently not supported because
+//          the GUI system (QT) has no feature for it.
+typedef enum
+{
+    POPSTATE_UNKNOWN,
+    POPSTATE_CLOSED,
+    POPSTATE_OPEN,
+    POPSTATE_DYNAMIC,
+    POPSTATE_ANY        // wildcard
+}POPSTATE_t;
+
+typedef struct SUBCOMMAND_t
+{
+    POPSTATE_t from{POPSTATE_UNKNOWN};      // The from state (e.g. closed)
+    POPSTATE_t to{POPSTATE_UNKNOWN};        // The to state (e.g. open)
+    int offset{0};                          // Point of animation start (currently not supported!)
+}SUBCOMMAND_t;
+
 class TPageManager : public TAmxCommands
 {
     public:
@@ -381,13 +400,22 @@ class TPageManager : public TAmxCommands
          */
         void showSubPage(const std::string& name);
         /**
+         * Loads a subpage if it was not already loaded, and returns a pointer
+         * to it.
+         *
+         * @param name The name of the subpage
+         * @return A pointer to the subpage. If the subpage couldn't be loaded,
+         * it returns a nullptr.
+         */
+        TSubPage *loadSubPage(const std::string& name);
+        /**
          * Displays the subpage \p number. If the subpage is part of a group
          * the open subpage in the group is closed, if there was one open. Then
          * the subpage is displayed. If the subpage is not already in the
          * internal buffer it's configuration file is read and the page is
          * created.
          *
-         * @param name  The name of the subpage to display.
+         * @param name     The name of the subpage to display.
          */
         void showSubPage(int number, bool force=false);
         /**
@@ -724,6 +752,8 @@ class TPageManager : public TAmxCommands
             _EVENT_TYPE eventType{_EVENT_MOUSE_CLICK};
         }_CLICK_QUEUE_t;
 
+        std::vector<SUBCOMMAND_t> mCmdTable;
+
         /**
          * @brief doOverlap checks for overlapping objects
          *
@@ -809,6 +839,9 @@ class TPageManager : public TAmxCommands
         void doPSP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doPST(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doPAGE(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doPCL(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doPCT(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doPTC(int port, std::vector<int>& channels, std::vector<std::string>& pars);
 
         void doANI(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doAPF(int port, std::vector<int>& channels, std::vector<std::string>& pars);

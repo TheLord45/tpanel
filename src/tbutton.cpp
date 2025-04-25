@@ -498,8 +498,11 @@ size_t TButton::initialize(TExpat *xml, size_t index)
                 }
                 else if (e.compare("command") == 0)
                 {
-                    cm.push_back(content);
-                    ap = xml->getAttributeInt("port", attrs);
+                    pf.action = BT_ACTION_COMMAND;
+                    pf.item = xml->getAttributeInt("item", attrs);
+                    pf.ID = xml->getAttributeInt("port", attrs);
+                    pf.pfName = content;
+                    pushFunc.push_back(pf);
                 }
 
                 oldIndex = index;
@@ -4908,15 +4911,6 @@ bool TButton::drawGradientImage(SkBitmap *bm, const SR_T& sr, int width, int hei
         return false;
     }
 
-//    SkBitmap image;
-
-//    if (!allocPixels(width, height, bm))
-//    {
-//        SET_ERROR();
-//        return false;
-//    }
-
-//    SkCanvas canvas(image);                                                     // Create a new canvas to draw the gradient
     SkCanvas canvas(*bm);
     canvas.drawColor(SK_ColorTRANSPARENT);                                      // Initialize with transparent color
     SkPoint linearPoints[2];                                                    // Start and end point of linear gradient
@@ -4928,7 +4922,6 @@ bool TButton::drawGradientImage(SkBitmap *bm, const SR_T& sr, int width, int hei
 
     for (iter = sr.gradientColors.begin(); iter != sr.gradientColors.end(); ++iter)
     {
-        MSG_DEBUG("Decoding color: \"" << *iter << "\"");
         colors[idx] = TColor::getSkiaColor(*iter);
         idx++;
     }
@@ -4936,7 +4929,7 @@ bool TButton::drawGradientImage(SkBitmap *bm, const SR_T& sr, int width, int hei
     // Define the coordinates
     GRAD_TYPE_t gradType = getGradientType(sr.ft);                              // The gradient type
     MSG_DEBUG("Gradient type: " << gradType);
-    SkScalar lineWidth = 1.0;
+    SkScalar lineWidth = 1.0;                                                   // This is for gradients based on a line
 
     switch(gradType)
     {
@@ -4949,8 +4942,12 @@ bool TButton::drawGradientImage(SkBitmap *bm, const SR_T& sr, int width, int hei
         break;
 
         case GRAD_RADIAL:
-            linearPoints[0] = SkPoint::Make(static_cast<SkScalar>(width / 2), static_cast<SkScalar>(height / 2));
+        {
+            SkScalar px = static_cast<SkScalar>(sr.gx) / 100.0 * static_cast<SkScalar>(width);
+            SkScalar py = static_cast<SkScalar>(sr.gy) / 100.0 * static_cast<SkScalar>(height);
+            linearPoints[0] = SkPoint::Make(px, py);
             linearPoints[1] = SkPoint::Make(static_cast<SkScalar>(width), static_cast<SkScalar>(height));
+        }
         break;
 
         case GRAD_CLCR: // Left to right
@@ -5002,9 +4999,6 @@ bool TButton::drawGradientImage(SkBitmap *bm, const SR_T& sr, int width, int hei
         break;
     }
 
-    MSG_DEBUG("Start point: " << linearPoints[0].x() << ", " << linearPoints[0].y());
-    MSG_DEBUG("End point: " << linearPoints[1].x() << ", " << linearPoints[1].y());
-
     sk_sp<SkShader> shader = SkGradientShader::MakeLinear(                      // Create the shader
         linearPoints, colors, NULL, sr.gradientColors.size(),
         SkTileMode::kMirror);
@@ -5013,44 +5007,24 @@ bool TButton::drawGradientImage(SkBitmap *bm, const SR_T& sr, int width, int hei
 
     if (gradType == GRAD_SWEEP)                                                 // This is some kind of circle
     {
-        paint.setShader(shader);                                                    // Deploy the shader
-        canvas.drawColor(colors[sr.gradientColors.size() - 1]);                 // Draw the base color first
-        paint.setStrokeWidth(1.0);
-        SkScalar site = max(width, height);
-
-        for (int deg = 0; deg < 360; ++deg)
-        {
-//            canvas.save();
-            canvas.rotate(deg, linearPoints[0].x(), linearPoints[0].y());
-            canvas.drawLine(linearPoints[0], linearPoints[1], paint);
-//            canvas.restore();
-        }
-
-        canvas.drawArc(SkRect::MakeXYWH(0, height * -1, site, site), 0, 360, true, paint);       // Draw the arc
+        paint.setShader(SkGradientShader::MakeSweep(linearPoints[0].x(),        // Create a sweeper shader
+                                                    linearPoints[0].y(),
+                                                    colors, nullptr,
+                                                    sr.gradientColors.size(),
+                                                    SkTileMode::kClamp,
+                                                    0.0, 360.0, 0, nullptr));
+        canvas.drawPaint(paint);                                                // Draw the painter
     }
     else if (gradType == GRAD_RADIAL)                                           // This is also a circle but with defined center and radius
     {
-        paint.setShader(SkGradientShader::MakeRadial(linearPoints[0], 180.0, colors, nullptr, sr.gradientColors.size(), SkTileMode::kClamp, 0, nullptr));
+        paint.setShader(SkGradientShader::MakeRadial(linearPoints[0],           // Create a radial shader
+                                                     sr.gr,
+                                                     colors,
+                                                     nullptr,
+                                                     sr.gradientColors.size(),
+                                                     SkTileMode::kClamp,
+                                                     0, nullptr));
         canvas.drawPaint(paint);
-/*
-//        paint.setStroke(true);
-//        paint.setStrokeWidth(2.0);
-        canvas.drawColor(colors[sr.gradientColors.size() - 1]);                 // Draw the base color first
-        SkScalar px = static_cast<SkScalar>(sr.gx) / 100.0 * static_cast<SkScalar>(width);
-        SkScalar py = static_cast<SkScalar>(sr.gy) / 100.0 * static_cast<SkScalar>(height);
-
-        for (int deg = 0; deg < 360; ++deg)
-        {
-//            canvas.save();
-            canvas.rotate(deg, px, py);
-            canvas.drawLine(SkPoint::Make(px, py), SkPoint::Make(px, py + sr.gr), paint);
-//            canvas.restore();
-        }
-
-//        canvas.drawArc(SkRect::MakeXYWH(px - sr.gr, py - sr.gr, sr.gr * 2, sr.gr * 2), 0, 360, false, paint);
-//        canvas.drawCircle(px, py, sr.gr, paint);
-//        canvas.drawOval(SkRect::MakeXYWH(px - sr.gr, py - sr.gr, sr.gr * 2, sr.gr * 2), paint);
-*/
     }
     else
     {
@@ -5080,6 +5054,24 @@ GRAD_TYPE_t TButton::getGradientType(const std::string& grad)
     }
 
     return GRAD_SOLID;
+}
+
+bool TButton::haveSelfFeed()
+{
+    DECL_TRACER("TButton::haveSelfFeed()");
+
+    if (pushFunc.empty())
+        return false;
+
+    vector<PUSH_FUNC_T>::iterator iter;
+
+    for (iter = pushFunc.begin(); iter != pushFunc.end(); ++iter)
+    {
+        if (iter->action == BT_ACTION_COMMAND)
+            return true;
+    }
+
+    return false;
 }
 
 int TButton::getDynamicBmIndex(const SR_T& sr)
@@ -11293,8 +11285,14 @@ bool TButton::doClick(int x, int y, bool pressed)
                 TLauncher::launch(iter->pfName);
 #endif  // __ANDROID__
             }
+            else if (iter->action == BT_ACTION_COMMAND)
+            {
+            }
         }
     }
+
+    if (TTPInit::isTP5())
+        return sendCommand(pressed);
 
     if (!cm.empty() && co == 0 && pressed)      // Feed command to ourself?
     {                                           // Yes, then feed it into command queue.
@@ -11339,6 +11337,60 @@ bool TButton::doClick(int x, int y, bool pressed)
             for (iter = cm.begin(); iter != cm.end(); ++iter)
                 gPageManager->sendCommandString(co, *iter);
         }
+    }
+
+    return true;
+}
+
+bool TButton::sendCommand(bool pressed)
+{
+    DECL_TRACER("TButton::sendCommand(bool pressed)");
+
+    if (pushFunc.empty())
+        return true;
+
+    if (!gPageManager)
+        return false;
+
+    int channel = TConfig::getChannel();
+    int system = TConfig::getSystem();
+
+    amx::ANET_COMMAND cmd;
+    cmd.intern = true;
+    cmd.MC = 0x000c;
+    cmd.device1 = channel;
+    cmd.port1 = 1;
+    cmd.system = system;
+    cmd.data.message_string.device = channel;
+    cmd.data.message_string.port = 1;
+    cmd.data.message_string.system = system;
+    cmd.data.message_string.type = 1;   // 8 bit char string
+
+    vector<PUSH_FUNC_T>::iterator iter;
+
+    for (iter = pushFunc.begin(); iter != pushFunc.end(); ++iter)
+    {
+        if (iter->action != BT_ACTION_COMMAND ||
+            (pressed && iter->event != EVENT_PRESS) ||
+            (!pressed && iter->event != EVENT_RELEASE))
+            continue;
+
+        if (iter->ID == 0)
+        {
+            cmd.intern = true;
+            cmd.data.message_string.port = 1;   // Must be 1
+        }
+        else
+        {
+            cmd.intern = false;
+            cmd.data.message_string.port = iter->ID;
+        }
+
+        cmd.data.message_string.length = iter->pfName.length();
+        memset(&cmd.data.message_string.content, 0, sizeof(cmd.data.message_string.content));
+        strncpy((char *)&cmd.data.message_string.content, iter->pfName.c_str(), sizeof(cmd.data.message_string.content)-1);
+        MSG_DEBUG("Executing system command: " << iter->pfName);
+        gPageManager->doCommand(cmd);
     }
 
     return true;

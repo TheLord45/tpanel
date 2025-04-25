@@ -258,6 +258,9 @@ CMD_DEFINATIONS cmdDefinations[] = {
     { "^SSH", true, true, ',' },
     { "^STG", true, true, ',' },
     { "^MUT", false, true, ',' },
+    { "^PCL", false, true, ';' },
+    { "^PCT", false, true, ',' },
+    { "^PTC", false, true, ';' },
     { "", false, false, '\0' }
 };
 

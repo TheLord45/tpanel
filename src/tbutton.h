@@ -197,11 +197,12 @@ namespace Button
     typedef enum BUTTON_ACTION_t
     {
         BT_ACTION_LAUNCH,
-        BT_ACTION_PGFLIP
+        BT_ACTION_PGFLIP,
+        BT_ACTION_COMMAND
     }BUTTON_ACTION_t;
 
     /**
-     * @brief TP5 button events
+     * @brief G5 button events
      * This defines the possible event types on a button.
      */
     typedef enum BUTTON_EVENT_t
@@ -272,7 +273,7 @@ namespace Button
         int mi_width{0};        // Width of image
         int mi_height{0};       // Height of image
         std::string cb;         // Border color
-        std::string ft;         // TP5: Fill type for gradient colors.
+        std::string ft;         // G5: Fill type for gradient colors.
         std::string cf;         // Fill color
         std::string ct;         // Text Color
         std::string ec;         // Text effect color
@@ -338,13 +339,13 @@ namespace Button
 
     typedef struct PUSH_FUNC
     {
-        int item{0};            // TP5: Item number
+        int item{0};            // G5: Item number
         std::string pfType;     // command to execute when button was pushed
-        std::string pfAction;   // TP5: Action; Used for launching external apps
+        std::string pfAction;   // G5: Action; Used for launching external apps
         std::string pfName;     // Name of popup
-        BUTTON_ACTION_t action{BT_ACTION_PGFLIP};   // TP5: Button action (page flip, ...)
-        int ID{0};              // TP5: An ID for launch buttons
-        BUTTON_EVENT_t event{EVENT_NONE};   // TP5: Type of event
+        BUTTON_ACTION_t action{BT_ACTION_PGFLIP};   // G5: Button action (page flip, ...)
+        int ID{0};              // G5: An ID for launch buttons
+        BUTTON_EVENT_t event{EVENT_NONE};   // G5: Type of event
     }PUSH_FUNC_T;
 
     typedef enum CENTER_CODE
@@ -596,9 +597,9 @@ namespace Button
              * @param file      File name of a bitmap file.
              * @param instance  The instance where to put the new bitmap. If
              *                  this is 0, the bitmap is set on all instances.
-             * @param justify   Optional; reserved for TP5: Defines the justification
-             * @param x         Optional; reserved for TP5: Defines the x origin
-             * @param y         Optional; reserved for TP5: Defines the y origin
+             * @param justify   Optional; reserved for G5: Defines the justification
+             * @param x         Optional; reserved for G5: Defines the x origin
+             * @param y         Optional; reserved for G5: Defines the y origin
              * @return TRUE if no errors occures, otherwise FALSE.
              */
             bool setBitmap(const std::string& file, int instance, int index, int justify=5, int x=0, int y=0);
@@ -1446,8 +1447,8 @@ namespace Button
             void runBargraphMove(int distance, bool moveUp=false);
             void threadBargraphMove(int distance, bool moveUp);
             TButtonStates *getButtonState();
-            bool isButtonEvent(const std::string& token, const std::vector<std::string>& events);               // TP5: Tests for a button event
-            BUTTON_EVENT_t getButtonEvent(const std::string& token);    // TP5: Returns the button event
+            bool isButtonEvent(const std::string& token, const std::vector<std::string>& events);               // G5: Tests for a button event
+            BUTTON_EVENT_t getButtonEvent(const std::string& token);    // G5: Returns the button event
             std::string getBitmapNames(const SR_T& sr);
             SkRect justifyBitmap5(int instance, int index, int width, int height, int border_size=0);
             std::string getFirstImageName(const SR_T& sr);
@@ -1457,6 +1458,8 @@ namespace Button
             bool startVideo(const SR_T& sr);
             bool drawGradientImage(SkBitmap *bm, const SR_T& sr, int width, int height);
             GRAD_TYPE_t getGradientType(const std::string& grad);
+            bool haveSelfFeed();
+            bool sendCommand(bool pressed);
 
             BUTTONTYPE type;
             int bi{0};              // button ID
