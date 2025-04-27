@@ -208,7 +208,7 @@ void TSubPage::initialize()
         else if (ename.compare("showLocX") == 0)
             mSubpage.showLockX = xml.convertElementToInt(content);
         else if (ename.compare("collapseDirection") == 0)
-            mSubpage.collapseDirection = xml.convertElementToInt(content);
+            mSubpage.collapseDirection = static_cast<COLDIR_t>(xml.convertElementToInt(content));
         else if (ename.compare("collapseOffset") == 0)
         {
             mSubpage.collapseOffset = xml.convertElementToInt(content);
@@ -739,8 +739,37 @@ void TSubPage::show()
     // Mark page as visible
     mVisible = true;
 
+    if (mSubpage.collapsible)
+        mSubpage.colState = COL_FULL;
+
     if (gPageManager && gPageManager->getPageFinished())
         gPageManager->getPageFinished()(handle);
+}
+
+void TSubPage::setCollapsible(COLLAPS_STATE_t cs)
+{
+    DECL_TRACER("TSubPage::setCollapsible(COLLAPS_STATE_t cs)");
+
+    if (!isCollapsible())
+        return;
+
+    switch(cs)
+    {
+        case COL_SMALL:     // Set popup to collapsed but not closed.
+            drop();
+            mSubpage.colState = COL_SMALL;
+        break;
+
+        case COL_FULL:
+            show();
+            mSubpage.colState = COL_FULL;
+        break;
+
+        case COL_CLOSED:
+            drop();
+            mSubpage.colState = COL_CLOSED;
+        break;
+    }
 }
 
 SkBitmap& TSubPage::getBgImage()

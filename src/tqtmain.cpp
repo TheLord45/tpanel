@@ -632,6 +632,10 @@ MainWindow::MainWindow()
         connect(this, &MainWindow::sigShowViewButtonItem, this, &MainWindow::showViewButtonItem);
         connect(this, &MainWindow::sigUpdateViewButton, this, &MainWindow::updateViewButton);
         connect(this, &MainWindow::sigUpdateViewButtonItem, this, &MainWindow::updateViewButtonItem);
+        connect(this, &MainWindow::sigHideViewItem, this, &MainWindow::hideViewItem);
+        connect(this, &MainWindow::sigHideAllViewItems, this, &MainWindow::hideAllViewItems);
+        connect(this, &MainWindow::sigSetSubViewPadding, this, &MainWindow::setSubViewPadding);
+        connect(this, &MainWindow::sigToggleViewButtonItem, this, &MainWindow::toggleViewButtonItem);
         connect(this, &MainWindow::sigSetPage, this, &MainWindow::setPage);
         connect(this, &MainWindow::sigSetSubPage, this, &MainWindow::setSubPage);
         connect(this, &MainWindow::sigSetBackground, this, &MainWindow::setBackground);
@@ -4433,10 +4437,23 @@ void MainWindow::hideAllViewItems(ulong handle)
 {
     DECL_TRACER("MainWindow::hideAllViewItems(ulong handle)");
 
+    MSG_DEBUG("Searching for object with handle " << handleToString(handle));
     OBJECT_t *obj = findObject(handle);
 
     if (!obj || obj->type != OBJ_SUBVIEW || !obj->object.area)
     {
+        if (!obj)
+        {
+            MSG_ERROR("Object with handle " << handleToString(handle) << " not found!");
+        }
+        else if (obj->type != OBJ_SUBVIEW)
+        {
+            MSG_ERROR("Object with handle " << handleToString(handle) << " has wrong type " << obj->type << "!");
+        }
+        else
+        {
+            MSG_ERROR("Object with handle " << handleToString(handle) << " has no scroll area!");
+        }
 #if TESTMODE == 1
         setScreenDone();
 #endif
@@ -4450,10 +4467,23 @@ void MainWindow::hideViewItem(ulong handle, ulong parent)
 {
     DECL_TRACER("MainWindow::hideViewItem(ulong handle, ulong parent)");
 
+    MSG_DEBUG("Searching for object with handle " << handleToString(handle) << " and parent " << handleToString(parent));
     OBJECT_t *obj = findObject(parent);
 
     if (!obj || obj->type != OBJ_SUBVIEW || !obj->object.area)
     {
+        if (!obj)
+        {
+            MSG_ERROR("Object with handle " << handleToString(handle) << " and parent " << handleToString(parent) << " not found!");
+        }
+        else if (obj->type != OBJ_SUBVIEW)
+        {
+            MSG_ERROR("Object with handle " << handleToString(handle) << " and parent " << handleToString(parent) << " has wrong type " << obj->type << "!");
+        }
+        else
+        {
+            MSG_ERROR("Object with handle " << handleToString(handle) << " and parent " << handleToString(parent) << " has no scroll area!");
+        }
 #if TESTMODE == 1
         setScreenDone();
 #endif

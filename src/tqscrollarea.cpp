@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2023 to 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -562,16 +562,12 @@ void TQScrollArea::_addItems(std::vector<_ITEMS_T>& items, bool intern)
         if (mVertical || mTotalHeight <= 0)
             mTotalHeight = 0;
 
-//        int num = 0;
-
         for (iter = items.begin(); iter != items.end(); ++iter)
         {
             if (!mVertical)
                 mTotalWidth += iter->width;
             else
                 mTotalHeight += iter->height;
-
-//            num++;
         }
 
         if (mVertical)
@@ -589,8 +585,6 @@ void TQScrollArea::_addItems(std::vector<_ITEMS_T>& items, bool intern)
             mMain->setFixedSize(mTotalWidth, mTotalHeight);
     }
 
-//    MSG_DEBUG("Number of items: " << items.size());
-
     if (mSpace > 0)
     {
         int space = (int)((double)total / 100.0 * (double)mSpace);
@@ -599,14 +593,12 @@ void TQScrollArea::_addItems(std::vector<_ITEMS_T>& items, bool intern)
         {
             int newHeight = space + mTotalHeight;
             mMain->setFixedHeight(newHeight);
-//            MSG_DEBUG("Calculated space: " << space << " (" << mSpace << "%). Total height: " << newHeight << ", Old total height: " << mTotalHeight);
             mTotalHeight = newHeight;
         }
         else if (space > 0 && !mVertical && mHLayout && mMain)
         {
             int newWidth = space + mTotalWidth;
             mMain->setFixedWidth(newWidth);
-//            MSG_DEBUG("Calculated space: " << space << " (" << mSpace << "%). Total width: " << newWidth << ", Old total width: " << mTotalWidth);
             mTotalWidth = newWidth;
         }
     }
@@ -694,6 +686,9 @@ void TQScrollArea::_addItems(std::vector<_ITEMS_T>& items, bool intern)
         {
             MSG_ERROR("Layout not initialized!");
         }
+
+        if (!iter->show)
+            item->setVisible(false);
     }
 
     if (mOldActPosition > 0)
@@ -751,7 +746,8 @@ void TQScrollArea::updateItem(PGSUBVIEWITEM_T& item)
                     }
                 }
 
-                iter->item->show();
+                if (iter->item->isVisible())
+                    iter->item->show();
             }
 
             break;
@@ -1087,6 +1083,7 @@ TQScrollArea::_ITEMS_T TQScrollArea::subViewItemToItem(PGSUBVIEWITEM_T& item)
     it.scrollbar = item.scrollbar;
     it.scrollbarOffset = item.scrollbarOffset;
     it.wrap = item.wrap;
+    it.show = item.show;
     it.atoms = item.atoms;
 
     return it;
@@ -1186,20 +1183,14 @@ void TQScrollArea::mouseMoveEvent(QMouseEvent* event)
         mMousePressTimer->stop();
 
     int move = 0;
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    MSG_DEBUG("Scroll event at " << event->pos().x() << "x" << event->pos().y() << ", old point at " << mOldPoint.x() << "x" << mOldPoint.y());
-#else
     MSG_DEBUG("Scroll event at " << event->position().x() << "x" << event->position().y() << ", old point at " << mOldPoint.x() << "x" << mOldPoint.y());
-#endif
+
     if (mVertical)
     {
         if (mOldPoint.y() != 0)
         {
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-            move = event->pos().y() - mOldPoint.y();
-#else
             move = event->position().y() - mOldPoint.y();
-#endif
+
             QScrollBar *bar = verticalScrollBar();
 
             if (bar)
@@ -1214,11 +1205,8 @@ void TQScrollArea::mouseMoveEvent(QMouseEvent* event)
     {
         if (mOldPoint.x() != 0)
         {
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-            move = event->pos().x() - mOldPoint.x();
-#else
             move = event->position().x() - mOldPoint.x();
-#endif
+
             QScrollBar *bar = horizontalScrollBar();
 
             if (bar)
@@ -1232,11 +1220,7 @@ void TQScrollArea::mouseMoveEvent(QMouseEvent* event)
         }
     }
 
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    mOldPoint = event->pos();
-#else
     mOldPoint = event->position();
-#endif
 }
 
 void TQScrollArea::mousePressEvent(QMouseEvent* event)
@@ -1251,20 +1235,12 @@ void TQScrollArea::mousePressEvent(QMouseEvent* event)
     mOldPoint.setY(0.0);
 
     int x = 0, y = 0;
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    x = event->pos().x();
-    y = event->pos().y();
-#else
     x = event->position().x();
     y = event->position().y();
-#endif
+
     mLastMousePress.setX(x);
     mLastMousePress.setY(y);
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    MSG_DEBUG("Mouse press event at " << x << " x " << y << " // " << event->globalX() << " x " << event->globalY());
-#else
     MSG_DEBUG("Mouse press event at " << x << " x " << y << " // " << event->globalPosition().x() << " x " << event->globalPosition().y());
-#endif
     /*
         * Here we're starting a timer with 200 ms. If after this time the
         * mouse button is still pressed and no scroll event was detected,

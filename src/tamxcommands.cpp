@@ -261,6 +261,7 @@ CMD_DEFINATIONS cmdDefinations[] = {
     { "^PCL", false, true, ';' },
     { "^PCT", false, true, ',' },
     { "^PTC", false, true, ';' },
+    { "^PTO", false, true, ';' },
     { "", false, false, '\0' }
 };
 
