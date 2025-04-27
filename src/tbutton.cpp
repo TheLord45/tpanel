@@ -456,6 +456,8 @@ size_t TButton::initialize(TExpat *xml, size_t index)
             bo = xml->convertElementToInt(content);
         else if (ename.compare("we") == 0)          // SubViewPage Anchor position
             we = content;
+        else if (ename.compare("sw") == 0)          // SubViewPage G5: Show sup pages; 1 = YES, 0 = NO
+            sw = xml->convertElementToInt(content);
         else if (ename.compare("hd") == 0)          // 1 = Hidden, 0 = Normal visible
             hd = xml->convertElementToInt(content);
         else if (ename.compare("da") == 0)          // 1 = Disabled, 0 = Normal active
@@ -7225,7 +7227,7 @@ bool TButton::drawButton(int instance, bool show, bool subview)
     // We create an empty (transparent) image here. Later it depends on the
     // draw order of the elements. If, for example, the background fill is
     // not the first thing, we must be sure to not destroy already drawn
-    // elemts of the button.
+    // elements of the button.
     imgButton.eraseColor(SkColors::kTransparent);
     bool dynState = false;
     bool video = false;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2023 to 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -102,6 +102,7 @@ class TQScrollArea : public QScrollArea
             TBitmap image;
             std::string bounding;
             QWidget *item{nullptr};
+            bool show{true};
             std::vector<PGSUBVIEWATOM_T> atoms;
 
             void clear()
@@ -114,6 +115,7 @@ class TQScrollArea : public QScrollArea
                 position = Button::SVP_CENTER;
                 image.clear();
                 bounding.clear();
+                show = true;
                 atoms.clear();
 
                 if (item)

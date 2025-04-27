@@ -180,6 +180,23 @@ typedef struct EVENT_t
     int port{0};                    // The port number if the type is EV_COMMAND.
 }EVENT_t;
 
+typedef enum
+{
+    COL_CLOSED,
+    COL_SMALL,
+    COL_FULL
+}COLLAPS_STATE_t;
+
+// Collapse direction (animation)
+typedef enum
+{
+    COLDIR_NONE,                    // Not collapsible
+    COLDIR_LEFT,                    // Collapse to left
+    COLDIR_RIGHT,                   // Collapse to right
+    COLDIR_UP,                      // Collapse up
+    COLDIR_DOWN                     // Collapse down
+}COLDIR_t;
+
 typedef struct PAGE_T
 {
     std::string popupType;                  // The type of the popup (popup only)
@@ -195,9 +212,10 @@ typedef struct PAGE_T
     int heightOrig{0};                      // The original height of the popup
     int modal{0};                           // 0 = Popup/Page = non modal
     int showLockX{0};                       // G5 ?
-    int collapseDirection{1};               // G5: The direction the popup should move on collapse
+    COLDIR_t collapseDirection{COLDIR_NONE};// G5: The direction the popup should move on collapse
     int collapseOffset{0};                  // G5: The offset to collapse to.
     bool collapsible{false};                // G5: Internal use: TRUE = popup is collapsible.
+    COLLAPS_STATE_t colState{COL_CLOSED};   // G5: Internal use: Defines the state of a collapsable popup.
     std::string group;                      // Name of the group the popup belongs (popup only)
     int timeout{0};                         // Time after the popup hides in 1/10 seconds (popup only)
     SHOWEFFECT showEffect{SE_NONE};         // The effect when the popup is shown (popup only)

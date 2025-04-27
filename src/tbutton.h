@@ -1355,6 +1355,7 @@ namespace Button
             void setPassword(const std::string& pw) { mPassword = pw; }
             void setUserName(const std::string& user);
             bool haveImage(const SR_T& sr);
+            bool showSubviewItems() { return sw >= 1; }
 
         protected:
             BUTTONTYPE getButtonType(const std::string& bt);
@@ -1528,6 +1529,7 @@ namespace Button
             int rs{0};              // SubPageView: Reset view on show; 1 = YES
             int ba{0};              // SubPageView: 1 = Scrollbar is visible, 0 = No scrollbar visible
             int bo{0};              // SubPageView: Scrollbar offset in pixels; Only valid if "ba" > 0
+            int sw{1};              // SubPageView: G5: Show subpages; 1 = YES (default), 0 = NO
             std::string we;         // SubPageView: Anchor position: Empty = Center, "l/t" = left/top, "r/b" = right/bottom
             std::string pc;         // Password character for text area
             std::string op;         // String the button send
@@ -1598,7 +1600,6 @@ namespace Button
             int mPosTop{0};         // The actual top position of the button
             int mWidthOrig{0};      // The original width
             int mHeightOrig{0};     // The original height
-
     };
 
     typedef struct BUTTONS_T

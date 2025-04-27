@@ -95,36 +95,38 @@ typedef struct PGSUBVIEWATOM_T
  */
 typedef struct PGSUBVIEWITEM_T
 {
-    ulong handle{0};
-    ulong parent{0};
-    int width{0};
-    int height{0};
-    bool scrollbar{false};
-    int scrollbarOffset{0};
-    Button::SUBVIEW_POSITION_t position{Button::SVP_CENTER};
-    bool wrap{false};
-    TColor::COLOR_T bgcolor;
-    TBitmap image;
-    std::string bounding;
-    std::vector<PGSUBVIEWATOM_T> atoms;
+    ulong handle{0};                                            // The handle of the subpage
+    ulong parent{0};                                            // The handle of the parent object, which contains the subview list
+    int width{0};                                               // Width of subpage
+    int height{0};                                              // Height of subpage
+    bool scrollbar{false};                                      // TRUE = show a scrollbar
+    int scrollbarOffset{0};                                     // Define the offset of the scrollbar; Which item should be visible initially?
+    Button::SUBVIEW_POSITION_t position{Button::SVP_CENTER};    // Position of where to place the subpage
+    bool wrap{false};                                           // TRUE = Wrap around scroll area
+    TColor::COLOR_T bgcolor;                                    // Background color of subpage
+    TBitmap image;                                              // Background image of subpage
+    std::string bounding;                                       // Defines the bounding; This is whether it should count the whole subpage, only visible pixels or ignore it completely.
+    bool show{true};                                            // TRUE = show subpage (default).
+    bool visible{false};                                        // State of visibility; TRUE = subpage is visible.
+    std::vector<PGSUBVIEWATOM_T> atoms;                         // Elements (buttons) of subpage
 
     void clear()
     {
         handle = parent = 0;
         width = height = 0;
         bgcolor.alpha = bgcolor.blue = bgcolor.green = bgcolor.red = 0;
-        scrollbar = wrap = false;
+        scrollbar = wrap = visible = false;
         scrollbarOffset = 0;
         position = Button::SVP_CENTER;
         image.clear();
         bounding.clear();
+        show = true;
         atoms.clear();
     }
 }PGSUBVIEWITEM_T;
 
 // G5 command table for animating a popup (open, close)
-//    Note: Animation of opening or closing is currently not supported because
-//          the GUI system (QT) has no feature for it.
+//    Note: Animation of opening or closing is currently not supported.
 typedef enum
 {
     POPSTATE_UNKNOWN,
@@ -134,6 +136,11 @@ typedef enum
     POPSTATE_ANY        // wildcard
 }POPSTATE_t;
 
+/**
+ * @brief typedef struct SUBCOMMAND_t
+ * This struct is used as a command table for the G5 command ^PCT. It defines
+ * from which state into which a collapsible popup should change.
+ */
 typedef struct SUBCOMMAND_t
 {
     POPSTATE_t from{POPSTATE_UNKNOWN};      // The from state (e.g. closed)
@@ -167,24 +174,26 @@ class TPageManager : public TAmxCommands
         TPageManager();
         ~TPageManager();
 
-        bool readPages();                                   //!< Read all pages and subpages
-        bool readPage(const std::string& name);             //!< Read the page with name \p name
-        bool readPage(int ID);                              //!< Read the page with id \p ID
-        bool readSubPage(const std::string& name);          //!< Read the subpage with name \p name
-        bool readSubPage(int ID);                           //!< Read the subpage with ID \p ID
-        void updateActualPage();                            //!< Updates all elements of the actual page
-        void updateSubpage(int ID);                         //!< Updates all elements of a subpage
-        void updateSubpage(const std::string& name);        //!< Updates all elements of a subpage
-        std::vector<TSubPage *> createSubViewList(int id);  //!< Create a list of subview pages
-        void showSubViewList(int id, Button::TButton *bt);  //!< Creates and displays a subview list
-        void updateSubViewItem(Button::TButton *bt);        //!< Updates an existing subview item
+        bool readPages();                                       // Read all pages and subpages
+        bool readPage(const std::string& name);                 // Read the page with name \p name
+        bool readPage(int ID);                                  // Read the page with id \p ID
+        bool readSubPage(const std::string& name);              // Read the subpage with name \p name
+        bool readSubPage(int ID);                               // Read the subpage with ID \p ID
+        void updateActualPage();                                // Updates all elements of the actual page
+        void updateSubpage(int ID);                             // Updates all elements of a subpage
+        void updateSubpage(const std::string& name);            // Updates all elements of a subpage
+        std::vector<TSubPage *> createSubViewList(int id);      // Create a list of subview pages
+        void showSubViewList(int id, Button::TButton *bt);      // Creates and displays a subview list
+        void updateSubViewItem(Button::TButton *bt);            // Updates an existing subview item
+        void clearSubViewItem(Button::TButton *bt);             // Clears a particular item from list
+        void clearSubViewList(int id, Button::TButton *bt);     // Clears a whole list of subview pages
 
-        TPageList *getPageList() { return mPageList; }      //!< Get the list of all pages
-        TSettings *getSettings() { return mTSettings; }     //!< Get the (system) settings of the panel
+        TPageList *getPageList() { return mPageList; }          // Get the list of all pages
+        TSettings *getSettings() { return mTSettings; }         // Get the (system) settings of the panel
 
-        TPage *getActualPage();                             //!< Get the actual page
-        int getActualPageNumber() { return mActualPage; }   //!< Get the ID of the actual page
-        int getPreviousPageNumber() { return mPreviousPage; }   //!< Get the ID of the previous page, if there was any.
+        TPage *getActualPage();                                 // Get the actual page
+        int getActualPageNumber() { return mActualPage; }       // Get the ID of the actual page
+        int getPreviousPageNumber() { return mPreviousPage; }   // Get the ID of the previous page, if there was any.
         TSubPage *getFirstSubPage();
         TSubPage *getNextSubPage();
         TSubPage *getPrevSubPage();
@@ -842,6 +851,7 @@ class TPageManager : public TAmxCommands
         void doPCL(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doPCT(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doPTC(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doPTO(int port, std::vector<int>& channels, std::vector<std::string>& pars);
 
         void doANI(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doAPF(int port, std::vector<int>& channels, std::vector<std::string>& pars);

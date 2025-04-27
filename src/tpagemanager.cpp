@@ -939,6 +939,7 @@ TPageManager::TPageManager()
     REG_CMD(doPCL, "^PCL");     // G5: Collapse Collapsible Popup Command
     REG_CMD(doPCT, "^PCT");     // G5: Collapsible Popup Custom Toggle Command
     REG_CMD(doPTC, "^PTC");     // G5: Toggle Collapsible Popup Collapsed Command
+    REG_CMD(doPTO, "^PTO");     // G5: Toggle Collapsed Popup Open Command
 
     REG_CMD(doANI, "^ANI");     // Run a button animation (in 1/10 second).
     REG_CMD(doAPF, "^APF");     // Add page flip action to a button if it does not already exist.
@@ -2795,6 +2796,7 @@ void TPageManager::showSubViewList(int id, Button::TButton *bt)
         svItem.scrollbarOffset = bt->getSubViewScrollbarOffset();
         svItem.position = bt->getSubViewAnchor();
         svItem.wrap = bt->getWrapSubViewPages();
+        svItem.show = bt->showSubviewItems();
 
         if (!bitmap.empty())
             svItem.image.setBitmap((unsigned char *)bitmap.getPixels(), bitmap.info().width(), bitmap.info().height(), bitmap.info().bytesPerPixel());
@@ -2839,6 +2841,25 @@ void TPageManager::updateSubViewItem(Button::TButton *bt)
     updview_mutex.lock();
     mUpdateViews.push_back(bt);
     updview_mutex.unlock();
+}
+
+void TPageManager::clearSubViewItem(Button::TButton* bt)
+{
+    DECL_TRACER("TPageManager::clearSubViewItem(Button::TButton* bt)");
+
+    if (!bt)
+        return;
+
+
+}
+
+void TPageManager::clearSubViewList(int id, Button::TButton* bt)
+{
+    DECL_TRACER("TPageManager::clearSubViewList(int id, Button::TButton* bt)");
+
+    if (!bt)
+        return;
+
 }
 
 void TPageManager::_updateSubViewItem(Button::TButton *bt)
@@ -7094,6 +7115,60 @@ void TPageManager::doPTC(int port, vector<int>& channels, vector<string>& pars)
 }
 
 /**
+ * @brief TPageManager::doPTO - Toggle Collapsed Popup Open Command
+ * Toggles the named collapsible popup between the open and collapsed positions.
+ * More specifically, if the popup is not fully open, it is opened.
+ * Syntax:
+ *      "'^PTO-<popup>;[optional target page]'"
+ * Variables:
+ *      Popup = the name of the popup to toggle
+ *      Target page = name of the page hosting the popup to affect the change
+ *                    upon. If target page is not specified, the command is
+ *                    applied to the current page.
+ * Examples:
+ *      SEND_COMMAND Panel,"'^PTO-Contacts'"
+ *  Toggle the Contacts popup open on the current page.
+ *      SEND_COMMAND Panel,"'^PTO-Contacts;Teleconference Control'"
+ *  Toggle the Contacts popup open on the Teleconference Control page.
+ *  Note: Collapsible popup send commands do not automatically show the popup
+ *        on the target page. The popup must be first shown with a standard
+ *        show command. This applies even when the collapsible popup is a
+ *        member of a popup group. For all of these commands, if the target
+ *        page is blank, the current page is used. If the named popup is not
+ *        collapsible, the commands are ignored.
+ */
+void TPageManager::doPTO(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doPTO(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.empty())
+    {
+        MSG_WARNING("Expect at least 1 parameter but got none!");
+        return;
+    }
+
+    string popup = pars[0];
+    string page;
+
+    if (pars.size() > 1)
+        page = pars[1];
+
+    TSubPage *sp = loadSubPage(popup);
+
+    if (!sp || !sp->isCollapsible())
+        return;
+
+    bool visible = sp->isVisible();
+
+    if (!visible)
+        showSubPage(popup);
+    else
+        sp->drop();
+
+    // TODO: Add code to honor the "page", if there is one.
+}
+
+/**
  * @brief TPageManager::doANI Run a button animation (in 1/10 second).
  * Syntax:
  *      ^ANI-<vt addr range>,<start state>,<end state>,<time>
@@ -10537,77 +10612,6 @@ void TPageManager::doMSP(int port, vector<int>& channels, vector<string>& pars)
     }
 }
 
-/**
- * Show or hide a button with a set variable text range.
- */
-void TPageManager::doSHO(int port, vector<int>& channels, vector<string>& pars)
-{
-    DECL_TRACER("TPageManager::doSHO(int port, vector<int>& channels, vector<string>& pars)");
-
-    if (pars.empty())
-    {
-        MSG_ERROR("Expecting 1 parameter but got none! Ignoring command.");
-        return;
-    }
-
-    TError::clear();
-    int cvalue = atoi(pars[0].c_str());
-
-    vector<TMap::MAP_T> map = findButtons(port, channels);
-
-    if (TError::isError() || map.empty())
-        return;
-
-    vector<Button::TButton *> buttons = collectButtons(map);
-
-    if (buttons.size() > 0)
-    {
-        vector<Button::TButton *>::iterator mapIter;
-
-        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
-        {
-            Button::TButton *bt = *mapIter;
-
-            int pgID = (bt->getParent() >> 16) & 0x0000ffff;
-            bool pVisible = false;
-
-            if (pgID < 500)
-            {
-                TPage *pg = getPage(pgID);
-
-                if (pg && pg->isVisilble())
-                    pVisible = true;
-            }
-            else
-            {
-                TSubPage *pg = getSubPage(pgID);
-
-                if (pg && pg->isVisible())
-                    pVisible = true;
-            }
-
-            bool oldV = bt->isVisible();
-            bool visible = cvalue ? true : false;
-            MSG_DEBUG("Button " << bt->getButtonIndex() << ", \"" << bt->getButtonName() << "\" set " << (visible ? "VISIBLE" : "HIDDEN") << " (Previous: " << (oldV ? "VISIBLE" : "HIDDEN") << ")");
-
-            if (visible != oldV)
-            {
-                bt->setVisible(visible);
-
-                if (pVisible)
-                {
-                    setButtonCallbacks(bt);
-
-                    if (_setVisible)
-                        _setVisible(bt->getHandle(), visible);
-                    else
-                        bt->refresh();
-                }
-            }
-        }
-    }
-}
-
 void TPageManager::doTEC(int port, vector<int>& channels, vector<string>& pars)
 {
     DECL_TRACER("TPageManager::doTEC(int port, vector<int>& channels, vector<string>& pars)");
@@ -12328,6 +12332,28 @@ void TPageManager::doSHA(int port, vector<int> &channels, vector<string> &pars)
     }
 }
 
+/**
+ * @brief TPageManager::doSHD - Subpage Hide Command
+ * This command will hide the named subpage and relocate the surrounding
+ * subpages as necessary to close the gap. If the subpage to be hidden is
+ * currently offscreen then it is removed without any other motion on the
+ * subpage viewer button.
+ * Syntax:
+ *      "'^SHD-<addr range>,<name>,<optional time>'"
+ * Variables:
+ *      address range: Address codes of buttons to affect. A '.' between
+ *          addresses includes the range, and & between addresses includes each
+ *          address.
+ *      name: name of subpage to hide. If name is __all, then all subpages are
+ *          hidden.
+ *      time: Can range from 0 to 30 and represents tenths of a second. This is
+ *          the amount of time used to move the subpages around when subpages
+ *          are hidden from a button.
+ * Example:
+ *      SEND_COMMAND Panel,"'^SHD-200,menu1,10'"
+ *  Remove the menu1 subpage from subpage viewer button with address 200 over
+ *  one second.
+ */
 void TPageManager::doSHD(int port, vector<int>& channels, vector<string>& pars)
 {
     DECL_TRACER("TPageManager::doSHD(int port, vector<int>& channels, vector<string>& pars)");
@@ -12369,6 +12395,77 @@ void TPageManager::doSHD(int port, vector<int>& channels, vector<string>& pars)
                         _hideSubViewItem(bt->getHandle(), sub->getHandle());
 
                     break;
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Show or hide a button with a set variable text range.
+ */
+void TPageManager::doSHO(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doSHO(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.empty())
+    {
+        MSG_ERROR("Expecting 1 parameter but got none! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    int cvalue = atoi(pars[0].c_str());
+
+    vector<TMap::MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+
+            int pgID = (bt->getParent() >> 16) & 0x0000ffff;
+            bool pVisible = false;
+
+            if (pgID < 500)
+            {
+                TPage *pg = getPage(pgID);
+
+                if (pg && pg->isVisilble())
+                    pVisible = true;
+            }
+            else
+            {
+                TSubPage *pg = getSubPage(pgID);
+
+                if (pg && pg->isVisible())
+                    pVisible = true;
+            }
+
+            bool oldV = bt->isVisible();
+            bool visible = cvalue ? true : false;
+            MSG_DEBUG("Button " << bt->getButtonIndex() << ", \"" << bt->getButtonName() << "\" set " << (visible ? "VISIBLE" : "HIDDEN") << " (Previous: " << (oldV ? "VISIBLE" : "HIDDEN") << ")");
+
+            if (visible != oldV)
+            {
+                bt->setVisible(visible);
+
+                if (pVisible)
+                {
+                    setButtonCallbacks(bt);
+
+                    if (_setVisible)
+                        _setVisible(bt->getHandle(), visible);
+                    else
+                        bt->refresh();
                 }
             }
         }
