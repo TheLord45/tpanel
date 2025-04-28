@@ -107,7 +107,7 @@ typedef struct PGSUBVIEWITEM_T
     TBitmap image;                                              // Background image of subpage
     std::string bounding;                                       // Defines the bounding; This is whether it should count the whole subpage, only visible pixels or ignore it completely.
     bool show{true};                                            // TRUE = show subpage (default).
-    bool visible{false};                                        // State of visibility; TRUE = subpage is visible.
+    bool dynamic{false};                                        // TRUE = Dynamic ordering of items; FALSE = Fixed ordering
     std::vector<PGSUBVIEWATOM_T> atoms;                         // Elements (buttons) of subpage
 
     void clear()
@@ -115,7 +115,7 @@ typedef struct PGSUBVIEWITEM_T
         handle = parent = 0;
         width = height = 0;
         bgcolor.alpha = bgcolor.blue = bgcolor.green = bgcolor.red = 0;
-        scrollbar = wrap = visible = false;
+        scrollbar = wrap = dynamic = false;
         scrollbarOffset = 0;
         position = Button::SVP_CENTER;
         image.clear();
@@ -185,8 +185,6 @@ class TPageManager : public TAmxCommands
         std::vector<TSubPage *> createSubViewList(int id);      // Create a list of subview pages
         void showSubViewList(int id, Button::TButton *bt);      // Creates and displays a subview list
         void updateSubViewItem(Button::TButton *bt);            // Updates an existing subview item
-        void clearSubViewItem(Button::TButton *bt);             // Clears a particular item from list
-        void clearSubViewList(int id, Button::TButton *bt);     // Clears a whole list of subview pages
 
         TPageList *getPageList() { return mPageList; }          // Get the list of all pages
         TSettings *getSettings() { return mTSettings; }         // Get the (system) settings of the panel

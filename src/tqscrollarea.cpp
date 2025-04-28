@@ -535,6 +535,9 @@ void TQScrollArea::_addItems(std::vector<_ITEMS_T>& items, bool intern)
 {
 //    DECL_TRACER("_addItems(std::vector<ITEMS_T>& items, bool intern)");
 
+    if (items.empty())
+        return;
+
     mWrapItems = items[0].wrap;     // Endless scroll
 
     if (!intern)
@@ -564,6 +567,9 @@ void TQScrollArea::_addItems(std::vector<_ITEMS_T>& items, bool intern)
 
         for (iter = items.begin(); iter != items.end(); ++iter)
         {
+            if (!iter->show)
+                continue;
+
             if (!mVertical)
                 mTotalWidth += iter->width;
             else
@@ -584,24 +590,18 @@ void TQScrollArea::_addItems(std::vector<_ITEMS_T>& items, bool intern)
         if (mMain)
             mMain->setFixedSize(mTotalWidth, mTotalHeight);
     }
-
+/*
     if (mSpace > 0)
     {
-        int space = (int)((double)total / 100.0 * (double)mSpace);
+        int space = calcSize(total);
 
-        if (space > 0 && mVertical && mVLayout && mMain)
-        {
-            int newHeight = space + mTotalHeight;
-            mMain->setFixedHeight(newHeight);
-            mTotalHeight = newHeight;
-        }
-        else if (space > 0 && !mVertical && mHLayout && mMain)
-        {
-            int newWidth = space + mTotalWidth;
-            mMain->setFixedWidth(newWidth);
-            mTotalWidth = newWidth;
-        }
+        if (mVertical)
+            applySize(space + mTotalHeight);
+        else
+            applySize(space + mTotalWidth);
     }
+*/
+    bool haveItem = false;
 
     for (iter = items.begin(); iter != items.end(); ++iter)
     {
@@ -687,8 +687,41 @@ void TQScrollArea::_addItems(std::vector<_ITEMS_T>& items, bool intern)
             MSG_ERROR("Layout not initialized!");
         }
 
-        if (!iter->show)
+        if (!iter->show && !iter->visible)
             item->setVisible(false);
+        else
+            haveItem = true;
+    }
+
+    // If we've at least 1 item, we add some extra space to make positioning look better.
+    if (haveItem)
+    {
+        calcSpace(mVertical ? items.begin()->height : items.begin()->width, true);
+        addExtraSpace(mTotalWidth, mTotalHeight);
+
+        switch(items.begin()->position)
+        {
+            case Button::SVP_LEFT_TOP:
+                if (mVertical)
+                    mVLayout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
+                else
+                    mHLayout->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+            break;
+
+            case Button::SVP_CENTER:
+                if (mVertical)
+                    mVLayout->setAlignment(Qt::AlignCenter);
+                else
+                    mHLayout->setAlignment(Qt::AlignCenter);
+            break;
+
+            case Button::SVP_RIGHT_BOTTOM:
+                if (mVertical)
+                    mVLayout->setAlignment(Qt::AlignBottom | Qt::AlignHCenter);
+                else
+                    mHLayout->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            break;
+        }
     }
 
     if (mOldActPosition > 0)
@@ -772,7 +805,12 @@ void TQScrollArea::showItem(ulong handle, int position)
         if (iter->handle == handle)
         {
             if (!iter->item->isVisible())
+            {
                 iter->item->setVisible(true);
+                int size = calcSize();
+                applySize(size);
+//                addExtraSpace();
+            }
 
             setPosition(iter->item, position);
             break;
@@ -794,10 +832,18 @@ void TQScrollArea::toggleItem(ulong handle, int position)
         if (iter->handle == handle && iter->item)
         {
             if (iter->item->isVisible())
+            {
                 iter->item->setVisible(false);
+                int size = calcSize();
+                applySize(size);
+//                addExtraSpace();
+            }
             else
             {
                 iter->item->setVisible(true);
+                int size = calcSize();
+                applySize(size);
+//                addExtraSpace();
                 setPosition(iter->item, position);
             }
 
@@ -840,6 +886,10 @@ void TQScrollArea::hideItem(ulong handle)
             return;
         }
     }
+
+    int size = calcSize();
+    applySize(size);
+//    addExtraSpace();
 }
 
 int TQScrollArea::scale(int value)
@@ -924,6 +974,7 @@ void TQScrollArea::refresh()
     _addItems(mItems, true);
 }
 
+// Set position based on all items.
 void TQScrollArea::setPosition()
 {
     DECL_TRACER("TQScrollArea::setPosition()");
@@ -988,11 +1039,16 @@ void TQScrollArea::setPosition(QWidget* w, int position)
 {
     DECL_TRACER("TQScrollArea::setPosition(QWidget* w, int position)");
 
-    int defPosX = 50;
-    int defPosY = 50;
+    if (!w)
+        return;
+
+    MSG_DEBUG("mPosition: " << mPosition << ", position: " << position << ", mVertical: " << (mVertical ? "VERTICAL" : "HORIZONTAL"));
 
     if (position > 0 && position < 65535)
     {
+        int defPosX = 50;
+        int defPosY = 50;
+
         if (mVertical)
         {
             defPosY = position;
@@ -1084,6 +1140,7 @@ TQScrollArea::_ITEMS_T TQScrollArea::subViewItemToItem(PGSUBVIEWITEM_T& item)
     it.scrollbarOffset = item.scrollbarOffset;
     it.wrap = item.wrap;
     it.show = item.show;
+    it.dynamic = item.dynamic;
     it.atoms = item.atoms;
 
     return it;
@@ -1102,6 +1159,8 @@ void TQScrollArea::_clearAllItems()
     {
         if (clIter->item)
         {
+            clIter->visible = clIter->item->isVisible();
+
             if (mVertical)
             {
                 if (mVLayout)
@@ -1140,6 +1199,218 @@ void TQScrollArea::resetSlider(int position)
     }
     else
         mOldActPosition = mActPosition;
+}
+
+int TQScrollArea::calcSize(int total)
+{
+    DECL_TRACER("TQScrollArea::calcSize(int total)");
+
+    vector<_ITEMS_T>::iterator iter;
+    int size = 0;
+    int itemSize = 0;
+    int x = 0;
+
+    if (total <= 0)
+    {
+        MSG_DEBUG("Calculating for " << mItems.size() << " elements ...");
+
+        if (mItems.empty())
+            return 0;
+
+        for (iter = mItems.begin(); iter != mItems.end(); ++iter)
+        {
+            if (iter->item && iter->item->isVisible())
+            {
+                x++;
+
+                if (!mVertical)
+                {
+                    size += iter->width;
+
+                    if (!itemSize)
+                        itemSize = iter->width;
+                }
+                else
+                {
+                    size += iter->height;
+
+                    if (!itemSize)
+                        itemSize = iter->height;
+                }
+            }
+        }
+
+        MSG_DEBUG("Size of " << x << " visible items: " << size << " (" << (mVertical ? "VERTICAL" : "HORIZONTAL") << ")");
+        size = scale(size);
+    }
+    else
+    {
+        size = total;
+        x = getVisibleItems();
+
+        if (!mItems.empty())
+            itemSize = mVertical ? mItems.begin()->height : mItems.begin()->width;
+
+        MSG_DEBUG("Using a fixed size of " << size << ", number visible items: " << x << ", item size: " << itemSize);
+    }
+
+    if (size > 0)
+    {
+        int s = size;
+
+        if (x > 1)
+            s += calcSpace(itemSize) * x;
+
+        MSG_DEBUG("Calculated size with spaces: " << s);
+        return s;
+    }
+    else
+        return 0;
+}
+
+int TQScrollArea::calcSpace(int itemSize, bool apply)
+{
+    DECL_TRACER("TQScrollArea::calcSpace(int itemSize, bool apply)");
+
+    if (itemSize <= 0)
+        return 0;
+
+    int space = static_cast<int>(static_cast<double>(itemSize) / 100.0 * static_cast<double>(mSpace));
+
+    if (apply)
+    {
+        if (mVertical && mVLayout && mVLayout->spacing() != space)
+            mVLayout->setSpacing(space);
+        else if (!mVertical && mHLayout && mHLayout->spacing() != space)
+            mHLayout->setSpacing(space);
+    }
+
+    return space;
+}
+
+void TQScrollArea::applySize(int size)
+{
+    DECL_TRACER("TQScrollArea::applySize(int size)");
+
+    if (size > 0 && mVertical && mVLayout && mMain)
+    {
+        mMain->setFixedHeight(size);
+        mTotalHeight = size;
+        MSG_DEBUG("Total height: " << size);
+    }
+    else if (size > 0 && !mVertical && mHLayout && mMain)
+    {
+        mMain->setFixedWidth(size);
+        mTotalWidth = size;
+        MSG_DEBUG("Total width: " << size);
+    }
+}
+
+int TQScrollArea::getVisibleItems()
+{
+    DECL_TRACER("TQScrollArea::getVisibleItems()");
+
+    if (mItems.empty())
+        return 0;
+
+    vector<_ITEMS_T>::iterator iter;
+    int count = 0;
+
+    for (iter = mItems.begin(); iter != mItems.end(); ++iter)
+    {
+        if (iter->item && iter->item->isVisible())
+            count++;
+    }
+
+    return count;
+}
+
+void TQScrollArea::addExtraSpace(int baseW, int baseH)
+{
+    DECL_TRACER("TQScrollArea::addExtraSpace(int baseW, int baseH)");
+
+    if (!mSpace || !getVisibleItems())
+        return;
+
+    if ((mVertical && !mVLayout) || (!mVertical && !mHLayout))
+    {
+        MSG_WARNING("Missing layout for scroll area!");
+        return;
+    }
+
+    QSpacerItem *spacer = nullptr;
+
+    if (mPosition == Button::SVP_CENTER)
+    {
+        int extraSpace = 0;
+        int width = scale(mItems.begin()->width);
+        int height = scale(mItems.begin()->height);
+
+        if (mVertical)
+        {
+            extraSpace = height / 2;
+            spacer = new QSpacerItem(width, extraSpace);
+            mVLayout->insertSpacerItem(0, spacer);
+            mVLayout->insertSpacerItem(-1, spacer);
+//            mMain->setFixedSize(baseW, baseH + height);
+        }
+        else
+        {
+            extraSpace = width / 2;
+            spacer = new QSpacerItem(extraSpace, height);
+            mHLayout->insertSpacerItem(0, spacer);
+            mHLayout->insertSpacerItem(-1, spacer);
+//            mMain->setFixedSize(baseW + width, height);
+        }
+
+        MSG_DEBUG("extraSpace: " << extraSpace);
+    }
+    else if (mPosition == Button::SVP_LEFT_TOP)
+    {
+        int width = scale(mItems.begin()->width);
+        int height = scale(mItems.begin()->height);
+        spacer = new QSpacerItem(width, height, QSizePolicy::Expanding, QSizePolicy::Expanding);
+//        int size = mVertical ? mItems.begin()->height : mItems.begin()->width;
+//        int lt = scale(calcSize(size));
+//        MSG_DEBUG("size: " << size << ", lt: " << lt);
+
+        if (mVertical)
+        {
+//            mVLayout->insertSpacing(0, lt - scale(size));
+//            mVLayout->insertSpacing(-1, lt);
+            mVLayout->addSpacerItem(spacer);
+//            mMain->setFixedSize(baseW, baseH + height);
+        }
+        else
+        {
+//            mHLayout->insertSpacing(0, lt - scale(size));
+//            mHLayout->insertSpacing(-1, lt);
+            mHLayout->addSpacerItem(spacer);
+//            mMain->setFixedSize(baseW + width, baseH);
+        }
+    }
+    else if (mPosition == Button::SVP_RIGHT_BOTTOM)
+    {
+        int width = scale(mItems.begin()->width);
+        int height = scale(mItems.begin()->height);
+        spacer = new QSpacerItem(width, height);
+//        int size = mVertical ? mItems.begin()->height : mItems.begin()->width;
+//        int lt = scale(calcSize(size));
+//        MSG_DEBUG("size: " << size << ", lt: " << lt);
+
+        if (mVertical)
+        {
+            mVLayout->insertSpacerItem(0, spacer);
+//            mMain->setFixedSize(baseW, baseH + height);
+//            mVLayout->insertSpacing(-1, lt - scale(size));
+        }
+        else
+        {
+            mHLayout->insertSpacerItem(0, spacer);
+//            mMain->setFixedSize(baseW + width, baseH);
+//            mHLayout->insertSpacing(-1, lt - scale(size));
+        }
+    }
 }
 
 /*****************************************************************************

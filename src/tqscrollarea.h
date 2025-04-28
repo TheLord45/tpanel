@@ -103,6 +103,8 @@ class TQScrollArea : public QScrollArea
             std::string bounding;
             QWidget *item{nullptr};
             bool show{true};
+            bool dynamic{false};
+            bool visible{false};
             std::vector<PGSUBVIEWATOM_T> atoms;
 
             void clear()
@@ -110,7 +112,7 @@ class TQScrollArea : public QScrollArea
                 handle = parent = 0;
                 width = height = 0;
                 bgcolor.alpha = bgcolor.blue = bgcolor.green = bgcolor.red = 0;
-                scrollbar = wrap = false;
+                scrollbar = wrap = dynamic = visible = false;
                 scrollbarOffset = 0;
                 position = Button::SVP_CENTER;
                 image.clear();
@@ -137,6 +139,11 @@ class TQScrollArea : public QScrollArea
         _ITEMS_T subViewItemToItem(PGSUBVIEWITEM_T& item);
         void resetSlider(int position=0);
         void doMouseEvent();
+        int calcSize(int total=0);              // Calculates the size of all (visible) items
+        void applySize(int size);
+        int getVisibleItems();
+        void addExtraSpace(int baseW, int baseH);// Adds extra space to scroll area to make it look better
+        int calcSpace(int itemSize, bool apply=false);// Calculates the pixels for spacing of the given item size.
 
         QWidget *mParent{nullptr};              //!< The parent of this object. This is set to QScrollArea.
         QWidget *mMain{nullptr};                //!< The widget containing the items. This is the whole scroll area

@@ -2797,6 +2797,7 @@ void TPageManager::showSubViewList(int id, Button::TButton *bt)
         svItem.position = bt->getSubViewAnchor();
         svItem.wrap = bt->getWrapSubViewPages();
         svItem.show = bt->showSubviewItems();
+        svItem.dynamic = bt->isSubViewOrderingDynamic();
 
         if (!bitmap.empty())
             svItem.image.setBitmap((unsigned char *)bitmap.getPixels(), bitmap.info().width(), bitmap.info().height(), bitmap.info().bytesPerPixel());
@@ -2841,25 +2842,6 @@ void TPageManager::updateSubViewItem(Button::TButton *bt)
     updview_mutex.lock();
     mUpdateViews.push_back(bt);
     updview_mutex.unlock();
-}
-
-void TPageManager::clearSubViewItem(Button::TButton* bt)
-{
-    DECL_TRACER("TPageManager::clearSubViewItem(Button::TButton* bt)");
-
-    if (!bt)
-        return;
-
-
-}
-
-void TPageManager::clearSubViewList(int id, Button::TButton* bt)
-{
-    DECL_TRACER("TPageManager::clearSubViewList(int id, Button::TButton* bt)");
-
-    if (!bt)
-        return;
-
 }
 
 void TPageManager::_updateSubViewItem(Button::TButton *bt)
@@ -4266,6 +4248,7 @@ TSubPage *TPageManager::loadSubPage(const string& name)
 
     if (name.empty())
     {
+        MSG_WARNING("Got no name to load a popup!");
 #if TESTMODE == 1
         setScreenDone();
 #endif
@@ -4277,6 +4260,7 @@ TSubPage *TPageManager::loadSubPage(const string& name)
 
     if (!pg)
     {
+        MSG_WARNING("Subpage " << name << " has no parent!");
 #if TESTMODE == 1
         setScreenDone();
 #endif
@@ -7101,7 +7085,7 @@ void TPageManager::doPTC(int port, vector<int>& channels, vector<string>& pars)
 
     TSubPage *sp = loadSubPage(popup);
 
-    if (!sp || !sp->isCollapsible())
+    if (!sp || !sp->isCollapsible() || sp->getCollapseState() == COL_CLOSED)
         return;
 
     bool visible = sp->isVisible();
@@ -7155,7 +7139,7 @@ void TPageManager::doPTO(int port, vector<int>& channels, vector<string>& pars)
 
     TSubPage *sp = loadSubPage(popup);
 
-    if (!sp || !sp->isCollapsible())
+    if (!sp || !sp->isCollapsible() || sp->getCollapseState() == COL_CLOSED)
         return;
 
     bool visible = sp->isVisible();
@@ -12392,7 +12376,7 @@ void TPageManager::doSHD(int port, vector<int>& channels, vector<string>& pars)
                 if (sub && sub->getName() == name)
                 {
                     if (_hideSubViewItem)
-                        _hideSubViewItem(bt->getHandle(), sub->getHandle());
+                        _hideSubViewItem(sub->getHandle(), bt->getHandle());
 
                     break;
                 }
