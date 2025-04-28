@@ -671,6 +671,8 @@ size_t TButton::initialize(TExpat *xml, size_t index)
                     bsr.md = xml->convertElementToInt(content);
                 else if (e.compare("mr") == 0)      // Marquee enable/disable
                     bsr.mr = xml->convertElementToInt(content);
+                else if (e.compare("vf") == 0)      // G5: Video fill color
+                    bsr.vf = content;
 
                 oldIndex = index;
             }
@@ -4261,8 +4263,19 @@ bool TButton::buttonFill(SkBitmap* bm, int instance)
     if (TTPInit::isTP5() && !sr[instance].ft.empty())
         return drawGradientImage(bm, sr[instance], bm->info().width(), bm->info().height());
 
-    SkColor color = TColor::getSkiaColor(sr[instance].cf);
-    MSG_DEBUG("Fill color[" << instance << "]: " << sr[instance].cf << " (#" << std::setw(8) << std::setfill('0') << std::hex << color << ")" << std::dec << std::setfill(' ') << std::setw(1));
+    SkColor color;
+
+    if (!TTPInit::isTP5())
+        color = TColor::getSkiaColor(sr[instance].cf);
+    else
+    {
+        if (sr[instance].vf.empty())
+            color = TColor::getSkiaColor(sr[instance].cf);
+        else
+            color = TColor::getSkiaColor(sr[instance].vf);
+    }
+
+    MSG_DEBUG("Fill color[" << instance << "]: #" << std::setw(8) << std::setfill('0') << std::hex << color << ")" << std::dec << std::setfill(' ') << std::setw(1));
     // We create a new bitmap and fill it with the given fill color. Then
     // we put this image over the existing image "bm". In case this method is
     // not the first in the draw order, it prevents the button from completely

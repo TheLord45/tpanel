@@ -308,6 +308,7 @@ namespace Button
         int md{0};              // Marquee type: 1 = scroll left, 2 = scroll right, 3 = ping pong, 4 = scroll up, 5 = scroll down
         int mr{0};              // Marquee enabled: 1 = enabled, 0 = disabled
         int ms{1};              // Marquee speed: Range: 1 to 10 (look for command ^MSP to see of how to set this)
+        std::string vf;         // G5: Video fill color; Marks the button reserved for video
     } SR_T;
 
     typedef struct EXTBUTTON_t
@@ -1356,6 +1357,7 @@ namespace Button
             void setUserName(const std::string& user);
             bool haveImage(const SR_T& sr);
             bool showSubviewItems() { return sw >= 1; }
+            bool isSubViewOrderingDynamic() { return dy >= 1; }
 
         protected:
             BUTTONTYPE getButtonType(const std::string& bt);
@@ -1525,7 +1527,7 @@ namespace Button
             int ws{0};              // SubPageView: Wrap subpages; 1 = YES
             std::string on;         // SubPageView: direction: vert = vertical, if empty: horizontal which is default
             int sa{0};              // SubPageView: Percent of space between items in list
-            int dy{0};              // SubPageView: Allow dynamic reordering; 1 = YES
+            int dy{0};              // SubPageView: Allow dynamic reordering; 1 = YES --> A user can reorder subview pages (currently not supported)
             int rs{0};              // SubPageView: Reset view on show; 1 = YES
             int ba{0};              // SubPageView: 1 = Scrollbar is visible, 0 = No scrollbar visible
             int bo{0};              // SubPageView: Scrollbar offset in pixels; Only valid if "ba" > 0
