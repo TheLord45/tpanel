@@ -142,7 +142,6 @@ class TQScrollArea : public QScrollArea
         int calcSize(int total=0);              // Calculates the size of all (visible) items
         void applySize(int size);
         int getVisibleItems();
-        void addExtraSpace(int baseW, int baseH);// Adds extra space to scroll area to make it look better
         int calcSpace(int itemSize, bool apply=false);// Calculates the pixels for spacing of the given item size.
 
         QWidget *mParent{nullptr};              //!< The parent of this object. This is set to QScrollArea.
@@ -155,6 +154,7 @@ class TQScrollArea : public QScrollArea
         int mTotalHeight{0};                    //!< Total height of of scroll area (mMain)
         bool mVertical{false};                  //!< Direction
         int mSpace{0};                          //!< Optional: The space between the items in percent
+        QSize mItemSize;                        //!< The size of the biggest item in a subview list
         bool mMousePress{false};                //!< Internal: TRUE when the mouse was pressed
         bool mClick{false};                     //!< TRUE on mouse press, FALSE on mouse release
         bool mMouseScroll{false};               //!< Internal: TRUE if scrolling was detected. This prevents a button press from beeing one.
