@@ -7031,7 +7031,7 @@ void TPageManager::doPCT(int port, vector<int>& channels, vector<std::string>& p
     {
         if (!visible && cmdIter->to != POPSTATE_CLOSED)
         {
-            showSubPage(popup);
+            // showSubPage(popup);
             break;
         }
         else if (visible && (cmdIter->to == POPSTATE_CLOSED || cmdIter->to == POPSTATE_ANY))
