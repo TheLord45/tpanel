@@ -473,7 +473,7 @@ size_t TButton::initialize(TExpat *xml, size_t index)
             pf.pfType = xml->getAttribute("type", attrs);
             pushFunc.push_back(pf);
         }
-        else if ((ename.compare("ep") == 0 || ename.compare("er") == 0) && xml->isElementTypeStart(index))          // Function call TP5: Event on press/release
+        else if ((ename.compare("ep") == 0 || ename.compare("er") == 0) && xml->isElementTypeStart(index))          // Function call G5: Event on press/release
         {
             PUSH_FUNC_T pf;
             pf.event = ename.compare("ep") == 0 ? EVENT_PRESS : EVENT_RELEASE;

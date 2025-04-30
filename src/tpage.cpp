@@ -469,7 +469,7 @@ SkBitmap& TPage::getBgImage()
     if (!mBgImage.empty())
         return mBgImage;
 
-    bool haveImage = false;
+    bool haveBitmap = false;
     MSG_DEBUG("Creating image for page " << mPage.pageID << ": " << mPage.name);
     SkBitmap target;
 
@@ -478,14 +478,14 @@ SkBitmap& TPage::getBgImage()
 
     target.eraseColor(TColor::getSkiaColor(mPage.sr[0].cf));
     // Draw the background, if any
-    if (mPage.sr.size() > 0 && (!mPage.sr[0].bm.empty() || !mPage.sr[0].mi.empty()))
+    if (mPage.sr.size() > 0 && (!mPage.sr[0].bm.empty() || !mPage.sr[0].mi.empty() || haveImage(mPage.sr[0])))
     {
         TDrawImage dImage;
         dImage.setWidth(mPage.width);
         dImage.setHeight(mPage.height);
         dImage.setSr(mPage.sr);
 
-        if (!mPage.sr[0].bm.empty())
+        if (!TTPInit::isTP5() && !mPage.sr[0].bm.empty())
         {
             MSG_DEBUG("Loading image " << mPage.sr[0].bm);
             sk_sp<SkData> rawImage = readImage(mPage.sr[0].bm);
@@ -505,13 +505,24 @@ SkBitmap& TPage::getBgImage()
                     SkImageInfo info = bm.info();
                     mPage.sr[0].bm_width = info.width();
                     mPage.sr[0].bm_height = info.height();
-                    haveImage = true;
+                    haveBitmap = true;
                 }
                 else
                 {
                     MSG_WARNING("BM image " << mPage.sr[0].bm << " seems to be empty!");
                 }
             }
+        }
+        else if (TTPInit::isTP5() && haveImage(mPage.sr[0]))
+        {
+            SkBitmap bm;
+
+            tp5Image(&bm, mPage.sr[0], mPage.width, mPage.height);
+            SkImageInfo info = bm.info();
+            mPage.sr[0].bm_width = info.width();
+            mPage.sr[0].bm_height = info.height();
+            dImage.setImageBm(bm);
+            haveBitmap = true;
         }
 
         if (!mPage.sr[0].mi.empty())
@@ -534,7 +545,7 @@ SkBitmap& TPage::getBgImage()
                     SkImageInfo info = mi.info();
                     mPage.sr[0].mi_width = info.width();
                     mPage.sr[0].mi_height = info.height();
-                    haveImage = true;
+                    haveBitmap = true;
                 }
                 else
                 {
@@ -543,7 +554,7 @@ SkBitmap& TPage::getBgImage()
             }
         }
 
-        if (haveImage)
+        if (haveBitmap)
         {
             dImage.setSr(mPage.sr);
 
@@ -600,17 +611,17 @@ SkBitmap& TPage::getBgImage()
         MSG_DEBUG("Drawing a text only on background image ...");
 
         if (drawText(mPage, &target))
-            haveImage = true;
+            haveBitmap = true;
     }
 
     // Check for a frame and draw it if there is one.
     if (!mPage.sr[0].bs.empty())
     {
         if (drawFrame(mPage, &target))
-            haveImage = true;
+            haveBitmap = true;
     }
 
-    if (haveImage)
+    if (haveBitmap)
     {
         if (mPage.sr[0].oo < 255)
             setOpacity(&target, mPage.sr[0].oo);
