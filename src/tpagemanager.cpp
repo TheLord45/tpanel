@@ -6931,6 +6931,7 @@ void TPageManager::doPCT(int port, vector<int>& channels, vector<std::string>& p
     string popup = pars[0];
     string page;
 
+    MSG_DEBUG("Switching collapsible page " << popup << " ...");
     TSubPage *sp = loadSubPage(popup);
 
     if (!sp || !sp->isCollapsible())
@@ -7031,12 +7032,12 @@ void TPageManager::doPCT(int port, vector<int>& channels, vector<std::string>& p
     {
         if (!visible && cmdIter->to != POPSTATE_CLOSED)
         {
-            // showSubPage(popup);
+            showSubPage(popup);
             break;
         }
         else if (visible && (cmdIter->to == POPSTATE_CLOSED || cmdIter->to == POPSTATE_ANY))
         {
-            sp->drop();
+            hideSubPage(popup);
             break;
         }
     }

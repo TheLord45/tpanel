@@ -64,8 +64,23 @@ bool TPageInterface::drawText(PAGE_T& pinfo, SkBitmap *img)
     if (pinfo.sr.empty() || pinfo.sr[0].te.empty())
         return true;
 
-    MSG_DEBUG("Searching for font number " << pinfo.sr[0].fi << " with text " << pinfo.sr[0].te);
-    FONT_T font = mFonts->getFont(pinfo.sr[0].fi);
+    FONT_T font;
+    sk_sp<SkTypeface> typeFace;
+
+    if (!TTPInit::isTP5())
+    {
+        MSG_DEBUG("Searching for font number " << pinfo.sr[0].fi << " with text " << pinfo.sr[0].te);
+        font = mFonts->getFont(pinfo.sr[0].fi);
+        typeFace = mFonts->getTypeFace(pinfo.sr[0].fi);
+    }
+    else
+    {
+        MSG_DEBUG("Searching for font " << pinfo.sr[0].ff << " with text " << pinfo.sr[0].te);
+        font.file = pinfo.sr[0].ff;
+        font.size = pinfo.sr[0].fs;
+        font.fullName = font.name = pinfo.sr[0].ff;
+        typeFace = mFonts->getTypeFace(pinfo.sr[0].ff);
+    }
 
     if (font.file.empty())
     {
@@ -74,7 +89,6 @@ bool TPageInterface::drawText(PAGE_T& pinfo, SkBitmap *img)
     }
 
     SkCanvas canvas(*img, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
-    sk_sp<SkTypeface> typeFace = mFonts->getTypeFace(pinfo.sr[0].fi);
 
     if (!typeFace)
     {

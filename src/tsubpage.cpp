@@ -320,6 +320,10 @@ void TSubPage::initialize()
                     sr.ww = xml.convertElementToInt(content);
                 else if (ename.compare("jt") == 0)
                     sr.jt = (Button::ORIENTATION)xml.convertElementToInt(content);
+                else if (ename.compare("ff") == 0)      // G5 font file name
+                    sr.ff = content;
+                else if (ename.compare("fs") == 0)      // G5 font size
+                    sr.fs = xml.convertElementToInt(content);
                 else if (ename.compare("bitmapEntry") == 0)
                 {
                     string fname;
@@ -346,6 +350,25 @@ void TSubPage::initialize()
                               "x" << sr.bitmaps[bmIndex].offsetY);
                     sr.bitmaps[bmIndex].index = bmIndex + 1;
                     bmIndex++;
+
+                    if (index == TExpat::npos)
+                        index = oldIndex + 1;
+                }
+                else if (ename.compare("gradientColors") == 0)  // G5 gradient colors
+                {
+                    string fname;
+                    MSG_DEBUG("Section: " << ename);
+
+                    while ((index = xml.getNextElementFromIndex(index, &fname, &content, &attrs)) != TExpat::npos)
+                    {
+                        if (fname.compare("gradientColor") == 0)
+                        {
+                            sr.gradientColors.push_back(content);
+                            MSG_DEBUG("Added gradient color \"" << content << "\"");
+                        }
+
+                        oldIndex = index;
+                    }
 
                     if (index == TExpat::npos)
                         index = oldIndex + 1;
@@ -517,11 +540,15 @@ void TSubPage::show()
     if (!noSr)
         target.eraseColor(TColor::getSkiaColor(mSubpage.sr[0].cf));
     else
+    {
         target.eraseColor(SK_ColorTRANSPARENT);
+        MSG_WARNING("Missing background (sr) config! Setting background to transparent.");
+    }
 
     // Draw the background, if any
     if (!noSr && (!mSubpage.sr[0].bm.empty() || !mSubpage.sr[0].mi.empty() || haveImage(mSubpage.sr[0])))
     {
+        MSG_DEBUG("Drawing a background image ...");
         TDrawImage dImage;
         dImage.setWidth(mSubpage.width);
         dImage.setHeight(mSubpage.height);
@@ -779,7 +806,7 @@ SkBitmap& TSubPage::getBgImage()
     if (!mBgImage.empty())
         return mBgImage;
 
-    bool haveImage = false;
+    bool haveBitmap = false;
     MSG_DEBUG("Creating image for subpage " << mSubpage.pageID << ": " << mSubpage.name);
     SkBitmap target;
 
@@ -788,14 +815,14 @@ SkBitmap& TSubPage::getBgImage()
 
     target.eraseColor(TColor::getSkiaColor(mSubpage.sr[0].cf));
     // Draw the background, if any
-    if (mSubpage.sr.size() > 0 && (!mSubpage.sr[0].bm.empty() || !mSubpage.sr[0].mi.empty()))
+    if (mSubpage.sr.size() > 0 && (!mSubpage.sr[0].bm.empty() || !mSubpage.sr[0].mi.empty() || haveImage(mSubpage.sr[0])))
     {
         TDrawImage dImage;
         dImage.setWidth(mSubpage.width);
         dImage.setHeight(mSubpage.height);
         dImage.setSr(mSubpage.sr);
 
-        if (!mSubpage.sr[0].bm.empty())
+        if (!TTPInit::isTP5() && !mSubpage.sr[0].bm.empty())
         {
             MSG_DEBUG("Loading image " << mSubpage.sr[0].bm);
             sk_sp<SkData> rawImage = readImage(mSubpage.sr[0].bm);
@@ -815,13 +842,24 @@ SkBitmap& TSubPage::getBgImage()
                     SkImageInfo info = bm.info();
                     mSubpage.sr[0].bm_width = info.width();
                     mSubpage.sr[0].bm_height = info.height();
-                    haveImage = true;
+                    haveBitmap = true;
                 }
                 else
                 {
                     MSG_WARNING("BM image " << mSubpage.sr[0].bm << " seems to be empty!");
                 }
             }
+        }
+        else if (TTPInit::isTP5() && haveImage(mSubpage.sr[0]))
+        {
+            SkBitmap bm;
+
+            tp5Image(&bm, mSubpage.sr[0], mSubpage.width, mSubpage.height);
+            SkImageInfo info = bm.info();
+            mSubpage.sr[0].bm_width = info.width();
+            mSubpage.sr[0].bm_height = info.height();
+            dImage.setImageBm(bm);
+            haveBitmap = true;
         }
 
         if (!mSubpage.sr[0].mi.empty())
@@ -844,7 +882,7 @@ SkBitmap& TSubPage::getBgImage()
                     SkImageInfo info = mi.info();
                     mSubpage.sr[0].mi_width = info.width();
                     mSubpage.sr[0].mi_height = info.height();
-                    haveImage = true;
+                    haveBitmap = true;
                 }
                 else
                 {
@@ -853,7 +891,7 @@ SkBitmap& TSubPage::getBgImage()
             }
         }
 
-        if (haveImage)
+        if (haveBitmap)
         {
             dImage.setSr(mSubpage.sr);
 
@@ -910,7 +948,7 @@ SkBitmap& TSubPage::getBgImage()
         MSG_DEBUG("Drawing a text only on background image ...");
 
         if (drawText(mSubpage, &target))
-            haveImage = true;
+            haveBitmap = true;
     }
 
     // Check for a frame and draw it if there is one.
@@ -919,11 +957,11 @@ SkBitmap& TSubPage::getBgImage()
         if (!drawBorder(&target, mSubpage.sr[0].bs, mSubpage.width, mSubpage.height, mSubpage.sr[0].cb))
         {
             if (drawFrame(mSubpage, &target))
-                haveImage = true;
+                haveBitmap = true;
         }
     }
 
-    if (haveImage)
+    if (haveBitmap)
     {
         if (mSubpage.sr[0].oo < 255)
             setOpacity(&target, mSubpage.sr[0].oo);

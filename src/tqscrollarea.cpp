@@ -601,7 +601,7 @@ void TQScrollArea::_addItems(std::vector<_ITEMS_T>& items, bool intern)
         QWidget *item = new QWidget;
         item->setObjectName(QString("Item_%1").arg(handleToString(iter->handle).c_str()));
         item->setFixedSize(iWidth, iHeight);
-//        item->setAutoFillBackground(true);
+        item->setAutoFillBackground(true);
         QColor bgcolor(qRgba(iter->bgcolor.red, iter->bgcolor.green, iter->bgcolor.blue, iter->bgcolor.alpha));
 
         if (iter->image.getSize() > 0)
@@ -690,12 +690,16 @@ void TQScrollArea::_addItems(std::vector<_ITEMS_T>& items, bool intern)
             if (mVertical)
             {
                 mVLayout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
-                mVLayout->setContentsMargins(0, 0, 0, items.begin()->height);
+
+                if (mSpace > 0)
+                    mVLayout->setContentsMargins(0, 0, 0, items.begin()->height);
             }
             else
             {
                 mHLayout->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-                mHLayout->setContentsMargins(0, 0, items.begin()->width, 0);
+
+                if (mSpace > 0)
+                    mHLayout->setContentsMargins(0, 0, items.begin()->width, 0);
             }
         break;
 
@@ -703,12 +707,16 @@ void TQScrollArea::_addItems(std::vector<_ITEMS_T>& items, bool intern)
             if (mVertical)
             {
                 mVLayout->setAlignment(Qt::AlignCenter);
-                mVLayout->setContentsMargins(0, items.begin()->height / 2, 0, items.begin()->height / 2);
+
+                if (mSpace > 0)
+                    mVLayout->setContentsMargins(0, items.begin()->height / 2, 0, items.begin()->height / 2);
             }
             else
             {
                 mHLayout->setAlignment(Qt::AlignCenter);
-                mHLayout->setContentsMargins(items.begin()->width / 2, 0, items.begin()->width / 2, 0);
+
+                if (mSpace > 0)
+                    mHLayout->setContentsMargins(items.begin()->width / 2, 0, items.begin()->width / 2, 0);
             }
         break;
 
@@ -716,12 +724,16 @@ void TQScrollArea::_addItems(std::vector<_ITEMS_T>& items, bool intern)
             if (mVertical)
             {
                 mVLayout->setAlignment(Qt::AlignBottom | Qt::AlignHCenter);
-                mVLayout->setContentsMargins(0, items.begin()->height, 0, 0);
+
+                if (mSpace > 0)
+                    mVLayout->setContentsMargins(0, items.begin()->height, 0, 0);
             }
             else
             {
                 mHLayout->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-                mHLayout->setContentsMargins(items.begin()->width, 0, 0, 0);
+
+                if (mSpace > 0)
+                    mHLayout->setContentsMargins(items.begin()->width, 0, 0, 0);
             }
         break;
     }
@@ -809,10 +821,9 @@ void TQScrollArea::showItem(ulong handle, int position)
 
         if (iter->handle == handle)
         {
-            iter->visible = true;
-
-            if (!iter->item->isVisible())
+            if (!iter->visible)
             {
+                iter->visible = true;
                 iter->item->setVisible(true);
                 int size = calcSize();
                 applySize(size);
@@ -832,7 +843,6 @@ void TQScrollArea::toggleItem(ulong handle, int position)
         return;
 
     vector<_ITEMS_T>::iterator iter;
-    int idx = 0;
 
     for (iter = mItems.begin(); iter != mItems.end(); ++iter)
     {
@@ -842,24 +852,12 @@ void TQScrollArea::toggleItem(ulong handle, int position)
             {
                 iter->visible = false;
                 iter->item->setVisible(false);
-
-                if (mVertical)
-                    mVLayout->removeWidget(iter->item);
-                else
-                    mHLayout->removeWidget(iter->item);
-
                 int size = calcSize();
                 applySize(size);
             }
             else
             {
                 iter->visible = true;
-
-                if (mVertical)
-                    mVLayout->insertWidget(idx, iter->item);
-                else
-                    mHLayout->insertWidget(idx, iter->item);
-
                 iter->item->setVisible(true);
                 int size = calcSize();
                 applySize(size);
@@ -868,8 +866,6 @@ void TQScrollArea::toggleItem(ulong handle, int position)
 
             break;
         }
-
-        idx++;
     }
 }
 
@@ -889,11 +885,6 @@ void TQScrollArea::hideAllItems()
         {
             iter->visible = false;
             iter->item->setVisible(false);
-
-            if (mVertical)
-                mVLayout->removeWidget(iter->item);
-            else
-                mHLayout->removeWidget(iter->item);
         }
     }
 
@@ -916,12 +907,6 @@ void TQScrollArea::hideItem(ulong handle)
         {
             iter->visible = false;
             iter->item->setVisible(false);
-
-            if (mVertical)
-                mVLayout->removeWidget(iter->item);
-            else
-                mHLayout->removeWidget(iter->item);
-
             int size = calcSize();
             applySize(size);
             return;

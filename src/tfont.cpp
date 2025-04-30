@@ -42,6 +42,7 @@ namespace fs = std::filesystem;
 #include "tconfig.h"
 #include "terror.h"
 #include "tnameformat.h"
+#include "ttpinit.h"
 
 #include <include/core/SkFontStyle.h>
 
@@ -692,7 +693,7 @@ sk_sp<SkTypeface> TFont::getTypeFace(int number)
     mutex_font.lock();
     string path;
 
-    if (number < 32)    // System font?
+    if (!TTPInit::isTP5() && number < 32)    // System font?
     {
         path = TConfig::getProjectPath() + "/__system/graphics/fonts/" + iter->second.file;
 

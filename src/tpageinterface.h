@@ -228,8 +228,8 @@ typedef struct PAGE_T
     int hideY{0};                           // End of hide effect position (by default "top"); (popup only)
     int resetPos{0};                        // If this is 1 the popup is reset to it's original position and size on open
     std::vector<Button::SR_T> sr;           // Page/Popup description
-    std::vector<EVENT_t> eventShow;         // TP5: Events to start showing
-    std::vector<EVENT_t> eventHide;         // TP5: Events to start hiding
+    std::vector<EVENT_t> eventShow;         // G5: Events to start showing
+    std::vector<EVENT_t> eventHide;         // G5: Events to start hiding
 }PAGE_T;
 
 /**
