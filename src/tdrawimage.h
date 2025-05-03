@@ -33,13 +33,13 @@ class TDrawImage
          * \brief Draws an image used as the background of a page or subpage.
          * This method can draw a normal or a cameleon image. It is able to
          * detect which kind of image to draw.
-         * If it is a TP5 panel, it has a bitmap stack to hold all images. In
+         * If it is a G5 panel, it has a bitmap stack to hold all images. In
          * this case the images of the stack are crunched together to one. Then,
          * if \b imageMi is set, a cameleon can be made.
          *
          * @param bm    A pointer to the target image. The new image will be
          * drawn on top of \p bm.
-         * @param idx   In case of TP5 this is the bitmap index.
+         * @param idx   In case of G5 this is the bitmap index.
          *
          * @return If everything went well TRUE is returned. Otherwise FALSE.
          * If there was an error it is documented into the logfile if the
@@ -74,7 +74,7 @@ class TDrawImage
         std::vector<Button::SR_T> mSr;  // Array with background definations
         SkBitmap imageMi;               // The mask image
         SkBitmap imageBm;               // The bitmap image
-        std::vector<SkBitmap> mBitmapStack; // TP5: A bitmap stack.
+        std::vector<SkBitmap> mBitmapStack; // G5: A bitmap stack.
 };
 
 #endif

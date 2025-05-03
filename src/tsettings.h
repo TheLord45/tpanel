@@ -29,7 +29,7 @@ typedef struct VERSION_INFO
 {
     int formatVersion{0};
     int graphicsVersion{0};
-    int g5appsVersion{0};           // Only in TP5
+    int g5appsVersion{0};           // Only in G5
     std::string fileVersion;
     std::string designVersion;
 }VERSION_INFO;
@@ -40,10 +40,10 @@ typedef struct SUPPORT_FILES
     std::string colorFile;
     std::string fontFile;
     std::string themeFile;
-    std::string iconFile;               // Only on TP4
+    std::string iconFile;               // Only on G4
     std::string externalButtonFile;
-    std::string appFile;                // Only on TP5
-    std::string logFile;                // Only on TP5
+    std::string appFile;                // Only on G5
+    std::string logFile;                // Only on G5
 }SUPPORT_FILES;
 
 typedef struct PALETTE_SETUP
@@ -77,7 +77,7 @@ typedef struct PROJECT_INFO
 
 typedef struct PANEL_SETUP
 {
-    VERSION_INFO versionInfo;           //!< The version information is used to tell between TP4 and TP5
+    VERSION_INFO versionInfo;           //!< The version information is used to tell between G4 and G5
     int portCount{0};                   //!< Number of total ports available
     int setupPort{0};                   //!< The number of the setup port used for setup pages. Usualy 0
     int addressCount{0};
@@ -160,7 +160,7 @@ class TSettings : public TValidateFile
         std::string& getPowerUpPage() { return mSetup.powerUpPage; }
         int getVoipCmdPort() { return mSetup.voipCommandPort; }
         std::string& getPanelType() { return mProject.panelType; }
-        bool isTP5() { return mIsTp5; }
+        bool isG5() { return mIsG5; }
 
     private:
         RESOURCE_LIST_T findResourceType(const std::string& type);
@@ -169,7 +169,7 @@ class TSettings : public TValidateFile
         PANEL_SETUP_T mSetup;                           // Settings read from file prj.xma
         PROJECT_INFO mProject;                          // The project information.
         std::vector<RESOURCE_LIST_T> mResourceLists;    // Resources (cameras) read from prj.xma
-        bool mIsTp5{false};
+        bool mIsG5{false};
 };
 
 

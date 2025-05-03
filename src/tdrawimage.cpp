@@ -39,7 +39,7 @@ TDrawImage::~TDrawImage()
 {
     DECL_TRACER("TDrawImage::~TDrawImage()");
 
-    if (TTPInit::isTP5() && !mBitmapStack.empty())
+    if (TTPInit::isG5() && !mBitmapStack.empty())
         mBitmapStack.clear();
 }
 
@@ -47,7 +47,7 @@ void TDrawImage::setImageBm(SkBitmap& bm)
 {
     DECL_TRACER("TDrawImage::setImageBm(SkBitmap& bm)");
 
-    if (TTPInit::isTP5())
+    if (TTPInit::isG5())
     {
         int width = bm.info().width();
         int height = bm.info().height();
@@ -95,7 +95,7 @@ SkBitmap& TDrawImage::getImageBm(size_t index)
 {
     DECL_TRACER("TDrawImage::getImageBm(size_t index)");
 
-    if (TTPInit::isTP5())
+    if (TTPInit::isG5())
     {
         if (index >= mBitmapStack.size())
             return imageBm;
@@ -138,7 +138,7 @@ bool TDrawImage::drawImage(SkBitmap* bm, int idx)
         SkBitmap imgRed(imageMi);
         SkBitmap imgMask;
 
-        if ((!TTPInit::isTP5() && !imageBm.empty() && !mSr[instance].bm.empty()) || (TTPInit::isTP5() && !imageBm.empty()))
+        if ((!TTPInit::isG5() && !imageBm.empty() && !mSr[instance].bm.empty()) || (TTPInit::isG5() && !imageBm.empty()))
             imgMask.installPixels(imageBm.pixmap());
         else
         {
@@ -186,14 +186,14 @@ bool TDrawImage::drawImage(SkBitmap* bm, int idx)
             can.drawImageRect(im, rect, SkSamplingOptions(), &paint);
         }
     }
-    else if ((!TTPInit::isTP5() && !imageBm.empty() && !mSr[instance].bm.empty()) || (TTPInit::isTP5() && !imageBm.empty()))
+    else if ((!TTPInit::isG5() && !imageBm.empty() && !mSr[instance].bm.empty()) || (TTPInit::isG5() && !imageBm.empty()))
     {
         MSG_TRACE("Drawing normal image ...");
         SkBitmap image = imageBm;
 
         if (image.empty())
         {
-            if (TTPInit::isTP5())
+            if (TTPInit::isG5())
             {
                 MSG_ERROR("Error creating the image \"" << mSr[instance].bitmaps[mBitmapStack.size()-1].fileName << "\"!");
             }
@@ -208,7 +208,7 @@ bool TDrawImage::drawImage(SkBitmap* bm, int idx)
 
         Button::POSITION_t position;
 
-        if (!TTPInit::isTP5())
+        if (!TTPInit::isG5())
             position = calcImagePosition(mSr[instance].bm_width, mSr[instance].bm_height, instance);
         else
             position = calcImagePosition(imageBm.info().width(), imageBm.info().height(), instance);
@@ -239,8 +239,8 @@ bool TDrawImage::drawImage(SkBitmap* bm, int idx)
             if (!mSr[instance].bitmaps[index].fileName.empty())
                 bitmap = mSr[instance].bitmaps[index];
 
-            if ((!TTPInit::isTP5() && ((mSr[instance].jb == 0 && mSr[instance].bx >= 0 && mSr[instance].by >= 0) || mSr[instance].jb != 0)) ||  // Draw the full image
-                (TTPInit::isTP5() && ((bitmap.justification == 0 && bitmap.offsetX >= 0 && bitmap.offsetY >= 0) || bitmap.justification != 0)))
+            if ((!TTPInit::isG5() && ((mSr[instance].jb == 0 && mSr[instance].bx >= 0 && mSr[instance].by >= 0) || mSr[instance].jb != 0)) ||  // Draw the full image
+                (TTPInit::isG5() && ((bitmap.justification == 0 && bitmap.offsetX >= 0 && bitmap.offsetY >= 0) || bitmap.justification != 0)))
             {
                 MSG_DEBUG("Drawing full image ...");
                 sk_sp<SkImage> _image = SkImages::RasterFromBitmap(image);
@@ -428,7 +428,7 @@ Button::POSITION_t TDrawImage::calcImagePosition(int width, int height, int numb
     string dbgCC;
     int rwt = 0, rht = 0;
 
-    if (TTPInit::isTP5())
+    if (TTPInit::isG5())
     {
         if (index >= 0 && index < 5)
         {

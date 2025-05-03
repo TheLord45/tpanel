@@ -78,7 +78,7 @@ using std::ifstream;
 
 #define SYSTEM_DEFAULT      "/.system"
 
-bool TTPInit::mIsTP5 = false;
+bool TTPInit::mIsG5 = false;
 
 TTPInit::TTPInit()
 {
@@ -2105,7 +2105,7 @@ bool TTPInit::createDirectoryStructure()
 
     string testPath;
 
-    if (mIsTP5)
+    if (mIsG5)
         testPath = "/__system/graphics/borders/BvlDblIM_b.png";
     else
         testPath = "/__system/graphics/fonts/arial.ttf";
@@ -2156,7 +2156,7 @@ bool TTPInit::createDirectoryStructure()
     if (!_makeDir(pfad))
         return false;
 
-    if (!mIsTP5)
+    if (!mIsG5)
     {
         pfad = mPath + "/__system/graphics/fonts";
 
@@ -2169,7 +2169,7 @@ bool TTPInit::createDirectoryStructure()
     if (!_makeDir(pfad))
         return false;
 
-    if (!mIsTP5)
+    if (!mIsG5)
     {
         pfad = mPath + "/__system/graphics/sounds";
 
@@ -2410,7 +2410,7 @@ bool TTPInit::loadSurfaceFromController(bool force)
         return false;
     }
 
-    mIsTP5 = reader.isTP5();
+    mIsG5 = reader.isG5();
 
     if (!force || !dir.exists(mPath + "/__system"))
     {

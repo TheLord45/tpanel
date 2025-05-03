@@ -41,7 +41,7 @@ class TFsfReader
 
         bool copyOverFTP(const std::string& fname, const std::string& target);
         bool unpack(const std::string&fname, const std::string& path);
-        bool isTP5() { return tp5Type; }
+        bool isG5() { return mG5Type; }
         static void callbackLog(char *str, void* arg, bool out);
         static void callbackError(char *msg, void *arg, int err);
         static int callbackXfer(off64_t xfered, void *arg);
@@ -53,7 +53,7 @@ class TFsfReader
         static std::function<int (off64_t xfered)> _progress;
         void logging(int level, const std::string& msg);
 
-        bool tp5Type{false};
+        bool mG5Type{false};
 };
 
 #endif

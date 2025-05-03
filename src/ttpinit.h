@@ -55,8 +55,8 @@ class TTPInit
         off64_t getFileSize(const std::string& file);
         void regCallbackProcessEvents(std::function<void ()> pe) { _processEvents = pe; }
         void regCallbackProgressBar(std::function<void (int percent)> pb) { _progressBar = pb; }
-        static void setTP5(bool tp) { mIsTP5 = tp; }
-        static bool isTP5() { return mIsTP5; }
+        static void setG5(bool tp) { mIsG5 = tp; }
+        static bool isG5() { return mIsG5; }
 
         static bool haveSystemMarker();
 
@@ -84,7 +84,7 @@ class TTPInit
         bool mPanelConfigsCreated{false};
         bool mSystemConfigsCreated{false};
         bool mDemoPageCreated{false};
-        static bool mIsTP5;
+        static bool mIsG5;
 };
 
 #endif // TTPINIT_H

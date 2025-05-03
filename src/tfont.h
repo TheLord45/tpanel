@@ -73,7 +73,7 @@ class TFont : public TValidateFile
         SkFontStyle getSkiaStyle(int number);
         sk_sp<SkTypeface> getTypeFace(int number);
         sk_sp<SkTypeface> getTypeFace(const std::string& ff);
-        void setTP5(bool tp) { mIsTP5 = tp; }
+        void setG5(bool tp) { mIsG5 = tp; }
 
         static std::vector<std::string> getFontPathList();
         static SkGlyphID *textToGlyphs(const std::string& str, sk_sp<SkTypeface>& typeFace, size_t *size);
@@ -87,7 +87,7 @@ class TFont : public TValidateFile
         static void _freeCmap();
 
         std::map<int, FONT_T> mFonts;
-        bool mIsTP5{false};
+        bool mIsG5{false};
         std::string mFontFile;
 };
 

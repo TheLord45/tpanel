@@ -6350,9 +6350,9 @@ void MainWindow::runEvents()
     QApplication::processEvents();
 }
 
-void MainWindow::onSubViewItemClicked(ulong handle, bool pressed)
+void MainWindow::onSubViewItemClicked(ulong handle, int x, int y, bool pressed)
 {
-    DECL_TRACER("MainWindow::onSubViewItemClicked(ulong handle)");
+    DECL_TRACER("MainWindow::onSubViewItemClicked(ulong handle, int x, int y, bool pressed)");
 
     if (!handle)
         return;
@@ -6361,7 +6361,7 @@ void MainWindow::onSubViewItemClicked(ulong handle, bool pressed)
     // We create a thread to not interrupt the QT framework longer then
     // necessary.
     if (gPageManager)
-        gPageManager->mouseEvent(handle, pressed);
+        gPageManager->mouseEvent(handle, x, y, pressed);
 }
 
 void MainWindow::onInputChanged(ulong handle, string& text)

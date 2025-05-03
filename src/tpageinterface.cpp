@@ -67,7 +67,7 @@ bool TPageInterface::drawText(PAGE_T& pinfo, SkBitmap *img)
     FONT_T font;
     sk_sp<SkTypeface> typeFace;
 
-    if (!TTPInit::isTP5())
+    if (!TTPInit::isG5())
     {
         MSG_DEBUG("Searching for font number " << pinfo.sr[0].fi << " with text " << pinfo.sr[0].te);
         font = mFonts->getFont(pinfo.sr[0].fi);
