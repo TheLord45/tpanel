@@ -54,10 +54,10 @@ using namespace std;
 /**
  * @brief Password
  * This definitions are the password and salt used to encrypt all XML files
- * in a TP5 file (produced by TPDesign5).
+ * in a G5 file (produced by TPDesign5).
  * TPanel is using it to decrypt the files. All files other then XML files
  * are not encrypted or zipped.
- * 
+ *
  * The encryption was done with the following settings:
  *  Cipher: AES-128-CBC
  *  Digest: SHA1
@@ -236,7 +236,7 @@ bool ReadTP4::doRead()
                     string decr = scramble.getDecrypted();
                     outFile.write(decr.c_str(), decr.length());
                     outFile.close();
-                    tp5Type = true;
+                    mG5Type = true;
                 }
             }
 

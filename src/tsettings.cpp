@@ -73,7 +73,7 @@ bool TSettings::loadSettings(bool initial)
 
     TExpat xml(fname);
 
-    if (!TTPInit::isTP5())
+    if (!TTPInit::isG5())
         xml.setEncoding(ENC_CP1250);
 
     if (!xml.parse())
@@ -102,16 +102,16 @@ bool TSettings::loadSettings(bool initial)
 
     if (mSetup.versionInfo.formatVersion >= 20 && mSetup.versionInfo.graphicsVersion >= 20)
     {
-        mIsTp5 = true;
-        MSG_INFO("Detected a TP5 file");
+        mIsG5 = true;
+        MSG_INFO("Detected a G5 file");
 
         if (!valid)
             mSetup.versionInfo.g5appsVersion = 1;
     }
     else
     {
-        mSetup.versionInfo.g5appsVersion = 0;   // No TP5 file
-        mIsTp5 = false;
+        mSetup.versionInfo.g5appsVersion = 0;   // No G5 file
+        mIsG5 = false;
         MSG_INFO("Detected a TP4 file");
     }
 
@@ -162,12 +162,12 @@ bool TSettings::loadSettings(bool initial)
     mSetup.supportFiles.fontFile = xml.getElement("fontFile", depth);
     mSetup.supportFiles.themeFile = xml.getElement("themeFile", depth);
 
-    if (!mIsTp5)
+    if (!mIsG5)
         mSetup.supportFiles.iconFile = xml.getElement("iconFile", depth);
 
     mSetup.supportFiles.externalButtonFile = xml.getElement("externalButtonFile", depth);
 
-    if (mIsTp5)
+    if (mIsG5)
     {
         mSetup.supportFiles.appFile = xml.getElement("appFile", depth);
         mSetup.supportFiles.logFile = xml.getElement("logFile", depth);
@@ -178,12 +178,12 @@ bool TSettings::loadSettings(bool initial)
     MSG_DEBUG("Font file:    " << mSetup.supportFiles.fontFile);
     MSG_DEBUG("Theme file:   " << mSetup.supportFiles.themeFile);
 
-    if (!mIsTp5)
+    if (!mIsG5)
         MSG_DEBUG("IconFile:     " << mSetup.supportFiles.iconFile);
 
     MSG_DEBUG("Ext. buttons: " << mSetup.supportFiles.externalButtonFile);
 
-    if (mIsTp5)
+    if (mIsG5)
     {
         MSG_DEBUG("App file:     " << mSetup.supportFiles.appFile);
         MSG_DEBUG("Log file:     " << mSetup.supportFiles.logFile);
@@ -369,7 +369,7 @@ bool TSettings::loadSettings(bool initial)
 
     if (xml.getElementIndex("paletteList", &depth) == TExpat::npos)
     {
-        if (!isTP5())
+        if (!isG5())
         {
             MSG_WARNING("There exists no color palette! There will be only the system colors available.");
         }

@@ -151,7 +151,7 @@ mutex mutex_font;
 map<string, sk_sp<SkTypeface> > _tfontCache;
 
 TFont::TFont(const string& fname, bool tp)
-    : mIsTP5(tp),
+    : mIsG5(tp),
       mFontFile(fname)
 {
     DECL_TRACER("TFont::TFont(const string& fname, bool tp)");
@@ -334,7 +334,7 @@ void TFont::initialize()
 
     TExpat xml(path);
 
-    if (!mIsTP5)
+    if (!mIsG5)
         xml.setEncoding(ENC_CP1250);
 
     if (!xml.parse())
@@ -364,7 +364,7 @@ void TFont::initialize()
         FONT_T ft;
         vector<ATTRIBUTE_t> attrs;
 
-        if (!mIsTP5)
+        if (!mIsG5)
         {
             attrs = xml.getAttributes(index);
 
@@ -439,7 +439,7 @@ bool TFont::systemFonts(bool setup)
 
     TExpat xml(path);
 
-    if (!mIsTP5)
+    if (!mIsG5)
         xml.setEncoding(ENC_CP1250);
 
     if (!xml.parse())
@@ -465,7 +465,7 @@ bool TFont::systemFonts(bool setup)
         FONT_T ft;
         vector<ATTRIBUTE_t> attrs;
 
-        if (!mIsTP5)
+        if (!mIsG5)
         {
             attrs = xml.getAttributes(index);
 
@@ -693,7 +693,7 @@ sk_sp<SkTypeface> TFont::getTypeFace(int number)
     mutex_font.lock();
     string path;
 
-    if (!TTPInit::isTP5() && number < 32)    // System font?
+    if (!TTPInit::isG5() && number < 32)    // System font?
     {
         path = TConfig::getProjectPath() + "/__system/graphics/fonts/" + iter->second.file;
 

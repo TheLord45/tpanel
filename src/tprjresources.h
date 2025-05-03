@@ -27,7 +27,7 @@
 typedef struct RESOURCE_T
 {
     std::string name;           // Name of resource
-    std::string protocol;       // With TP4 this is either HTTP of FTP. TP5: HTTP of HTTPS
+    std::string protocol;       // With TP4 this is either HTTP of FTP. G5: HTTP of HTTPS
     std::string user;           // Optional: User name
     std::string password;       // Optional: Password (usualy encrypted)
     bool encrypted{false};      // If a password exist and this is TRUE the password is encrypted

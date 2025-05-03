@@ -109,7 +109,7 @@ void TPageList::initialize(bool system)
 
     TExpat xml(sProject);
 
-    if (!TTPInit::isTP5())
+    if (!TTPInit::isG5())
         xml.setEncoding(ENC_CP1250);
 
     if (!xml.parse())

@@ -59,9 +59,9 @@ bool TApps::parseApps()
 {
     DECL_TRACER("TApps::parseApps()");
 
-    if (!TTPInit::isTP5())
+    if (!TTPInit::isG5())
     {
-        MSG_WARNING("Can't read app configs because it's not a TP5 format!");
+        MSG_WARNING("Can't read app configs because it's not a G5 format!");
         return false;
     }
 
@@ -84,7 +84,7 @@ bool TApps::parseApps()
 
     TExpat xml(path);
 
-    if (TTPInit::isTP5())
+    if (TTPInit::isG5())
         xml.setEncoding(ENC_UTF8);
 
     if (!xml.parse())

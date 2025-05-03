@@ -798,10 +798,10 @@ TPageManager::TPageManager()
         return;
     }
 
-    // Read the application file if it is TP5
-    if (mTSettings->isTP5())
+    // Read the application file if it is G5
+    if (mTSettings->isG5())
     {
-        TTPInit::setTP5(true);
+        TTPInit::setG5(true);
         mApps = new TApps;
         mApps->parseApps();
 
@@ -815,10 +815,10 @@ TPageManager::TPageManager()
     // Set the panel type from the project information
     TConfig::savePanelType(mTSettings->getPanelType());
 
-    readMap(mTSettings->isTP5());  // Start the initialisation of the AMX part.
+    readMap(mTSettings->isG5());  // Start the initialisation of the AMX part.
 
     gPrjResources = new TPrjResources(mTSettings->getResourcesList());
-    mPalette = new TPalette(mTSettings->isTP5());
+    mPalette = new TPalette(mTSettings->isG5());
     vector<PALETTE_SETUP> pal = mTSettings->getSettings().palettes;
 
     if (pal.size() > 0)
@@ -832,7 +832,7 @@ TPageManager::TPageManager()
     if (!TError::isError())
         TColor::setPalette(mPalette);
 
-    mFonts = new TFont(mTSettings->getFontFileName(), mTSettings->isTP5());
+    mFonts = new TFont(mTSettings->getFontFileName(), mTSettings->isG5());
 
     if (TError::isError())
     {
@@ -840,7 +840,7 @@ TPageManager::TPageManager()
         MSG_ERROR("Initializing fonts was not successfull!");
     }
 
-    if (!mTSettings->isTP5())
+    if (!mTSettings->isG5())
     {
         gIcons = new TIcons();
 
@@ -1284,7 +1284,7 @@ void TPageManager::initialize()
     if (mFonts)
         delete mFonts;
 
-    mFonts = new TFont(mTSettings->getFontFileName(), mTSettings->isTP5());
+    mFonts = new TFont(mTSettings->getFontFileName(), mTSettings->isG5());
 
     if (TError::isError())
     {
@@ -1846,7 +1846,7 @@ void TPageManager::commandLoop()
                         msg.content[len] = 0;
                     }
 
-                    if (getCommand((char *)msg.content) == "^UTF" || bef.intern || TTPInit::isTP5())  // This is already UTF8!
+                    if (getCommand((char *)msg.content) == "^UTF" || bef.intern || TTPInit::isG5())  // This is already UTF8!
                         com.assign((char *)msg.content);
                     else
                         com.assign(cp1250ToUTF8((char *)&msg.content));
@@ -4069,7 +4069,7 @@ void TPageManager::showSubPage(const string& name)
         pg->show();
         // If the page requires other pages to show or hide we do this here.
         // The loop is calling this method recursively.
-        if (TTPInit::isTP5())
+        if (TTPInit::isG5())
         {
             PAGE_T page = pg->getSubPage();
 
@@ -4319,7 +4319,7 @@ void TPageManager::runClickQueue()
                         if (mClickQueue[0].coords)
                             _mouseEvent(mClickQueue[0].x, mClickQueue[0].y, mClickQueue[0].pressed);
                         else
-                            _mouseEvent(mClickQueue[0].handle, mClickQueue[0].pressed); // mClickQueue[0].handle);
+                            _mouseEvent(mClickQueue[0].handle, mClickQueue[0].x, mClickQueue[0].y, mClickQueue[0].pressed);
                     }
                     else  if (mClickQueue[0].eventType == _EVENT_MOUSE_MOVE)
                         _mouseMoveEvent(mClickQueue[0].x, mClickQueue[0].y);
@@ -4518,9 +4518,9 @@ void TPageManager::_mouseMoveEvent(int x, int y)
     subPage->moveMouse(realX - subPage->getLeft(), realY - subPage->getTop());
 }
 
-void TPageManager::mouseEvent(ulong handle, bool pressed)
+void TPageManager::mouseEvent(ulong handle, int x, int y, bool pressed)
 {
-    DECL_TRACER("TPageManager::mouseEvent(ulong handle, bool pressed)");
+    DECL_TRACER("TPageManager::mouseEvent(ulong handle, int x, int y, bool pressed)");
 
     if (!mClickQueue.empty() && mClickQueue.back().handle == handle && mClickQueue.back().pressed == pressed)
         return;
@@ -4529,16 +4529,18 @@ void TPageManager::mouseEvent(ulong handle, bool pressed)
 
     _CLICK_QUEUE_t cq;
     cq.handle = handle;
+    cq.x = x;
+    cq.y = y;
     cq.pressed = pressed;
     mClickQueue.push_back(cq);
-    MSG_DEBUG("Queued click for handle " << handleToString(cq.handle) << " state " << (cq.pressed ? "PRESSED" : "RELEASED"));
+    MSG_DEBUG("Queued click for handle " << handleToString(cq.handle) << " at coordinate " << x << "x" << y << ", state " << (cq.pressed ? "PRESSED" : "RELEASED"));
 }
 
-void TPageManager::_mouseEvent(ulong handle, bool pressed)
+void TPageManager::_mouseEvent(ulong handle, int x, int y, bool pressed)
 {
-    DECL_TRACER("TPageManager::_mouseEvent(ulong handle, bool pressed)");
+    DECL_TRACER("TPageManager::_mouseEvent(ulong handle, int x, int y, bool pressed)");
 
-    MSG_DEBUG("Doing click for handle " << handleToString(handle) << " state " << (pressed ? "PRESSED" : "RELEASED"));
+    MSG_DEBUG("Doing click for handle " << handleToString(handle) << " at coord " << x << "x" << y << ", state " << (pressed ? "PRESSED" : "RELEASED"));
 
     if (!handle)
         return;
@@ -4558,7 +4560,11 @@ void TPageManager::_mouseEvent(ulong handle, bool pressed)
         if (bt)
         {
             MSG_DEBUG("Button on subpage " << pageID << ": " << buttonID);
-            bt->doClick(bt->getLeftPosition() + bt->getWidth() / 2, bt->getTopPosition() + bt->getHeight() / 2, pressed);
+
+            if (x > 0 && y > 0)
+                bt->doClick(x, y, pressed);
+            else
+                bt->doClick(bt->getLeftPosition() + bt->getWidth() / 2, bt->getTopPosition() + bt->getHeight() / 2, pressed);
         }
     }
 }
@@ -8855,7 +8861,7 @@ void TPageManager::doBML(int port, vector<int>& channels, vector<string>& pars)
  * TP4 Syntax:
  *    ^BMP-<vt addr range>,<button states range>,<name of bitmap/picture>
  *
- * TP5 Syntax:
+ * G5 Syntax:
  *    ^BMP-<addr range>,<button states range>,<name of bitmap/picture>,[bitmap index],[optional justification]
  */
 void TPageManager::doBMP(int port, vector<int>& channels, vector<string>& pars)
@@ -8876,7 +8882,7 @@ void TPageManager::doBMP(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() > 2)
     {
-        slot = atoi(pars[2].c_str());       // TP5: The bitmap index
+        slot = atoi(pars[2].c_str());       // G5: The bitmap index
 
         if (pars.size() >= 4)
         {
@@ -8913,7 +8919,7 @@ void TPageManager::doBMP(int port, vector<int>& channels, vector<string>& pars)
 
             if (justify >= 0)
             {
-                if (slot == 2 && !TTPInit::isTP5())
+                if (slot == 2 && !TTPInit::isG5())
                     bt->setIconJustification(justify, jx, jy, btState);
                 else
                     bt->setBitmapJustification(justify, jx, jy, btState);
@@ -8921,7 +8927,7 @@ void TPageManager::doBMP(int port, vector<int>& channels, vector<string>& pars)
 
             if (slot >= 0)
             {
-                if (!TTPInit::isTP5())
+                if (!TTPInit::isG5())
                 {
                     switch(slot)
                     {
@@ -10182,9 +10188,9 @@ void TPageManager::doICO(int port, vector<int>& channels, vector<string>& pars)
 {
     DECL_TRACER("TPageManager::doICO(int port, vector<int>& channels, vector<string>& pars)");
 
-    if (TTPInit::isTP5())
+    if (TTPInit::isG5())
     {
-        MSG_INFO("Command ^ICO is not supported by TP5 standard!");
+        MSG_INFO("Command ^ICO is not supported by G5 standard!");
         return;
     }
 
@@ -10232,9 +10238,9 @@ void TPageManager::getICO(int port, vector<int>& channels, vector<string>& pars)
 {
     DECL_TRACER("TPageManager::getICO(int port, vector<int>& channels, vector<string>& pars)");
 
-    if (TTPInit::isTP5())
+    if (TTPInit::isG5())
     {
-        MSG_INFO("Command ?ICO is not supported by TP5 standard!");
+        MSG_INFO("Command ?ICO is not supported by G5 standard!");
         return;
     }
 

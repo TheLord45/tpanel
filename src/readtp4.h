@@ -242,7 +242,7 @@ namespace reader
             bool isReady();
             bool doRead();
             std::string toHex(int num, int width);
-            bool isTP5() { return tp5Type; }
+            bool isG5() { return mG5Type; }
 
         private:
             void fillBlock(struct BLOCK& bl, const unsigned char *buf);
@@ -259,7 +259,7 @@ namespace reader
             static bool compareManifest(struct MANIFEST& m1, struct MANIFEST& m2);
 
             std::vector<struct MANIFEST> manifest;
-            bool tp5Type{false};
+            bool mG5Type{false};
     };
 }
 

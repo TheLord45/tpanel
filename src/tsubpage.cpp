@@ -145,7 +145,7 @@ void TSubPage::initialize()
     TError::clear();
     TExpat xml(mFName);
 
-    if (!TTPInit::isTP5())
+    if (!TTPInit::isG5())
         xml.setEncoding(ENC_CP1250);
 
     if (!xml.parse())
@@ -554,7 +554,7 @@ void TSubPage::show()
         dImage.setHeight(mSubpage.height);
         dImage.setSr(mSubpage.sr);
 
-        if (!TTPInit::isTP5() && !mSubpage.sr[0].bm.empty())
+        if (!TTPInit::isG5() && !mSubpage.sr[0].bm.empty())
         {
             MSG_DEBUG("Loading image " << mSubpage.sr[0].bm);
             sk_sp<SkData> rawImage = readImage(mSubpage.sr[0].bm);
@@ -582,7 +582,7 @@ void TSubPage::show()
                 }
             }
         }
-        else if (TTPInit::isTP5() && haveImage(mSubpage.sr[0]))
+        else if (TTPInit::isG5() && haveImage(mSubpage.sr[0]))
         {
             MSG_DEBUG("Loading G5 image(s) ...");
 
@@ -822,7 +822,7 @@ SkBitmap& TSubPage::getBgImage()
         dImage.setHeight(mSubpage.height);
         dImage.setSr(mSubpage.sr);
 
-        if (!TTPInit::isTP5() && !mSubpage.sr[0].bm.empty())
+        if (!TTPInit::isG5() && !mSubpage.sr[0].bm.empty())
         {
             MSG_DEBUG("Loading image " << mSubpage.sr[0].bm);
             sk_sp<SkData> rawImage = readImage(mSubpage.sr[0].bm);
@@ -850,7 +850,7 @@ SkBitmap& TSubPage::getBgImage()
                 }
             }
         }
-        else if (TTPInit::isTP5() && haveImage(mSubpage.sr[0]))
+        else if (TTPInit::isG5() && haveImage(mSubpage.sr[0]))
         {
             SkBitmap bm;
 

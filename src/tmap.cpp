@@ -46,7 +46,7 @@ using namespace Expat;
 
 TMap::TMap(const std::string& file, bool tp)
     : mFile(file),
-      mIsTP5(tp)
+      mIsG5(tp)
 {
     DECL_TRACER("TMap::TMap(std::string& file, bool tp)");
 
@@ -68,7 +68,7 @@ bool TMap::readMap()
     string path = makeFileName(mFile, "map.xma");
     vector<string> elements = { "cm", "am", "lm", "bm" };
 
-    if (mIsTP5)
+    if (mIsG5)
         elements.push_back("evpf");
     else
     {
@@ -85,7 +85,7 @@ bool TMap::readMap()
 
     TExpat xml(path);
 
-    if (!TTPInit::isTP5())
+    if (!TTPInit::isG5())
         xml.setEncoding(ENC_CP1250);
 
     if (!xml.parse())
@@ -405,7 +405,7 @@ bool TMap::soundExist(const string& sname)
 {
     DECL_TRACER("TAmxCommands::soundExist(const string sname)");
 
-    if (mIsTP5)
+    if (mIsG5)
         return false;
 
     if (mMap.map_sm.size() == 0)

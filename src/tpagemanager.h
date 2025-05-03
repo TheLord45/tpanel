@@ -360,9 +360,11 @@ class TPageManager : public TAmxCommands
          * received a mouse click.
          *
          * @param handle    The handle of an object
+         * @param x         The x coordinate inside an object where the click appeared
+         * @param y         The y coordinate inside an object where the click appeared
          * @param pressed   TRUE=The mouse button is pressed.
          */
-        void mouseEvent(ulong handle, bool pressed);
+        void mouseEvent(ulong handle, int x , int y, bool pressed);
         /**
          * @brief mouseMoveEvent - Moves bar on a bargraph
          * This method looks for an object which is a bargraph. If so it is
@@ -806,7 +808,7 @@ class TPageManager : public TAmxCommands
         void runClickQueue();
         void runUpdateSubViewItem();
         void _mouseEvent(int x, int y, bool pressed);
-        void _mouseEvent(ulong handle, bool pressed);
+        void _mouseEvent(ulong handle, int x, int y, bool pressed);
         void _updateSubViewItem(Button::TButton *bt);
         void _mouseMoveEvent(int x, int y);
 #ifndef _NOSIP_
@@ -1005,7 +1007,7 @@ class TPageManager : public TAmxCommands
         TPalette *mPalette{nullptr};                    // Pointer to the color handler
         TFont *mFonts{nullptr};                         // Pointer to the font handler
         TExternal *mExternal{nullptr};                  // Pointer to the external buttons (if any)
-        TApps *mApps{nullptr};                          // Pointer to external apps for Android (TP5)
+        TApps *mApps{nullptr};                          // Pointer to external apps for Android (G5)
         TSystemDraw *mSystemDraw{nullptr};              // A pointer to the (optional) system resources
         std::thread mThreadAmxNet;                      // The thread handle to the controler handler
         TVector<amx::ANET_COMMAND> mCommands;           // Command queue of commands received from controller

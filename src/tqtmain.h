@@ -278,7 +278,7 @@ class MainWindow : public QMainWindow, public TObject
         bool startAnimation(TObject::OBJECT_t *obj, ANIMATION_t& ani, bool in = true);
         void downloadBar(const std::string& msg, QWidget *parent);
         void runEvents();
-        void onSubViewItemClicked(ulong handle, bool pressed);
+        void onSubViewItemClicked(ulong handle, int x, int y, bool pressed);
         void onInputChanged(ulong handle, std::string& text);
         void onFocusChanged(ulong handle, bool in);
         void onCursorChanged(ulong handle, int oldPos, int newPos);

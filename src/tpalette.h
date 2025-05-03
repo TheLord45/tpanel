@@ -57,7 +57,7 @@ class TPalette : public TValidateFile
         std::string mPath;
         std::map<std::string, PDATA_T> mColors;
         std::vector<std::string> mPaletteNames;
-        bool mIsTP5{false};
+        bool mIsG5{false};
 };
 
 #endif

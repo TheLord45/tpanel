@@ -139,7 +139,7 @@ void TPage::initialize(const string& nm)
 
     TExpat xml(mPath);
 
-    if (!TTPInit::isTP5())
+    if (!TTPInit::isG5())
         xml.setEncoding(ENC_CP1250);
 
     if (!xml.parse())
@@ -485,7 +485,7 @@ SkBitmap& TPage::getBgImage()
         dImage.setHeight(mPage.height);
         dImage.setSr(mPage.sr);
 
-        if (!TTPInit::isTP5() && !mPage.sr[0].bm.empty())
+        if (!TTPInit::isG5() && !mPage.sr[0].bm.empty())
         {
             MSG_DEBUG("Loading image " << mPage.sr[0].bm);
             sk_sp<SkData> rawImage = readImage(mPage.sr[0].bm);
@@ -513,7 +513,7 @@ SkBitmap& TPage::getBgImage()
                 }
             }
         }
-        else if (TTPInit::isTP5() && haveImage(mPage.sr[0]))
+        else if (TTPInit::isG5() && haveImage(mPage.sr[0]))
         {
             SkBitmap bm;
 
@@ -681,7 +681,7 @@ void TPage::show()
         dImage.setHeight(mPage.height);
         dImage.setSr(sr);
 
-        if (!TTPInit::isTP5() && !sr[0].bm.empty())
+        if (!TTPInit::isG5() && !sr[0].bm.empty())
         {
             MSG_DEBUG("Loading image " << sr[0].bm);
             sk_sp<SkData> rawImage = readImage(sr[0].bm);
@@ -710,7 +710,7 @@ void TPage::show()
                 }
             }
         }
-        else if (TTPInit::isTP5() && haveImage(sr[0]))
+        else if (TTPInit::isG5() && haveImage(sr[0]))
         {
             SkBitmap image;
 
@@ -719,7 +719,7 @@ void TPage::show()
                 if (sr[0].bitmaps[i].fileName.empty())
                     continue;
 
-                MSG_DEBUG("Loading TP5 image " << sr[0].bitmaps[i].fileName);
+                MSG_DEBUG("Loading G5 image " << sr[0].bitmaps[i].fileName);
                 sk_sp<SkData> rawImage = readImage(sr[0].bitmaps[i].fileName);
                 SkBitmap bm;
 

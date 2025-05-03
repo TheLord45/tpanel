@@ -133,7 +133,7 @@
 #define SYSTEM_ITEM_VIEWTOOLBAR         2073
 #define SYSTEM_ITEM_VIEWROTATE          2074
 
-#define MAX_IMAGES                      5       // TP5: maximum number of images
+#define MAX_IMAGES                      5       // G5: maximum number of images
 
 class TSubPage;
 
@@ -161,7 +161,7 @@ typedef struct ANIMATION_t
     int hideTime{0};
 }ANIMATION_t;
 
-// The following enum is for TP5 only
+// The following enum is for G5 only
 typedef enum
 {
     EV_NONE,                        // Invalid event

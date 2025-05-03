@@ -181,7 +181,7 @@ bool TFsfReader::unpack(const string& fname, const string& path)
     if (!readtp4.isReady())
         return false;
 
-    tp5Type = readtp4.isTP5();
+    mG5Type = readtp4.isG5();
     // We must delete the old files first
     std::uintmax_t n = fs::remove_all(path);
     MSG_TRACE("Deleted " << n << " files/directories from " << path);

@@ -79,7 +79,7 @@ class TQScrollArea : public QScrollArea
         void setWrapItems(bool wrap) { mWrapItems = wrap; }
 
     signals:
-        void objectClicked(ulong handle, bool pressed);
+        void objectClicked(ulong handle, int x, int y, bool pressed);
 
     protected:
         void mouseMoveEvent(QMouseEvent* event) override;
@@ -171,6 +171,7 @@ class TQScrollArea : public QScrollArea
         bool mWrapItems{false};                 //!< TRUE = The scroll area behaves like a wheel (not supported) and the item according to the anchor position is displayed.
         bool mMouseTmEventActive{false};        //!< TRUE = the mouse timer event is still running and will not accept calls.
         bool mDoMouseEvent{false};              //!< TRUE = The mouse timer event is valid.
+        bool mMouseDoRelease{false};            //!< if this is TRUE the next step must be a mouse release event
 };
 
 #endif

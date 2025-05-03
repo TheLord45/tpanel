@@ -46,7 +46,7 @@ using std::pair;
 using namespace Expat;
 
 TPalette::TPalette(bool tp)
-    : mIsTP5(tp)
+    : mIsG5(tp)
 {
     DECL_TRACER("TPalette::TPalette(bool tp)");
 
@@ -54,7 +54,7 @@ TPalette::TPalette(bool tp)
 }
 
 TPalette::TPalette(const std::string& file, bool tp)
-    : mIsTP5(tp)
+    : mIsG5(tp)
 {
     DECL_TRACER("TPalette::TPalette(const std::string& file, bool tp)");
 
@@ -82,7 +82,7 @@ void TPalette::initialize(const std::string& file)
 
     TExpat xml(path);
 
-    if (!mIsTP5)
+    if (!mIsG5)
         xml.setEncoding(ENC_CP1250);
 
     if (!xml.parse(false))
