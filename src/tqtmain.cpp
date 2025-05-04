@@ -635,6 +635,7 @@ MainWindow::MainWindow()
         connect(this, &MainWindow::sigHideViewItem, this, &MainWindow::hideViewItem);
         connect(this, &MainWindow::sigHideAllViewItems, this, &MainWindow::hideAllViewItems);
         connect(this, &MainWindow::sigSetSubViewPadding, this, &MainWindow::setSubViewPadding);
+        connect(this, &MainWindow::sigSetSubViewAnimation, this, &MainWindow::setSubViewAnimation);
         connect(this, &MainWindow::sigToggleViewButtonItem, this, &MainWindow::toggleViewButtonItem);
         connect(this, &MainWindow::sigSetPage, this, &MainWindow::setPage);
         connect(this, &MainWindow::sigSetSubPage, this, &MainWindow::setSubPage);
@@ -4558,6 +4559,24 @@ void MainWindow::setSubViewPadding(ulong handle, int padding)
     obj->object.area->setSpace(padding);
 }
 
+void MainWindow::setSubViewAnimation(ulong handle, ANIMATION_t ani)
+{
+    DECL_TRACER("MainWindow::setSubViewAnimation(ulong handle, ANIMATION_t ani)");
+
+    OBJECT_t *obj = findObject(handle);
+
+    if (!obj)
+    {
+        MSG_ERROR("Object " << handleToString(handle) << " not found!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
+        return;
+    }
+
+    obj->animate = ani;
+}
+
 /**
  * @brief Prepares a new object.
  * The method first checks whether there exists a background widget or not. If
@@ -6148,13 +6167,17 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
         return false;
     }
 
-//    TLOCKER(anim_mutex);
     int scLeft = obj->left;
     int scTop = obj->top;
     int scWidth = obj->width;
     int scHeight = obj->height;
     int duration = (in ? ani.showTime : ani.hideTime);
     SHOWEFFECT_t effect = (in ? ani.showEffect : ani.hideEffect);
+    int offset = 0;
+
+    if (TTPInit::isG5())
+        offset = ani.offset;
+
     mLastObject = nullptr;
 
     if (effect == SE_NONE || duration <= 0 || (obj->type != OBJ_SUBPAGE && obj->type != OBJ_PAGE))
@@ -6206,7 +6229,7 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
             else
             {
                 obj->animation->setStartValue(QRect(scLeft, scTop, scWidth, scHeight));
-                obj->animation->setEndValue(QRect(scLeft, scTop + (scHeight * 2), scWidth, scHeight));
+                obj->animation->setEndValue(QRect(scLeft, scTop + (scHeight * 2) - offset, scWidth, scHeight));
                 obj->remove = true;
                 connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationFinished);
             }
@@ -6231,7 +6254,7 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
             else
             {
                 obj->animation->setStartValue(QRect(scLeft, scTop, scWidth, scHeight));
-                obj->animation->setEndValue(QRect(scLeft - scWidth, scTop, scWidth, scHeight));
+                obj->animation->setEndValue(QRect(scLeft - scWidth + offset, scTop, scWidth, scHeight));
                 obj->remove = true;
                 connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationFinished);
             }
@@ -6255,7 +6278,7 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
             else
             {
                 obj->animation->setStartValue(QRect(scLeft, scTop, scWidth, scHeight));
-                obj->animation->setEndValue(QRect(scLeft + scWidth, scTop, scWidth, scHeight));
+                obj->animation->setEndValue(QRect(scLeft + scWidth - offset, scTop, scWidth, scHeight));
                 obj->remove = true;
                 connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationFinished);
             }
@@ -6279,7 +6302,7 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
             else
             {
                 obj->animation->setStartValue(QRect(scLeft, scTop, scWidth, scHeight));
-                obj->animation->setEndValue(QRect(scLeft, scTop - scHeight, scWidth, scHeight));
+                obj->animation->setEndValue(QRect(scLeft, scTop - scHeight + offset, scWidth, scHeight));
                 obj->remove = true;
                 connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationFinished);
             }

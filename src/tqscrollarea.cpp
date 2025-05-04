@@ -1405,13 +1405,6 @@ void TQScrollArea::mouseMoveEvent(QMouseEvent* event)
     if (mMousePressTimer && mMousePressTimer->isActive())
         mMousePressTimer->stop();
 
-    if (mMouseDoRelease)
-    {
-        mClick = false;
-        doMouseEvent();
-        mMouseDoRelease = false;
-    }
-
     int move = 0;
     MSG_DEBUG("Scroll event at " << event->position().x() << "x" << event->position().y() << ", old point at " << mOldPoint.x() << "x" << mOldPoint.y());
 
@@ -1472,7 +1465,7 @@ void TQScrollArea::mousePressEvent(QMouseEvent* event)
     mLastMousePress.setY(y);
     MSG_DEBUG("Mouse press event at " << x << " x " << y << " // " << event->globalPosition().x() << " x " << event->globalPosition().y());
     /*
-     * Here we're starting a timer with 200 ms. If after this time the
+     * Here we're starting a timer with 110 ms. If after this time the
      * mouse button is still pressed and no scroll event was detected,
      * then we've a real click.
      * In case of a real click the method mouseTimerEvent() will call a
@@ -1495,22 +1488,17 @@ void TQScrollArea::mouseReleaseEvent(QMouseEvent* event)
 
     if (mMouseTmEventActive)
     {
-        if (!mMouseScroll)
+        if (!mMouseDoRelease)
         {
-            if (!mMouseDoRelease)
-            {
-                mClick = true;      // This means PRESSED state
-                doMouseEvent();
-            }
-
-            mMouseDoRelease = true;
-            mClick = false;     // This means RELEASED state
+            mClick = true;      // This means PRESSED state
             doMouseEvent();
         }
+
+        mClick = false;     // This means RELEASED state
+        doMouseEvent();
     }
-    else if (!mMouseScroll && mClick)
+    else if (mMouseDoRelease)
     {
-        mMouseDoRelease = true;
         mClick = false;         // This means RELEASED state
         doMouseEvent();
     }
@@ -1546,34 +1534,9 @@ void TQScrollArea::doMouseEvent()
     if (!handle)
         return;
 
-    // We're calculating the mouse press inside the object. This is necessary
-    // for active bargraphs to be able to get the level.
-    QWidget *par = static_cast<QWidget *>(w->parent());
-    int pressX, pressY;
+    // We're calculating the mouse press inside the object.
+    QPoint pressPt = w->mapFrom(this, mLastMousePress);
 
-    if (par)
-    {
-        MSG_DEBUG("Object position: " << w->pos().x() << "x" << w->pos().y());
-        QPoint pt = w->mapFrom(par, mLastMousePress);
-        QPoint mapped = pt;
-        MSG_DEBUG("mLastMousePress coords: " << mLastMousePress.x() << "x" << mLastMousePress.y());
-        MSG_DEBUG("Mapped coords: " << pt.x() << "x" << pt.y() << ", mVertical: " << (mVertical ? "VERTICAL" : "HORIZONTAL"));
-
-        if (mVertical && (pt.y() > w->geometry().height() || pt.y() < 0))
-            mapped = QPoint(pt.x(), w->geometry().height() / 2);
-        else
-            mapped = QPoint(w->geometry().width() / 2, pt.y());
-
-        pressX = mapped.x();
-        pressY = mapped.y();
-    }
-    else
-    {
-        pressX = mLastMousePress.x() - w->geometry().x();
-        pressY = mLastMousePress.y() - w->geometry().y();
-    }
-
-    MSG_DEBUG("Mouse press inside object: " << pressX << "x" << pressY << " || geometry of object: " << w->geometry().x() << ", " << w->geometry().y() << ", " << w->geometry().width() << ", " << w->geometry().height());
     // We must make sure the found object is not marked as pass through.
     // Because of this we'll scan the items for the handle and if we
     // find that it is marked as pass through we must look for another
@@ -1630,8 +1593,8 @@ void TQScrollArea::doMouseEvent()
 
     if (call)
     {
-        MSG_DEBUG("Calling signal with handle " << (handle >> 16 & 0x0000ffff) << ":" << (handle & 0x0000ffff) << ": STATE=" << (mClick ? "PRESSED" : "RELEASED") << " at coords " << pressX << "x" << pressY);
-        emit objectClicked(handle, pressX, pressY, mClick);
+        MSG_DEBUG("Calling signal with handle " << (handle >> 16 & 0x0000ffff) << ":" << (handle & 0x0000ffff) << ": STATE=" << (mClick ? "PRESSED" : "RELEASED") << " at coords " << pressPt.x() << "x" << pressPt.y());
+        emit objectClicked(handle, pressPt.x(), pressPt.y(), mClick);
         mClick = false;
     }
 }
@@ -1646,11 +1609,9 @@ void TQScrollArea::mouseTimerEvent()
     mDoMouseEvent = false;          // Signal end of mouse event
 
     if (mClick && !mMouseScroll && !mMouseDoRelease)    // Only if PRESSED and no scroll event happened
-    {
-        mMouseDoRelease = true;
         doMouseEvent();
-    }
 
+    mMouseDoRelease = true;
     mMouseTmEventActive = false;    // Timer finished
 }
 

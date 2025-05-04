@@ -2771,6 +2771,7 @@ void TPageManager::showSubViewList(int id, Button::TButton *bt)
     MSG_DEBUG("Working on button " << handleToString(btHandle) << " (" << bt->getName() << ") with " << subviews.size() << " pages.");
     TBitmap bm = bt->getLastBitmap();
     TColor::COLOR_T fillColor = TColor::getAMXColor(bt->getFillColor());
+
     _displayViewButton(btHandle, bt->getParent(), bt->isSubViewVertical(), bm, bt->getWidth(), bt->getHeight(), bt->getLeftPosition(), bt->getTopPosition(), bt->getSubViewSpace(), fillColor);
 
     vector<PGSUBVIEWITEM_T> items;
@@ -4055,10 +4056,48 @@ void TPageManager::showSubPage(const string& name)
             }
 #endif
             ANIMATION_t ani;
-            ani.showEffect = pg->getShowEffect();
-            ani.showTime = pg->getShowTime();
-            ani.hideEffect = pg->getHideEffect();
-            ani.hideTime = pg->getHideTime();
+
+            if (!TTPInit::isG5())
+            {
+                ani.showEffect = pg->getShowEffect();
+                ani.showTime = pg->getShowTime();
+                ani.hideEffect = pg->getHideEffect();
+                ani.hideTime = pg->getHideTime();
+            }
+            else if (pg->getCollapseDir() != COLDIR_NONE)
+            {
+                switch(pg->getCollapseDir())
+                {
+                    case COLDIR_LEFT:
+                        ani.showEffect = SE_SLIDE_LEFT;
+                        ani.hideEffect = SE_SLIDE_LEFT;
+                    break;
+
+                    case COLDIR_RIGHT:
+                        ani.showEffect = SE_SLIDE_RIGHT;
+                        ani.hideEffect = SE_SLIDE_RIGHT;
+                    break;
+
+                    case COLDIR_UP:
+                        ani.showEffect = SE_SLIDE_TOP;
+                        ani.hideEffect = SE_SLIDE_TOP;
+                    break;
+
+                    case COLDIR_DOWN:
+                        ani.showEffect = SE_SLIDE_BOTTOM;
+                        ani.hideEffect = SE_SLIDE_BOTTOM;
+                    break;
+
+                    default:    // Can't happen and is only to satisfy the compiler
+                        ani.showEffect = SE_NONE;
+                        ani.hideEffect = SE_NONE;
+                }
+
+                ani.showTime = 5;
+                ani.hideTime = 5;
+                ani.offset = pg->getCollapseOffset();
+            }
+
             // Test for a timer on the page
             if (pg->getTimeout() > 0)
                 pg->startTimer();

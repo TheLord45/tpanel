@@ -159,6 +159,7 @@ typedef struct ANIMATION_t
     int showTime{0};
     SHOWEFFECT_t hideEffect{SE_NONE};
     int hideTime{0};
+    int offset{0};
 }ANIMATION_t;
 
 // The following enum is for G5 only
