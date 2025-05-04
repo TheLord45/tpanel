@@ -90,6 +90,8 @@ class TSubPage : public TValidateFile, public TPageInterface, public Border::TIn
         bool isCollapsible() { return mSubpage.collapsible; }
         void setCollapsible(COLLAPS_STATE_t cs);
         COLLAPS_STATE_t getCollapseState() { return mSubpage.colState; }
+        int getCollapseOffset() { return mSubpage.collapseOffset; }
+        COLDIR_t getCollapseDir() { return mSubpage.collapseDirection; }
 
         void show();
         void drop();

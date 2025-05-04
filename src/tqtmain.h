@@ -118,6 +118,7 @@ class MainWindow : public QMainWindow, public TObject
         void sigHideAllViewItems(ulong handle);
         void sigHideViewItem(ulong handle, ulong parent);
         void sigSetSubViewPadding(ulong handle, int padding);
+        void sigSetSubViewAnimation(ulong handle, ANIMATION_t ani);
         void sigSetVisible(ulong handle, bool state);
         void sigSetPage(ulong handle, int width, int height);
         void sigSetSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate, bool modal);
@@ -192,6 +193,7 @@ class MainWindow : public QMainWindow, public TObject
         void hideAllViewItems(ulong handle);
         void hideViewItem(ulong handle, ulong parent);
         void setSubViewPadding(ulong handle, int padding);
+        void setSubViewAnimation(ulong handle, ANIMATION_t ani);
         void SetVisible(ulong handle, bool state);
         void setPage(ulong handle, int width, int height);
         void setSubPage(ulong hanlde, ulong parent, int left, int top, int width, int height, ANIMATION_t animate, bool modal=false);
