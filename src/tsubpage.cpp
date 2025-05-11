@@ -491,6 +491,214 @@ void TSubPage::initialize()
     // sortButtons();
 }
 
+bool TSubPage::createPage(bool force)
+{
+    DECL_TRACER("TSubPage::createPage(bool force)");
+
+    SkBitmap target;
+
+    if (mPageBackground.empty() || force)
+    {
+        bool noSr = mSubpage.sr.empty();
+        bool isImage = false;
+        MSG_DEBUG("Processing subpage " << mSubpage.pageID << ": " << mSubpage.name);
+
+        if (!mPageBackground.empty())
+            mPageBackground.reset();
+
+        if (!allocPixels(mSubpage.width, mSubpage.height, &target))
+        {
+#if TESTMODE == 1
+            setScreenDone();
+#endif
+            return false;
+        }
+
+        if (mSubpage.resetPos != 0)
+        {
+            mSubpage.left = mSubpage.leftOrig;
+            mSubpage.top = mSubpage.topOrig;
+            mSubpage.width = mSubpage.widthOrig;
+            mSubpage.height = mSubpage.heightOrig;
+        }
+
+        if (!noSr)
+            target.eraseColor(TColor::getSkiaColor(mSubpage.sr[0].cf));
+        else
+        {
+            target.eraseColor(SK_ColorTRANSPARENT);
+            MSG_WARNING("Missing background (sr) config! Setting background to transparent.");
+        }
+
+        // Draw the background, if any
+        if (!noSr && (!mSubpage.sr[0].bm.empty() || !mSubpage.sr[0].mi.empty() || haveImage(mSubpage.sr[0])))
+        {
+            MSG_DEBUG("Drawing a background image ...");
+            TDrawImage dImage;
+            dImage.setWidth(mSubpage.width);
+            dImage.setHeight(mSubpage.height);
+            dImage.setSr(mSubpage.sr);
+
+            if (!TTPInit::isG5() && !mSubpage.sr[0].bm.empty())
+            {
+                MSG_DEBUG("Loading image " << mSubpage.sr[0].bm);
+                sk_sp<SkData> rawImage = readImage(mSubpage.sr[0].bm);
+                SkBitmap bm;
+
+                if (rawImage)
+                {
+                    MSG_DEBUG("Decoding image BM ...");
+
+                    if (!DecodeDataToBitmap(rawImage, &bm))
+                    {
+                        MSG_WARNING("Problem while decoding image " << mSubpage.sr[0].bm);
+                    }
+                    else if (!bm.empty())
+                    {
+                        dImage.setImageBm(bm);
+                        SkImageInfo info = bm.info();
+                        mSubpage.sr[0].bm_width = info.width();
+                        mSubpage.sr[0].bm_height = info.height();
+                        isImage = true;
+                    }
+                    else
+                    {
+                        MSG_WARNING("BM image " << mSubpage.sr[0].bm << " seems to be empty!");
+                    }
+                }
+            }
+            else if (TTPInit::isG5() && haveImage(mSubpage.sr[0]))
+            {
+                MSG_DEBUG("Loading G5 image(s) ...");
+
+                SkBitmap bm;
+
+                if (!tp5Image(&bm, mSubpage.sr[0], mSubpage.width, mSubpage.height))
+                {
+                    MSG_WARNING("Problem loading one or more images!");
+                }
+                else
+                {
+                    dImage.setImageBm(bm);
+                    mSubpage.sr[0].bm_width = bm.info().width();
+                    mSubpage.sr[0].bm_height = bm.info().height();
+                    isImage = true;
+                }
+            }
+
+            if (!mSubpage.sr[0].mi.empty())
+            {
+                MSG_DEBUG("Loading image " << mSubpage.sr[0].mi);
+                sk_sp<SkData> rawImage = readImage(mSubpage.sr[0].mi);
+                SkBitmap mi;
+
+                if (rawImage)
+                {
+                    MSG_DEBUG("Decoding image MI ...");
+
+                    if (!DecodeDataToBitmap(rawImage, &mi))
+                    {
+                        MSG_WARNING("Problem while decoding image " << mSubpage.sr[0].mi);
+                    }
+                    else if (!mi.empty())
+                    {
+                        dImage.setImageMi(mi);
+                        SkImageInfo info = mi.info();
+                        mSubpage.sr[0].mi_width = info.width();
+                        mSubpage.sr[0].mi_height = info.height();
+                        isImage = true;
+                    }
+                    else
+                    {
+                        MSG_WARNING("MI image " << mSubpage.sr[0].mi << " seems to be empty!");
+                    }
+                }
+            }
+
+            if (isImage)                                    // Do we have a background image?
+            {                                               // Yes, then ...
+                dImage.setSr(mSubpage.sr);                  // Initialize the image class
+
+                if (!dImage.drawImage(&target))             // Draw ithe image and place it accordingly
+                    return false;                           // Something went wrong! Return.
+
+                if (!mSubpage.sr[0].te.empty())             // Do we have some text to draw?
+                {                                           // Yes, then ...
+                    if (!drawText(mSubpage, &target))       // Draw text and check for success.
+                        return false;                             // Something went wrong! Return.
+                }
+#ifdef _OPAQUE_SKIA_
+                if (mSubpage.sr[0].oo < 255 && mSubpage.sr[0].te.empty() && mSubpage.sr[0].bs.empty())
+                    setOpacity(&target, mSubpage.sr[0].oo);
+#endif
+
+#ifdef _SCALE_SKIA_
+                if (gPageManager && gPageManager->getScaleFactor() != 1.0)
+                {
+                    SkPaint paint;
+                    int left, top;
+                    SkImageInfo info = target.info();
+
+                    paint.setBlendMode(SkBlendMode::kSrc);
+                    paint.setFilterQuality(kHigh_SkFilterQuality);
+                    // Calculate new dimension
+                    double scaleFactor = gPageManager->getScaleFactor();
+                    MSG_DEBUG("Using scale factor " << scaleFactor);
+                    int lwidth = (int)((double)info.width() * scaleFactor);
+                    int lheight = (int)((double)info.height() * scaleFactor);
+                    int twidth = (int)((double)mSubpage.width * scaleFactor);
+                    int theight = (int)((double)mSubpage.height * scaleFactor);
+                    calcPosition(lwidth, lheight, &left, &top);
+                    // Create a canvas and draw new image
+                    sk_sp<SkImage> im = SkImage::MakeFromBitmap(target);
+
+                    if (!allocPixels(twidth, theight, &target))
+                    {
+#if TESTMODE == 1
+                        setScreenDone();
+#endif
+                        return;
+                    }
+
+                    target.eraseColor(TColor::getSkiaColor(mSubpage.sr[0].cf));
+                    SkCanvas can(target, SkSurfaceProps());
+                    SkRect rect = SkRect::MakeXYWH(left, top, lwidth, lheight);
+                    can.drawImageRect(im, rect, &paint);
+                    MSG_DEBUG("Scaled size of background image: " << left << ", " << top << ", " << lwidth << ", " << lheight);
+                }
+#endif
+            }
+        }
+
+        if (!noSr && !mSubpage.sr[0].te.empty())
+        {
+            MSG_DEBUG("Drawing a text only on background image ...");
+
+            if (drawText(mSubpage, &target))
+                isImage = true;
+        }
+
+        // Check for a frame and draw it if there is one.
+        if (!noSr && !mSubpage.sr[0].bs.empty())
+        {
+            if (drawFrame(mSubpage, &target))
+                isImage = true;
+        }
+
+        if (!noSr && isImage)
+        {
+#ifdef _OPAQUE_SKIA_
+            if (mSubpage.sr[0].oo < 255)
+                setOpacity(&target, mSubpage.sr[0].oo);
+#endif
+        }
+
+        mPageBackground = target;
+    }
+
+    return true;
+}
+
 void TSubPage::show()
 {
     DECL_TRACER("TSubPage::show()");
@@ -515,201 +723,42 @@ void TSubPage::show()
         }
     }
 
+    ulong handle = (mSubpage.pageID << 16) & 0xffff0000;
     bool noSr = mSubpage.sr.empty();
     bool isImage = false;
-    ulong handle = (mSubpage.pageID << 16) & 0xffff0000;
-    MSG_DEBUG("Processing subpage " << mSubpage.pageID << ": " << mSubpage.name);
-    SkBitmap target;
 
-    if (!allocPixels(mSubpage.width, mSubpage.height, &target))
-    {
-#if TESTMODE == 1
-        setScreenDone();
-#endif
+    if (!createPage())
         return;
-    }
-
-    if (mSubpage.resetPos != 0)
-    {
-        mSubpage.left = mSubpage.leftOrig;
-        mSubpage.top = mSubpage.topOrig;
-        mSubpage.width = mSubpage.widthOrig;
-        mSubpage.height = mSubpage.heightOrig;
-    }
-
-    if (!noSr)
-        target.eraseColor(TColor::getSkiaColor(mSubpage.sr[0].cf));
     else
     {
-        target.eraseColor(SK_ColorTRANSPARENT);
-        MSG_WARNING("Missing background (sr) config! Setting background to transparent.");
-    }
-
-    // Draw the background, if any
-    if (!noSr && (!mSubpage.sr[0].bm.empty() || !mSubpage.sr[0].mi.empty() || haveImage(mSubpage.sr[0])))
-    {
-        MSG_DEBUG("Drawing a background image ...");
-        TDrawImage dImage;
-        dImage.setWidth(mSubpage.width);
-        dImage.setHeight(mSubpage.height);
-        dImage.setSr(mSubpage.sr);
-
-        if (!TTPInit::isG5() && !mSubpage.sr[0].bm.empty())
-        {
-            MSG_DEBUG("Loading image " << mSubpage.sr[0].bm);
-            sk_sp<SkData> rawImage = readImage(mSubpage.sr[0].bm);
-            SkBitmap bm;
-
-            if (rawImage)
-            {
-                MSG_DEBUG("Decoding image BM ...");
-
-                if (!DecodeDataToBitmap(rawImage, &bm))
-                {
-                    MSG_WARNING("Problem while decoding image " << mSubpage.sr[0].bm);
-                }
-                else if (!bm.empty())
-                {
-                    dImage.setImageBm(bm);
-                    SkImageInfo info = bm.info();
-                    mSubpage.sr[0].bm_width = info.width();
-                    mSubpage.sr[0].bm_height = info.height();
-                    isImage = true;
-                }
-                else
-                {
-                    MSG_WARNING("BM image " << mSubpage.sr[0].bm << " seems to be empty!");
-                }
-            }
-        }
-        else if (TTPInit::isG5() && haveImage(mSubpage.sr[0]))
-        {
-            MSG_DEBUG("Loading G5 image(s) ...");
-
-            SkBitmap bm;
-
-            if (!tp5Image(&bm, mSubpage.sr[0], mSubpage.width, mSubpage.height))
-            {
-                MSG_WARNING("Problem loading one or more images!");
-            }
-            else
-            {
-                dImage.setImageBm(bm);
-                mSubpage.sr[0].bm_width = bm.info().width();
-                mSubpage.sr[0].bm_height = bm.info().height();
-                isImage = true;
-            }
-        }
-
-        if (!mSubpage.sr[0].mi.empty())
-        {
-            MSG_DEBUG("Loading image " << mSubpage.sr[0].mi);
-            sk_sp<SkData> rawImage = readImage(mSubpage.sr[0].mi);
-            SkBitmap mi;
-
-            if (rawImage)
-            {
-                MSG_DEBUG("Decoding image MI ...");
-
-                if (!DecodeDataToBitmap(rawImage, &mi))
-                {
-                    MSG_WARNING("Problem while decoding image " << mSubpage.sr[0].mi);
-                }
-                else if (!mi.empty())
-                {
-                    dImage.setImageMi(mi);
-                    SkImageInfo info = mi.info();
-                    mSubpage.sr[0].mi_width = info.width();
-                    mSubpage.sr[0].mi_height = info.height();
-                    isImage = true;
-                }
-                else
-                {
-                    MSG_WARNING("MI image " << mSubpage.sr[0].mi << " seems to be empty!");
-                }
-            }
-        }
-
-        if (isImage)
-        {
-            dImage.setSr(mSubpage.sr);
-
-            if (!dImage.drawImage(&target))
-                return;
-
-            if (!mSubpage.sr[0].te.empty())
-            {
-                if (!drawText(mSubpage, &target))
-                    return;
-            }
+        isImage = true;
 #ifdef _OPAQUE_SKIA_
-            if (mSubpage.sr[0].oo < 255 && mSubpage.sr[0].te.empty() && mSubpage.sr[0].bs.empty())
-                setOpacity(&target, mSubpage.sr[0].oo);
-#endif
-
-#ifdef _SCALE_SKIA_
-            if (gPageManager && gPageManager->getScaleFactor() != 1.0)
-            {
-                SkPaint paint;
-                int left, top;
-                SkImageInfo info = target.info();
-
-                paint.setBlendMode(SkBlendMode::kSrc);
-                paint.setFilterQuality(kHigh_SkFilterQuality);
-                // Calculate new dimension
-                double scaleFactor = gPageManager->getScaleFactor();
-                MSG_DEBUG("Using scale factor " << scaleFactor);
-                int lwidth = (int)((double)info.width() * scaleFactor);
-                int lheight = (int)((double)info.height() * scaleFactor);
-                int twidth = (int)((double)mSubpage.width * scaleFactor);
-                int theight = (int)((double)mSubpage.height * scaleFactor);
-                calcPosition(lwidth, lheight, &left, &top);
-                // Create a canvas and draw new image
-                sk_sp<SkImage> im = SkImage::MakeFromBitmap(target);
-
-                if (!allocPixels(twidth, theight, &target))
-                {
-#if TESTMODE == 1
-                    setScreenDone();
-#endif
-                    return;
-                }
-
-                target.eraseColor(TColor::getSkiaColor(mSubpage.sr[0].cf));
-                SkCanvas can(target, SkSurfaceProps());
-                SkRect rect = SkRect::MakeXYWH(left, top, lwidth, lheight);
-                can.drawImageRect(im, rect, &paint);
-                MSG_DEBUG("Scaled size of background image: " << left << ", " << top << ", " << lwidth << ", " << lheight);
-            }
-#endif
-#ifdef _OPAQUE_SKIA_
-            if (mSubpage.sr[0].te.empty() && mSubpage.sr[0].bs.empty())
-            {
-                TBitmap image((unsigned char *)target.getPixels(), target.info().width(), target.info().height());
-                _setBackground(handle, image, target.info().width(), target.info().height(), TColor::getColor(mSubpage.sr[0].cf));
-            }
+        if (mSubpage.sr[0].te.empty() && mSubpage.sr[0].bs.empty())
+        {
+            TBitmap image((unsigned char *)mPageBackground.getPixels(), mPageBackground.info().width(), mPageBackground.info().height());
+            _setBackground(handle, image, mPageBackground.info().width(), mPageBackground.info().height(), TColor::getColor(mSubpage.sr[0].cf));
+        }
 #else
-            if (mSubpage.sr[0].te.empty() && mSubpage.sr[0].bs.empty())
-            {
-                TBitmap image((unsigned char *)target.getPixels(), target.info().width(), target.info().height());
-                _setBackground(handle, image, target.info().width(), target.info().height(), TColor::getColor(mSubpage.sr[0].cf), mSubpage.sr[0].oo);
-            }
-#endif
+        if (mSubpage.sr[0].te.empty() && mSubpage.sr[0].bs.empty())
+        {
+            TBitmap image((unsigned char *)mPageBackground.getPixels(), mPageBackground.info().width(), mPageBackground.info().height());
+            _setBackground(handle, image, mPageBackground.info().width(), mPageBackground.info().height(), TColor::getColor(mSubpage.sr[0].cf), mSubpage.sr[0].oo);
         }
+#endif
     }
 
     if (!noSr && !mSubpage.sr[0].te.empty())
     {
         MSG_DEBUG("Drawing a text only on background image ...");
 
-        if (drawText(mSubpage, &target))
+        if (drawText(mSubpage, &mPageBackground))
             isImage = true;
     }
 
     // Check for a frame and draw it if there is one.
     if (!noSr && !mSubpage.sr[0].bs.empty())
     {
-        if (drawFrame(mSubpage, &target))
+        if (drawFrame(mSubpage, &mPageBackground))
             isImage = true;
     }
 
@@ -717,13 +766,13 @@ void TSubPage::show()
     {
 #ifdef _OPAQUE_SKIA_
         if (mSubpage.sr[0].oo < 255)
-            setOpacity(&target, mSubpage.sr[0].oo);
+            setOpacity(&mPageBackground, mSubpage.sr[0].oo);
 #endif
-        TBitmap image((unsigned char *)target.getPixels(), target.info().width(), target.info().height());
+        TBitmap image((unsigned char *)mPageBackground.getPixels(), mPageBackground.info().width(), mPageBackground.info().height());
 #ifdef _OPAQUE_SKIA_
-        _setBackground(handle, image, target.info().width(), target.info().height(), TColor::getColor(mSubpage.sr[0].cf));
+        _setBackground(handle, image, mPageBackground.info().width(), mPageBackground.info().height(), TColor::getColor(mSubpage.sr[0].cf));
 #else
-        _setBackground(handle, image, target.info().width(), target.info().height(), TColor::getColor(mSubpage.sr[0].cf), mSubpage.sr[0].oo);
+        _setBackground(handle, image, mPageBackground.info().width(), mPageBackground.info().height(), TColor::getColor(mSubpage.sr[0].cf), mSubpage.sr[0].oo);
 #endif
     }
     else if (!noSr && !isImage)

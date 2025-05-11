@@ -2099,7 +2099,7 @@ bool TPageManager::run()
             ani.hideTime = subPg->getHideTime();
 
             subPg->setZOrder(pg->getNextZOrder());
-            _setSubPage(subPg->getHandle(), pg->getHandle(), left, top, width, height, ani, subPg->isModal());
+            _setSubPage(subPg->getHandle(), pg->getHandle(), left, top, width, height, ani, subPg->isModal(), subPg->isCollapsible());
             subPg->show();
         }
 
@@ -4102,7 +4102,7 @@ void TPageManager::showSubPage(const string& name)
             if (pg->getTimeout() > 0)
                 pg->startTimer();
 
-            _setSubPage(pg->getHandle(), page->getHandle(), left, top, width, height, ani, pg->isModal());
+            _setSubPage(pg->getHandle(), page->getHandle(), left, top, width, height, ani, pg->isModal(), pg->isCollapsible());
         }
 
         pg->show();
@@ -4242,7 +4242,7 @@ void TPageManager::showSubPage(int number, bool force)
             if (pg->getTimeout() > 0)
                 pg->startTimer();
 
-            _setSubPage(pg->getHandle(), page->getHandle(), left, top, width, height, ani, pg->isModal());
+            _setSubPage(pg->getHandle(), page->getHandle(), left, top, width, height, ani, pg->isModal(), pg->isCollapsible());
         }
     }
 
