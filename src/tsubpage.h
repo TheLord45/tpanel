@@ -111,6 +111,7 @@ class TSubPage : public TValidateFile, public TPageInterface, public Border::TIn
     protected:
         void initialize();
         void runTimer();
+        bool createPage(bool force=false);  // Create a page in case it doesn't, but don't display it.
 #ifdef  _SCALE_SKIA_
         void calcPosition(int im_width, int im_height, int *left, int *top, bool scale = false);
 #else
@@ -137,6 +138,7 @@ class TSubPage : public TValidateFile, public TPageInterface, public Border::TIn
         std::atomic<bool>mTimerRunning{false};  // TRUE= timer is running
         std::thread mThreadTimer;               // The thread started if a timeout is defined.
         std::vector<LIST_t> mLists;             // Lists of subpage
+        SkBitmap mPageBackground;               // The background of the subpage.
 };
 
 #endif

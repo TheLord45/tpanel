@@ -515,7 +515,8 @@ MainWindow::MainWindow()
                                           std::placeholders::_5,
                                           std::placeholders::_6,
                                           std::placeholders::_7,
-                                          std::placeholders::_8));
+                                          std::placeholders::_8,
+                                          std::placeholders::_9));
 
     gPageManager->registerCallbackSB(bind(&MainWindow::_setBackground, this,
                                          std::placeholders::_1,
@@ -528,6 +529,8 @@ MainWindow::MainWindow()
                                          std::placeholders::_5,
                                          std::placeholders::_6));
 #endif
+    gPageManager->regCallMinimizeSubpage(bind(&MainWindow::_minimizeSubpage, this, std::placeholders::_1));
+    gPageManager->regCallMaximizeSubpage(bind(&MainWindow::_maximizeSubpage, this, std::placeholders::_1));
     gPageManager->regCallDropPage(bind(&MainWindow::_dropPage, this, std::placeholders::_1));
     gPageManager->regCallDropSubPage(bind(&MainWindow::_dropSubPage, this, std::placeholders::_1, std::placeholders::_2));
     gPageManager->regCallPlayVideo(bind(&MainWindow::_playVideo, this,
@@ -640,6 +643,8 @@ MainWindow::MainWindow()
         connect(this, &MainWindow::sigSetPage, this, &MainWindow::setPage);
         connect(this, &MainWindow::sigSetSubPage, this, &MainWindow::setSubPage);
         connect(this, &MainWindow::sigSetBackground, this, &MainWindow::setBackground);
+        connect(this, &MainWindow::sigMinimizeSubpage, this, &MainWindow::minimizeSubpage);
+        connect(this, &MainWindow::sigMaximizeSubpage, this, &MainWindow::maximizeSubpage);
         connect(this, &MainWindow::sigDropPage, this, &MainWindow::dropPage);
         connect(this, &MainWindow::sigDropSubPage, this, &MainWindow::dropSubPage);
         connect(this, &MainWindow::sigPlayVideo, this, &MainWindow::playVideo);
@@ -2995,14 +3000,14 @@ void MainWindow::_setPage(ulong handle, int width, int height)
     emit sigSetPage(handle, width, height);
 }
 
-void MainWindow::_setSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate, bool modal)
+void MainWindow::_setSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate, bool modal, bool collapsible)
 {
-    DECL_TRACER("MainWindow::_setSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate, bool modal)");
+    DECL_TRACER("MainWindow::_setSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate, bool modal, bool collapsible)");
 
     if (prg_stopped || !mHasFocus)
         return;
 
-    emit sigSetSubPage(handle, parent, left, top, width, height, animate, modal);
+    emit sigSetSubPage(handle, parent, left, top, width, height, animate, modal, collapsible);
 }
 
 #ifdef _OPAQUE_SKIA_
@@ -3027,6 +3032,20 @@ void MainWindow::_setBackground(ulong handle, TBitmap image, int width, int heig
 #else
     emit sigSetBackground(handle, image, width, height, color, opacity);
 #endif
+}
+
+void MainWindow::_minimizeSubpage(ulong handle)
+{
+    DECL_TRACER("MainWindow::_minimizeSubpage(ulong handle)");
+
+    emit sigMinimizeSubpage(handle);
+}
+
+void MainWindow::_maximizeSubpage(ulong handle)
+{
+    DECL_TRACER("MainWindow::_maximizeSubpage(ulong handle)");
+
+    emit sigMaximizeSubpage(handle);
 }
 
 void MainWindow::_dropPage(ulong handle)
@@ -4703,9 +4722,9 @@ void MainWindow::setPage(ulong handle, int width, int height)
     MSG_PROTOCOL("Current page: " << handleToString(handle));
 }
 
-void MainWindow::setSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate, bool modal)
+void MainWindow::setSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate, bool modal, bool collapsible)
 {
-    DECL_TRACER("MainWindow::setSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate, bool modal)");
+    DECL_TRACER("MainWindow::setSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate, bool modal, bool collapsible)");
 
     Q_UNUSED(height);
     Q_UNUSED(modal);
@@ -4775,6 +4794,7 @@ void MainWindow::setSubPage(ulong handle, ulong parent, int left, int top, int w
 
     obj->type = OBJ_SUBPAGE;
     obj->handle = handle;
+    obj->collapsible = collapsible;
 
     if (!obj->object.widget)
     {
@@ -5113,6 +5133,112 @@ void MainWindow::reconnectList(QListWidget *list)
         return;
 
     connect(list, &QListWidget::currentItemChanged, this, &MainWindow::onTListCallbackCurrentItemChanged);
+}
+
+void MainWindow::minimizeSubpage(ulong handle)
+{
+    DECL_TRACER("MainWindow::minimizeSubpage(ulong handle)");
+
+    OBJECT_t *obj = findObject(handle);
+
+    if (!obj)
+    {
+        MSG_WARNING("Object " << handleToString(handle) << " (Subpage) doesn't exist!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
+        return;
+    }
+
+    if (obj->type != OBJ_PAGE)
+    {
+        MSG_WARNING("Object " << handleToString(handle) << " is not a subpage!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
+        return;
+    }
+
+    if (!obj->collapsible)
+    {
+        MSG_WARNING("Object " << handleToString(handle) << " is not collapsible!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
+        return;
+    }
+
+    bool ret = startAnimation(obj, obj->animate, false);
+
+    if (!ret)
+    {
+#if TESTMODE == 1
+        __success = false;
+#endif
+    }
+    else
+    {
+#if TESTMODE == 1
+        __success = true;
+#endif
+    }
+
+#if TESTMODE == 1
+    setScreenDone();
+#endif
+}
+
+void MainWindow::maximizeSubpage(ulong handle)
+{
+    DECL_TRACER("MainWindow::maximizeSubpage(ulong handle)");
+
+    OBJECT_t *obj = findObject(handle);
+
+    if (!obj)
+    {
+        MSG_WARNING("Object " << handleToString(handle) << " (Subpage) doesn't exist!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
+        return;
+    }
+
+    if (obj->type != OBJ_PAGE)
+    {
+        MSG_WARNING("Object " << handleToString(handle) << " is not a subpage!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
+        return;
+    }
+
+    if (!obj->collapsible)
+    {
+        MSG_WARNING("Object " << handleToString(handle) << " is not collapsible!");
+#if TESTMODE == 1
+        setScreenDone();
+#endif
+        return;
+    }
+
+    bool ret = startAnimation(obj, obj->animate, true);
+
+    if (!ret)
+    {
+#if TESTMODE == 1
+        __success = false;
+#endif
+    }
+    else
+    {
+#if TESTMODE == 1
+        __success = true;
+#endif
+    }
+
+#if TESTMODE == 1
+    setScreenDone();
+#endif
 }
 
 /**
