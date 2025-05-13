@@ -132,7 +132,7 @@ typedef enum
     POPSTATE_UNKNOWN,
     POPSTATE_CLOSED,
     POPSTATE_OPEN,
-    POPSTATE_DYNAMIC,
+    POPSTATE_DYNAMIC,   // Either minimized or maximized
     POPSTATE_ANY        // wildcard
 }POPSTATE_t;
 

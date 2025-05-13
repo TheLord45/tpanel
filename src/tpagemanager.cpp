@@ -6921,8 +6921,11 @@ void TPageManager::doPCL(int port, vector<int>& channels, vector<std::string>& p
         if (pg)
             pg->removeSubPage(popup);
     }
-    else
-        sp->drop();
+    else if (_callMinimizeSubpage)
+    {
+        _callMinimizeSubpage(sp->getHandle());
+        sp->setCollapsible(COL_SMALL);
+    }
 }
 
 /**
@@ -7069,7 +7072,6 @@ void TPageManager::doPCT(int port, vector<int>& channels, vector<std::string>& p
     }
 
     bool visible = sp->isVisible();
-
     // Go through command table and execute it
     vector<SUBCOMMAND_t>::iterator cmdIter;
 
@@ -7080,9 +7082,25 @@ void TPageManager::doPCT(int port, vector<int>& channels, vector<std::string>& p
             showSubPage(popup);
             break;
         }
-        else if (visible && (cmdIter->to == POPSTATE_CLOSED || cmdIter->to == POPSTATE_ANY))
+        else if (visible)
         {
-            hideSubPage(popup);
+            if (cmdIter->to == POPSTATE_CLOSED)
+                hideSubPage(popup);
+            else if (sp->getCollapseState() == COL_FULL && (cmdIter->to == POPSTATE_ANY || cmdIter->to == POPSTATE_DYNAMIC))
+            {
+                if (_callMinimizeSubpage)
+                    _callMinimizeSubpage(sp->getHandle());
+
+                sp->setCollapsible(COL_SMALL);
+            }
+            else if (sp->getCollapseState() == COL_SMALL && (cmdIter->to == POPSTATE_ANY || cmdIter->to == POPSTATE_DYNAMIC))
+            {
+                if (_callMaximizeSubpage)
+                    _callMaximizeSubpage(sp->getHandle());
+
+                sp->setCollapsible(COL_FULL);
+            }
+
             break;
         }
     }
@@ -7093,7 +7111,7 @@ void TPageManager::doPCT(int port, vector<int>& channels, vector<std::string>& p
 /**
  * @brief TPageManager::doPTC - Toggle Collapsible Popup Collapsed Command
  * Toggles the named collapsible popup between the open and collapsed positions.
- * More specifically, if the popup is not fully collapsed, it is collapsed.                                              *
+ * More specifically, if the popup is not fully collapsed, it is collapsed.
  * Syntax:
  *      "'^PTC-<popup>;[optional target page]'"
  * Variables:
