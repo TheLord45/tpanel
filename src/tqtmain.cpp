@@ -5150,7 +5150,7 @@ void MainWindow::minimizeSubpage(ulong handle)
         return;
     }
 
-    if (obj->type != OBJ_PAGE)
+    if (obj->type != OBJ_SUBPAGE)
     {
         MSG_WARNING("Object " << handleToString(handle) << " is not a subpage!");
 #if TESTMODE == 1
@@ -5203,7 +5203,7 @@ void MainWindow::maximizeSubpage(ulong handle)
         return;
     }
 
-    if (obj->type != OBJ_PAGE)
+    if (obj->type != OBJ_SUBPAGE)
     {
         MSG_WARNING("Object " << handleToString(handle) << " is not a subpage!");
 #if TESTMODE == 1
@@ -6283,6 +6283,17 @@ bool MainWindow::isScaled()
     return false;
 }
 
+/**
+ * @brief MainWindow::startAnimation - start the animation of a subpage
+ * This starts the animation of a subpage. The parameter \b in decides whether
+ * the subpage appears or vanish.
+ *
+ * @param obj   The pointer to the object which should be animated
+ * @param ani   The structure/class containing the information of how to animate the object
+ * @param in    TRUE = the object is animating the show effect, else the hide effect.
+ *
+ * @return FALSE = An error occured, else everyting went well.
+ */
 bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool in)
 {
     DECL_TRACER("MainWindow::startAnimation(OBJECT_t* obj, ANIMATION_t& ani)");
@@ -6297,12 +6308,17 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
     int scTop = obj->top;
     int scWidth = obj->width;
     int scHeight = obj->height;
+    int scGapW = 0, scGapH = 0;
     int duration = (in ? ani.showTime : ani.hideTime);
     SHOWEFFECT_t effect = (in ? ani.showEffect : ani.hideEffect);
     int offset = 0;
 
     if (TTPInit::isG5())
+    {
         offset = ani.offset;
+        scGapW = scWidth - offset;
+        scGapH = scHeight - offset;
+    }
 
     mLastObject = nullptr;
 
@@ -6347,7 +6363,7 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
 
             if (in)
             {
-                obj->animation->setStartValue(QRect(scLeft, scTop + (scHeight * 2), scWidth, scHeight));
+                obj->animation->setStartValue(QRect(scLeft, scTop + (scHeight * 2) - scGapH, scWidth, scHeight));
                 obj->animation->setEndValue(QRect(scLeft, scTop, scWidth, scHeight));
                 connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationInFinished);
                 obj->object.widget->show();
@@ -6355,8 +6371,11 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
             else
             {
                 obj->animation->setStartValue(QRect(scLeft, scTop, scWidth, scHeight));
-                obj->animation->setEndValue(QRect(scLeft, scTop + (scHeight * 2) - offset, scWidth, scHeight));
-                obj->remove = true;
+                obj->animation->setEndValue(QRect(scLeft, scTop + (scHeight * 2) - scGapH, scWidth, scHeight));
+
+                if (!obj->collapsible)
+                    obj->remove = true;
+
                 connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationFinished);
             }
 
@@ -6372,7 +6391,7 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
 
             if (in)
             {
-                obj->animation->setStartValue(QRect(scLeft - scWidth, scTop, scWidth, scHeight));
+                obj->animation->setStartValue(QRect(scLeft - scWidth + scGapW, scTop, scWidth, scHeight));
                 obj->animation->setEndValue(QRect(scLeft, scTop, scWidth, scHeight));
                 connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationInFinished);
                 obj->object.widget->show();
@@ -6380,8 +6399,11 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
             else
             {
                 obj->animation->setStartValue(QRect(scLeft, scTop, scWidth, scHeight));
-                obj->animation->setEndValue(QRect(scLeft - scWidth + offset, scTop, scWidth, scHeight));
-                obj->remove = true;
+                obj->animation->setEndValue(QRect(scLeft - scWidth + scGapW, scTop, scWidth, scHeight));
+
+                if (!obj->collapsible)
+                    obj->remove = true;
+
                 connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationFinished);
             }
 
@@ -6396,7 +6418,7 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
 
             if (in)
             {
-                obj->animation->setStartValue(QRect(scLeft + scWidth, scTop, scWidth, scHeight));
+                obj->animation->setStartValue(QRect(scLeft + scWidth - scGapW, scTop, scWidth, scHeight));
                 obj->animation->setEndValue(QRect(scLeft, scTop, scWidth, scHeight));
                 connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationInFinished);
                 obj->object.widget->show();
@@ -6404,8 +6426,11 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
             else
             {
                 obj->animation->setStartValue(QRect(scLeft, scTop, scWidth, scHeight));
-                obj->animation->setEndValue(QRect(scLeft + scWidth - offset, scTop, scWidth, scHeight));
-                obj->remove = true;
+                obj->animation->setEndValue(QRect(scLeft + scWidth - scGapW, scTop, scWidth, scHeight));
+
+                if (!obj->collapsible)
+                    obj->remove = true;
+
                 connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationFinished);
             }
 
@@ -6420,7 +6445,7 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
 
             if (in)
             {
-                obj->animation->setStartValue(QRect(scLeft, scTop - scHeight, scWidth, scHeight));
+                obj->animation->setStartValue(QRect(scLeft, scTop - scHeight + scGapH, scWidth, scHeight));
                 obj->animation->setEndValue(QRect(scLeft, scTop, scWidth, scHeight));
                 connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationInFinished);
                 obj->object.widget->show();
@@ -6428,8 +6453,11 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
             else
             {
                 obj->animation->setStartValue(QRect(scLeft, scTop, scWidth, scHeight));
-                obj->animation->setEndValue(QRect(scLeft, scTop - scHeight + offset, scWidth, scHeight));
-                obj->remove = true;
+                obj->animation->setEndValue(QRect(scLeft, scTop - scHeight + scGapH, scWidth, scHeight));
+
+                if (!obj->collapsible)
+                    obj->remove = true;
+
                 connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationFinished);
             }
 

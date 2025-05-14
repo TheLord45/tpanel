@@ -7152,12 +7152,27 @@ void TPageManager::doPTC(int port, vector<int>& channels, vector<string>& pars)
     if (!sp || !sp->isCollapsible() || sp->getCollapseState() == COL_CLOSED)
         return;
 
-    bool visible = sp->isVisible();
+    if (!sp->isVisible())
+    {
+        sp->setCollapsible(COL_CLOSED);
+        return;
+    }
 
-    if (!visible)
-        showSubPage(popup);
-    else
-        sp->drop();
+    if (sp->getCollapseState() == COL_SMALL && _callMaximizeSubpage)
+    {
+        _callMaximizeSubpage(sp->getHandle());
+        sp->setCollapsible(COL_FULL);
+    }
+    else if (sp->getCollapseState() == COL_FULL && _callMinimizeSubpage)
+    {
+        _callMinimizeSubpage(COL_SMALL);
+        sp->setCollapsible(COL_SMALL);
+    }
+    else if (!_callMaximizeSubpage || !_callMinimizeSubpage)
+    {
+        MSG_WARNING("One of the callbacks \"maximizeSubpage()\" or \"minimizeSubpage\" is not definied!");
+        return;
+    }
 
     // TODO: Add code to honor the "page", if there is one.
 }
@@ -7206,12 +7221,27 @@ void TPageManager::doPTO(int port, vector<int>& channels, vector<string>& pars)
     if (!sp || !sp->isCollapsible() || sp->getCollapseState() == COL_CLOSED)
         return;
 
-    bool visible = sp->isVisible();
+    if (!sp->isVisible())
+    {
+        sp->setCollapsible(COL_CLOSED);
+        return;
+    }
 
-    if (!visible)
-        showSubPage(popup);
-    else
-        sp->drop();
+    if (sp->getCollapseState() == COL_SMALL && _callMaximizeSubpage)
+    {
+        _callMaximizeSubpage(sp->getHandle());
+        sp->setCollapsible(COL_FULL);
+    }
+    else if (sp->getCollapseState() == COL_FULL && _callMinimizeSubpage)
+    {
+        _callMinimizeSubpage(COL_SMALL);
+        sp->setCollapsible(COL_SMALL);
+    }
+    else if (!_callMaximizeSubpage || !_callMinimizeSubpage)
+    {
+        MSG_WARNING("One of the callbacks \"maximizeSubpage()\" or \"minimizeSubpage\" is not definied!");
+        return;
+    }
 
     // TODO: Add code to honor the "page", if there is one.
 }
