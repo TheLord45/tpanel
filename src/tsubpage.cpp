@@ -832,12 +832,18 @@ void TSubPage::setCollapsible(COLLAPS_STATE_t cs)
     switch(cs)
     {
         case COL_SMALL:     // Set popup to collapsed but not closed.
-            drop();
+            if (gPageManager->getCallMinimizeSubpage())
+                gPageManager->getCallMinimizeSubpage()(getHandle());
+
             mSubpage.colState = COL_SMALL;
         break;
 
         case COL_FULL:
-            show();
+            if (mSubpage.colState == COL_CLOSED)
+                show();
+            else if (gPageManager->getCallMaximizeSubpage())
+                gPageManager->getCallMaximizeSubpage()(getHandle());
+
             mSubpage.colState = COL_FULL;
         break;
 

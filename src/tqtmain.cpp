@@ -5343,7 +5343,10 @@ void MainWindow::dropSubPage(ulong handle, ulong parent)
     MSG_DEBUG("Dropping subpage " << handleToString(handle));
     invalidateAllSubObjects(handle);
     obj->aniDirection = false;
-    bool ret = startAnimation(obj, obj->animate, false);
+    bool ret = false;
+
+    if (!obj->collapsible)
+        ret = startAnimation(obj, obj->animate, false);
 
     if (obj->animate.hideEffect == SE_NONE || !ret || !mLastObject)
     {
@@ -5365,7 +5368,6 @@ void MainWindow::dropSubPage(ulong handle, ulong parent)
 
 void MainWindow::dropButton(ulong handle)
 {
-//    TLOCKER(draw_mutex);
     DECL_TRACER("MainWindow::dropButton(ulong handle)");
 
     OBJECT_t *obj = findObject(handle);
@@ -6292,7 +6294,7 @@ bool MainWindow::isScaled()
  * @param ani   The structure/class containing the information of how to animate the object
  * @param in    TRUE = the object is animating the show effect, else the hide effect.
  *
- * @return FALSE = An error occured, else everyting went well.
+ * @return FALSE = An error occured, else everything went well.
  */
 bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool in)
 {

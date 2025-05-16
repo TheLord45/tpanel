@@ -6922,10 +6922,7 @@ void TPageManager::doPCL(int port, vector<int>& channels, vector<std::string>& p
             pg->removeSubPage(popup);
     }
     else if (_callMinimizeSubpage)
-    {
-        _callMinimizeSubpage(sp->getHandle());
         sp->setCollapsible(COL_SMALL);
-    }
 }
 
 /**
@@ -7087,19 +7084,9 @@ void TPageManager::doPCT(int port, vector<int>& channels, vector<std::string>& p
             if (cmdIter->to == POPSTATE_CLOSED)
                 hideSubPage(popup);
             else if (sp->getCollapseState() == COL_FULL && (cmdIter->to == POPSTATE_ANY || cmdIter->to == POPSTATE_DYNAMIC))
-            {
-                if (_callMinimizeSubpage)
-                    _callMinimizeSubpage(sp->getHandle());
-
                 sp->setCollapsible(COL_SMALL);
-            }
             else if (sp->getCollapseState() == COL_SMALL && (cmdIter->to == POPSTATE_ANY || cmdIter->to == POPSTATE_DYNAMIC))
-            {
-                if (_callMaximizeSubpage)
-                    _callMaximizeSubpage(sp->getHandle());
-
                 sp->setCollapsible(COL_FULL);
-            }
 
             break;
         }
@@ -7159,15 +7146,9 @@ void TPageManager::doPTC(int port, vector<int>& channels, vector<string>& pars)
     }
 
     if (sp->getCollapseState() == COL_SMALL && _callMaximizeSubpage)
-    {
-        _callMaximizeSubpage(sp->getHandle());
         sp->setCollapsible(COL_FULL);
-    }
     else if (sp->getCollapseState() == COL_FULL && _callMinimizeSubpage)
-    {
-        _callMinimizeSubpage(COL_SMALL);
         sp->setCollapsible(COL_SMALL);
-    }
     else if (!_callMaximizeSubpage || !_callMinimizeSubpage)
     {
         MSG_WARNING("One of the callbacks \"maximizeSubpage()\" or \"minimizeSubpage\" is not definied!");
@@ -7228,15 +7209,9 @@ void TPageManager::doPTO(int port, vector<int>& channels, vector<string>& pars)
     }
 
     if (sp->getCollapseState() == COL_SMALL && _callMaximizeSubpage)
-    {
-        _callMaximizeSubpage(sp->getHandle());
         sp->setCollapsible(COL_FULL);
-    }
     else if (sp->getCollapseState() == COL_FULL && _callMinimizeSubpage)
-    {
-        _callMinimizeSubpage(COL_SMALL);
         sp->setCollapsible(COL_SMALL);
-    }
     else if (!_callMaximizeSubpage || !_callMinimizeSubpage)
     {
         MSG_WARNING("One of the callbacks \"maximizeSubpage()\" or \"minimizeSubpage\" is not definied!");
