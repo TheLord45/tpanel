@@ -822,33 +822,60 @@ void TSubPage::show()
         gPageManager->getPageFinished()(handle);
 }
 
-void TSubPage::setCollapsible(COLLAPS_STATE_t cs)
+/**
+ * @brief TSubPage::setCollapsible - Sets a collapsible popup
+ * The parameter \b cs defines the state of the popup. This can be one of the
+ * following states:
+ *      COL_CLOSED      If the popup was open, this hides the popup.
+ *      COL_FULL        This expands the popup to it's full size.
+ *      COL_SMALL       This puts the popup to a position where it looks like
+ *                      truncated. The popup remains still open.
+ *
+ * The states \a COL_FULL and \a COL_SMALL mean an open popup. The position
+ * depend on the configuration and is up to the designer. Usualy \a COL_FULL
+ * meanst a popup is fully visible somewhere on the screen, while \a COL_SMALL
+ * means that only a small part is visible. Putting the popup to one of this
+ * 2 states starts also some animation.
+ *
+ * The state \a COL_CLOSED closes the popup and removes it completely from
+ * screen. No animation will be started.
+ *
+ * This method will work only with collapsible popups and do nothing with other
+ * types of popups.
+ *
+ * @param cs    Defines the state of the collapsible popup.
+ */
+void TSubPage::setCollapsible(COLLAPS_STATE_t cs, int offset)
 {
-    DECL_TRACER("TSubPage::setCollapsible(COLLAPS_STATE_t cs)");
+    DECL_TRACER("TSubPage::setCollapsible(COLLAPS_STATE_t cs, int offset)");
 
-    if (!isCollapsible())
+    if (!isCollapsible() || mSubpage.colState == cs || !gPageManager)
         return;
+
+    MSG_DEBUG("Setting popup " << handleToString(getHandle()) << " from " << mSubpage.colState << " to " << cs);
 
     switch(cs)
     {
         case COL_SMALL:     // Set popup to collapsed but not closed.
             if (gPageManager->getCallMinimizeSubpage())
-                gPageManager->getCallMinimizeSubpage()(getHandle());
+                gPageManager->getCallMinimizeSubpage()(getHandle(), offset);
 
             mSubpage.colState = COL_SMALL;
         break;
 
         case COL_FULL:
-            if (mSubpage.colState == COL_CLOSED)
-                show();
+            if (mSubpage.colState == COL_CLOSED || !mVisible)
+                gPageManager->showSubPage(mSubpage.pageID);
             else if (gPageManager->getCallMaximizeSubpage())
-                gPageManager->getCallMaximizeSubpage()(getHandle());
+                gPageManager->getCallMaximizeSubpage()(getHandle(), offset);
 
             mSubpage.colState = COL_FULL;
         break;
 
         case COL_CLOSED:
-            drop();
+            if (gPageManager->getCallDropSubPage())
+                gPageManager->getCallDropSubPage()(getHandle(), mParent);
+
             mSubpage.colState = COL_CLOSED;
         break;
     }
@@ -1054,6 +1081,9 @@ void TSubPage::drop()
 
     mZOrder = -1;
     mVisible = false;
+
+    if (mSubpage.collapsible)
+        mSubpage.colState = COL_CLOSED;
 }
 
 void TSubPage::startTimer()

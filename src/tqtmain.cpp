@@ -529,8 +529,8 @@ MainWindow::MainWindow()
                                          std::placeholders::_5,
                                          std::placeholders::_6));
 #endif
-    gPageManager->regCallMinimizeSubpage(bind(&MainWindow::_minimizeSubpage, this, std::placeholders::_1));
-    gPageManager->regCallMaximizeSubpage(bind(&MainWindow::_maximizeSubpage, this, std::placeholders::_1));
+    gPageManager->regCallMinimizeSubpage(bind(&MainWindow::_minimizeSubpage, this, std::placeholders::_1, std::placeholders::_2));
+    gPageManager->regCallMaximizeSubpage(bind(&MainWindow::_maximizeSubpage, this, std::placeholders::_1, std::placeholders::_2));
     gPageManager->regCallDropPage(bind(&MainWindow::_dropPage, this, std::placeholders::_1));
     gPageManager->regCallDropSubPage(bind(&MainWindow::_dropSubPage, this, std::placeholders::_1, std::placeholders::_2));
     gPageManager->regCallPlayVideo(bind(&MainWindow::_playVideo, this,
@@ -3034,18 +3034,18 @@ void MainWindow::_setBackground(ulong handle, TBitmap image, int width, int heig
 #endif
 }
 
-void MainWindow::_minimizeSubpage(ulong handle)
+void MainWindow::_minimizeSubpage(ulong handle, int offset)
 {
-    DECL_TRACER("MainWindow::_minimizeSubpage(ulong handle)");
+    DECL_TRACER("MainWindow::_minimizeSubpage(ulong handle, int offset)");
 
-    emit sigMinimizeSubpage(handle);
+    emit sigMinimizeSubpage(handle, offset);
 }
 
-void MainWindow::_maximizeSubpage(ulong handle)
+void MainWindow::_maximizeSubpage(ulong handle, int offset)
 {
-    DECL_TRACER("MainWindow::_maximizeSubpage(ulong handle)");
+    DECL_TRACER("MainWindow::_maximizeSubpage(ulong handle, int offset)");
 
-    emit sigMaximizeSubpage(handle);
+    emit sigMaximizeSubpage(handle, offset);
 }
 
 void MainWindow::_dropPage(ulong handle)
@@ -5135,9 +5135,9 @@ void MainWindow::reconnectList(QListWidget *list)
     connect(list, &QListWidget::currentItemChanged, this, &MainWindow::onTListCallbackCurrentItemChanged);
 }
 
-void MainWindow::minimizeSubpage(ulong handle)
+void MainWindow::minimizeSubpage(ulong handle, int offset)
 {
-    DECL_TRACER("MainWindow::minimizeSubpage(ulong handle)");
+    DECL_TRACER("MainWindow::minimizeSubpage(ulong handle, int offset)");
 
     OBJECT_t *obj = findObject(handle);
 
@@ -5168,6 +5168,7 @@ void MainWindow::minimizeSubpage(ulong handle)
         return;
     }
 
+    obj->animate.dynOffset = offset;
     bool ret = startAnimation(obj, obj->animate, false);
 
     if (!ret)
@@ -5188,9 +5189,9 @@ void MainWindow::minimizeSubpage(ulong handle)
 #endif
 }
 
-void MainWindow::maximizeSubpage(ulong handle)
+void MainWindow::maximizeSubpage(ulong handle, int offset)
 {
-    DECL_TRACER("MainWindow::maximizeSubpage(ulong handle)");
+    DECL_TRACER("MainWindow::maximizeSubpage(ulong handle, int offset)");
 
     OBJECT_t *obj = findObject(handle);
 
@@ -5221,6 +5222,7 @@ void MainWindow::maximizeSubpage(ulong handle)
         return;
     }
 
+    obj->animate.dynOffset = offset;
     bool ret = startAnimation(obj, obj->animate, true);
 
     if (!ret)
@@ -6318,6 +6320,10 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
     if (TTPInit::isG5())
     {
         offset = ani.offset;
+
+        if (ani.dynOffset > 0)
+            offset = ani.dynOffset;
+
         scGapW = scWidth - offset;
         scGapH = scHeight - offset;
     }

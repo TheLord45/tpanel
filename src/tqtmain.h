@@ -127,8 +127,8 @@ class MainWindow : public QMainWindow, public TObject
 #else
         void sigSetBackground(ulong handle, TBitmap image, int width, int height, ulong color);
 #endif
-        void sigMinimizeSubpage(ulong handle);
-        void sigMaximizeSubpage(ulong handle);
+        void sigMinimizeSubpage(ulong handle, int offset);
+        void sigMaximizeSubpage(ulong handle, int offset);
         void sigDropPage(ulong handle);
         void sigDropSubPage(ulong handle, ulong parent);
         void sigDropButton(ulong handle);
@@ -204,8 +204,8 @@ class MainWindow : public QMainWindow, public TObject
 #else
         void setBackground(ulong handle, TBitnap image, int width, int height, ulong color, int opacity=255);
 #endif  // _OPAQUE_SKIA_
-        void minimizeSubpage(ulong handle);
-        void maximizeSubpage(ulong handle);
+        void minimizeSubpage(ulong handle, int offset);
+        void maximizeSubpage(ulong handle, int offset);
         void dropPage(ulong handle);
         void dropSubPage(ulong handle, ulong parent);
         void dropButton(ulong handle);
@@ -311,8 +311,8 @@ class MainWindow : public QMainWindow, public TObject
 #else
         void _setBackground(ulong handle, TBitmap image, int width, int height, ulong color, int opacity=255);
 #endif  // _OPAQUE_SKIA_
-        void _minimizeSubpage(ulong handle);
-        void _maximizeSubpage(ulong handle);
+        void _minimizeSubpage(ulong handle, int offset);
+        void _maximizeSubpage(ulong handle, int offset);
         void _dropPage(ulong handle);
         void _dropSubPage(ulong handle, ulong parent);
         void _dropButton(ulong handle);
