@@ -7071,22 +7071,27 @@ void TPageManager::doPCT(int port, vector<int>& channels, vector<std::string>& p
     bool visible = sp->isVisible();
     // Go through command table and execute it
     vector<SUBCOMMAND_t>::iterator cmdIter;
+    COLLAPS_STATE_t cs = sp->getCollapseState();
 
     for (cmdIter = mCmdTable.begin(); cmdIter != mCmdTable.end(); ++cmdIter)
     {
         if (!visible && cmdIter->to != POPSTATE_CLOSED)
         {
-            showSubPage(popup);
+            sp->setCollapsible(COL_FULL, cmdIter->offset);
             break;
         }
         else if (visible)
         {
             if (cmdIter->to == POPSTATE_CLOSED)
-                hideSubPage(popup);
-            else if (sp->getCollapseState() == COL_FULL && (cmdIter->to == POPSTATE_ANY || cmdIter->to == POPSTATE_DYNAMIC))
+                sp->setCollapsible(COL_CLOSED);
+            else if (cs == COL_FULL && cmdIter->to == POPSTATE_ANY)
                 sp->setCollapsible(COL_SMALL);
-            else if (sp->getCollapseState() == COL_SMALL && (cmdIter->to == POPSTATE_ANY || cmdIter->to == POPSTATE_DYNAMIC))
+            else if (cs == COL_FULL && cmdIter->to == POPSTATE_DYNAMIC)
+                sp->setCollapsible(COL_SMALL, cmdIter->offset);
+            else if (cs == COL_SMALL && cmdIter->to == POPSTATE_ANY)
                 sp->setCollapsible(COL_FULL);
+            else if (cs == COL_SMALL && cmdIter->to == POPSTATE_DYNAMIC)
+                sp->setCollapsible(COL_FULL, cmdIter->offset);
 
             break;
         }
@@ -7145,15 +7150,10 @@ void TPageManager::doPTC(int port, vector<int>& channels, vector<string>& pars)
         return;
     }
 
-    if (sp->getCollapseState() == COL_SMALL && _callMaximizeSubpage)
+    if (sp->getCollapseState() == COL_SMALL)
         sp->setCollapsible(COL_FULL);
-    else if (sp->getCollapseState() == COL_FULL && _callMinimizeSubpage)
+    else if (sp->getCollapseState() == COL_FULL)
         sp->setCollapsible(COL_SMALL);
-    else if (!_callMaximizeSubpage || !_callMinimizeSubpage)
-    {
-        MSG_WARNING("One of the callbacks \"maximizeSubpage()\" or \"minimizeSubpage\" is not definied!");
-        return;
-    }
 
     // TODO: Add code to honor the "page", if there is one.
 }
@@ -7208,15 +7208,10 @@ void TPageManager::doPTO(int port, vector<int>& channels, vector<string>& pars)
         return;
     }
 
-    if (sp->getCollapseState() == COL_SMALL && _callMaximizeSubpage)
+    if (sp->getCollapseState() == COL_SMALL)
         sp->setCollapsible(COL_FULL);
-    else if (sp->getCollapseState() == COL_FULL && _callMinimizeSubpage)
+    else if (sp->getCollapseState() == COL_FULL)
         sp->setCollapsible(COL_SMALL);
-    else if (!_callMaximizeSubpage || !_callMinimizeSubpage)
-    {
-        MSG_WARNING("One of the callbacks \"maximizeSubpage()\" or \"minimizeSubpage\" is not definied!");
-        return;
-    }
 
     // TODO: Add code to honor the "page", if there is one.
 }

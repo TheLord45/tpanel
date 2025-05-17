@@ -249,8 +249,8 @@ class TPageManager : public TAmxCommands
         void informBatteryStatus(int level, int state);
         void informTPanelNetwork(bool conn, int level, int type);
 #endif
-        void regCallMinimizeSubpage(std::function<void (ulong handle)> callMinimizeSubpage) { _callMinimizeSubpage = callMinimizeSubpage; }
-        void regCallMaximizeSubpage(std::function<void (ulong handle)> callMaximizeSubpage) { _callMaximizeSubpage = callMaximizeSubpage; }
+        void regCallMinimizeSubpage(std::function<void (ulong handle, int offset)> callMinimizeSubpage) { _callMinimizeSubpage = callMinimizeSubpage; }
+        void regCallMaximizeSubpage(std::function<void (ulong handle, int offset)> callMaximizeSubpage) { _callMaximizeSubpage = callMaximizeSubpage; }
         void regCallDropPage(std::function<void (ulong handle)> callDropPage) { _callDropPage = callDropPage; }
         void regCallDropSubPage(std::function<void (ulong handle, ulong parent)> callDropSubPage) { _callDropSubPage = callDropSubPage; }
         void regCallPlayVideo(std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw)> callPlayVideo) { _callPlayVideo = callPlayVideo; };
@@ -587,8 +587,8 @@ class TPageManager : public TAmxCommands
         std::function<void (Button::TButton *button, Button::BITMAP_t& bm, int frame)> getCallbackInputText() { return _callInputText; }
         std::function<void (Button::TButton *button, Button::BITMAP_t& bm, int frame)> getCallbackListBox() { return _callListBox; }
         std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate, bool modal, bool collapsible)> getCallbackSetSubPage() { return _setSubPage; }
-        std::function<void (ulong handle)> getCallMinimizeSubpage() { return _callMinimizeSubpage; }
-        std::function<void (ulong handle)> getCallMaximizeSubpage() { return _callMaximizeSubpage; }
+        std::function<void (ulong handle, int offset)> getCallMinimizeSubpage() { return _callMinimizeSubpage; }
+        std::function<void (ulong handle, int offset)> getCallMaximizeSubpage() { return _callMaximizeSubpage; }
         std::function<void (ulong handle)> getCallDropPage() { return _callDropPage; }
         std::function<void (ulong handle, ulong parent)> getCallDropSubPage() { return _callDropSubPage; }
         std::function<void (const std::string& file)> getCallPlaySound() { return _playSound; }
@@ -693,8 +693,8 @@ class TPageManager : public TAmxCommands
         std::function<void (ulong handle, TBitmap image, int width, int height, ulong color, int opacity)> _setBackground{nullptr};
 #endif
         std::function<void (ulong handle, const std::string& text, const std::string& font, const std::string& family, int size, int x, int y, ulong color, ulong effectColor, FONT_STYLE style, Button::ORIENTATION ori, Button::TEXT_EFFECT effect, bool ww)> _setText{nullptr};
-        std::function<void (ulong handle)> _callMinimizeSubpage{nullptr};
-        std::function<void (ulong handle)> _callMaximizeSubpage{nullptr};
+        std::function<void (ulong handle, int offset)> _callMinimizeSubpage{nullptr};
+        std::function<void (ulong handle, int offset)> _callMaximizeSubpage{nullptr};
         std::function<void (ulong handle)> _callDropPage{nullptr};
         std::function<void (ulong handle, ulong parent)> _callDropSubPage{nullptr};
         std::function<void (ulong handle, ulong parent, int left, int top, int width, int height, const std::string& url, const std::string& user, const std::string& pw)> _callPlayVideo{nullptr};

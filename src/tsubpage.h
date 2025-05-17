@@ -88,7 +88,7 @@ class TSubPage : public TValidateFile, public TPageInterface, public Border::TIn
         std::string getTextColor() { return mSubpage.sr[0].ct; }
         SkBitmap& getBgImage();
         bool isCollapsible() { return mSubpage.collapsible; }
-        void setCollapsible(COLLAPS_STATE_t cs);
+        void setCollapsible(COLLAPS_STATE_t cs, int offset=0);
         COLLAPS_STATE_t getCollapseState() { return mSubpage.colState; }
         int getCollapseOffset() { return mSubpage.collapseOffset; }
         COLDIR_t getCollapseDir() { return mSubpage.collapseDirection; }
