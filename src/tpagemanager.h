@@ -306,6 +306,7 @@ class TPageManager : public TAmxCommands
         void regHideAllSubViewItems(std::function<void (ulong handle)> hasvi) { _hideAllSubViewItems = hasvi; }
         void regHideSubViewItem(std::function<void (ulong handle, ulong parent)> hsvi) { _hideSubViewItem = hsvi; }
         void regSetSubViewPadding(std::function<void (ulong handle, int padding)> ssvp) { _setSubViewPadding = ssvp; }
+        void regSetSubViewAnimation(std::function<void (ulong handle, ANIMATION_t ani)> ssva) { _setSubViewAnimation = ssva; }
         void regInitializeIntercom(std::function<void (INTERCOM_t ic)> intercom) { _initializeIntercom = intercom; }
         void regIntercomStart(std::function<void ()> start) { _intercomStart = start; }
         void regIntercomStop(std::function<void ()> stop) { _intercomStop = stop; }
@@ -619,6 +620,7 @@ class TPageManager : public TAmxCommands
         std::function<void (ulong handle)> getHideAllSubViewItems() { return _hideAllSubViewItems; }
         std::function<void (ulong handle, ulong parent)> getHideSubViewItem() { return _hideSubViewItem; }
         std::function<void (ulong handle, int padding)> getSetSubViewPadding() { return _setSubViewPadding; }
+        std::function<void (ulong handle, ANIMATION_t ani)> getSetSubViewAnimation() { return _setSubViewAnimation; }
         std::function<void (INTERCOM_t ic)> getInitializeIntercom() { return _initializeIntercom; }
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         std::function<void (int orientation)> onOrientationChange() { return _onOrientationChange; }
@@ -735,6 +737,7 @@ class TPageManager : public TAmxCommands
         std::function<void (ulong handle)> _hideAllSubViewItems{nullptr};
         std::function<void (ulong handle, ulong parent)> _hideSubViewItem{nullptr};
         std::function<void (ulong handle, int padding)> _setSubViewPadding{nullptr};
+        std::function<void (ulong handle, ANIMATION_t ani)> _setSubViewAnimation{nullptr};
         std::function<void (INTERCOM_t ic)> _initializeIntercom{nullptr};
         std::function<void ()> _intercomStart{nullptr};
         std::function<void ()> _intercomStop{nullptr};

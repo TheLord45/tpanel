@@ -501,6 +501,7 @@ MainWindow::MainWindow()
     gPageManager->regHideAllSubViewItems(bind(&MainWindow::_hideAllViewItems, this, std::placeholders::_1));
     gPageManager->regHideSubViewItem(bind(&MainWindow::_hideViewItem, this, std::placeholders::_1, std::placeholders::_2));
     gPageManager->regSetSubViewPadding(bind(&MainWindow::_setSubViewPadding, this, std::placeholders::_1, std::placeholders::_2));
+    gPageManager->regSetSubViewAnimation(bind(&MainWindow::_setSubViewAnimation, this, std::placeholders::_1, std::placeholders::_2));
 
     gPageManager->registerCallbackSP(bind(&MainWindow::_setPage, this,
                                          std::placeholders::_1,
@@ -2988,6 +2989,13 @@ void MainWindow::_setSubViewPadding(ulong handle, int padding)
         return;
 
     emit sigSetSubViewPadding(handle, padding);
+}
+
+void MainWindow::_setSubViewAnimation(ulong handle, ANIMATION_t ani)
+{
+    DECL_TRACER("MainWindow::_setSubViewAnimation(ulong handle, ANIMATION_t ani)");
+
+    emit sigSetSubViewAnimation(handle, ani);
 }
 
 void MainWindow::_setPage(ulong handle, int width, int height)
@@ -6322,13 +6330,17 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
         offset = ani.offset;
 
         if (ani.dynOffset > 0)
+        {
             offset = ani.dynOffset;
+            MSG_DEBUG("Dynamic offset: " << offset);
+        }
 
         scGapW = scWidth - offset;
         scGapH = scHeight - offset;
     }
 
     mLastObject = nullptr;
+    MSG_DEBUG("effect: " << effect << ", duration: " << duration << ", obj->type: " << obj->type);
 
     if (effect == SE_NONE || duration <= 0 || (obj->type != OBJ_SUBPAGE && obj->type != OBJ_PAGE))
         return false;

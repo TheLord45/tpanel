@@ -281,6 +281,7 @@ class TPageInterface : public TSystemButton
         bool haveImage(const Button::SR_T& sr);
         bool tp5Image(SkBitmap *bm, Button::SR_T& sr, int wt, int ht, bool ignFirst=false);
         SkRect justifyBitmap5(Button::SR_T& sr, int wt, int ht, int index, int width, int height, int border_size);
+        bool initAnimation(TSubPage *sub, ANIMATION_t *ani);
 
         template<typename T>
         inline void registerListCallback(Button::TButton *button, T *pg)
