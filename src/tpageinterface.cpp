@@ -1384,6 +1384,57 @@ SkRect TPageInterface::justifyBitmap5(Button::SR_T& sr, int wt, int ht, int inde
     return SkRect::MakeXYWH(x + border_size, y + border_size, width, height);
 }
 
+bool TPageInterface::initAnimation(TSubPage *sub, ANIMATION_t* ani)
+{
+    DECL_TRACER("TPageInterface::initAnimation(const PAGE_T& sub, ANIMATION_t* ani)");
+
+    if (!ani)
+        return false;
+
+    if (!TTPInit::isG5())
+    {
+        ani->showEffect = sub->getShowEffect();
+        ani->showTime = sub->getShowTime();
+        ani->hideEffect = sub->getHideEffect();
+        ani->hideTime = sub->getHideTime();
+    }
+    else if (sub->getCollapseDir() != COLDIR_NONE)
+    {
+        switch(sub->getCollapseDir())
+        {
+            case COLDIR_LEFT:
+                ani->showEffect = SE_SLIDE_LEFT;
+                ani->hideEffect = SE_SLIDE_LEFT;
+                break;
+
+            case COLDIR_RIGHT:
+                ani->showEffect = SE_SLIDE_RIGHT;
+                ani->hideEffect = SE_SLIDE_RIGHT;
+                break;
+
+            case COLDIR_UP:
+                ani->showEffect = SE_SLIDE_TOP;
+                ani->hideEffect = SE_SLIDE_TOP;
+                break;
+
+            case COLDIR_DOWN:
+                ani->showEffect = SE_SLIDE_BOTTOM;
+                ani->hideEffect = SE_SLIDE_BOTTOM;
+                break;
+
+            default:    // Can't happen and is only to satisfy the compiler
+                ani->showEffect = SE_NONE;
+                ani->hideEffect = SE_NONE;
+        }
+
+        ani->showTime = 5;
+        ani->hideTime = 5;
+        ani->offset = sub->getCollapseOffset();
+    }
+
+    return true;
+}
+
 /**
  * @brief getBorderFragment - get part of border
  * The method reads a border image fragment from the disk and converts it to

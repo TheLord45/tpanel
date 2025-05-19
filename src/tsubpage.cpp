@@ -853,10 +853,15 @@ void TSubPage::setCollapsible(COLLAPS_STATE_t cs, int offset)
         return;
 
     MSG_DEBUG("Setting popup " << handleToString(getHandle()) << " from " << mSubpage.colState << " to " << cs);
+    ANIMATION_t ani;
+    initAnimation(this, &ani);
 
     switch(cs)
     {
         case COL_SMALL:     // Set popup to collapsed but not closed.
+            if (gPageManager->getSetSubViewAnimation())
+                gPageManager->getSetSubViewAnimation()(getHandle(), ani);
+
             if (gPageManager->getCallMinimizeSubpage())
                 gPageManager->getCallMinimizeSubpage()(getHandle(), offset);
 

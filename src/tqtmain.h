@@ -303,6 +303,7 @@ class MainWindow : public QMainWindow, public TObject
         void _hideAllViewItems(ulong handle);
         void _hideViewItem(ulong handle, ulong parent);
         void _setSubViewPadding(ulong handle, int padding);
+        void _setSubViewAnimation(ulong handle, ANIMATION_t ani);
         void _setVisible(ulong handle, bool state);
         void _setPage(ulong handle, int width, int height);
         void _setSubPage(ulong handle, ulong parent, int left, int top, int width, int height, ANIMATION_t animate, bool modal=false, bool collapsible=false);

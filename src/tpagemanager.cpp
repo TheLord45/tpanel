@@ -4056,47 +4056,7 @@ void TPageManager::showSubPage(const string& name)
             }
 #endif
             ANIMATION_t ani;
-
-            if (!TTPInit::isG5())
-            {
-                ani.showEffect = pg->getShowEffect();
-                ani.showTime = pg->getShowTime();
-                ani.hideEffect = pg->getHideEffect();
-                ani.hideTime = pg->getHideTime();
-            }
-            else if (pg->getCollapseDir() != COLDIR_NONE)
-            {
-                switch(pg->getCollapseDir())
-                {
-                    case COLDIR_LEFT:
-                        ani.showEffect = SE_SLIDE_LEFT;
-                        ani.hideEffect = SE_SLIDE_LEFT;
-                    break;
-
-                    case COLDIR_RIGHT:
-                        ani.showEffect = SE_SLIDE_RIGHT;
-                        ani.hideEffect = SE_SLIDE_RIGHT;
-                    break;
-
-                    case COLDIR_UP:
-                        ani.showEffect = SE_SLIDE_TOP;
-                        ani.hideEffect = SE_SLIDE_TOP;
-                    break;
-
-                    case COLDIR_DOWN:
-                        ani.showEffect = SE_SLIDE_BOTTOM;
-                        ani.hideEffect = SE_SLIDE_BOTTOM;
-                    break;
-
-                    default:    // Can't happen and is only to satisfy the compiler
-                        ani.showEffect = SE_NONE;
-                        ani.hideEffect = SE_NONE;
-                }
-
-                ani.showTime = 5;
-                ani.hideTime = 5;
-                ani.offset = pg->getCollapseOffset();
-            }
+            pg->initAnimation(pg, &ani);
 
             // Test for a timer on the page
             if (pg->getTimeout() > 0)
@@ -4234,10 +4194,7 @@ void TPageManager::showSubPage(int number, bool force)
             }
 #endif
             ANIMATION_t ani;
-            ani.showEffect = pg->getShowEffect();
-            ani.showTime = pg->getShowTime();
-            ani.hideEffect = pg->getHideEffect();
-            ani.hideTime = pg->getHideTime();
+            pg->initAnimation(pg, &ani);
             // Test for a timer on the page
             if (pg->getTimeout() > 0)
                 pg->startTimer();
@@ -6909,20 +6866,27 @@ void TPageManager::doPCL(int port, vector<int>& channels, vector<std::string>& p
     if (pars.size() >= 2)
         page = pars[1];
 
-    TSubPage *sp = loadSubPage(popup);
-
-    if (!sp || !sp->isCollapsible())
-        return;
-
     if (!page.empty())
     {
         TPage *pg = getPage(page);
 
         if (pg)
-            pg->removeSubPage(popup);
+        {
+            TSubPage *sp = pg->getSubPage(popup);
+
+            if (sp)
+                sp->setCollapsible(COL_SMALL);
+        }
     }
-    else if (_callMinimizeSubpage)
+    else
+    {
+        TSubPage *sp = loadSubPage(popup);
+
+        if (!sp || !sp->isCollapsible())
+            return;
+
         sp->setCollapsible(COL_SMALL);
+    }
 }
 
 /**
@@ -6977,11 +6941,6 @@ void TPageManager::doPCT(int port, vector<int>& channels, vector<std::string>& p
     string page;
 
     MSG_DEBUG("Switching collapsible page " << popup << " ...");
-    TSubPage *sp = loadSubPage(popup);
-
-    if (!sp || !sp->isCollapsible())
-        return;
-
     // Parse the command table
     mCmdTable.clear();
     vector<string>::iterator iter;
@@ -7068,6 +7027,22 @@ void TPageManager::doPCT(int port, vector<int>& channels, vector<std::string>& p
         }
     }
 
+    TSubPage *sp = nullptr;
+
+    if (!page.empty())
+    {
+        TPage *pg = getPage(page);
+
+        if (pg)
+            sp = pg->getSubPage(popup);
+    }
+    else
+        sp = loadSubPage(popup);
+
+    if (!sp || !sp->isCollapsible())
+        return;
+
+
     bool visible = sp->isVisible();
     // Go through command table and execute it
     vector<SUBCOMMAND_t>::iterator cmdIter;
@@ -7096,8 +7071,6 @@ void TPageManager::doPCT(int port, vector<int>& channels, vector<std::string>& p
             break;
         }
     }
-
-    // TODO: Add code to honor the "page", if there is one.
 }
 
 /**
