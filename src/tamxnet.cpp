@@ -76,8 +76,8 @@ string cmdList[] =
     "^ABP-", "^ADB", "^SOU-", "^STP", "^TKP-", "^PGE-", "^PPA-", "^PPF-",
     "^PPG-", "^PPK-", "^PPM-", "^PPN-", "^PPT-", "^PPX", "^UTF-", "^LVC-",
     "^LVD-", "^LVE-", "^LVF-", "^LVL-", "^LVM-", "^LVN-", "^LVR-", "^LVS-",
-    "^MUT-", "^PCL-", "^PCT-", "^PTC-", "^PTO-", "^SDL-", "^SDM-", "^SHA-",
-    "^SPD-", "\0"
+    "^MUT-", "^PCL-", "^PCT-", "^POP-", "^PTC-", "^PTO-", "^SDL-", "^SDM-",
+    "^SHA-", "^SPD-", "\0"
 };
 
 #define NUMBER_CMDS     144

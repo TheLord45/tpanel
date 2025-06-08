@@ -3,6 +3,8 @@ ChangeLog
 
 Release: 2.0.0
 ===============================================================================
+2025-06-08 Added G5 command ^POP.
+
 2025-05-11 Added minimize/maximize to collapsible popups.
 
 2025-04-30 Fixed background of popups and pages for G5. Fixed subviews.

@@ -938,6 +938,7 @@ TPageManager::TPageManager()
     REG_CMD(doPAGE, "^PGE");    // G5: Flip to a specified page.
     REG_CMD(doPCL, "^PCL");     // G5: Collapse Collapsible Popup Command
     REG_CMD(doPCT, "^PCT");     // G5: Collapsible Popup Custom Toggle Command
+    REG_CMD(doPOP, "^POP");     // Open Collapsible Popup Command
     REG_CMD(doPTC, "^PTC");     // G5: Toggle Collapsible Popup Collapsed Command
     REG_CMD(doPTO, "^PTO");     // G5: Toggle Collapsed Popup Open Command
 
@@ -6345,6 +6346,37 @@ void TPageManager::doPHT(int, vector<int>&, vector<string>& pars)
 }
 
 /**
+ * @brief G5: Open Collapsible Popup Command
+ * Moves the named collapsible popup to the open position.
+ */
+void TPageManager::doPOP(int, vector<int>&, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doPOP(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.empty())
+    {
+        MSG_WARNING("Expect at least 1 parameter but got none!");
+        return;
+    }
+
+    string popup = pars[0];
+    string page;
+
+    if (pars.size() > 1)
+        page = pars[1];
+
+    TSubPage *sp = loadSubPage(popup);
+
+    MSG_DEBUG("Subpage " << popup << (sp ? " found" : " NOT found"));
+
+    if (!sp || !sp->isCollapsible() || sp->getCollapseState() == COL_FULL)
+        return;
+
+    MSG_DEBUG("Setting collaped state to FULL");
+    sp->setCollapsible(COL_FULL);
+}
+
+/**
  * Close all popups on a specified page. If the page name is empty, the current
  * page is used. Same as the ’Clear Page’ command in TPDesign4.
  */
@@ -7096,7 +7128,7 @@ void TPageManager::doPCT(int port, vector<int>& channels, vector<std::string>& p
  *        page is blank, the current page is used. If the named popup is not
  *        collapsible, the commands are ignored.
  */
-void TPageManager::doPTC(int port, vector<int>& channels, vector<string>& pars)
+void TPageManager::doPTC(int, vector<int>&, vector<string>& pars)
 {
     DECL_TRACER("TPageManager::doPTC(int port, vector<int>& channels, vector<string>& pars)");
 
