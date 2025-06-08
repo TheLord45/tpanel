@@ -502,10 +502,111 @@ void TQScrollArea::addItem(PGSUBVIEWITEM_T& item)
 {
     DECL_TRACER("TQScrollArea::addItem(PGSUBVIEWITEM_T& item)");
 
-    _clearAllItems();
-    resetSlider();
-    mItems.push_back(subViewItemToItem(item));
-    _addItems(mItems, true);
+    _ITEMS_T titem = subViewItemToItem(item);
+    mItems.push_back(titem);
+    _addItem(titem);
+}
+
+bool TQScrollArea::_addItem(_ITEMS_T& titem)
+{
+    DECL_TRACER("TQScrollArea::_addItem(_ITEMS_T& titem)");
+
+    int iWidth = scale(titem.width);
+    int iHeight = scale(titem.height);
+    bool haveItem = false;
+
+    if (iWidth > mItemSize.width())
+        mItemSize.setWidth(iWidth);
+
+    if (iHeight > mItemSize.height())
+        mItemSize.setHeight(iHeight);
+
+    QWidget *witem = new QWidget;
+    witem->setObjectName(QString("Item_%1").arg(handleToString(titem.handle).c_str()));
+    witem->setFixedSize(iWidth, iHeight);
+    witem->setAutoFillBackground(true);
+    QColor bgcolor(qRgba(titem.bgcolor.red, titem.bgcolor.green, titem.bgcolor.blue, titem.bgcolor.alpha));
+
+    if (titem.image.getSize() > 0)
+    {
+        QPixmap pixmap(iWidth, iHeight);
+
+        if (titem.bgcolor.alpha == 0)
+            pixmap.fill(Qt::transparent);
+        else
+            pixmap.fill(bgcolor);
+
+        QImage img(titem.image.getBitmap(), titem.image.getWidth(), titem.image.getHeight(), titem.image.getPixline(), QImage::Format_ARGB32);  // Original size
+        bool ret = false;
+
+        if (mScaleFactor != 1.0)
+        {
+            QSize size(iWidth, iHeight);
+            ret = pixmap.convertFromImage(img.scaled(size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));   // Scaled size
+        }
+        else
+            ret = pixmap.convertFromImage(img);
+
+        if (!ret || pixmap.isNull())
+        {
+            MSG_ERROR("Unable to create a pixmap out of an image!");
+            return false;
+        }
+
+        QPalette palette(witem->palette());
+        palette.setBrush(QPalette::Window, QBrush(pixmap));
+        witem->setPalette(palette);
+    }
+    else
+    {
+        QPalette palette(witem->palette());
+
+        if (titem.bgcolor.alpha == 0)
+            palette.setColor(QPalette::Window, Qt::transparent);
+        else
+            palette.setColor(QPalette::Window, bgcolor);
+
+        witem->setPalette(palette);
+    }
+
+    // Add the buttons to the item widget
+    if (titem.atoms.empty())
+    {
+        delete witem;
+        return false;
+    }
+
+    vector<PGSUBVIEWATOM_T>::iterator itAtom;
+
+    for (itAtom = titem.atoms.begin(); itAtom != titem.atoms.end(); ++itAtom)
+    {
+        int scaWidth = scale(itAtom->width);
+        int scaHeight = scale(itAtom->height);
+
+        QLabel *label = new QLabel(witem);
+        label->move(scale(itAtom->left), scale(itAtom->top));
+        label->setFixedSize(scaWidth, scaHeight);
+        label->setObjectName(QString("Label_%1").arg(handleToString(itAtom->handle).c_str()));
+        setAtom(*itAtom, label);
+    }
+
+    titem.item = witem;
+
+    if (mVertical && mVLayout)
+        mVLayout->addWidget(witem);
+    else if (!mVertical && mHLayout)
+        mHLayout->addWidget(witem);
+    else
+    {
+        MSG_ERROR("Layout not initialized!");
+    }
+
+    if (!titem.show && !titem.visible)
+        witem->setVisible(false);
+    else
+        haveItem = true;
+
+    return haveItem;
 }
 
 /**
@@ -593,98 +694,7 @@ void TQScrollArea::_addItems(std::vector<_ITEMS_T>& items, bool intern)
 
     for (iter = items.begin(); iter != items.end(); ++iter)
     {
-        int iWidth = scale(iter->width);
-        int iHeight = scale(iter->height);
-
-        if (iWidth > mItemSize.width())
-            mItemSize.setWidth(iWidth);
-
-        if (iHeight > mItemSize.height())
-            mItemSize.setHeight(iHeight);
-
-        QWidget *item = new QWidget;
-        item->setObjectName(QString("Item_%1").arg(handleToString(iter->handle).c_str()));
-        item->setFixedSize(iWidth, iHeight);
-        item->setAutoFillBackground(true);
-        QColor bgcolor(qRgba(iter->bgcolor.red, iter->bgcolor.green, iter->bgcolor.blue, iter->bgcolor.alpha));
-
-        if (iter->image.getSize() > 0)
-        {
-            QPixmap pixmap(iWidth, iHeight);
-
-            if (iter->bgcolor.alpha == 0)
-                pixmap.fill(Qt::transparent);
-            else
-                pixmap.fill(bgcolor);
-
-            QImage img(iter->image.getBitmap(), iter->image.getWidth(), iter->image.getHeight(), iter->image.getPixline(), QImage::Format_ARGB32);  // Original size
-            bool ret = false;
-
-            if (mScaleFactor != 1.0)
-            {
-                QSize size(iWidth, iHeight);
-                ret = pixmap.convertFromImage(img.scaled(size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));   // Scaled size
-            }
-            else
-                ret = pixmap.convertFromImage(img);
-
-            if (!ret || pixmap.isNull())
-            {
-                MSG_ERROR("Unable to create a pixmap out of an image!");
-                return;
-            }
-
-            QPalette palette(item->palette());
-            palette.setBrush(QPalette::Window, QBrush(pixmap));
-            item->setPalette(palette);
-        }
-        else
-        {
-            QPalette palette(item->palette());
-
-            if (iter->bgcolor.alpha == 0)
-                palette.setColor(QPalette::Window, Qt::transparent);
-            else
-                palette.setColor(QPalette::Window, bgcolor);
-
-            item->setPalette(palette);
-        }
-
-        // Add the buttons to the item widget
-        if (iter->atoms.empty())
-        {
-            delete item;
-            continue;
-        }
-
-        vector<PGSUBVIEWATOM_T>::iterator itAtom;
-
-        for (itAtom = iter->atoms.begin(); itAtom != iter->atoms.end(); ++itAtom)
-        {
-            int scaWidth = scale(itAtom->width);
-            int scaHeight = scale(itAtom->height);
-
-            QLabel *label = new QLabel(item);
-            label->move(scale(itAtom->left), scale(itAtom->top));
-            label->setFixedSize(scaWidth, scaHeight);
-            label->setObjectName(QString("Label_%1").arg(handleToString(itAtom->handle).c_str()));
-            setAtom(*itAtom, label);
-        }
-
-        iter->item = item;
-
-        if (mVertical && mVLayout)
-            mVLayout->addWidget(item);
-        else if (!mVertical && mHLayout)
-            mHLayout->addWidget(item);
-        else
-        {
-            MSG_ERROR("Layout not initialized!");
-        }
-
-        if (!iter->show && !iter->visible)
-            item->setVisible(false);
-        else
+        if (_addItem(*iter))
             haveItem = true;
     }
 
@@ -1233,9 +1243,9 @@ int TQScrollArea::calcSize(int total)
     DECL_TRACER("TQScrollArea::calcSize(int total)");
 
     vector<_ITEMS_T>::iterator iter;
-    int size = 0;
-    int itemSize = 0;
-    int x = 0;
+    int size = 0;           // Total size
+    int itemSize = 0;       // Size of biggest element
+    int x = 0;              // Number of visible items
 
     if (total <= 0)
     {

@@ -260,6 +260,7 @@ CMD_DEFINATIONS cmdDefinations[] = {
     { "^MUT", false, true, ',' },
     { "^PCL", false, true, ';' },
     { "^PCT", false, true, ',' },
+    { "^POP", false, true, ';' },
     { "^PTC", false, true, ';' },
     { "^PTO", false, true, ';' },
     { "", false, false, '\0' }

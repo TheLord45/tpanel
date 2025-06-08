@@ -134,6 +134,7 @@ class TQScrollArea : public QScrollArea
         void setPosition();
         void setPosition(QWidget *w, int position);
         void mouseTimerEvent();
+        bool _addItem(_ITEMS_T& titem);
         void _addItems(std::vector<_ITEMS_T>& items, bool intern=false);
         void _clearAllItems();
         _ITEMS_T subViewItemToItem(PGSUBVIEWITEM_T& item);
