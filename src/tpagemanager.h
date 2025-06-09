@@ -845,7 +845,6 @@ class TPageManager : public TAmxCommands
         void doPHE(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doPHP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doPHT(int port, std::vector<int>& channels, std::vector<std::string>& pars);
-        void doPOP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doPPA(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doPPF(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doPPG(int port, std::vector<int>& channels, std::vector<std::string>& pars);
@@ -973,6 +972,8 @@ class TPageManager : public TAmxCommands
         void getPHN(int port, std::vector<int>& channels, std::vector<std::string>& pars);
 #endif
         // Commands for subviews (G4/G5)
+        void doPOP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+
         void doSHA(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doSHD(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doSPD(int port, std::vector<int>& channels, std::vector<std::string>& pars);
