@@ -839,8 +839,26 @@ void TQScrollArea::showItem(ulong handle, int position)
             {
                 iter->visible = true;
                 iter->item->setVisible(true);
-                int size = calcSize();
-                applySize(size);
+
+                if (mMain)
+                {
+                    // First we calculate the size. Then we get the actual
+                    // size of the area. Only if the calculated size is
+                    // larger then the actual size, we apply the calculated
+                    // size.
+                    // Otherwise the area will collapse and all items are placed
+                    // over each other!
+                    int size = calcSize();
+                    int fixedSize = 0;
+
+                    if (mVertical)
+                        fixedSize = mMain->size().height();
+                    else
+                        fixedSize = mMain->size().width();
+
+                    if (fixedSize < size)
+                        applySize(size);
+                }
             }
 
             setPosition(iter->item, position);
@@ -866,6 +884,8 @@ void TQScrollArea::toggleItem(ulong handle, int position)
             {
                 iter->visible = false;
                 iter->item->setVisible(false);
+                // In this case an item will vanish and therefore we must
+                // assign the new, smaller calculated size to the area.
                 int size = calcSize();
                 applySize(size);
             }
@@ -873,8 +893,27 @@ void TQScrollArea::toggleItem(ulong handle, int position)
             {
                 iter->visible = true;
                 iter->item->setVisible(true);
-                int size = calcSize();
-                applySize(size);
+
+                if (mMain)
+                {
+                    // First we calculate the size. Then we get the actual
+                    // size of the area. Only if the calculated size is
+                    // larger then the actual size, we apply the calculated
+                    // size.
+                    // Otherwise the area will collapse and all items are placed
+                    // over each other!
+                    int size = calcSize();
+                    int fixedSize = 0;
+
+                    if (mVertical)
+                        fixedSize = mMain->size().height();
+                    else
+                        fixedSize = mMain->size().width();
+
+                    if (fixedSize < size)
+                        applySize(size);
+                }
+
                 setPosition(iter->item, position);
             }
 
