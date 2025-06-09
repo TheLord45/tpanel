@@ -7,6 +7,10 @@ Release: 2.0.0
 
 2025-05-11 Added minimize/maximize to collapsible popups.
 
+2025-05-04 Added animation to G5 subpages who are collapsible.
+
+2025-05-03 Fixed bargraphs for G5 and subviews
+
 2025-04-30 Fixed background of popups and pages for G5. Fixed subviews.
 
 2025-04-25 Added G5 commands ^PCL, ^PCT and ^PTC.
