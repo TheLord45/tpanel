@@ -1602,6 +1602,7 @@ namespace Button
             int mPosTop{0};         // The actual top position of the button
             int mWidthOrig{0};      // The original width
             int mHeightOrig{0};     // The original height
+            SCE_EVENT_t mSceEvents; // Contains values to hold a custom event.
     };
 
     typedef struct BUTTONS_T

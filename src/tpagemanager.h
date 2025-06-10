@@ -148,6 +148,31 @@ typedef struct SUBCOMMAND_t
     int offset{0};                          // Point of animation start (currently not supported!)
 }SUBCOMMAND_t;
 
+/**
+ * @brief typedef struct SCE_EVENT_t
+ * Holds an SCE event. This is when the subview enters one of the 4 defined
+ * states. If one or more of the states is reached, the panel sends a custom
+ * event to the NetLinx.
+ */
+typedef struct SCE_EVENT_t
+{
+    int port{0};            // Port number of button
+    int channel{0};         // Channel number of button
+    ulong handle{0};        // Handle of button
+    int anchor{0};          // > 0: Anchor event
+    int onscreen{0};        // > 0: On screen event
+    int offscreen{0};       // > 0: Off screen event
+    int reorder{0};         // > 0: Reorder event
+
+    bool haveEvent()
+    {
+        if (anchor || onscreen || offscreen || reorder)
+            return true;
+
+        return false;
+    }
+}SCE_EVENT_t;
+
 class TPageManager : public TAmxCommands
 {
     public:
@@ -478,6 +503,7 @@ class TPageManager : public TAmxCommands
         void sendCommandString(int port, const std::string& cmd);
         void sendLevel(int lp, int lv, int level);
         void sendInternalLevel(int lp, int lv, int level);
+        bool sendCustomEvent(int value1, int value2, int value3, const std::string& msg, int evType, int cp, int cn);
         void callSetPassword(ulong handle, const std::string& pw, int x, int y);
         TButtonStates *addButtonState(BUTTONTYPE t, int rap, int rad, int rch, int rcp, int rlp, int rlv);
         TButtonStates *addButtonState(const TButtonStates& bs);
@@ -811,7 +837,6 @@ class TPageManager : public TAmxCommands
         bool overlap(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int h2);
         TPage *loadPage(PAGELIST_T& pl, bool *refresh=nullptr);
         void setButtonCallbacks(Button::TButton *bt);
-        bool sendCustomEvent(int value1, int value2, int value3, const std::string& msg, int evType, int cp, int cn);
         void reloadSystemPage(TPage *page);
         bool _setPageDo(int pageID, const std::string& name, bool forget);
         void runClickQueue();
@@ -973,6 +998,7 @@ class TPageManager : public TAmxCommands
 #endif
         // Commands for subviews (G4/G5)
         void doPOP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doSCE(int port, std::vector<int>& channels, std::vector<std::string>& pars);
 
         void doSHA(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doSHD(int port, std::vector<int>& channels, std::vector<std::string>& pars);
@@ -1038,7 +1064,8 @@ class TPageManager : public TAmxCommands
         std::vector<_CLICK_QUEUE_t> mClickQueue;        // A queue holding click requests. Needed to serialize the clicks.
         std::vector<Button::TButton *> mUpdateViews;    // A queue for the method "updateSubViewItem()"
         bool mUpdateViewsRun{false};                    // TRUE = The thread for the queue mUpdateViews is running
-        std::vector<TButtonStates *> mButtonStates;       // Holds the states for each button
+        std::vector<TButtonStates *> mButtonStates;     // Holds the states for each button
+        std::vector<SCE_EVENT_t> mSceEvents;            // SCE events. For details look at command ^SCE.
         // SIP
 #ifndef _NOSIP_
         bool mPHNautoanswer{false};                     // The state of the SIP autoanswer

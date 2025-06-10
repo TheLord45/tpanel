@@ -938,7 +938,6 @@ TPageManager::TPageManager()
     REG_CMD(doPAGE, "^PGE");    // G5: Flip to a specified page.
     REG_CMD(doPCL, "^PCL");     // G5: Collapse Collapsible Popup Command
     REG_CMD(doPCT, "^PCT");     // G5: Collapsible Popup Custom Toggle Command
-    REG_CMD(doPOP, "^POP");     // Open Collapsible Popup Command
     REG_CMD(doPTC, "^PTC");     // G5: Toggle Collapsible Popup Collapsed Command
     REG_CMD(doPTO, "^PTO");     // G5: Toggle Collapsed Popup Open Command
 
@@ -1063,7 +1062,8 @@ TPageManager::TPageManager()
 #endif
     // SubView commands
 //    REG_CMD(doEPR, "^EPR");     // Execute Push on Release.
-//    REG_CMD(doSCE, "^SCE");     // Configures subpage custom events.
+    REG_CMD(doPOP, "^POP");     // Open Collapsible Popup Command
+    REG_CMD(doSCE, "^SCE");     // Configures subpage custom events.
 //    REG_CMD(doSDR, "^SDR");     // Enabling subpage dynamic reordering.
     REG_CMD(doSHA, "^SHA");     // Subpage Hide All Command
     REG_CMD(doSHD, "^SHD");     // Hides subpage
@@ -12355,6 +12355,143 @@ void TPageManager::getPHN(int, vector<int>&, vector<string>& pars)
     }
 }
 #endif  // _NOSIP_
+
+/**
+ * @brief Subpage custom event command
+ * Configure subpage custom events. This command can be used to enable or
+ * disable the transmission of custom events to the master whenever certain
+ * operations occur. For example, the system programmer may want to be notified
+ * whenever a subpage enters the anchor position. The notification mechanism is
+ * a custom event. The ^SCE command takes the form of a addr range specifying
+ * one or more subpage viewer buttons followed by a comma separated list of
+ * custom event numbers. If the number is 0 or blank for a given event type
+ * then no custom event will be transmitted when that event occurs. If a number
+ * is specified, then it is used as the EVENTID value for the custom event.
+ * The range of 32001 to 65535 has been reserved in the panel for user custom
+ * event numbers. A different value could be used but might collide with other
+ * AMX event numbers. Event configuration is not permanent and all event
+ * numbers revert to the default of 0 when the panel restarts.
+ *
+ * SYNTAX:
+ *    "'^SCE-<addr range>,<optional anchor event num>,<optional onscreen event num>,
+ *    <optional offscreen event num>,<optional reorder event num>'"
+ * VARIABLES:
+ *    address range: Address codes of buttons to affect. A '.' between addresses
+ *       includes the range, and & between addresses includes each address.
+ *    anchor event number: 0 for no event or a value from 32001 to 65535.
+ *    onscreen event number: 0 for no event or a value from 32001 to 65535.
+ *    offscreen event number: 0 for no event or a value from 32001 to 65535.
+ *    reorder event number: 0 for no event or a value from 32001 to 65535.
+ *
+ * The events are:
+ * • anchor - a new subpage has docked in the anchor position.
+ * • onscreen - a docking operation has been completed and the subpages in the
+ *   list are now onscreen. This list will include the anchor along with any
+ *   subpages that may be partially onscreen.
+ * • offscreen - a docking operation has been completed and the subpages in the
+ *   list are now offscreen.
+ * • reorder - the user has reordered the subpages in the set and the list
+ *   contains all subpages in the new order without regard to onscreen or
+ *   offscreen state.
+ *   In response to any or all of the above events, the panel will create a
+ *   string which is a list of subpage names separated by a pipe (|) character.
+ *   The string for the anchor event is a single subpage name. If this string is
+ *   too long to be transmitted in a single custom event, then multiple custom
+ *   events will be created and transmitted. If defined, the events are sent in
+ *   this order when a docking operation completes on a given viewer button:
+ *   anchor, onscreen, offscreen. If reorder is defined and occurs, it is sent
+ *   first: reorder, anchor, onscreen, offscreen. The format of the custom event
+ *   transmitted to the master is as follows:
+ *   Custom Event   Property Value
+ *     Port         port command was received on
+ *     ID           address of the button generating the event
+ *     Type         the non-zero event number in the ^SCE command
+ *     Flag         0
+ *     Value 1      which one of possible multiple events this is (1 based)
+ *     Value 2      total number of events needed to send the entire string
+ *     Value 3      the total size of the original string in bytes
+ *     Text         pipe character separated list of subpage names
+ */
+void TPageManager::doSCE(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doSCE(int port, vector<int>& channels, vector<string>& pars)");
+
+    if (pars.size() < 1)
+        return;
+
+    int anchorNum = 0;
+    int onscreenNum = 0;
+    int offscreenNum = 0;
+    int reorderNum = 0;
+
+    for (size_t i = 0; i < pars.size(); ++i)
+    {
+        switch (i)
+        {
+            case 0: anchorNum = atoi(pars[i].c_str()); break;
+            case 1: onscreenNum = atoi(pars[i].c_str()); break;
+            case 2: offscreenNum = atoi(pars[i].c_str()); break;
+            case 3: reorderNum = atoi(pars[i].c_str()); break;
+            default:
+                MSG_WARNING("Unknown parameter " << pars[i] << " is ignored!");
+        }
+    }
+
+    vector<TMap::MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError())
+    {
+        PRINT_LAST_ERROR();
+        return;
+    }
+
+    if (map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (!buttons.empty())
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+            // Find the button in the list before adding it
+            vector<SCE_EVENT_t>::iterator iter;
+            bool found = false;
+
+            if (!mSceEvents.empty())
+            {
+                for (iter = mSceEvents.begin(); iter != mSceEvents.end(); ++iter)
+                {
+                    if (iter->handle == bt->getHandle())
+                    {
+                        iter->anchor = anchorNum;
+                        iter->onscreen = onscreenNum;
+                        iter->offscreen = offscreenNum;
+                        iter->reorder = reorderNum;
+                        found = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!found)
+            {
+                SCE_EVENT_t sce;
+                sce.anchor = anchorNum;
+                sce.onscreen = onscreenNum;
+                sce.offscreen = offscreenNum;
+                sce.reorder = reorderNum;
+                sce.port = bt->getChannelPort();
+                sce.channel = bt->getChannelNumber();
+                sce.handle = bt->getHandle();
+                mSceEvents.push_back(sce);
+            }
+        }
+    }
+}
 
 /*
  *  Hide all subpages in a subpage viewer button.
