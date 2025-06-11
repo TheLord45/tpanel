@@ -12452,6 +12452,7 @@ void TPageManager::doSCE(int port, vector<int>& channels, vector<string>& pars)
 
     if (!buttons.empty())
     {
+        ::map<ulong, string> spages;
         vector<Button::TButton *>::iterator mapIter;
 
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
@@ -12460,6 +12461,7 @@ void TPageManager::doSCE(int port, vector<int>& channels, vector<string>& pars)
             // Find the button in the list before adding it
             vector<SCE_EVENT_t>::iterator iter;
             bool found = false;
+            TSubPage *sp = getSubPage(bt->getParent());
 
             if (!mSceEvents.empty())
             {
@@ -12471,6 +12473,10 @@ void TPageManager::doSCE(int port, vector<int>& channels, vector<string>& pars)
                         iter->onscreen = onscreenNum;
                         iter->offscreen = offscreenNum;
                         iter->reorder = reorderNum;
+
+                        if (sp)
+                            spages.insert(pair<ulong, string>(bt->getParent(), sp->getName()));
+
                         found = true;
                         break;
                     }
@@ -12488,8 +12494,29 @@ void TPageManager::doSCE(int port, vector<int>& channels, vector<string>& pars)
                 sce.channel = bt->getChannelNumber();
                 sce.handle = bt->getHandle();
                 mSceEvents.push_back(sce);
+
+                if (sp)
+                    spages.insert(pair<ulong, string>(bt->getParent(), sp->getName()));
             }
         }
+
+        // Create a list of pages separated by a |
+        ::map<ulong, string>::iterator pgIter;
+        string pages;
+
+        for (pgIter = spages.begin(); pgIter != spages.end(); ++pgIter)
+        {
+            if (!pages.empty())
+                pages.append("|");
+
+            pages += pgIter->second;
+        }
+
+        // Apply the the page list to each event entry
+        vector<SCE_EVENT_t>::iterator evIter;
+
+        for (evIter = mSceEvents.begin(); evIter != mSceEvents.end(); ++evIter)
+            evIter->pages = pages;
     }
 }
 
@@ -12511,6 +12538,7 @@ void TPageManager::doSHA(int port, vector<int> &channels, vector<string> &pars)
     if (!buttons.empty())
     {
         vector<Button::TButton *>::iterator mapIter;
+        int evCount = 0;
 
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
         {
@@ -12518,6 +12546,18 @@ void TPageManager::doSHA(int port, vector<int> &channels, vector<string> &pars)
 
             if (_hideAllSubViewItems)
                 _hideAllSubViewItems(bt->getHandle());
+
+            // Send a custom event in case there is one defined.
+            vector<SCE_EVENT_t>::iterator evIter;
+
+            for (evIter = mSceEvents.begin(); evIter != mSceEvents.end(); ++evIter)
+            {
+                if (evIter->offscreen && evIter->handle == bt->getHandle())
+                {
+                    evCount++;
+                    sendCustomEvent(evCount, 1, 1, evIter->pages, evIter->offscreen, bt->getChannelPort(), bt->getChannelNumber());
+                }
+            }
         }
     }
 }
@@ -12562,6 +12602,7 @@ void TPageManager::doSHD(int port, vector<int>& channels, vector<string>& pars)
 
     if (!buttons.empty())
     {
+        int evCount = 0;
         vector<Button::TButton *>::iterator mapIter;
 
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
@@ -12583,6 +12624,18 @@ void TPageManager::doSHD(int port, vector<int>& channels, vector<string>& pars)
                 {
                     if (_hideSubViewItem)
                         _hideSubViewItem(sub->getHandle(), bt->getHandle());
+
+                    // Send a custom event in case there is one defined.
+                    vector<SCE_EVENT_t>::iterator evIter;
+
+                    for (evIter = mSceEvents.begin(); evIter != mSceEvents.end(); ++evIter)
+                    {
+                        if (evIter->offscreen && evIter->handle == bt->getHandle())
+                        {
+                            evCount++;
+                            sendCustomEvent(evCount, 1, 1, evIter->pages, evIter->offscreen, bt->getChannelPort(), bt->getChannelNumber());
+                        }
+                    }
 
                     break;
                 }
@@ -12735,6 +12788,7 @@ void TPageManager::doSSH(int port, vector<int> &channels, vector<string> &pars)
 
     if (!buttons.empty())
     {
+        int evCount = 0;
         vector<Button::TButton *>::iterator mapIter;
 
         for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
@@ -12756,6 +12810,17 @@ void TPageManager::doSSH(int port, vector<int> &channels, vector<string> &pars)
                     if (_showSubViewItem)
                         _showSubViewItem(sub->getHandle(), bt->getHandle(), position, time);
 
+                    // Send a custom event in case there is one defined.
+                    vector<SCE_EVENT_t>::iterator evIter;
+
+                    for (evIter = mSceEvents.begin(); evIter != mSceEvents.end(); ++evIter)
+                    {
+                        if (evIter->anchor && evIter->handle == bt->getHandle())
+                        {
+                            evCount++;
+                            sendCustomEvent(evCount, 1, 1, evIter->pages, evIter->anchor, bt->getChannelPort(), bt->getChannelNumber());
+                        }
+                    }
                     break;
                 }
             }

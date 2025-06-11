@@ -163,6 +163,7 @@ typedef struct SCE_EVENT_t
     int onscreen{0};        // > 0: On screen event
     int offscreen{0};       // > 0: Off screen event
     int reorder{0};         // > 0: Reorder event
+    std::string pages;      // The list of pages where the event depends
 
     bool haveEvent()
     {
