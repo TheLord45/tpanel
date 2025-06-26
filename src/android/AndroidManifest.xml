@@ -2,8 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     android:versionName="-- %%INSERT_VERSION_NAME%% --"
     android:versionCode="-- %%INSERT_VERSION_CODE%% --"
-    android:installLocation="auto"
-    package="org.qtproject.theosys">
+    android:installLocation="auto">
     <!-- The following comment will be replaced upon deployment with default permissions based on the dependencies of the application.
          Remove the comment if you do not require these default permissions. -->
     <!-- %%INSERT_PERMISSIONS -->
@@ -12,9 +11,29 @@
          Remove the comment if you do not require these default features. -->
     <!-- %%INSERT_FEATURES -->
 
-    <supports-screens android:largeScreens="true" android:normalScreens="true" android:anyDensity="true" android:smallScreens="true"/>
-    <application android:hardwareAccelerated="true" android:name="org.qtproject.qt.android.bindings.QtApplication" android:label="-- %%INSERT_APP_NAME%% --" android:extractNativeLibs="true" android:requestLegacyExternalStorage="true" android:allowNativeHeapPointerTagging="false" android:allowBackup="true" android:fullBackupOnly="false" android:theme="@style/Theme.AppCompat" android:icon="@drawable/icon">
-        <activity android:configChanges="orientation|uiMode|screenLayout|screenSize|smallestScreenSize|layoutDirection|locale|fontScale|keyboard|keyboardHidden|navigation|mcc|mnc|density" android:name="org.qtproject.qt.android.bindings.QtActivity" android:label="-- %%INSERT_APP_NAME%% --" android:launchMode="singleTop" android:screenOrientation="nosensor" android:exported="true" android:theme="@style/splashScreenTheme">
+    <supports-screens
+        android:largeScreens="true"
+        android:normalScreens="true"
+        android:anyDensity="true"
+        android:smallScreens="true"/>
+    <application
+        android:hardwareAccelerated="true"
+        android:name="org.qtproject.qt.android.bindings.QtApplication"
+        android:label="-- %%INSERT_APP_NAME%% --"
+        android:requestLegacyExternalStorage="true"
+        android:allowNativeHeapPointerTagging="false"
+        android:allowBackup="true"
+        android:fullBackupOnly="false"
+        android:theme="@style/Theme.AppCompat.NoActionBar"
+        android:icon="@drawable/icon">
+        <activity
+            android:configChanges="orientation|uiMode|screenLayout|screenSize|smallestScreenSize|layoutDirection|locale|fontScale|keyboard|keyboardHidden|navigation|mcc|mnc|density"
+            android:name="org.qtproject.qt.android.bindings.QtActivity"
+            android:label="-- %%INSERT_APP_NAME%% --"
+            android:launchMode="singleTop"
+            android:screenOrientation="nosensor"
+            android:exported="true"
+            android:theme="@style/splashScreenTheme">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
@@ -39,17 +58,7 @@
             <!-- <meta-data android:name="android.app.system_libs_prefix" android:value="/system/lib/"/> -->
             <!--  Messages maps -->
             <meta-data android:value="@string/fatal_error_msg" android:name="android.app.fatal_error_msg"/>
-            <!--  Messages maps -->
-            <!-- Splash screen -->
-            <!-- Orientation-specific (portrait/landscape) data is checked first. If not available for current orientation,
-                 then android.app.splash_screen_drawable. For best results, use together with splash_screen_sticky and
-                 use hideSplashScreen() with a fade-out animation from Qt Android Extras to hide the splash screen when you
-                 are done populating your window with content. -->
-            <!-- meta-data android:name="android.app.splash_screen_drawable_portrait" android:resource="@drawable/logo_portrait" / -->
-            <!-- meta-data android:name="android.app.splash_screen_drawable_landscape" android:resource="@drawable/logo_landscape" / -->
-            <!-- meta-data android:name="android.app.splash_screen_drawable" android:resource="@drawable/logo"/ -->
-            <!-- meta-data android:name="android.app.splash_screen_sticky" android:value="true"/ -->
-            <!-- Splash screen -->
+            <meta-data android:value="@string/unsupported_android_version" android:name="android.app.unsupported_android_version"/>
             <!-- Background running -->
             <!-- Warning: changing this value to true may cause unexpected crashes if the
                           application still try to draw after
@@ -71,9 +80,6 @@
             <meta-data android:name="android.app.splash_screen_drawable" android:resource="@drawable/splashscreen"/>
             <meta-data android:name="android.app.splash_screen_drawable_portrait" android:resource="@drawable/splashscreen_port"/>
             <meta-data android:name="android.app.splash_screen_drawable_landscape" android:resource="@drawable/splashscreen_land"/>
-            <meta-data android:name="android.app.splash_screen_drawable" android:resource="@drawable/splashscreen"/>
-            <meta-data android:name="android.app.splash_screen_drawable_portrait" android:resource="@drawable/splashscreen_port"/>
-            <meta-data android:name="android.app.splash_screen_drawable_landscape" android:resource="@drawable/splashscreen_land"/>
         </activity>
         <activity
             android:name=".SettingsActivity"
@@ -82,6 +88,12 @@
             android:screenOrientation="nosensor"
             android:theme="@style/Theme.AppCompat">
             <meta-data android:name="android.support.PARENT_ACTIVITY" android:value="org.qtproject.qt.android.bindings.QtApplication"/>
+            <!-- <meta-data android:name="android.app.splash_screen_drawable" android:resource="@drawable/logo"/>
+            <meta-data android:name="android.app.splash_screen_drawable_portrait" android:resource="@drawable/logo_portrait"/>
+            <meta-data android:name="android.app.splash_screen_drawable_landscape" android:resource="@drawable/logo_landscape"/> -->
+            <meta-data android:name="android.app.splash_screen_drawable" android:resource="@drawable/splashscreen"/>
+            <meta-data android:name="android.app.splash_screen_drawable_portrait" android:resource="@drawable/splashscreen_port"/>
+            <meta-data android:name="android.app.splash_screen_drawable_landscape" android:resource="@drawable/splashscreen_land"/>
         </activity>
     </application>
 

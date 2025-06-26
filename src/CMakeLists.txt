@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(tpanel VERSION 1.4.1 LANGUAGES CXX)
+project(tpanel VERSION 2.0.0 LANGUAGES CXX)
 
 if(ANDROID)
     message("** Current platform (${ANDROID_ABI}): ${ANDROID_PLATFORM}")

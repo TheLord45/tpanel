@@ -19,7 +19,9 @@ apply plugin: qtGradlePluginType
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
-    //noinspection GradleDependency
+//    implementation 'com.google.android.material:material:1.0.0'
+//    implementation 'androidx.appcompat:appcompat:1.7.1'
+//    noinspection GradleDependency
     implementation 'androidx.core:core:1.13.1'
     implementation 'androidx.appcompat:appcompat:1.1.0'
     implementation "androidx.preference:preference:1.1.0"
@@ -32,8 +34,8 @@ android {
      * - androidBuildToolsVersion,
      * - androidCompileSdkVersion
      * - qtAndroidDir - holds the path to qt android files
-     *                  needed to build any Qt application
-     *                  on Android.
+     *                   needed to build any Qt application
+     *                   on Android.
      * - qtGradlePluginType - whether to build an app or a library
      *
      * are defined in gradle.properties file. This file is
@@ -41,12 +43,11 @@ android {
      * Changing them manually might break the compilation!
      *******************************************************/
 
-
     namespace androidPackageName
     compileSdkVersion androidCompileSdkVersion
-//    buildToolsVersion androidBuildToolsVersion
+    buildToolsVersion androidBuildToolsVersion
     ndkVersion androidNdkVersion
-
+    namespace 'org.qtproject.theosys'
     // Extract native libraries from the APK
 //    packagingOptions.jniLibs.useLegacyPackaging true
 
@@ -83,13 +84,9 @@ android {
 
     defaultConfig {
         resConfig "en"
-        minSdkVersion = qtMinSdkVersion
-        targetSdkVersion = qtTargetSdkVersion
+        minSdkVersion qtMinSdkVersion
+        targetSdkVersion qtTargetSdkVersion
         ndk.abiFilters = qtTargetAbiList.split(",")
-        applicationId = 'org.qtproject.theosys'
-//        qtMinSdkVersion = 30
-//        qtTargetSdkVersion = 35
-//        qtTargetAbiList = [ 'arm64-v8a', 'x86_64', 'armeabi-v7a', 'x86' ]
     }
 
     packagingOptions {
