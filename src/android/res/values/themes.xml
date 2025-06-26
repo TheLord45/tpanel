@@ -16,11 +16,17 @@
  along with this program; if not, write to the Free Software Foundation,
  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
 -->
-<resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Theme.Tpanel_settings" parent="material">
-        <!-- Customize your theme here. -->
+<resources>
+    <!-- base set of styles that apply to all versions -->
+    <style name="TPanelAppTheme" parent="Theme.AppCompat.NoActionBar">
+        <!-- <item name="android:drawable/screen_background_selector_light">@nullable</item> -->
+    </style>
+
+    <!-- declare the theme name that's actually applied in the manifest file -->
+    <style name="TPanelAppTheme.NoActionBar">
         <item name="android:windowActionBar">false</item>
         <item name="android:windowNoTitle">true</item>
     </style>
+
 </resources>
+
