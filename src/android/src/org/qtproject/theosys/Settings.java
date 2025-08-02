@@ -58,6 +58,7 @@ public class Settings extends Logger
         }
 
         act.setTheme(R.style.Theme_Tpanel_settings);
+//        act.setTheme(R.style.TPanelAppTheme);
         deploySurfaces();
         act.startActivity(m_intent);
     }

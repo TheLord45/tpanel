@@ -3,6 +3,9 @@ ChangeLog
 
 Release: 2.0.0
 ===============================================================================
+2025-08-02 Fixed icon and bitmap drawing to show them correctly resized.
+           Added support for G5 files on NetLinx.
+
 2025-06-09 Fixed scroll areas
 
 2025-06-08 Added G5 command ^POP.

@@ -1454,7 +1454,7 @@ void TPageManager::showSetup()
 {
     DECL_TRACER("TPageManager::showSetup()");
 #ifdef Q_OS_ANDROID
-    // Scan Netlinx for TP4 files and update the list of setup.
+    // Scan Netlinx for TP4/TP5 files and update the list of setup.
     if (TConfig::getController().compare("0.0.0.0") != 0)
     {
         if (_startWait)
@@ -1463,7 +1463,7 @@ void TPageManager::showSetup()
         TTPInit tpinit;
         std::vector<TTPInit::FILELIST_t> fileList;
         tpinit.setPath(TConfig::getProjectPath());
-        fileList = tpinit.getFileList(".tp4");
+        fileList = tpinit.getFileList(".tp4|.tp5");
 
         if (fileList.size() > 0)
         {
@@ -5698,7 +5698,7 @@ void TPageManager::doON(int port, vector<int>&, vector<string>& pars)
 
     if (c <= 0)
     {
-        MSG_WARNING("Invalid channel " << c << "! Ignoring command.");
+        MSG_WARNING("Invalid channel " << c << "! Ignoring command ON.");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -5760,7 +5760,7 @@ void TPageManager::doOFF(int port, vector<int>&, vector<string>& pars)
 
     if (c <= 0)
     {
-        MSG_WARNING("Invalid channel " << c << "! Ignoring command.");
+        MSG_WARNING("Invalid channel " << c << "! Ignoring command OFF.");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -5815,7 +5815,7 @@ void TPageManager::doLEVEL(int port, vector<int>&, vector<string>& pars)
 
     if (c <= 0)
     {
-        MSG_WARNING("Invalid channel " << c << "! Ignoring command.");
+        MSG_WARNING("Invalid channel " << c << "! Ignoring command LEVEL.");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -6026,7 +6026,7 @@ void TPageManager::doAFP(int, vector<int>&, vector<string>& pars)
 
     if (pars.size() < 4)
     {
-        MSG_ERROR("Less than 4 parameters!");
+        MSG_ERROR("Command AFP: Less than 4 parameters!");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -6065,7 +6065,7 @@ void TPageManager::doAPG(int, std::vector<int>&, std::vector<std::string>& pars)
 
     if (pars.size() < 2)
     {
-        MSG_ERROR("Less than 2 parameters!");
+        MSG_ERROR("Command APG: Less than 2 parameters!");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -6118,7 +6118,7 @@ void TPageManager::doCPG(int, std::vector<int>&, std::vector<std::string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 1 parameter but got only 1!");
+        MSG_ERROR("Command CPG: Expecting 1 parameter but got only 1!");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -6161,7 +6161,7 @@ void TPageManager::doDPG(int, std::vector<int>&, std::vector<std::string>& pars)
 
     if (pars.size() < 2)
     {
-        MSG_ERROR("Less than 2 parameters!");
+        MSG_ERROR("Command DPG: Less than 2 parameters!");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -6204,7 +6204,7 @@ void TPageManager::doPHE(int, vector<int>&, vector<string>& pars)
 
     if (pars.size() < 2)
     {
-        MSG_ERROR("Less than 2 parameters!");
+        MSG_ERROR("Command PHE: Less than 2 parameters!");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -6262,7 +6262,7 @@ void TPageManager::doPHP(int, vector<int>&, vector<string>& pars)
 
     if (pars.size() < 2)
     {
-        MSG_ERROR("Less than 2 parameters!");
+        MSG_ERROR("Command: PHP: Less than 2 parameters!");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -6317,7 +6317,7 @@ void TPageManager::doPHT(int, vector<int>&, vector<string>& pars)
 
     if (pars.size() < 2)
     {
-        MSG_ERROR("Less than 2 parameters!");
+        MSG_ERROR("Command PHT: Less than 2 parameters!");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -6355,7 +6355,7 @@ void TPageManager::doPOP(int, vector<int>&, vector<string>& pars)
 
     if (pars.empty())
     {
-        MSG_WARNING("Expect at least 1 parameter but got none!");
+        MSG_WARNING("Command POP: Expect at least 1 parameter but got none!");
         return;
     }
 
@@ -6419,7 +6419,7 @@ void TPageManager::doPPF(int, std::vector<int>&, std::vector<std::string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("At least 1 parameter is expected!");
+        MSG_ERROR("Command PPF: At least 1 parameter is expected!");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -6445,7 +6445,7 @@ void TPageManager::doPPG(int, std::vector<int>&, std::vector<std::string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("At least 1 parameter is expected!");
+        MSG_ERROR("Command PPG: At least 1 parameter is expected!");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -6513,7 +6513,7 @@ void TPageManager::doPPK(int, std::vector<int>&, std::vector<std::string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("At least 1 parameter is expected!");
+        MSG_ERROR("Command PPK: At least 1 parameter is expected!");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -6556,7 +6556,7 @@ void TPageManager::doPPM(int, std::vector<int>&, std::vector<std::string>& pars)
 
     if (pars.size() < 2)
     {
-        MSG_ERROR("Expecting 2 parameters!");
+        MSG_ERROR("Command PPM: Expecting 2 parameters!");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -6594,7 +6594,7 @@ void TPageManager::doPPN(int, std::vector<int>&, std::vector<std::string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("At least 1 parameter is expected!");
+        MSG_ERROR("Command PPN: At least 1 parameter is expected!");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -6618,7 +6618,7 @@ void TPageManager::doPPT(int, vector<int>&, vector<string>& pars)
 
     if (pars.size() < 2)
     {
-        MSG_ERROR("Expecting 2 parameters!");
+        MSG_ERROR("Command PPT: Expecting 2 parameters!");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -6697,7 +6697,7 @@ void TPageManager::doPSE(int, vector<int>&, vector<string>& pars)
 
     if (pars.size() < 2)
     {
-        MSG_ERROR("Less than 2 parameters!");
+        MSG_ERROR("Command PSE: Less than 2 parameters!");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -6755,7 +6755,7 @@ void TPageManager::doPSP(int, vector<int>&, vector<string>& pars)
 
     if (pars.size() < 2)
     {
-        MSG_ERROR("Less than 2 parameters!");
+        MSG_ERROR("Command PSP: Less than 2 parameters!");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -6808,7 +6808,7 @@ void TPageManager::doPST(int, vector<int>&, vector<string>& pars)
 
     if (pars.size() < 2)
     {
-        MSG_ERROR("Less than 2 parameters!");
+        MSG_ERROR("Command PST: Less than 2 parameters!");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -6846,7 +6846,7 @@ void TPageManager::doPAGE(int, std::vector<int>&, std::vector<std::string>& pars
 
     if (pars.empty())
     {
-        MSG_WARNING("Got no page parameter!");
+        MSG_WARNING("Command PAGE: Got no page parameter!");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -6884,7 +6884,7 @@ void TPageManager::doPCL(int port, vector<int>& channels, vector<std::string>& p
 
     if (pars.empty())
     {
-        MSG_WARNING("Got no page parameter!");
+        MSG_WARNING("Command PCL: Got no page parameter!");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -6951,7 +6951,7 @@ void TPageManager::doPCT(int port, vector<int>& channels, vector<std::string>& p
 
     if (pars.empty())
     {
-        MSG_WARNING("Got no page parameter!");
+        MSG_WARNING("Command PCT: Got no page parameter!");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -6962,7 +6962,7 @@ void TPageManager::doPCT(int port, vector<int>& channels, vector<std::string>& p
 
     if (pars.size() < 2)
     {
-        MSG_WARNING("Expected at least 2 parameters but got " << pars.size() << "!");
+        MSG_WARNING("Command PCT: Expected at least 2 parameters but got " << pars.size() << "!");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -7134,7 +7134,7 @@ void TPageManager::doPTC(int, vector<int>&, vector<string>& pars)
 
     if (pars.empty())
     {
-        MSG_WARNING("Expect at least 1 parameter but got none!");
+        MSG_WARNING("Command PTC: Expect at least 1 parameter but got none!");
         return;
     }
 
@@ -7192,7 +7192,7 @@ void TPageManager::doPTO(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.empty())
     {
-        MSG_WARNING("Expect at least 1 parameter but got none!");
+        MSG_WARNING("Command PTO: Expect at least 1 parameter but got none!");
         return;
     }
 
@@ -7244,7 +7244,7 @@ void TPageManager::doANI(int port, std::vector<int> &channels, std::vector<std::
 
     if (pars.size() < 3)
     {
-        MSG_ERROR("Expecting 3 parameters but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command ANI: Expecting 3 parameters but got " << pars.size() << "! Ignoring command.");
         return;
     }
 
@@ -7287,7 +7287,7 @@ void TPageManager::doAPF(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 2)
     {
-        MSG_ERROR("Expecting 2 parameters but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command APF: Expecting 2 parameters but got " << pars.size() << "! Ignoring command.");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -7338,7 +7338,7 @@ void TPageManager::doBAT(int port, vector<int> &channels, vector<string> &pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 1 parameters but got none! Ignoring command.");
+        MSG_ERROR("Command BAT: Expecting 1 parameters but got none! Ignoring command.");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -7406,7 +7406,7 @@ void TPageManager::doBAU(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 1 parameters but got none! Ignoring command.");
+        MSG_ERROR("Command BAU: Expecting 1 parameters but got none! Ignoring command.");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -7560,7 +7560,7 @@ void TPageManager::doBCB(int port, vector<int> &channels, vector<string> &pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 1 parameters but got none! Ignoring command.");
+        MSG_ERROR("Command do BCB: Expecting 1 parameters but got none! Ignoring command.");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -7615,7 +7615,7 @@ void TPageManager::getBCB(int port, vector<int> &channels, vector<string> &pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 1 parameters but got none! Ignoring command.");
+        MSG_ERROR("Command get BCB: Expecting 1 parameters but got none! Ignoring command.");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -7705,7 +7705,7 @@ void TPageManager::doBCF(int port, vector<int>& channels, vector<std::string>& p
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 1 parameters but got none! Ignoring command.");
+        MSG_ERROR("Command do BCF: Expecting 1 parameters but got none! Ignoring command.");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -7760,7 +7760,7 @@ void TPageManager::getBCF(int port, vector<int> &channels, vector<string> &pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 1 parameters but got none! Ignoring command.");
+        MSG_ERROR("Command get BCF: Expecting 1 parameters but got none! Ignoring command.");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -7850,7 +7850,7 @@ void TPageManager::doBCT(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 1 parameters but got none! Ignoring command.");
+        MSG_ERROR("Command do BCT: Expecting 1 parameters but got none! Ignoring command.");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -7905,7 +7905,7 @@ void TPageManager::getBCT(int port, vector<int> &channels, vector<string> &pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 1 parameters but got none! Ignoring command.");
+        MSG_ERROR("Command get BCT: Expecting 1 parameters but got none! Ignoring command.");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -7994,7 +7994,7 @@ void TPageManager::doBDO(int port, vector<int>& channels, vector<std::string>& p
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 1 parameters but got none! Ignoring command.");
+        MSG_ERROR("Command do BDO: Expecting 1 parameters but got none! Ignoring command.");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -8073,7 +8073,7 @@ void TPageManager::doBFB(int port, vector<int>& channels, vector<std::string>& p
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 1 parameters but got none! Ignoring command.");
+        MSG_ERROR("Command do BFB: Expecting 1 parameters but got none! Ignoring command.");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -8139,7 +8139,7 @@ void TPageManager::doBIM(int port, vector<int>& channels, vector<std::string>& p
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 1 parameters but got none! Ignoring command.");
+        MSG_ERROR("Command do BIM: Expecting 1 parameters but got none! Ignoring command.");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -8194,7 +8194,7 @@ void TPageManager::doBMC(int port, vector<int>& channels, vector<std::string>& p
 
     if (pars.size() < 5)
     {
-        MSG_ERROR("Expecting 5 parameters but got " << pars.size() << ". Ignoring command.");
+        MSG_ERROR("Command do BMC: Expecting 5 parameters but got " << pars.size() << ". Ignoring command.");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -8320,7 +8320,7 @@ void TPageManager::doBMF (int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 2)
     {
-        MSG_ERROR("Less then 2 parameters!");
+        MSG_ERROR("Command BMF: Less then 2 parameters!");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -8885,7 +8885,7 @@ void TPageManager::doBML(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 1 parameter but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command BML: Expecting 1 parameter but got " << pars.size() << "! Ignoring command.");
         return;
     }
 
@@ -8932,7 +8932,7 @@ void TPageManager::doBMP(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 2)
     {
-        MSG_ERROR("Expecting 2 parameters but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command do BMP: Expecting 2 parameters but got " << pars.size() << "! Ignoring command.");
         return;
     }
 
@@ -9014,7 +9014,7 @@ void TPageManager::getBMP(int port, vector<int> &channels, vector<string> &pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 1 parameters but got none! Ignoring command.");
+        MSG_ERROR("Command get BMP: Expecting 1 parameters but got none! Ignoring command.");
         return;
     }
 
@@ -9069,7 +9069,7 @@ void TPageManager::doBOP(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 2)
     {
-        MSG_ERROR("Expecting 2 parameters but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command do BOP: Expecting 2 parameters but got " << pars.size() << "! Ignoring command.");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -9123,7 +9123,7 @@ void TPageManager::getBOP(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 1 parameters but got none! Ignoring command.");
+        MSG_ERROR("Command get BOP: Expecting 1 parameters but got none! Ignoring command.");
         return;
     }
 
@@ -9165,7 +9165,7 @@ void TPageManager::doBOR(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command do BOR: Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -9248,7 +9248,7 @@ void TPageManager::doBOS(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 2)
     {
-        MSG_ERROR("Expecting at least 2 parameters but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command BOS: Expecting at least 2 parameters but got " << pars.size() << "! Ignoring command.");
         return;
     }
 
@@ -9290,7 +9290,7 @@ void TPageManager::doBRD(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command do BRD: Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
         return;
     }
 
@@ -9336,7 +9336,7 @@ void TPageManager::getBRD(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command get BRD: Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
         return;
     }
 
@@ -9381,7 +9381,7 @@ void TPageManager::doBSP(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command BSP: Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -9554,7 +9554,7 @@ void TPageManager::doBSO(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 2)
     {
-        MSG_ERROR("Expecting 2 parameters but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command BSO: Expecting 2 parameters but got " << pars.size() << "! Ignoring command.");
         return;
     }
 
@@ -9606,7 +9606,7 @@ void TPageManager::doBWW(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 1 parameter but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command do BWW: Expecting 1 parameter but got " << pars.size() << "! Ignoring command.");
         return;
     }
 
@@ -9649,7 +9649,7 @@ void TPageManager::getBWW(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command get BWW: Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
         return;
     }
 
@@ -9716,7 +9716,7 @@ void TPageManager::doDPF(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command DPF: Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
         return;
     }
 
@@ -9791,7 +9791,7 @@ void TPageManager::doENA(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.empty())
     {
-        MSG_ERROR("Expecting 1 parameter but got none! Ignoring command.");
+        MSG_ERROR("Command ENA: Expecting 1 parameter but got none! Ignoring command.");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -9846,7 +9846,7 @@ void TPageManager::doFON(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 2)
     {
-        MSG_ERROR("Expecting 2 parameters but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command do FON: Expecting 2 parameters but got " << pars.size() << "! Ignoring command.");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -9889,7 +9889,7 @@ void TPageManager::getFON(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command get FON: Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -9942,7 +9942,7 @@ void TPageManager::doGDI(int port, vector<int>& channels, vector<std::string>& p
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 1 parameter but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command GDI: Expecting 1 parameter but got " << pars.size() << "! Ignoring command.");
         return;
     }
 
@@ -10020,7 +10020,7 @@ void TPageManager::doGLH(int port, vector<int>& channels, vector<std::string>& p
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 1 parameter but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command GLH: Expecting 1 parameter but got " << pars.size() << "! Ignoring command.");
         return;
     }
 
@@ -10061,7 +10061,7 @@ void TPageManager::doGLL(int port, vector<int>& channels, vector<std::string>& p
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 1 parameter but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command GLL: Expecting 1 parameter but got " << pars.size() << "! Ignoring command.");
         return;
     }
 
@@ -10102,7 +10102,7 @@ void TPageManager::doGSC(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 1 parameter but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command GSC: Expecting 1 parameter but got " << pars.size() << "! Ignoring command.");
         return;
     }
 
@@ -10136,7 +10136,7 @@ void TPageManager::doGRD(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 1 parameter but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command GRD: Expecting 1 parameter but got " << pars.size() << "! Ignoring command.");
         return;
     }
 
@@ -10177,7 +10177,7 @@ void TPageManager::doGRU(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 1 parameter but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command GRU: Expecting 1 parameter but got " << pars.size() << "! Ignoring command.");
         return;
     }
 
@@ -10218,7 +10218,7 @@ void TPageManager::doGSN(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 1 parameter but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command GSN: Expecting 1 parameter but got " << pars.size() << "! Ignoring command.");
         return;
     }
 
@@ -10258,7 +10258,7 @@ void TPageManager::doICO(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 2)
     {
-        MSG_ERROR("Expecting 2 parameters but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command do ICO: Expecting 2 parameters but got " << pars.size() << "! Ignoring command.");
         return;
     }
 
@@ -10308,7 +10308,7 @@ void TPageManager::getICO(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command get ICO: Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
         return;
     }
 
@@ -10350,7 +10350,7 @@ void TPageManager::doJSB(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 2)
     {
-        MSG_ERROR("Expecting at least 2 parameters but got less! Ignoring command.");
+        MSG_ERROR("Command: do JSB: Expecting at least 2 parameters but got less! Ignoring command.");
         return;
     }
 
@@ -10396,7 +10396,7 @@ void TPageManager::getJSB(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command get JSB: Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
         return;
     }
 
@@ -10445,7 +10445,7 @@ void TPageManager::doJSI(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 2)
     {
-        MSG_ERROR("Expecting at least 2 parameters but got less! Ignoring command.");
+        MSG_ERROR("Command do JSI: Expecting at least 2 parameters but got less! Ignoring command.");
         return;
     }
 
@@ -10491,7 +10491,7 @@ void TPageManager::getJSI(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command get JSI: Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
         return;
     }
 
@@ -10534,7 +10534,7 @@ void TPageManager::doJST(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 2)
     {
-        MSG_ERROR("Expecting at least 2 parameters but got less! Ignoring command.");
+        MSG_ERROR("Command do JST: Expecting at least 2 parameters but got less! Ignoring command.");
         return;
     }
 
@@ -10580,7 +10580,7 @@ void TPageManager::getJST(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command get JST: Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
         return;
     }
 
@@ -10632,7 +10632,7 @@ void TPageManager::doMSP(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 2)
     {
-        MSG_ERROR("Expecting at least 2 parameter but got less! Command ignored.");
+        MSG_ERROR("Command do MSP: Expecting at least 2 parameter but got less! Command ignored.");
         return;
     }
 
@@ -10671,7 +10671,7 @@ void TPageManager::doTEC(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 2)
     {
-        MSG_ERROR("Expecting at least 2 parameters but got less! Ignoring command.");
+        MSG_ERROR("Command do TEC: Expecting at least 2 parameters but got less! Ignoring command.");
         return;
     }
 
@@ -10708,7 +10708,7 @@ void TPageManager::getTEC(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command get TEC: Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
         return;
     }
 
@@ -10750,7 +10750,7 @@ void TPageManager::doTEF(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 2)
     {
-        MSG_ERROR("Expecting at least 2 parameters but got less! Ignoring command.");
+        MSG_ERROR("Command do TEF: Expecting at least 2 parameters but got less! Ignoring command.");
         return;
     }
 
@@ -10787,7 +10787,7 @@ void TPageManager::getTEF(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command get TEF: Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
         return;
     }
 
@@ -10833,7 +10833,7 @@ void TPageManager::doTXT(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 1 parameters but got none! Ignoring command.");
+        MSG_ERROR("Command do TXT: Expecting 1 parameters but got none! Ignoring command.");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -10901,7 +10901,7 @@ void TPageManager::getTXT(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command get TXT: Expecting at least 1 parameter but got " << pars.size() << "! Ignoring command.");
         return;
     }
 
@@ -10960,7 +10960,7 @@ void TPageManager::doUNI(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 1 parameters but got none! Ignoring command.");
+        MSG_ERROR("Command UNI: Expecting 1 parameters but got none! Ignoring command.");
 #if TESTMODE == 1
         setAllDone();
 #endif
@@ -11036,7 +11036,7 @@ void TPageManager::doUTF(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 1 parameters but got none! Ignoring command.");
+        MSG_ERROR("Command UTF: Expecting 1 parameters but got none! Ignoring command.");
         return;
     }
 
@@ -11095,7 +11095,7 @@ void TPageManager::doVTP (int, vector<int>&, vector<string>& pars)
 
     if (pars.size() < 3)
     {
-        MSG_ERROR("Expected 3 parameters but got only " << pars.size() << " parameters!");
+        MSG_ERROR("Command VTP: Expected 3 parameters but got only " << pars.size() << " parameters!");
         return;
     }
 
@@ -11132,7 +11132,7 @@ void TPageManager::doKPS(int, vector<int>&, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Got no parameter. Ignoring command!");
+        MSG_ERROR("Command KPS: Got no parameter. Ignoring command!");
         return;
     }
 
@@ -11150,7 +11150,7 @@ void TPageManager::doVKS(int, vector<int>&, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Got no parameter. Ignoring command!");
+        MSG_ERROR("Command VKS: Got no parameter. Ignoring command!");
         return;
     }
 
@@ -11237,7 +11237,7 @@ void TPageManager::doAPWD(int, vector<int>&, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Got less then 1 parameter!");
+        MSG_ERROR("Command APWD: Got less then 1 parameter!");
         return;
     }
 
@@ -11265,7 +11265,7 @@ void TPageManager::doPWD(int, vector<int>&, vector<string>& pars)
 
     if (pars.size() < 2)
     {
-        MSG_ERROR("Got less then 2 parameters!");
+        MSG_ERROR("Command PWD: Got less then 2 parameters!");
         return;
     }
 
@@ -11309,7 +11309,7 @@ void TPageManager::doBBR(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.size() < 2)
     {
-        MSG_ERROR("Expecting 2 parameters but got none! Ignoring command.");
+        MSG_ERROR("Command BBR: Expecting 2 parameters but got none! Ignoring command.");
         return;
     }
 
@@ -11381,7 +11381,7 @@ void TPageManager::doRAF(int, vector<int>&, vector<string>& pars)
 
     if (pars.size() < 2)
     {
-        MSG_ERROR("Expecting 2 parameters but got none! Ignoring command.");
+        MSG_ERROR("Command RAF: Expecting 2 parameters but got none! Ignoring command.");
         return;
     }
 
@@ -11433,7 +11433,7 @@ void TPageManager::doRFR(int, vector<int>&, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 1 parameter but got none! Ignoring command.");
+        MSG_ERROR("Command RFR: Expecting 1 parameter but got none! Ignoring command.");
         return;
     }
 
@@ -11489,7 +11489,7 @@ void TPageManager::doRMF(int, vector<int>&, vector<string>& pars)
 
     if (pars.size() < 2)
     {
-        MSG_ERROR("Expecting 2 parameters but got none! Ignoring command.");
+        MSG_ERROR("Command RMF: Expecting 2 parameters but got none! Ignoring command.");
         return;
     }
 
@@ -11544,7 +11544,7 @@ void TPageManager::doRSR(int, vector<int>&, vector<string>& pars)
 
     if (pars.size() < 2)
     {
-        MSG_ERROR("Expecting 2 parameters but got none! Ignoring command.");
+        MSG_ERROR("Command RSR: Expecting 2 parameters but got none! Ignoring command.");
         return;
     }
 
@@ -11577,7 +11577,7 @@ void TPageManager::doAKB(int, vector<int>&, vector<string> &pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 2 parameters but got only " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command AKB: Expecting 2 parameters but got only " << pars.size() << "! Ignoring command.");
         return;
     }
 
@@ -11638,7 +11638,7 @@ void TPageManager::doAKP(int, std::vector<int>&, std::vector<std::string> &pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 2 parameters but got only " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command AKP: Expecting 2 parameters but got only " << pars.size() << "! Ignoring command.");
         return;
     }
 
@@ -11804,7 +11804,7 @@ void TPageManager::doPKB(int, vector<int>&, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 2 parameters but got only " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command PKB: Expecting 2 parameters but got only " << pars.size() << "! Ignoring command.");
         return;
     }
 
@@ -11829,7 +11829,7 @@ void TPageManager::doPKP(int, vector<int>&, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 2 parameters but got only " << pars.size() << "! Ignoring command.");
+        MSG_ERROR("Command PKP: Expecting 2 parameters but got only " << pars.size() << "! Ignoring command.");
         return;
     }
 
@@ -12139,7 +12139,7 @@ void TPageManager::doPHN(int port, vector<int>&, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting at least 1 parameter but got none! Ignoring command.");
+        MSG_ERROR("Command do PHN: Expecting at least 1 parameter but got none! Ignoring command.");
         return;
     }
 
@@ -12315,7 +12315,7 @@ void TPageManager::getPHN(int, vector<int>&, vector<string>& pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Invalid number of arguments!");
+        MSG_ERROR("Command get PHN: Invalid number of arguments!");
         return;
     }
 
@@ -12653,7 +12653,7 @@ void TPageManager::doSHO(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.empty())
     {
-        MSG_ERROR("Expecting 1 parameter but got none! Ignoring command.");
+        MSG_ERROR("Command SHO: Expecting 1 parameter but got none! Ignoring command.");
         return;
     }
 
@@ -12764,7 +12764,7 @@ void TPageManager::doSSH(int port, vector<int> &channels, vector<string> &pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting 1 parameter but got none! Ignoring command.");
+        MSG_ERROR("Command SSH: Expecting 1 parameter but got none! Ignoring command.");
         return;
     }
 
@@ -12834,7 +12834,7 @@ void TPageManager::doSTG(int port, vector<int>& channels, vector<string>& pars)
 
     if (pars.empty())
     {
-        MSG_ERROR("Expecting 1 parameter but got none! Ignoring command.");
+        MSG_ERROR("Command STG: Expecting 1 parameter but got none! Ignoring command.");
         return;
     }
 
@@ -12892,7 +12892,7 @@ void TPageManager::doLVD(int port, vector<int> &channels, vector<string> &pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting one parameter but got none! Ignoring command.");
+        MSG_ERROR("Command LVD: Expecting one parameter but got none! Ignoring command.");
         return;
     }
 
@@ -12942,7 +12942,7 @@ void TPageManager::doLVE(int port, vector<int> &channels, vector<string> &pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting one parameter but got none! Ignoring command.");
+        MSG_ERROR("Command LVE: Expecting one parameter but got none! Ignoring command.");
         return;
     }
 
@@ -12975,7 +12975,7 @@ void TPageManager::doLVF(int port, vector<int> &channels, vector<string> &pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting one parameter but got none! Ignoring command.");
+        MSG_ERROR("Command LVF: Expecting one parameter but got none! Ignoring command.");
         return;
     }
 
@@ -13017,7 +13017,7 @@ void TPageManager::doLVL(int port, vector<int> &channels, vector<string> &pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting one parameter but got none! Ignoring command.");
+        MSG_ERROR("Command LVL: Expecting one parameter but got none! Ignoring command.");
         return;
     }
 
@@ -13158,7 +13158,7 @@ void TPageManager::doLVM(int port, vector<int> &channels, vector<string> &pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting one parameter but got none! Ignoring command.");
+        MSG_ERROR("Command LVM: Expecting one parameter but got none! Ignoring command.");
         return;
     }
 
@@ -13208,7 +13208,7 @@ void TPageManager::doLVN(int port, vector<int> &channels, vector<string> &pars)
 
     if (pars.size() < 1)
     {
-        MSG_ERROR("Expecting one parameter but got none! Ignoring command.");
+        MSG_ERROR("Command LVN: Expecting one parameter but got none! Ignoring command.");
         return;
     }
 

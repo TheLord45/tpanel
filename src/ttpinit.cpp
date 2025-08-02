@@ -2340,8 +2340,8 @@ string TTPInit::getTmpFileName()
 }
 
 /**
- * This methods checks if there exists a previous downloaded TP4 file. If this
- * is the case, nothing happens.
+ * This methods checks if there exists a previous downloaded TP4/TP5 file. If
+ * this is the case, nothing happens.
  * If there is no previous downloaded file it checks if there is one on the
  * controller and downloads it if it exists. After successfull download the
  * file is unpacked.
@@ -2481,6 +2481,12 @@ vector<TTPInit::FILELIST_t>& TTPInit::getFileList(const string& filter)
         bool oldNetLinx = false;
         char buffer[1024];
         string uFilter = toUpper((std::string&)filter);
+        vector<string> extensions;
+
+        if (uFilter.find("|") != string::npos)
+            extensions = StrSplit(uFilter, "|", true);
+        else
+            extensions.push_back(uFilter);
 
         std::ifstream ifile(tmpFile);
 
@@ -2505,14 +2511,19 @@ vector<TTPInit::FILELIST_t>& TTPInit::getFileList(const string& filter)
                 fname = buf.substr(56);
             }
 
-            if (!filter.empty())
+            if (!extensions.empty())
             {
-                if (endsWith(toUpper(buf), uFilter))
+                vector<string>::iterator iter;
+
+                for (iter = extensions.begin(); iter != extensions.end(); ++iter)
                 {
-                    FILELIST_t fl;
-                    fl.size = size;
-                    fl.fname = fname;
-                    mDirList.push_back(fl);
+                    if (endsWith(toUpper(buf), *iter))
+                    {
+                        FILELIST_t fl;
+                        fl.size = size;
+                        fl.fname = fname;
+                        mDirList.push_back(fl);
+                    }
                 }
             }
             else
@@ -2588,7 +2599,7 @@ off64_t TTPInit::getFileSize(const string& file)
 
     // Here we know that we've no files in our cache. Therefor we'll read from
     // the NetLinx, if possible.
-    getFileList(".tp4");
+    getFileList(".tp4|.tp5");
 
     if (mDirList.empty())
         return 0;

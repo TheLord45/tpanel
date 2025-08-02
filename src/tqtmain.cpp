@@ -970,7 +970,7 @@ void MainWindow::activateSettings(const std::string& oldNetlinx, int oldPort, in
             tpinit.setPath(TConfig::getProjectPath());
             tpinit.regCallbackProcessEvents(bind(&MainWindow::runEvents, this));
             tpinit.regCallbackProgressBar(bind(&MainWindow::_onProgressChanged, this, std::placeholders::_1));
-            mFileList = tpinit.getFileList(".tp4");
+            mFileList = tpinit.getFileList(".tp4|.tp5");
             bool found = false;
 
             if (mFileList.size() > 0)
