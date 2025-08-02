@@ -2505,7 +2505,7 @@ bool TButton::setBitmap(const string& file, int instance, int index, int justify
         inst = 0;
     }
 
-    if (!TTPInit::isG5())  // TP4
+    if (!TTPInit::isG5())  // G4
     {
         for (int i = 0; i < loop; ++i)
         {
@@ -4197,6 +4197,28 @@ void TButton::clearPushFunction(const string& action)
     }
 }
 
+/**
+ * @brief TButton::getDrawOrder - Find the order of the elements
+ * The order of the elements to draw defines in which order the parts of a
+ * button should be drawn. If there was no draw order found in configuration
+ * file, the default draw order is used.
+ *
+ * The draw order must consist of a string containing numbers. Each number must
+ * be 2 digits and if it is less than 10 it must have a leading 0. There must
+ * not be more then 5 numbers (10 digits) in the string.
+ *
+ * The method uses the default order if there is no order (\b sdo has length
+ * zero) or if the number of digits is odd.
+ *
+ * If there are more then 5 draw orders and warning is logged and only the first
+ * 5 are honored. The rest will be ignored.
+ *
+ * If there is a wrong character detected in \b sdo (anything else than a digit)
+ * a warning is logged and the deafault draw order is returned in \b order.
+ *
+ * @param sdo       String containing the draw order
+ * @param order     Array of 5 elements containing the draw order as integers
+ */
 void TButton::getDrawOrder(const std::string& sdo, DRAW_ORDER *order)
 {
     DECL_TRACER("TButton::getDrawOrder(const std::string& sdo, DRAW_ORDER *order)");
@@ -4204,29 +4226,19 @@ void TButton::getDrawOrder(const std::string& sdo, DRAW_ORDER *order)
     if (!order)
         return;
 
-    if (sdo.empty() || sdo.length() != 10)
+    if (sdo.empty() || (sdo.length() % 2) != 0)
     {
-        if (!TTPInit::isG5())
-        {
-            *order     = ORD_ELEM_FILL;
-            *(order+1) = ORD_ELEM_BITMAP;
-            *(order+2) = ORD_ELEM_BORDER;
-            *(order+3) = ORD_ELEM_ICON;
-            *(order+4) = ORD_ELEM_TEXT;
-        }
-        else
-        {
-            *order     = ORD_ELEM_FILL;
-            *(order+1) = ORD_ELEM_BITMAP;
-            *(order+2) = ORD_ELEM_BORDER;
-            *(order+3) = ORD_ELEM_TEXT;
-            *(order+4) = ORD_ELEM_NONE;
-        }
-
+        getDefaultDrawOrder(order);
         return;
     }
 
     int elems = (int)(sdo.length() / 2);
+
+    if (elems > 5)
+    {
+        MSG_WARNING("Found " << elems << " draw orders! Only 5 are allowed.");
+        elems = 5;
+    }
 
     for (int i = 0; i < elems; i++)
     {
@@ -4236,10 +4248,34 @@ void TButton::getDrawOrder(const std::string& sdo, DRAW_ORDER *order)
         {
             MSG_ERROR("Invalid draw order \"" << sdo << "\"!");
             SET_ERROR();
+            getDefaultDrawOrder(order);
             return;
         }
 
-        *(order+i) = (DRAW_ORDER)e;
+        *(order+i) = static_cast<DRAW_ORDER>(e);
+    }
+}
+
+void TButton::getDefaultDrawOrder(DRAW_ORDER *order)
+{
+    if (!order)
+        return;
+
+    if (!TTPInit::isG5())
+    {
+        *order     = ORD_ELEM_FILL;
+        *(order+1) = ORD_ELEM_BITMAP;
+        *(order+2) = ORD_ELEM_ICON;
+        *(order+3) = ORD_ELEM_TEXT;
+        *(order+4) = ORD_ELEM_BORDER;
+    }
+    else
+    {
+        *order     = ORD_ELEM_FILL;
+        *(order+1) = ORD_ELEM_BITMAP;
+        *(order+2) = ORD_ELEM_TEXT;
+        *(order+3) = ORD_ELEM_BORDER;
+        *(order+4) = ORD_ELEM_NONE;
     }
 }
 
@@ -8715,7 +8751,7 @@ POSITION_t TButton::calcImagePosition(int width, int height, CENTER_CODE cc, int
             code = act_sr.ji;
             ix = act_sr.ix;
             iy = act_sr.iy;
-            border = border_size = 0;
+            border = border_size = 1;
             dbgCC = "ICON";
             rwt = width;
             rht = height;
@@ -8725,6 +8761,10 @@ POSITION_t TButton::calcImagePosition(int width, int height, CENTER_CODE cc, int
             code = act_sr.jb;
             ix = act_sr.bx;
             iy = act_sr.by;
+
+            if (border > 0)
+                border = border_size = 1;
+
             dbgCC = "BITMAP";
             rwt = std::min(wt - border * 2, width);
             rht = std::min(ht - border_size * 2, height);

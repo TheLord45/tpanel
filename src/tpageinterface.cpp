@@ -965,7 +965,7 @@ vector<string> TPageInterface::getListContent(ulong handle, int ap, int ta, int 
 
         // Load surface file names from NetLinx over FTP
         TTPInit tt;
-        vector<TTPInit::FILELIST_t> fileList = tt.getFileList(".tp4");
+        vector<TTPInit::FILELIST_t> fileList = tt.getFileList(".tp4|.tp5");
         vector<string> tmpFiles;
 
         if (!fileList.empty())

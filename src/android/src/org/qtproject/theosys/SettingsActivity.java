@@ -57,6 +57,7 @@ public class SettingsActivity extends AppCompatActivity
     {
         super.onCreate(savedInstanceState);
         Logger.log(Logger.HLOG_DEBUG, "SettingsActivity.onCreate()");
+        setTheme(R.style.Theme_Tpanel_settings);
         setContentView(R.layout.settings_activity);
 
         try

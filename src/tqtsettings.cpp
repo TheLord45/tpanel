@@ -82,7 +82,7 @@ TQtSettings::TQtSettings(QWidget *parent)
 
     TTPInit tinit;
     tinit.setPath(TConfig::getProjectPath());
-    mFileList = tinit.getFileList(".tp4");
+    mFileList = tinit.getFileList(".tp4|.tp5");
     ui->comboBox_FTPsurface->clear();
     string curSurface = TConfig::getFtpSurface();
 

@@ -1329,6 +1329,7 @@ namespace Button
              * @return The event number of the listView.
              */
             int getListViewEventNumber() { return listEvNum; };
+            void getDefaultDrawOrder(DRAW_ORDER *order);
             void setListViewColumns(int cols);
             int getListViewColumns() { return tc; }
             void setListViewLayout(int layout);

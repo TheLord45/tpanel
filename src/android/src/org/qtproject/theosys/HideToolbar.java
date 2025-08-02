@@ -43,7 +43,7 @@ public class HideToolbar extends Logger
             return;
 
         mBusy = true;
-        act.setTheme(R.style.Theme_Tpanel_settings);
+        act.setTheme(R.style.TPanelAppTheme);
 
         act.runOnUiThread(new Runnable()
         {
