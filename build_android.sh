@@ -3,10 +3,25 @@ set -o pipefail
 #
 # Set the following paths according to your installation.
 #
-QT_VERSION="6.6.1"
+QT_VERSION="6.5.3"
 QT_VERSION_MAJOR=6
 QT_PATH="/opt/Qt"
-QT_ABI="x86_64"
+# For Intel base developer machines use "x86_64". For ARM based
+# machines use arm64-v8a.
+#
+# Possible values for QT_ABI:
+#      arm64-v8a     64 bit Arm based CPU
+#      armeabi-v7a   32 bit Arm based CPU
+#      x86           32 bit Intel based CPU
+#      x86_64        64 bit Intel based CPU
+#
+if [ ! -z $OSTYPE ] && [[ "$OSTYPE" == *darwin* ]]
+then
+    QT_ABI="arm64-v8a"
+else
+    QT_ABI="x86_64"
+fi
+# Type of host, the machine where the code is compiled.
 QT_HOST="gcc_64"
 
 QTBASE="${QT_PATH}/$QT_VERSION"
@@ -14,7 +29,7 @@ QTDIR="${QTBASE}/android_${QT_ABI}"
 
 ANDROID_HOME="$HOME/Android/Sdk"
 ANDROID_NDK_PLATFORM="30"
-ANDROID_NDK_ROOT="${ANDROID_HOME}/ndk/25.2.9519653"
+ANDROID_NDK_ROOT="${ANDROID_HOME}/ndk/25.1.8937393"
 ANDROID_SDK_ROOT="${ANDROID_HOME}"
 ANDROID_PLATFORM="android-$ANDROID_NDK_PLATFORM"
 
@@ -25,11 +40,21 @@ else
     QTMACROS="${QT_PATH}/Tools/QtCreator/share/qtcreator/package-manager"
 fi
 
-JAVA_HOME="/usr/lib/jvm/java-17-openjdk-amd64"
+# If you're on a Mac you should have installed "brew" to get Java. If
+# so use the apropriate path for it.
+if [ ! -z $OSTYPE ] && [[ "$OSTYPE" == *darwin* ]]
+then
+    JAVA_HOME="/Volumes/Extern/homebrew/Cellar/openjdk@17/17.0.16/libexec/openjdk.jdk/Contents/Home"
+else
+    JAVA_HOME="/usr/lib/jvm/java-17-openjdk-amd64"
+fi
 
 export PATH="${QT_PATH}/Tools/Ninja:${QT_PATH}/Tools/CMake/bin:${QTDIR}/bin:$PATH"
 ANDROID_TOOLCHAIN="${ANDROID_NDK_ROOT}/build/cmake/android.toolchain.cmake"
 
+# Adapt the path and file name to your keystore. It is necessary
+# to build a release version able to run on a real device.
+#
 KEYSTORE="$HOME/projects/tpanel/src/android/android_release.keystore"
 KEYALIAS="tpanel"
 PASSFILE="$HOME/.keypass"

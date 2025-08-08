@@ -1,14 +1,27 @@
 # TPanel
-**TPanel** is an emulation of some AMX G4 touch panels. The panels used to verify the communication protocol and the behavior were an *AMX MVP-5200i* an *AMX NXD-700Vi* and an *MST-701*.
+**TPanel** is an implementation of some AMX G4/G5 touch panels. The panels used
+to verify the communication protocol and the behavior were an *AMX MVP-5200i* an
+*AMX NXD-700Vi* and an *MST-701*.
 
-**TPanel** was designed for *NIX desktops (Linux, BSD, …) as well as Android and IOS operating systems. To create an executable for Android a special shell script exists. It sets all dependencies and starts _cmake_ with all necessary parameters.
+**TPanel** was designed for *NIX desktops (Linux, BSD, …) as well as Android and
+IOS operating systems. To create an executable for Android a special shell
+script exists. It sets all dependencies and starts _cmake_ with all necessary
+parameters.
 
-> **Hint**: With version 1.4 of **TPanel** the support for Qt 5.x was canceled. Now you must use Qt 6.x for all operating systems!
+> **Hint**: With version 1.4 of **TPanel** the support for Qt 5.x was canceled.
+Now you must use Qt 6.x for all operating systems!
 
-The software uses internally the [Skia](https://skia.org) library for drawing all objects and the [Qt](https://doc.qt.io/) framework to display the objects and handle widgets. **TPanel** is written in C++. This makes it especially on mobile platforms fast and reliable. It has the advantage to not drain the battery of any mobile device while running as fast as possible. Compared to commercial products the battery lasts up to 10 times longer.
+The software uses internally the [Skia](https://skia.org) library for drawing
+all objects and the [Qt](https://doc.qt.io/) framework to display the objects
+and handle widgets. **TPanel** is written in C++. This makes it especially on
+mobile platforms fast and reliable. It has the advantage to not drain the
+battery of any mobile device while running as fast as possible. Compared to
+commercial products the battery lasts up to 10 times longer.
 
 # Full documentation
-Look at the full documentation in this repository. You'll find the [reference manual](https://github.com/TheLord45/tpanel/tree/main/documentation) in three different formats:
+Look at the full documentation in this repository. You'll find the
+[reference manual](https://github.com/TheLord45/tpanel/tree/main/documentation) in three different formats:
+
 * [PDF](https://github.com/TheLord45/tpanel/blob/main/documentation/ReferenceGuide.pdf)
 * [ODT](https://github.com/TheLord45/tpanel/blob/main/documentation/ReferenceGuide.odt)
 * [HTML](https://github.com/TheLord45/tpanel/blob/main/documentation/ReferenceGuide.html)
@@ -24,10 +37,14 @@ For Linux and MacOS you need the following libraries installed:
 - Expat (part of your distribution)
 - Freetype (part of your distribution)
 
-To install Qt I recommend to download the open source version from [Open Source Development](https://www.qt.io/download-open-source). However: Some Linux distributions are coming with Qt included. If you want to use this version make sure, to install the Qt6 packages.
+To install Qt I recommend to download the open source version from
+[Open Source Development](https://www.qt.io/download-open-source).
+However: Some Linux distributions are coming with Qt included. If you want to
+use this version make sure, to install the Qt6 packages.
 
 ## Compile for Linux desktop
-First [download the source](https://github.com/TheLord45/tpanel) into a directory. Then enter the directory and type the following commands.
+First [download the source](https://github.com/TheLord45/tpanel) into a
+directory. Then enter the directory and type the following commands.
 
     $ cmake -B build -DCMAKE_PREFIX_PATH="/<path>/<to>/Qt/6.x.x/gcc_64/lib/cmake"
     $ cd build
@@ -49,12 +66,11 @@ You'll find the application in `build/tpanel.app/Contents/MacOS/tpanel`. Start i
 
     build/tpanel.app/Contents/MacOS/tpanel -c <configuration file>
 
-If everything compiled successful and installed, you can start the application. There is a setup dialog included. It depends on the operating system of how this setup looks like.
+If everything compiled successful and installed, you can start the application.
+There is a setup dialog included. It depends on the operating system of how
+it looks like.
 
 ## Compile for other operating systems
 
-- [Compile for Android](https://github.com/TheLord45/tpanel/blob/main/documentation/build_android.md)
-- [Compile for iOS](https://github.com/TheLord45/tpanel/blob/main/documentation/build_ios.md)
-
-# TPDesign 4 and 5
-**TPanel** supports currently TP4 files only. This will change with one of the next versions. Then **TPanel** will support TP5 also. To be able to unarchive TP4 and TP5 files look at [fsfreader](https://github.com/TheLord45/fsfreader). This little tool can read the files produced by TPDesign4 or TPDesign5. The file format is an archive format containing a lot of configuration files and of course the resources like images, fonts and sounds. Especially if you run **TPanel** on a desktop or laptop you may find this tool useful. Or if you be just inquisitive.
+- [Compile for Android](documentation/build_android.md)
+- [Compile for iOS](documentation/build_ios.md)

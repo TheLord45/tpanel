@@ -1,4 +1,12 @@
 <resources>
+    <!-- QT settings -->
+    <string name="static_init_classes"></string>
+<!--    <array name="bundled_libs"></array>
+    <array name="load_local_libs"></array>
+    <string name="use_local_qt_libs">1</string>
+    <string name="bundle_local_qt_libs">1</string>
+-->
+    <!-- Name of the application -->
     <string name="app_name">TPanel</string>
     <!-- Settings Activity Title -->
     <string name="title_activity_settings">TPanel settings</string>

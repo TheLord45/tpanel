@@ -6882,6 +6882,9 @@ void TPageManager::doPCL(int port, vector<int>& channels, vector<std::string>& p
 {
     DECL_TRACER("TPageManager::doPCL(int port, vector<int>& channels, vector<std::string>& pars)");
 
+    Q_UNUSED(port);
+    Q_UNUSED(channels);
+
     if (pars.empty())
     {
         MSG_WARNING("Command PCL: Got no page parameter!");
@@ -6948,6 +6951,9 @@ void TPageManager::doPCL(int port, vector<int>& channels, vector<std::string>& p
 void TPageManager::doPCT(int port, vector<int>& channels, vector<std::string>& pars)
 {
     DECL_TRACER("TPageManager::doPCT(int port, vector<int>& channels, vector<std::string>& pars)");
+
+    Q_UNUSED(port);
+    Q_UNUSED(channels);
 
     if (pars.empty())
     {
@@ -7189,6 +7195,9 @@ void TPageManager::doPTC(int, vector<int>&, vector<string>& pars)
 void TPageManager::doPTO(int port, vector<int>& channels, vector<string>& pars)
 {
     DECL_TRACER("TPageManager::doPTO(int port, vector<int>& channels, vector<string>& pars)");
+
+    Q_UNUSED(port);
+    Q_UNUSED(channels);
 
     if (pars.empty())
     {
