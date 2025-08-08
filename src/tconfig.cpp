@@ -1266,6 +1266,8 @@ string TConfig::getApp(const string& id)
         if (iter->appID == id)
             return iter->path;
     }
+#else
+    Q_UNUSED(id);
 #endif
     return string();
 }

@@ -181,13 +181,8 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
 #if __ANDROID_API__ < 30
 #warning "The Android API version is less than 30! Some functions may not work!"
 #endif  // __ANDROID_API__
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    QAndroidJniObject activity = QtAndroid::androidActivity();
-    QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/HideToolbar", "hide", "(Landroid/app/Activity;Z)V", activity.object(), true);
-#else
     QJniObject activity = QNativeInterface::QAndroidApplication::context();
     QJniObject::callStaticMethod<void>("org/qtproject/theosys/HideToolbar", "hide", "(Landroid/app/Activity;Z)V", activity.object(), true);
-#endif  // QT5_LINUX
 #endif  // __ANDROID__
 
 #if defined(Q_OS_ANDROID)
@@ -209,18 +204,7 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
         MSG_ERROR("Couldn't determine the primary screen!")
         return 1;
     }
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    if (pmanager->getSettings()->isPortrait())  // portrait?
-    {
-        MSG_INFO("Orientation set to portrait mode.");
-        screen->setOrientationUpdateMask(Qt::PortraitOrientation);
-    }
-    else
-    {
-        MSG_INFO("Orientation set to landscape mode.");
-        screen->setOrientationUpdateMask(Qt::LandscapeOrientation);
-    }
-#endif  // QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+
     double scale = 1.0;
     // Calculate the scale factor
     if (TConfig::getScale())
@@ -267,7 +251,7 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
         mScaleFactorH = height / (double)minHeight;
         scale = std::min(mScaleFactorW, mScaleFactorH);
 #ifdef __ANDROID__
-        __android_log_print(ANDROID_LOG_DEBUG, "tpanel", "INF    ##, ???????????? scale: %f (Screen: %1.0fx%1.0f, Page: %dx%d)", scale, width, height, minWidth, minHeight);
+        __android_log_print(ANDROID_LOG_DEBUG, "tpanel", "DBG,   ###, ??????????, scale: %f (Screen: %1.0fx%1.0f, Page: %dx%d)", scale, width, height, minWidth, minHeight);
 #endif
         gScale = scale;     // The calculated scale factor
         gFullWidth = width;
@@ -601,14 +585,6 @@ MainWindow::MainWindow()
     gPageManager->deployCallbacks();
 
     createActions();        // Create the toolbar, if enabled by settings.
-
-#ifndef QT_NO_SESSIONMANAGER
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    QGuiApplication::setFallbackSessionManagementEnabled(false);
-    connect(qApp, &QGuiApplication::commitDataRequest,
-            this, &MainWindow::writeSettings);
-#endif  // QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-#endif  // QT_NO_SESSIONMANAGER
 
     // Some types used to transport data from the layer below.
     qRegisterMetaType<size_t>("size_t");
@@ -3936,7 +3912,6 @@ string MainWindow::orientationToString(Qt::ScreenOrientation ori)
  * @param buffer    A byte array containing the image.
  * @param width     The width of the object
  * @param height    The height of the object
- * @param pixline   The number of pixels in one line of the image.
  * @param left      The prosition from the left.
  * @param top       The position from the top.
  * @param marqtype  The type of marquee line

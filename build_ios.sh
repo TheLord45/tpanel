@@ -5,7 +5,7 @@ SRCDIR="`pwd`"
 ###########################################################################
 # Adapt the below variables to your need                                  #
 ###########################################################################
-QT_VERSION="6.6.1"
+QT_VERSION="6.5.3"
 QT_VERSION_MAJOR=6
 QT_PATH="$HOME/Qt"
 QT_ARCHITECTURE="arm64"
@@ -14,7 +14,7 @@ QT_MACROS="${QT_PATH}/Qt?Creator.app/Contents/Resources/package-manager"
 QTBASE="${QT_PATH}/$QT_VERSION"
 QTDIR="${QTBASE}/ios"
 
-IOS_VERSION="17.0"
+IOS_VERSION="18.0"
 BUILDPATH="tpanel-ios"
 OSX_SYSROOT="iphoneos"
 #OSX_SYSROOT="iphonesimulator"

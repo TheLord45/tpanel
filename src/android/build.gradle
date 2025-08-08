@@ -6,8 +6,9 @@ buildscript {
 
     dependencies {
         //noinspection AndroidGradlePluginVersion
-        //classpath 'com.android.tools.build:gradle:8.8.0'
-        classpath 'com.android.tools.build:gradle:8.10.0'
+        classpath 'com.android.tools.build:gradle:7.4.1'    // Qt 6.5.3
+        //classpath 'com.android.tools.build:gradle:8.6.0'  // Qt 6.8.x
+        //classpath 'com.android.tools.build:gradle:8.8.0'  // Qt 6.9.x
     }
 }
 
@@ -16,13 +17,13 @@ repositories {
     mavenCentral()
 }
 
-apply plugin: qtGradlePluginType
+//apply plugin: qtGradlePluginType          // Qt >= 6.8.x
+apply plugin: 'com.android.application'     // Qt 6.5.3
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
     implementation 'com.google.android.material:material:1.12.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
-//    noinspection GradleDependency
     implementation 'androidx.core:core:1.13.1'
     implementation 'androidx.preference:preference:1.1.0'
 }
@@ -42,13 +43,11 @@ android {
      * Changing them manually might break the compilation!
      *******************************************************/
 
-    namespace androidPackageName
+    // namespace androidPackageName                 // >= Qt 6.8.x
+    // namespace 'org.qtproject.theosys'
     compileSdkVersion androidCompileSdkVersion
     buildToolsVersion androidBuildToolsVersion
     ndkVersion androidNdkVersion
-    namespace 'org.qtproject.theosys'
-    // Extract native libraries from the APK
-//    packagingOptions.jniLibs.useLegacyPackaging true
 
     sourceSets {
         main {
@@ -89,6 +88,10 @@ android {
     }
 
     packagingOptions {
+        // Extract native libraries from the APK
+        jniLibs {
+            useLegacyPackaging = true
+        }
         doNotStrip '*/mips/*.so'
         doNotStrip '*/mips64/*.so'
         doNotStrip '*/armeabi-v7a/*.so'

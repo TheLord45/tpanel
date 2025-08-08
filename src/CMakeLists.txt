@@ -2,24 +2,6 @@ cmake_minimum_required(VERSION 3.10)
 
 project(tpanel VERSION 2.0.0 LANGUAGES CXX)
 
-if(ANDROID)
-    message("** Current platform (${ANDROID_ABI}): ${ANDROID_PLATFORM}")
-
-    if(NOT "$ENV{ANDROID_PLATFORM}" STREQUAL "")
-        message("** Environment (${ANDROID_ABI}): $ENV{ANDROID_PLATFORM}")
-
-        if(NOT (DEFINED ANDROID_PLATFORM) OR NOT (${ANDROID_PLATFORM} STREQUAL $ENV{ANDROID_PLATFORM}))
-            set(ANDROID_PLATFORM $ENV{ANDROID_PLATFORM})
-            message("++ Set ANDROID_PLATFORM to ${ANDROID_PLATFORM} for ${ANDROID_ABI}")
-        endif()
-    else()
-        if(NOT (DEFINED ANDROID_PLATFORM) OR NOT (${ANDROID_PLATFORM} STREQUAL "android-30"))
-            set(ANDROID_PLATFORM "android-30")
-            message("++ Set ANDROID_PLATFORM to ${ANDROID_PLATFORM} for ${ANDROID_ABI}")
-        endif()
-    endif()
-endif(ANDROID)
-
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -34,8 +16,8 @@ if(IOS)
     find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning Sensors)
     find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning Sensors)
 else(IOS)
-    find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning)
-    find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning)
+    find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Quick Positioning)
+    find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Quick Positioning)
 endif(IOS)
 
 if(ANDROID)
@@ -483,7 +465,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
                      ${CMAKE_CURRENT_SOURCE_DIR}/android)
     # For more information, see https://doc.qt.io/qt-6/qt-add-executable.html#target-creation
     endif()
-else()
+else() # The following is deprecated! Qt5 is no longer supported.
     if(ANDROID)
         add_library(tpanel SHARED
             ${PROJECT_SOURCES}
@@ -533,6 +515,7 @@ elseif(ANDROID)
         Qt${QT_VERSION_MAJOR}::Multimedia
         Qt${QT_VERSION_MAJOR}::MultimediaWidgets
         Qt${QT_VERSION_MAJOR}::Positioning
+        Qt${QT_VERSION_MAJOR}::Quick
         ftp ${LIBS}
     )
 elseif(APPLE)

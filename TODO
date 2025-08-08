@@ -6,13 +6,17 @@ Buttons
 Missing features
 ================
 * Add more commands (as always)
-* Crack the encryption of TP5 internal file.
 * Crack the encryption of passwords in resources.
-* Implement panel to panel audio communication.
+* Implement panel to panel audio communication. --> Implemented but does not
+  work with real AMX panels!
 * Implement commands to control a list
 
 Known errors
 ============
+* With version 2.0.0 the upload of surfaces from TPDesign is brocken.
+
+* With version 2.0.0 the animations don't work correct (at least on android)
+
 * While Views are working it is poosible that when another page is shown and
   switched back to the previous page the view doesn't react any more. Here the
   framework simply forgets to send mouse events to the widget. I found no way
@@ -34,3 +38,4 @@ Known errors
 Documentation
 =============
 * Add documentation for configuration files
+* Update documentation for 2.0.0
