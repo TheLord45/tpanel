@@ -44,7 +44,9 @@
 #include <include/core/SkString.h>
 #include <include/core/SkData.h>
 #include <include/core/SkColor.h>
+#if !defined(__ANDROID__) || !defined(__IOS__)
 #include <include/core/SkFontMgr.h>
+#endif
 #endif
 
 //#include "terror.h"
@@ -97,7 +99,9 @@ sk_sp<SkTypeface> MakeResourceAsTypeface(const char* resource, int ttcIndex = 0,
 sk_sp<SkData> readImage(const std::string& fname);
 SkBitmap *allocPixels(int width, int height, SkBitmap *bm);
 SkColor reverseColor(const SkColor& col);
+#if !defined(__ANDROID__) && !defined(__IOS__)
 sk_sp<SkFontMgr> getFontManager();
+#endif
 
 std::string& toLower(std::string& str);
 std::string& toUpper(std::string& str);

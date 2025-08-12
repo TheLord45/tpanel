@@ -55,14 +55,15 @@ namespace fs = std::filesystem;
 #   endif
 #endif
 
-#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+#if defined(__ANDROID__) || defined(__IOS__)
 #   define SK_FONTMGR_FONTCONFIG_AVAILABLE          1
-#elif defined(Q_OS_LINUX)
+#elif defined(__linux__)
 #   define SK_FONTMGR_FREETYPE_DIRECTORY_AVAILABLE  1
-#elif defined(Q_OS_MAC)
+#elif defined(__MACH__)
 #   define SK_FONTMGR_CORETEXT_AVAILABLE            1
 #endif
 
+#if !defined(__ANDROID__) && !defined(__IOS__)
 #ifdef SK_FONTMGR_FONTCONFIG_AVAILABLE
 #include <include/ports/SkFontMgr_fontconfig.h>
 #include <include/ports/SkFontScanner_FreeType.h>
@@ -74,6 +75,7 @@ namespace fs = std::filesystem;
 
 #ifdef SK_FONTMGR_FREETYPE_DIRECTORY_AVAILABLE
 #include <include/ports/SkFontMgr_directory.h>
+#endif
 #endif
 
 using std::string;
@@ -309,9 +311,12 @@ sk_sp<SkData> GetResourceAsData(const char* resource, _RESOURCE_TYPE rs)
 
 sk_sp<SkTypeface> MakeResourceAsTypeface(const char* resource, int ttcIndex, _RESOURCE_TYPE rs)
 {
+#if defined(__ANDROID__) || defined(__IOS__)
+    return SkTypeface::MakeFromStream(GetResourceAsStream(resource, rs), ttcIndex);
+#else
     sk_sp<SkFontMgr> fm = getFontManager();
     return fm->makeFromStream(GetResourceAsStream(resource, rs), ttcIndex);
-//    return SkTypeface::MakeFromStream(GetResourceAsStream(resource, rs), ttcIndex);
+#endif
 }
 
 /*
@@ -381,6 +386,7 @@ SkColor reverseColor(const SkColor& col)
     return SkColorSetARGB(alpha, blue, green, red);
 }
 
+#if !defined(__ANDROID__) && !defined(__IOS__)
 sk_sp<SkFontMgr> getFontManager()
 {
 #if defined(SK_FONTMGR_FONTCONFIG_AVAILABLE)
@@ -394,6 +400,7 @@ sk_sp<SkFontMgr> getFontManager()
 #endif
     return sk_sp<SkFontMgr>();
 }
+#endif
 
 vector<string> StrSplit(const string& str, const string& seps, const bool trimEmpty)
 {

@@ -6742,8 +6742,11 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
         else
         {
             int count = 0;
-//            SkGlyphID *glyphs = nullptr;
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+            SkGlyphID *glyphs = nullptr;
+#else
             bool haveGlyphs = false;
+#endif
             SkGlyphID glyphs[256];
             sk_bzero(glyphs, sizeof(glyphs));
 
@@ -6756,16 +6759,22 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
 
                 if (num > 0)
                 {
-//                    glyphs = new SkGlyphID[num];
-//                    size_t glyphSize = sizeof(SkGlyphID) * num;
-//                    sk_bzero(glyphs, glyphSize);
-//                    count = skFont.textToGlyphs(uni, num, SkTextEncoding::kUTF16, glyphs, (int)glyphSize);
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+                    glyphs = new SkGlyphID[num];
+                    size_t glyphSize = sizeof(SkGlyphID) * num;
+                    sk_bzero(glyphs, glyphSize);
+                    count = skFont.textToGlyphs(uni, num, SkTextEncoding::kUTF16, glyphs, (int)glyphSize);
+#else
                     count = skFont.textToGlyphs(uni, num, SkTextEncoding::kUTF16, glyphs);
+#endif
                     haveGlyphs = true;
 
                     if (count <= 0)
                     {
-//                        delete[] glyphs;
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+                        delete[] glyphs;
+                        glyph = TFont::textToGlyphs(text, typeFace, &num);
+#else
                         SkGlyphID *gly = TFont::textToGlyphs(text, typeFace, &num);
 
                         if (gly)
@@ -6775,7 +6784,16 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
 
                             delete[] gly;
                         }
+#endif
 
+
+                        if (gly)
+                        {
+                            for (size_t i = 0; i < num && i < sizeof(glyphs); ++i)
+                                glyphs[i] = *(gly+i);
+
+                            delete[] gly;
+                        }
                         count = static_cast<int>(num);
                     }
                 }
@@ -6792,11 +6810,14 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
                 return true;
             else
             {
-//                glyphs = new SkGlyphID[text.size()];
-//                size_t glyphSize = sizeof(SkGlyphID) * text.size();
-//                sk_bzero(glyphs, glyphSize);
-//                count = skFont.textToGlyphs(text.data(), text.size(), SkTextEncoding::kUTF8, glyphs, (int)glyphSize);
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+                glyphs = new SkGlyphID[text.size()];
+                size_t glyphSize = sizeof(SkGlyphID) * text.size();
+                sk_bzero(glyphs, glyphSize);
+                count = skFont.textToGlyphs(text.data(), text.size(), SkTextEncoding::kUTF8, glyphs, (int)glyphSize);
+#else
                 count = skFont.textToGlyphs(text.data(), text.size(), SkTextEncoding::kUTF8, glyphs);
+#endif
                 haveGlyphs = true;
             }
 
@@ -6810,9 +6831,10 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
                 MSG_WARNING("Got no glyphs! Try to print: " << text);
                 canvas.drawString(text.data(), startX, startY, skFont, paint);
             }
-
-//            if (glyphs)
-//                delete[] glyphs;
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+            if (glyphs)
+                delete[] glyphs;
+#endif
         }
     }
 
