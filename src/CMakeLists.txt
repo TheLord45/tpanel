@@ -15,9 +15,12 @@ set(QT_USE_QTMULTIMEDIAWIDGETS TRUE)
 if(IOS)
     find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning Sensors)
     find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning Sensors)
-else(IOS)
+elseif(ANDROID)
     find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Quick Positioning)
     find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Quick Positioning)
+else(IOS)
+    find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning)
+    find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning)
 endif(IOS)
 
 if(ANDROID)
@@ -195,6 +198,7 @@ elseif(IOS)
     link_libraries(skia)
 
     if(APPLE)
+        link_libraries(freetype)
         find_package(ZLIB)
         find_package(EXPAT)
     else(APPLE)
@@ -536,7 +540,7 @@ else()
         Qt${QT_VERSION_MAJOR}::Multimedia
         Qt${QT_VERSION_MAJOR}::MultimediaWidgets
         Qt${QT_VERSION_MAJOR}::Positioning
-	OpenSSL::SSL
+        OpenSSL::SSL
         ftp ${LIBS}
     )
 endif()

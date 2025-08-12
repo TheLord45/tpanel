@@ -45,6 +45,7 @@ namespace fs = std::filesystem;
 #include "ttpinit.h"
 
 #include <include/core/SkFontStyle.h>
+#include <include/core/SkFontMgr.h>
 
 #define FTABLE_DSIG     0x44534947
 #define FTABLE_EBDT     0x45424454
@@ -740,7 +741,9 @@ sk_sp<SkTypeface> TFont::getTypeFace(int number)
         MSG_PROTOCOL("Trying with alternative function ...");
         TError::SetError();
 
-        tf = SkTypeface::MakeFromName(iter->second.fullName.c_str(), getSkiaStyle(number));
+        // tf = SkTypeface::MakeFromName(iter->second.fullName.c_str(), getSkiaStyle(number));
+        sk_sp<SkFontMgr> fm = getFontManager(); // SkFontMgr_New_FontConfig(nullptr, SkFontScanner_Make_FreeType());
+        tf = fm->matchFamilyStyle(iter->second.fullName.c_str(), getSkiaStyle(number));
 
         if (tf)
             TError::clear();
@@ -748,7 +751,8 @@ sk_sp<SkTypeface> TFont::getTypeFace(int number)
         {
             MSG_ERROR("Alternative method failed loading the font " << iter->second.fullName);
             MSG_WARNING("Will use a default font instead!");
-            tf = SkTypeface::MakeDefault();
+            // tf = SkTypeface::MakeDefault();
+            tf = fm->makeFromData(nullptr);
 
             if (tf)
                 TError::clear();
@@ -928,7 +932,7 @@ void TFont::parseCmap(const unsigned char* cmaps)
 
 uint16_t TFont::getGlyphIndex(SkUnichar ch)
 {
-    DECL_TRACER("TFont::getGlyphIndex(const char* ch)");
+    DECL_TRACER("TFont::getGlyphIndex(SkUnichar ch)");
 
     uint16_t lCh = ch;
     bool symbol = false;
@@ -1039,8 +1043,9 @@ SkGlyphID *TFont::textToGlyphs(const string& str, sk_sp<SkTypeface>& typeFace, s
         return nullptr;
     }
 
-    SkFontTableTag *tbTags = new SkFontTableTag[tables];
-    int tags = typeFace->getTableTags(tbTags);
+//    SkFontTableTag *tbTags = new SkFontTableTag[tables];
+    SkFontTableTag tbTags[20];
+    int tags = std::min(typeFace->readTableTags(tbTags), 20);
     bool haveCmap = false;
     unsigned char *cmaps = nullptr;
 
@@ -1056,7 +1061,7 @@ SkGlyphID *TFont::textToGlyphs(const string& str, sk_sp<SkTypeface>& typeFace, s
             if (!tbSize)
             {
                 MSG_ERROR("CMAP font table size is 0!");
-                delete[] tbTags;
+//                delete[] tbTags;
                 return nullptr;
             }
 
@@ -1071,11 +1076,11 @@ SkGlyphID *TFont::textToGlyphs(const string& str, sk_sp<SkTypeface>& typeFace, s
     {
         MSG_ERROR("Invalid font. Missing CMAP table!");
 //        TError::setError();
-        delete[] tbTags;
+//        delete[] tbTags;
         return nullptr;
     }
 
-    delete[] tbTags;
+//    delete[] tbTags;
     parseCmap(cmaps);
 
     std::wstring_convert<std::codecvt_utf8_utf16<char16_t>,char16_t> convert;
@@ -1115,8 +1120,9 @@ FONT_TYPE TFont::isSymbol(sk_sp<SkTypeface>& typeFace)
         return FT_UNKNOWN;
     }
 
-    SkFontTableTag *tbTags = new SkFontTableTag[tables];
-    int tags = typeFace->getTableTags(tbTags);
+//    SkFontTableTag *tbTags = new SkFontTableTag[tables];
+    SkFontTableTag tbTags[20];
+    int tags = std::min(typeFace->readTableTags(tbTags), 20);
     bool haveCmap = false;
     unsigned char *cmaps = nullptr;
 
@@ -1132,7 +1138,7 @@ FONT_TYPE TFont::isSymbol(sk_sp<SkTypeface>& typeFace)
             if (!tbSize)
             {
                 MSG_ERROR("CMAP table has size of 0!");
-                delete[] tbTags;
+//                delete[] tbTags;
                 mutex_font.unlock();
                 return FT_UNKNOWN;
             }
@@ -1148,12 +1154,12 @@ FONT_TYPE TFont::isSymbol(sk_sp<SkTypeface>& typeFace)
     {
         MSG_ERROR("Invalid font. Missing CMAP table!");
 //        TError::setError();
-        delete[] tbTags;
+//        delete[] tbTags;
         mutex_font.unlock();
         return FT_UNKNOWN;
     }
 
-    delete[] tbTags;
+//    delete[] tbTags;
     parseCmap(cmaps);
 
     for (uint16_t nTbs = 0; nTbs < _cmapTable.numSubtables; nTbs++)

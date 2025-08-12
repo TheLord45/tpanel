@@ -38,11 +38,13 @@
 #include <skia/core/SkString.h>
 #include <skia/core/SkData.h>
 #include <skia/core/SkColor.h>
+#include <skia/core/SkFontMgr.h>
 #else
 #include <include/core/SkImage.h>
 #include <include/core/SkString.h>
 #include <include/core/SkData.h>
 #include <include/core/SkColor.h>
+#include <include/core/SkFontMgr.h>
 #endif
 
 //#include "terror.h"
@@ -95,6 +97,7 @@ sk_sp<SkTypeface> MakeResourceAsTypeface(const char* resource, int ttcIndex = 0,
 sk_sp<SkData> readImage(const std::string& fname);
 SkBitmap *allocPixels(int width, int height, SkBitmap *bm);
 SkColor reverseColor(const SkColor& col);
+sk_sp<SkFontMgr> getFontManager();
 
 std::string& toLower(std::string& str);
 std::string& toUpper(std::string& str);
