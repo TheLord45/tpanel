@@ -45,7 +45,9 @@ namespace fs = std::filesystem;
 #include "ttpinit.h"
 
 #include <include/core/SkFontStyle.h>
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
 #include <include/core/SkFontMgr.h>
+#endif
 
 #define FTABLE_DSIG     0x44534947
 #define FTABLE_EBDT     0x45424454
@@ -739,21 +741,24 @@ sk_sp<SkTypeface> TFont::getTypeFace(int number)
         string perms = getPermissions(path);
         MSG_ERROR("Error loading font \"" << path << "\" [" << perms << "]");
         MSG_PROTOCOL("Trying with alternative function ...");
-        TError::SetError();
-
-        // tf = SkTypeface::MakeFromName(iter->second.fullName.c_str(), getSkiaStyle(number));
-        sk_sp<SkFontMgr> fm = getFontManager(); // SkFontMgr_New_FontConfig(nullptr, SkFontScanner_Make_FreeType());
+        TError::setError();
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+        tf = SkTypeface::MakeFromName(iter->second.fullName.c_str(), getSkiaStyle(number));
+#else
+        sk_sp<SkFontMgr> fm = getFontManager();
         tf = fm->matchFamilyStyle(iter->second.fullName.c_str(), getSkiaStyle(number));
-
+#endif
         if (tf)
             TError::clear();
         else
         {
             MSG_ERROR("Alternative method failed loading the font " << iter->second.fullName);
             MSG_WARNING("Will use a default font instead!");
-            // tf = SkTypeface::MakeDefault();
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+            tf = SkTypeface::MakeDefault();
+#else
             tf = fm->makeFromData(nullptr);
-
+#endif
             if (tf)
                 TError::clear();
             else
@@ -1042,11 +1047,14 @@ SkGlyphID *TFont::textToGlyphs(const string& str, sk_sp<SkTypeface>& typeFace, s
         MSG_ERROR("No tables in typeface!");
         return nullptr;
     }
-
-//    SkFontTableTag *tbTags = new SkFontTableTag[tables];
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+    SkFontTableTag *tbTags = new SkFontTableTag[tables];
+    int tags = typeFace->getTableTags(tbTags);
+#else
     SkFontTableTag tbTags[20];
     int tags = std::min(typeFace->readTableTags(tbTags), 20);
     bool haveCmap = false;
+#endif
     unsigned char *cmaps = nullptr;
 
     // Find the "cmap" and the "glyph" tables and get them
@@ -1061,7 +1069,9 @@ SkGlyphID *TFont::textToGlyphs(const string& str, sk_sp<SkTypeface>& typeFace, s
             if (!tbSize)
             {
                 MSG_ERROR("CMAP font table size is 0!");
-//                delete[] tbTags;
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+                delete[] tbTags;
+#endif
                 return nullptr;
             }
 
@@ -1076,11 +1086,14 @@ SkGlyphID *TFont::textToGlyphs(const string& str, sk_sp<SkTypeface>& typeFace, s
     {
         MSG_ERROR("Invalid font. Missing CMAP table!");
 //        TError::setError();
-//        delete[] tbTags;
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+        delete[] tbTags;
+#endif
         return nullptr;
     }
-
-//    delete[] tbTags;
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+    delete[] tbTags;
+#endif
     parseCmap(cmaps);
 
     std::wstring_convert<std::codecvt_utf8_utf16<char16_t>,char16_t> convert;
@@ -1119,11 +1132,14 @@ FONT_TYPE TFont::isSymbol(sk_sp<SkTypeface>& typeFace)
         mutex_font.unlock();
         return FT_UNKNOWN;
     }
-
-//    SkFontTableTag *tbTags = new SkFontTableTag[tables];
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+    SkFontTableTag *tbTags = new SkFontTableTag[tables];
+    int tags = typeFace->getTableTags(tbTags);
+#else
     SkFontTableTag tbTags[20];
     int tags = std::min(typeFace->readTableTags(tbTags), 20);
     bool haveCmap = false;
+#endif
     unsigned char *cmaps = nullptr;
 
     // Find the "cmap" table and get it
@@ -1138,7 +1154,9 @@ FONT_TYPE TFont::isSymbol(sk_sp<SkTypeface>& typeFace)
             if (!tbSize)
             {
                 MSG_ERROR("CMAP table has size of 0!");
-//                delete[] tbTags;
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+                delete[] tbTags;
+#endif
                 mutex_font.unlock();
                 return FT_UNKNOWN;
             }
@@ -1154,12 +1172,15 @@ FONT_TYPE TFont::isSymbol(sk_sp<SkTypeface>& typeFace)
     {
         MSG_ERROR("Invalid font. Missing CMAP table!");
 //        TError::setError();
-//        delete[] tbTags;
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+        delete[] tbTags;
+#endif
         mutex_font.unlock();
         return FT_UNKNOWN;
     }
-
-//    delete[] tbTags;
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+    delete[] tbTags;
+#endif
     parseCmap(cmaps);
 
     for (uint16_t nTbs = 0; nTbs < _cmapTable.numSubtables; nTbs++)
