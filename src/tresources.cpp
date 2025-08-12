@@ -55,6 +55,27 @@ namespace fs = std::filesystem;
 #   endif
 #endif
 
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+#   define SK_FONTMGR_FONTCONFIG_AVAILABLE          1
+#elif defined(Q_OS_LINUX)
+#   define SK_FONTMGR_FREETYPE_DIRECTORY_AVAILABLE  1
+#elif defined(Q_OS_MAC)
+#   define SK_FONTMGR_CORETEXT_AVAILABLE            1
+#endif
+
+#ifdef SK_FONTMGR_FONTCONFIG_AVAILABLE
+#include <include/ports/SkFontMgr_fontconfig.h>
+#include <include/ports/SkFontScanner_FreeType.h>
+#endif
+
+#ifdef SK_FONTMGR_CORETEXT_AVAILABLE
+#include <include/ports/SkFontMgr_mac_ct.h>
+#endif
+
+#ifdef SK_FONTMGR_FREETYPE_DIRECTORY_AVAILABLE
+#include <include/ports/SkFontMgr_directory.h>
+#endif
+
 using std::string;
 using std::wstring;
 using std::endl;
@@ -288,7 +309,9 @@ sk_sp<SkData> GetResourceAsData(const char* resource, _RESOURCE_TYPE rs)
 
 sk_sp<SkTypeface> MakeResourceAsTypeface(const char* resource, int ttcIndex, _RESOURCE_TYPE rs)
 {
-    return SkTypeface::MakeFromStream(GetResourceAsStream(resource, rs), ttcIndex);
+    sk_sp<SkFontMgr> fm = getFontManager();
+    return fm->makeFromStream(GetResourceAsStream(resource, rs), ttcIndex);
+//    return SkTypeface::MakeFromStream(GetResourceAsStream(resource, rs), ttcIndex);
 }
 
 /*
@@ -356,6 +379,20 @@ SkColor reverseColor(const SkColor& col)
     int alpha = SkColorGetA(col);
 
     return SkColorSetARGB(alpha, blue, green, red);
+}
+
+sk_sp<SkFontMgr> getFontManager()
+{
+#if defined(SK_FONTMGR_FONTCONFIG_AVAILABLE)
+    return SkFontMgr_New_FontConfig(nullptr, SkFontScanner_Make_FreeType());
+#elif defined(SK_FONTMGR_CORETEXT_AVAILABLE)
+    return SkFontMgr_New_CoreText(nullptr);
+#elif defined(SK_FONTMGR_FREETYPE_DIRECTORY_AVAILABLE)
+    return SkFontMgr_New_Custom_Directory("/usr/share/fonts/");
+#else
+#   error "SK-FONT MANAGER: Unsupported OS"
+#endif
+    return sk_sp<SkFontMgr>();
 }
 
 vector<string> StrSplit(const string& str, const string& seps, const bool trimEmpty)

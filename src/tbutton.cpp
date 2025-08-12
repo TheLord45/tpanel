@@ -22,7 +22,6 @@
 
 #include <unistd.h>
 
-#include <include/core/SkPixmap.h>
 #include <include/core/SkSize.h>
 #include <include/core/SkColor.h>
 #include <include/core/SkFont.h>
@@ -30,6 +29,7 @@
 #include <include/core/SkFontMetrics.h>
 #include <include/core/SkTextBlob.h>
 #include <include/core/SkRegion.h>
+#include <include/core/SkPixmap.h>
 #include <include/core/SkImageFilter.h>
 #include <include/effects/SkImageFilters.h>
 #include <include/core/SkPath.h>
@@ -6742,7 +6742,10 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
         else
         {
             int count = 0;
-            uint16_t *glyphs = nullptr;
+//            SkGlyphID *glyphs = nullptr;
+            bool haveGlyphs = false;
+            SkGlyphID glyphs[256];
+            sk_bzero(glyphs, sizeof(glyphs));
 
             if (sym == FT_SYM_MS)
             {
@@ -6753,15 +6756,27 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
 
                 if (num > 0)
                 {
-                    glyphs = new uint16_t[num];
-                    size_t glyphSize = sizeof(uint16_t) * num;
-                    count = skFont.textToGlyphs(uni, num, SkTextEncoding::kUTF16, glyphs, (int)glyphSize);
+//                    glyphs = new SkGlyphID[num];
+//                    size_t glyphSize = sizeof(SkGlyphID) * num;
+//                    sk_bzero(glyphs, glyphSize);
+//                    count = skFont.textToGlyphs(uni, num, SkTextEncoding::kUTF16, glyphs, (int)glyphSize);
+                    count = skFont.textToGlyphs(uni, num, SkTextEncoding::kUTF16, glyphs);
+                    haveGlyphs = true;
 
                     if (count <= 0)
                     {
-                        delete[] glyphs;
-                        glyphs = TFont::textToGlyphs(text, typeFace, &num);
-                        count = (int)num;
+//                        delete[] glyphs;
+                        SkGlyphID *gly = TFont::textToGlyphs(text, typeFace, &num);
+
+                        if (gly)
+                        {
+                            for (size_t i = 0; i < num && i < sizeof(glyphs); ++i)
+                                glyphs[i] = *(gly+i);
+
+                            delete[] gly;
+                        }
+
+                        count = static_cast<int>(num);
                     }
                 }
                 else
@@ -6777,15 +6792,18 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
                 return true;
             else
             {
-                glyphs = new uint16_t[text.size()];
-                size_t glyphSize = sizeof(uint16_t) * text.size();
-                count = skFont.textToGlyphs(text.data(), text.size(), SkTextEncoding::kUTF8, glyphs, (int)glyphSize);
+//                glyphs = new SkGlyphID[text.size()];
+//                size_t glyphSize = sizeof(SkGlyphID) * text.size();
+//                sk_bzero(glyphs, glyphSize);
+//                count = skFont.textToGlyphs(text.data(), text.size(), SkTextEncoding::kUTF8, glyphs, (int)glyphSize);
+                count = skFont.textToGlyphs(text.data(), text.size(), SkTextEncoding::kUTF8, glyphs);
+                haveGlyphs = true;
             }
 
-            if (glyphs && count > 0)
+            if (haveGlyphs && count > 0)
             {
-                MSG_DEBUG("1st glyph: 0x" << std::hex << std::setw(8) << std::setfill('0') << *glyphs << ", # glyphs: " << std::dec << count);
-                canvas.drawSimpleText(glyphs, sizeof(uint16_t) * count, SkTextEncoding::kGlyphID, startX, startY, skFont, paint);
+                MSG_DEBUG("1st glyph: 0x" << std::hex << std::setw(8) << std::setfill('0') << glyphs[0] << ", # glyphs: " << std::dec << count);
+                canvas.drawSimpleText(glyphs, sizeof(SkGlyphID) * count, SkTextEncoding::kGlyphID, startX, startY, skFont, paint);
             }
             else    // Try to print something
             {
@@ -6793,8 +6811,8 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
                 canvas.drawString(text.data(), startX, startY, skFont, paint);
             }
 
-            if (glyphs)
-                delete[] glyphs;
+//            if (glyphs)
+//                delete[] glyphs;
         }
     }
 
