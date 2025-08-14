@@ -1391,12 +1391,15 @@ bool TPageInterface::initAnimation(TSubPage *sub, ANIMATION_t* ani)
     if (!ani)
         return false;
 
-    if (!TTPInit::isG5())
+    int showTime = sub->getShowTime();
+    int hideTime = sub->getHideTime();
+
+    if (!TTPInit::isG5() || sub->getCollapseDir() == COLDIR_NONE)
     {
         ani->showEffect = sub->getShowEffect();
-        ani->showTime = sub->getShowTime();
+        ani->showTime = showTime;
         ani->hideEffect = sub->getHideEffect();
-        ani->hideTime = sub->getHideTime();
+        ani->hideTime = hideTime;
     }
     else if (sub->getCollapseDir() != COLDIR_NONE)
     {
@@ -1427,8 +1430,16 @@ bool TPageInterface::initAnimation(TSubPage *sub, ANIMATION_t* ani)
                 ani->hideEffect = SE_NONE;
         }
 
-        ani->showTime = 5;
-        ani->hideTime = 5;
+        if (showTime > 0)
+            ani->showTime = showTime;
+        else
+            ani->showTime = 5;
+
+        if (hideTime > 0)
+            ani->hideTime = hideTime;
+        else
+            ani->hideTime = 5;
+
         ani->offset = sub->getCollapseOffset();
     }
 

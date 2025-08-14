@@ -55,7 +55,9 @@ if(ANDROID)
     include_directories(${EXT_LIB_PATH}/pjsip/include)
     include_directories(${SSL_PATH}/ssl_3/include)
     link_directories(${SSL_PATH}/ssl_3/${ANDROID_ABI})
-    link_libraries(z ssl_3 crypto_3 mediandk expat libskia.a)
+    find_library(LIBSKIA_LIBRARY NAMES skia HINTS ${EXT_LIB_PATH}/skia/${ANDROID_ABI})
+
+    link_libraries(z ssl_3 crypto_3 mediandk expat skia)
 
     link_directories(${EXT_LIB_PATH}/pjsip/lib)
 
@@ -440,6 +442,7 @@ add_definitions(-D_REENTRANT)
 add_definitions(-D_GNU_SOURCE)
 add_definitions(-DPJ_AUTOCONF)
 add_definitions(-D_OPAQUE_SKIA_)
+add_definitions(-DSKIA_20250812)
 
 if(ANDROID)
     add_definitions(-pedantic -fexceptions -Wextra -Wno-attributes -Wno-nested-anon-types -Wno-gnu-anonymous-struct -Wno-gnu-zero-variadic-macro-arguments)
@@ -450,7 +453,7 @@ elseif(IOS)
     )
     add_definitions(-Wno-gnu-zero-variadic-macro-arguments -Wshorten-64-to-32)
 else()
-    add_definitions(-DTESTMODE=1 -DSKIA_20250812)
+    add_definitions(-DTESTMODE=1)
 
     if(USE_CLANG)
         add_definitions(-pedantic -fexceptions -Wextra -Wno-attributes)
@@ -494,6 +497,10 @@ else() # The following is deprecated! Qt5 is no longer supported.
 endif()
 
 if(ANDROID)
+    set_property(TARGET tpanel PROPERTY QT_ANDROID_EXTRA_LIBS
+        ${EXT_LIB_PATH}/skia/${ANDROID_ABI}/libskia.so
+    )
+
     if(DEFINED SSL_PATH)
         set_property(TARGET tpanel PROPERTY QT_ANDROID_EXTRA_LIBS
             ${SSL_PATH}/ssl_3/${ANDROID_ABI}/libcrypto_3.so
