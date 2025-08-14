@@ -99,7 +99,7 @@ sk_sp<SkTypeface> MakeResourceAsTypeface(const char* resource, int ttcIndex = 0,
 sk_sp<SkData> readImage(const std::string& fname);
 SkBitmap *allocPixels(int width, int height, SkBitmap *bm);
 SkColor reverseColor(const SkColor& col);
-#if !defined(__ANDROID__) && !defined(__IOS__)
+#ifdef SKIA_20250812
 sk_sp<SkFontMgr> getFontManager();
 #endif
 

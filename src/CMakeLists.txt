@@ -12,6 +12,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(QT_USE_QTMULTIMEDIA TRUE)
 set(QT_USE_QTMULTIMEDIAWIDGETS TRUE)
 
+if(LINUX)
+    option(USE_CLANG "Build application with clang" ON) # OFF is the default
+    message(STATUS "Build application with clang: ${USE_CLANG}")
+endif(LINUX)
+
 if(IOS)
     find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning Sensors)
     find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning Sensors)
@@ -445,8 +450,13 @@ elseif(IOS)
     )
     add_definitions(-Wno-gnu-zero-variadic-macro-arguments -Wshorten-64-to-32)
 else()
-    add_definitions(-DTESTMODE=1)
-    add_definitions(-pedantic -fexceptions -Wextra -Wno-gnu-zero-variadic-macro-arguments -Wno-attributes -Wno-nested-anon-types)
+    add_definitions(-DTESTMODE=1 -DSKIA_20250812)
+
+    if(USE_CLANG)
+        add_definitions(-pedantic -fexceptions -Wextra -Wno-attributes)
+    else(USE_CLANG)
+        add_definitions(-pedantic -fexceptions -Wextra -Wno-gnu-zero-variadic-macro-arguments -Wno-attributes -Wno-nested-anon-types)
+    endif(USE_CLANG)
 endif()
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)

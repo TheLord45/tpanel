@@ -409,7 +409,7 @@ size_t TSocket::readAbsolut(char *buffer, size_t size)
 
     while (rest && mConnected)
     {
-        size_t rec = receive(buf, rest);
+        ssize_t rec = receive(buf, rest);
 
         if (rec != npos && rec > 0)
         {
@@ -456,7 +456,7 @@ size_t TSocket::readAbsolut(char *buffer, size_t size)
     return (size - rest);
 }
 
-size_t TSocket::send(char* buffer, size_t size)
+ssize_t TSocket::send(char* buffer, size_t size)
 {
     DECL_TRACER("TSocket::send(char* buffer, size_t size)");
 

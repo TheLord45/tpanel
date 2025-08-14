@@ -1847,7 +1847,7 @@ void TPageManager::commandLoop()
                         msg.content[len] = 0;
                     }
 
-                    if (getCommand((char *)msg.content) == "^UTF" || bef.intern || TTPInit::isG5())  // This is already UTF8!
+                    if (getCommand((char *)msg.content) == "^UTF" || bef.intern /*|| TTPInit::isG5()*/)  // This is already UTF8!
                         com.assign((char *)msg.content);
                     else
                         com.assign(cp1250ToUTF8((char *)&msg.content));
