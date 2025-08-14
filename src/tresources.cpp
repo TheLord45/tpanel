@@ -65,7 +65,11 @@ namespace fs = std::filesystem;
 
 #ifdef SKIA_20250812
 #ifdef SK_FONTMGR_FONTCONFIG_AVAILABLE
+#ifndef __ANDROID__
 #include <include/ports/SkFontMgr_fontconfig.h>
+#else
+#include <include/ports/SkFontMgr_android_ndk.h>
+#endif
 #include <include/ports/SkFontScanner_FreeType.h>
 #endif
 
@@ -390,7 +394,11 @@ SkColor reverseColor(const SkColor& col)
 sk_sp<SkFontMgr> getFontManager()
 {
 #if defined(SK_FONTMGR_FONTCONFIG_AVAILABLE)
+#ifdef __ANDROID__
+    return SkFontMgr_New_AndroidNDK(false, SkFontScanner_Make_FreeType());
+#else
     return SkFontMgr_New_FontConfig(nullptr, SkFontScanner_Make_FreeType());
+#endif
 #elif defined(SK_FONTMGR_CORETEXT_AVAILABLE)
     return SkFontMgr_New_CoreText(nullptr);
 #elif defined(SK_FONTMGR_FREETYPE_DIRECTORY_AVAILABLE)

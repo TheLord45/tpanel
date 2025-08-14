@@ -221,13 +221,13 @@ void TSubPage::initialize()
         else if (ename.compare("modal") == 0)
             mSubpage.modal = xml.convertElementToInt(content);
         else if (ename.compare("showEffect") == 0)
-            mSubpage.showEffect = (SHOWEFFECT)xml.convertElementToInt(content);
+            mSubpage.showEffect = static_cast<SHOWEFFECT>(xml.convertElementToInt(content));
         else if (ename.compare("showTime") == 0)
             mSubpage.showTime = xml.convertElementToInt(content);
         else if (ename.compare("hideTime") == 0)
             mSubpage.hideTime = xml.convertElementToInt(content);
         else if (ename.compare("hideEffect") == 0)
-            mSubpage.hideEffect = (SHOWEFFECT)xml.convertElementToInt(content);
+            mSubpage.hideEffect = static_cast<SHOWEFFECT>(xml.convertElementToInt(content));
         else if (ename.compare("timeout") == 0)
             mSubpage.timeout = xml.convertElementToInt(content);
         else if (ename.compare("resetPos") == 0)
@@ -319,7 +319,7 @@ void TSubPage::initialize()
                 else if (ename.compare("ww") == 0)
                     sr.ww = xml.convertElementToInt(content);
                 else if (ename.compare("jt") == 0)
-                    sr.jt = (Button::ORIENTATION)xml.convertElementToInt(content);
+                    sr.jt = static_cast<ORIENTATION>(xml.convertElementToInt(content));
                 else if (ename.compare("ff") == 0)      // G5 font file name
                     sr.ff = content;
                 else if (ename.compare("fs") == 0)      // G5 font size
