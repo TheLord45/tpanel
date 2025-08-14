@@ -6742,7 +6742,7 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
         else
         {
             int count = 0;
-#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+#ifndef SKIA_20250812
             SkGlyphID *glyphs = nullptr;
 #else
             bool haveGlyphs = false;
@@ -6759,7 +6759,7 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
 
                 if (num > 0)
                 {
-#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+#ifndef SKIA_20250812
                     glyphs = new SkGlyphID[num];
                     size_t glyphSize = sizeof(SkGlyphID) * num;
                     sk_bzero(glyphs, glyphSize);
@@ -6771,7 +6771,7 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
 
                     if (count <= 0)
                     {
-#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+#ifndef SKIA_20250812
                         delete[] glyphs;
                         glyph = TFont::textToGlyphs(text, typeFace, &num);
 #else
@@ -6785,15 +6785,6 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
                             delete[] gly;
                         }
 #endif
-
-
-                        if (gly)
-                        {
-                            for (size_t i = 0; i < num && i < sizeof(glyphs); ++i)
-                                glyphs[i] = *(gly+i);
-
-                            delete[] gly;
-                        }
                         count = static_cast<int>(num);
                     }
                 }
@@ -6810,7 +6801,7 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
                 return true;
             else
             {
-#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+#ifndef SKIA_20250812
                 glyphs = new SkGlyphID[text.size()];
                 size_t glyphSize = sizeof(SkGlyphID) * text.size();
                 sk_bzero(glyphs, glyphSize);
@@ -6831,7 +6822,7 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
                 MSG_WARNING("Got no glyphs! Try to print: " << text);
                 canvas.drawString(text.data(), startX, startY, skFont, paint);
             }
-#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+#ifndef SKIA_20250812
             if (glyphs)
                 delete[] glyphs;
 #endif

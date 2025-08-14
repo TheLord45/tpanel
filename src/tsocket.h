@@ -35,7 +35,7 @@ class TSocket
         bool connect(const std::string& host, int port, bool encrypt=false);
         size_t receive(char *buffer, size_t size, bool doPoll=true);
         size_t readAbsolut(char *buffer, size_t size);
-        size_t send(char *buffer, size_t size);
+        ssize_t send(char *buffer, size_t size);
         bool close();
         bool isConnected() { return mConnected; }
         std::string& getMyIP() { return mMyIP; }
@@ -44,7 +44,7 @@ class TSocket
         int retrieveSSLerror(int rcode) { return SSL_get_error(mSsl, rcode); }
         int getSocket() { return mSockfd; }
 
-        static const size_t npos = static_cast<size_t>(-1);
+        static const ssize_t npos = static_cast<ssize_t>(-1);
 
     protected:
         struct addrinfo *lookup_host (const std::string& host, int port);

@@ -110,14 +110,14 @@ char *THTTPClient::tcall(size_t *size, const string& URL, const string& user, co
         return nullptr;
     }
 
-    size_t ret = 0;
+    ssize_t ret = 0;
     bool repeat = false;
 
     try
     {
         do
         {
-            if ((ret = send((char *)request.c_str(), request.length())) < 0)
+            if ((ret = send((char *)request.c_str(), request.length())) == TSocket::npos)
             {
                 if (errno)
                 {
@@ -181,8 +181,8 @@ char *THTTPClient::tcall(size_t *size, const string& URL, const string& user, co
 
     char buf[8194];
     memset(buf, 0, sizeof(buf));
-    size_t pos = 0, length = 0;
-    size_t rlen, totalLen = 0;
+    size_t pos = 0, totalLen = 0;
+    ssize_t rlen, length = 0;
     int loop = 0;
 
     try
@@ -233,7 +233,7 @@ char *THTTPClient::tcall(size_t *size, const string& URL, const string& user, co
                 length += len;
             }
 
-            if (length && totalLen && length >= totalLen)
+            if (length && totalLen && length >= static_cast<ssize_t>(totalLen))
                 break;
 
             memset(buf, 0, sizeof(buf));
