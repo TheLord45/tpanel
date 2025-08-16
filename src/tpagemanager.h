@@ -204,6 +204,7 @@ class TPageManager : public TAmxCommands
         bool readPage(const std::string& name);                 // Read the page with name \p name
         bool readPage(int ID);                                  // Read the page with id \p ID
         bool readSubPage(const std::string& name);              // Read the subpage with name \p name
+        bool readSubPage(const std::string& name, TSubPage **sp);// Read the subpage with name \b name and return a pointer to it.
         bool readSubPage(int ID);                               // Read the subpage with ID \p ID
         void updateActualPage();                                // Updates all elements of the actual page
         void updateSubpage(int ID);                             // Updates all elements of a subpage

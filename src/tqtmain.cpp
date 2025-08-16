@@ -5924,9 +5924,9 @@ void MainWindow::playSound(const string& file)
 
     if (!mMediaPlayer)
     {
-        mMediaPlayer = new QMediaPlayer;
+        mMediaPlayer = new QMediaPlayer(this);
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-        mAudioOutput = new QAudioOutput;
+        mAudioOutput = new QAudioOutput(this);
         mMediaPlayer->setAudioOutput(mAudioOutput);
 #endif
 #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
@@ -6300,7 +6300,7 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
     SHOWEFFECT_t effect = (in ? ani.showEffect : ani.hideEffect);
     int offset = 0;
 
-    if (TTPInit::isG5())
+    if (TTPInit::isG5() && (ani.offset > 0 || ani.dynOffset > 0))
     {
         offset = ani.offset;
 
@@ -6312,6 +6312,7 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
 
         scGapW = scWidth - offset;
         scGapH = scHeight - offset;
+        MSG_DEBUG("Animation offset: " << offset << ", scGapW: " << scGapW << ", scGapH: " << scGapH);
     }
 
     mLastObject = nullptr;
@@ -6405,6 +6406,7 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
             mLastObject = obj;
             mAnimObjects.insert(pair<ulong, OBJECT_t *>(obj->handle, obj));
             obj->animation->start();
+            MSG_DEBUG("Animation SLIDE LEFT started.");
         break;
 
         case SE_SLIDE_RIGHT_FADE:
@@ -6432,6 +6434,7 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
             mLastObject = obj;
             mAnimObjects.insert(pair<ulong, OBJECT_t *>(obj->handle, obj));
             obj->animation->start();
+            MSG_DEBUG("Animation SLIGHT RIGHT started.");
         break;
 
         case SE_SLIDE_TOP_FADE:
@@ -6459,6 +6462,7 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
             mLastObject = obj;
             mAnimObjects.insert(pair<ulong, OBJECT_t *>(obj->handle, obj));
             obj->animation->start();
+            MSG_DEBUG("Animation SLIDE TOP started.");
         break;
 
         case SE_FADE:
@@ -6487,6 +6491,7 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
             mAnimObjects.insert(pair<ulong, OBJECT_t *>(obj->handle, obj));
             obj->animation->setEasingCurve(QEasingCurve::Linear);
             obj->animation->start();
+            MSG_DEBUG("Animation FADE started.");
         break;
 
         default:

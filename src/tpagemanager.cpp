@@ -2414,13 +2414,11 @@ TSubPage *TPageManager::deliverSubPage(const string& name, TPage **pg)
 
     if (!subPage)
     {
-        if (!readSubPage(name))
+        if (!readSubPage(name, &subPage))
         {
             MSG_ERROR("Error reading subpage " << name);
             return nullptr;
         }
-
-        subPage = getSubPage(name);
 
         if (!subPage)
         {
@@ -2627,7 +2625,18 @@ bool TPageManager::readSubPage(const std::string& name)
 {
     DECL_TRACER("TPageManager::readSubPage(const std::string& name)");
 
+    return readSubPage(name, nullptr);
+}
+
+bool TPageManager::readSubPage(const std::string& name, TSubPage **sp)
+{
+    DECL_TRACER("TPageManager::readSubPage(const std::string& name, TSubPage **sp)");
+
     TError::clear();
+
+    if (sp)
+        *sp = nullptr;
+
     SUBPAGELIST_T page = findSubPage(name);
 
     if (page.pageID < MAX_PAGE_ID || (page.pageID >= SYSTEM_PAGE_START && page.pageID < SYSTEM_SUBPAGE_START))
@@ -2636,10 +2645,17 @@ bool TPageManager::readSubPage(const std::string& name)
         return false;
     }
 
-    if (haveSubPage(name))
-        return true;
+    TSubPage *pg = nullptr;
 
-    TSubPage *pg = new TSubPage(page.name+".xml");
+    if ((pg = getSubPage(name)) != nullptr) // Was the subpage already loaded?
+    {
+        if (sp)
+            *sp = pg;
+
+        return true;            // Yes, then return TRUE.
+    }
+
+    pg = new TSubPage(page.name+".xml");  // Load the wanted subpage
 
     if (TError::isError())
     {
@@ -2648,6 +2664,7 @@ bool TPageManager::readSubPage(const std::string& name)
         return false;
     }
 
+    // Set basic parameters and callbacks
     pg->setPalette(mPalette);
     pg->setFonts(mFonts);
     pg->registerCallback(_setBackground);
@@ -2656,11 +2673,14 @@ bool TPageManager::readSubPage(const std::string& name)
     pg->regCallPlayVideo(_callPlayVideo);
     pg->setGroup(page.group);
 
-    if (!addSubPage(pg))
-    {
+    if (!addSubPage(pg))    // Add subpage to the current active page
+    {                       // On error delete the subpage and return false.
         delete pg;
         return false;
     }
+
+    if (sp)
+        *sp = pg;
 
     return true;
 }
@@ -3040,6 +3060,16 @@ PAGELIST_T TPageManager::findPage(int ID)
     return PAGELIST_T();
 }
 
+/**
+ * @brief TPageManager::findSubPage - Find subpage
+ * The function searches in the list of subpages for one with the \b name. If
+ * it finds one, it returns the found page.
+ *
+ * @param name    The name of the wanted subpage
+ *
+ * @return If the subpage was found the element containing the information
+ * about the subpage is returned. Otherwise an empty element is returned.
+ */
 SUBPAGELIST_T TPageManager::findSubPage(const std::string& name)
 {
     DECL_TRACER("TPageManager::findSubPage(const std::string& name)");
@@ -3114,23 +3144,35 @@ bool TPageManager::addPage(TPage* pg)
     return true;
 }
 
+/**
+ * @brief TPageManager::addSubPage - add a new subpage to the chain.
+ * The method adds a new subpage to the chain. The chain contains all subpages
+ * of the current page. If the subpage \b pg is not already in the chain, it
+ * is added on top.
+ *
+ * @param pg   The pointer to a subpage. If this is NULL an error is registered.
+ *
+ * @return If there was no error registered and the subpage is not already part
+ * of the chain, the method returns TRUE.
+ */
 bool TPageManager::addSubPage(TSubPage* pg)
 {
     DECL_TRACER("TPageManager::addSubPage(TSubPage* pg)");
 
     if (!pg)
     {
-        MSG_ERROR("Parameter is NULL!");
-        TError::SetError();
+        SET_ERROR_MSG("Parameter is NULL!");
         return false;
     }
 
+    // Check if the subpage is already in the chain of subpages
     if (haveSubPage(pg->getNumber()))
     {
         MSG_ERROR("Subpage " << pg->getNumber() << ", " << pg->getName() << " is already in chain!");
         return false;
     }
 
+    // The page is not in the chain, so add it ...
     SPCHAIN_T *chain = new SPCHAIN_T;
     chain->page = pg;
     chain->next = nullptr;
@@ -3810,6 +3852,15 @@ bool TPageManager::doOverlap(RECT_T r1, RECT_T r2)
     return true;
 }
 
+/**
+ * @brief TPageManager::havePage - Look for loaded page.
+ * The method looks in the list of already loaded pages wheter a page with
+ * \b name exists or not.
+ *
+ * @param name  The name of the wanted page.
+ *
+ * @return If the page exists TRUE is returned.
+ */
 bool TPageManager::havePage(const string& name)
 {
     DECL_TRACER("TPageManager::havePage(const string& name)");
@@ -3830,6 +3881,15 @@ bool TPageManager::havePage(const string& name)
     return false;
 }
 
+/**
+ * @brief TPageManager::haveSubPage - Look for loaded subpage.
+ * The method looks in the list of already loaded subpages wheter a page with
+ * \b name exists or not.
+ *
+ * @param name  The name of the wanted subpage.
+ *
+ * @return If the page exists TRUE is returned.
+ */
 bool TPageManager::haveSubPage(const string& name)
 {
     DECL_TRACER("TPageManager::haveSubPage(const string& name)");
