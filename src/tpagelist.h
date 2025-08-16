@@ -106,11 +106,11 @@ class TPageList : public TValidateFile
 
         std::string mProject;
         std::string mSystemProject;
-        std::vector<PAGELIST_T> mPageList;
-        std::vector<SUBPAGELIST_T> mSubPageList;
-        std::vector<PAGELIST_T> mSystemPageList;
-        std::vector<SUBPAGELIST_T> mSystemSubPageList;
-        std::vector<SUBVIEWLIST_T> mSubViewList;
+        std::vector<PAGELIST_T> mPageList;              // List of pages
+        std::vector<SUBPAGELIST_T> mSubPageList;        // List of subpages
+        std::vector<PAGELIST_T> mSystemPageList;        // List of system pages
+        std::vector<SUBPAGELIST_T> mSystemSubPageList;  // List of system subpages
+        std::vector<SUBVIEWLIST_T> mSubViewList;        // List of subviews
 };
 
 #endif

@@ -3,6 +3,8 @@ ChangeLog
 
 Release: 2.0.0
 ===============================================================================
+2025-08-16 Fixed animations for G5.
+
 2025-08-08 Fixed compiling for Android. Works now with Qt 6.5.3.
 
 2025-08-02 Fixed icon and bitmap drawing to show them correctly resized.

@@ -497,18 +497,20 @@ else() # The following is deprecated! Qt5 is no longer supported.
 endif()
 
 if(ANDROID)
-    set_property(TARGET tpanel PROPERTY QT_ANDROID_EXTRA_LIBS
-        ${EXT_LIB_PATH}/skia/${ANDROID_ABI}/libskia.so
-    )
-
-    if(DEFINED SSL_PATH)
+     if(DEFINED SSL_PATH)
         set_property(TARGET tpanel PROPERTY QT_ANDROID_EXTRA_LIBS
             ${SSL_PATH}/ssl_3/${ANDROID_ABI}/libcrypto_3.so
             ${SSL_PATH}/ssl_3/${ANDROID_ABI}/libssl_3.so
+            ${EXT_LIB_PATH}/skia/${ANDROID_ABI}/libskia.so
         )
         message("++ Added openSSL libraries from \"${SSL_PATH}/ssl_3/${ANDROID_ABI}.\"")
+        message("++ Added skia library from \"${EXT_LIB_PATH}/skia/${ANDROID_ABI}.\"")
     else()
         message("## ERROR: Missing SSL_PATH variable!")
+        set_property(TARGET tpanel PROPERTY QT_ANDROID_EXTRA_LIBS
+            ${EXT_LIB_PATH}/skia/${ANDROID_ABI}/libskia.so
+        )
+    message("++ Added skia library from \"${EXT_LIB_PATH}/skia/${ANDROID_ABI}.\"")
     endif()
 endif()
 

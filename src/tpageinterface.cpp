@@ -1388,22 +1388,23 @@ bool TPageInterface::initAnimation(TSubPage *sub, ANIMATION_t* ani)
 {
     DECL_TRACER("TPageInterface::initAnimation(const PAGE_T& sub, ANIMATION_t* ani)");
 
-    if (!ani)
+    if (!ani || !sub)
         return false;
 
     int showTime = sub->getShowTime();
     int hideTime = sub->getHideTime();
+    COLDIR_t colDir = sub->getCollapseDir();
 
-    if (!TTPInit::isG5() || sub->getCollapseDir() == COLDIR_NONE)
+    if (!TTPInit::isG5() || colDir == COLDIR_NONE)
     {
         ani->showEffect = sub->getShowEffect();
         ani->showTime = showTime;
         ani->hideEffect = sub->getHideEffect();
         ani->hideTime = hideTime;
     }
-    else if (sub->getCollapseDir() != COLDIR_NONE)
+    else if (colDir != COLDIR_NONE)
     {
-        switch(sub->getCollapseDir())
+        switch(colDir)
         {
             case COLDIR_LEFT:
                 ani->showEffect = SE_SLIDE_LEFT;
