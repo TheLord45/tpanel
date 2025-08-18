@@ -3531,15 +3531,7 @@ double MainWindow::calcVolume(int value)
     DECL_TRACER("MainWindow::calcVolume(int value)");
 
     // volumeSliderValue is in the range [0..100]
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    qreal linearVolume = QAudio::convertVolume(value / qreal(100.0),
-                                               QAudio::LogarithmicVolumeScale,
-                                               QAudio::LinearVolumeScale);
-
-    return qRound(linearVolume * 100);
-#else
     return static_cast<double>(value) / 100.0;
-#endif
 }
 
 QFont MainWindow::loadFont(int number, const FONT_T& f, const FONT_STYLE style)
@@ -5925,10 +5917,8 @@ void MainWindow::playSound(const string& file)
     if (!mMediaPlayer)
     {
         mMediaPlayer = new QMediaPlayer(this);
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
         mAudioOutput = new QAudioOutput(this);
         mMediaPlayer->setAudioOutput(mAudioOutput);
-#endif
 #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
         connect(mMediaPlayer, &QMediaPlayer::playingChanged, this, &MainWindow::onPlayingChanged);
 #endif
@@ -5936,13 +5926,6 @@ void MainWindow::playSound(const string& file)
         connect(mMediaPlayer, &QMediaPlayer::errorOccurred, this, &MainWindow::onPlayerError);
     }
 
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    mMediaPlayer->setMedia(QUrl::fromLocalFile(file.c_str()));
-    mMediaPlayer->setVolume(calcVolume(TConfig::getSystemVolume()));
-
-    if (mMediaPlayer->state() != QMediaPlayer::StoppedState)
-        mMediaPlayer->stop();
-#else   // QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     mMediaPlayer->setSource(QUrl::fromLocalFile(file.c_str()));
     mAudioOutput->setVolume(static_cast<float>(calcVolume(TConfig::getSystemVolume())));
 
@@ -5956,8 +5939,10 @@ void MainWindow::playSound(const string& file)
     }
 #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
     if (mMediaPlayer->isPlaying())
+    {
+        mMediaPlayer->stop();
         mMediaPlayer->setPosition(0);
-//        mMediaPlayer->stop();
+    }
 #else
     if (mMediaPlayer->playbackState() != QMediaPlayer::StoppedState)
         mMediaPlayer->stop();
@@ -5965,7 +5950,6 @@ void MainWindow::playSound(const string& file)
     mMediaPlayer->setPosition(0);
 #endif  // #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
 
-#endif  // QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     mMediaPlayer->play();
 #if TESTMODE == 1
     if (mMediaPlayer->error() != QMediaPlayer::NoError)
@@ -5991,13 +5975,8 @@ void MainWindow::muteSound(bool state)
 {
     DECL_TRACER("MainWindow::muteSound(bool state)");
 
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    if (mMediaPlayer)
-        mMediaPlayer->setMuted(state);
-#else
     if (mAudioOutput)
         mAudioOutput->setMuted(state);
-#endif
 #if TESTMODE == 1
     __success = true;
     setAllDone();
@@ -6016,9 +5995,6 @@ void MainWindow::setVolume(int volume)
         return;
     }
 
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    mMediaPlayer->setVolume(calcVolume(volume));
-#else   // QT_VERSION
     if (!mMediaPlayer || !mAudioOutput)
     {
 #if TESTMODE == 1
@@ -6032,7 +6008,6 @@ void MainWindow::setVolume(int volume)
     __success = true;
     setAllDone();
 #endif  // TESTMODE
-#endif  // QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 }
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
