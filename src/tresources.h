@@ -99,7 +99,7 @@ sk_sp<SkTypeface> MakeResourceAsTypeface(const char* resource, int ttcIndex = 0,
 sk_sp<SkData> readImage(const std::string& fname);
 SkBitmap *allocPixels(int width, int height, SkBitmap *bm);
 SkColor reverseColor(const SkColor& col);
-#ifdef SKIA_20250812
+#if SKIAV >= 20250812
 sk_sp<SkFontMgr> getFontManager();
 #endif
 

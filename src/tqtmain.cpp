@@ -42,12 +42,10 @@
 #include <QFontDatabase>
 #include <QtMultimediaWidgets/QVideoWidget>
 #include <QtMultimedia/QMediaPlayer>
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-#   include <QtMultimedia/QMediaPlaylist>
-#else
-#   include <QAudioOutput>
-#   include <QMediaMetaData>
-#endif
+#include <QAudioOutput>
+#include <QMediaMetaData>
+#include <QMediaFormat>
+#include <QMediaDevices>
 #include <QListWidget>
 #include <QLayout>
 #include <QSizePolicy>
@@ -5922,11 +5920,26 @@ void MainWindow::playSound(const string& file)
 #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
         connect(mMediaPlayer, &QMediaPlayer::playingChanged, this, &MainWindow::onPlayingChanged);
 #endif
+        connect(mMediaPlayer, &QMediaPlayer::durationChanged, this, &MainWindow::onDurationChanged);
+        connect(mMediaPlayer, &QMediaPlayer::metaDataChanged, this, &MainWindow::onMetaDataChanged);
         connect(mMediaPlayer, &QMediaPlayer::mediaStatusChanged, this, &MainWindow::onMediaStatusChanged);
         connect(mMediaPlayer, &QMediaPlayer::errorOccurred, this, &MainWindow::onPlayerError);
+
+        QAudioDevice device = mAudioOutput->device();
+
+        if (device.isNull())
+        {
+            MSG_WARNING("No valid audio output device found!");
+            const QList<QAudioDevice> devices = QMediaDevices::audioOutputs();
+
+            for (const QAudioDevice &dev : devices)
+            {
+                MSG_DEBUG("Device: " << dev.description().toStdString());
+            }
+        }
     }
 
-    mMediaPlayer->setSource(QUrl::fromLocalFile(file.c_str()));
+    mMediaPlayer->setSource(QUrl::fromLocalFile(QString::fromStdString(file)));
     mAudioOutput->setVolume(static_cast<float>(calcVolume(TConfig::getSystemVolume())));
 
     if (!mMediaPlayer->isAvailable())
@@ -6039,6 +6052,47 @@ void MainWindow::onMediaStatusChanged(QMediaPlayer::MediaStatus status)
         case QMediaPlayer::EndOfMedia:      MSG_INFO("Playback has reached the end of the current media."); break;
         case QMediaPlayer::InvalidMedia:    MSG_WARNING("The current media cannot be played.");
     }
+}
+
+void MainWindow::onDurationChanged(qint64 duration)
+{
+    DECL_TRACER("MainWindow::durationChanged(qint64 duration)");
+
+    MSG_DEBUG("Duration: " << duration);
+}
+
+void MainWindow::onMetaDataChanged()
+{
+    DECL_TRACER("MainWindow::onMetaDataChanged()");
+
+    if (!mMediaPlayer)
+        return;
+
+    QMediaMetaData metaData = mMediaPlayer->metaData();
+    int fileFormat = metaData.value(QMediaMetaData::FileFormat).toInt();
+    MSG_INFO("File type: " << metaData.value(QMediaMetaData::MediaType).toString().toStdString());
+    string format;
+
+    switch(fileFormat)
+    {
+        case QMediaFormat::WMA:         format = "Windows Media Audio"; break;
+        case QMediaFormat::AAC:         format = "Advanced Audio Coding"; break;
+        case QMediaFormat::Matroska:    format = "Matroska (MKV)"; break;
+        case QMediaFormat::WMV:         format = "Windows Media Video"; break;
+        case QMediaFormat::MP3:         format = "MPEG-1 Audio Layer III or MPEG-2 Audio Layer III"; break;
+        case QMediaFormat::Wave:        format = "Waveform Audio File Format"; break;
+        case QMediaFormat::Ogg:         format = "Ogg"; break;
+        case QMediaFormat::MPEG4:       format = "MPEG-4"; break;
+        case QMediaFormat::AVI:         format = "Audio Video Interleave"; break;
+        case QMediaFormat::QuickTime:   format = "QuickTime"; break;
+        case QMediaFormat::WebM:        format = "WebM"; break;
+        case QMediaFormat::Mpeg4Audio:  format = "MPEG-4 Part 3 or MPEG-4 Audio (formally ISO/IEC 14496-3)"; break;
+        case QMediaFormat::FLAC:        format = "FLAC"; break;
+        default:
+            format = "Unkown format";
+    }
+
+    MSG_INFO("File format: " << format);
 }
 
 void MainWindow::onPlayerError(QMediaPlayer::Error error, const QString &errorString)

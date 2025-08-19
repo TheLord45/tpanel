@@ -18,14 +18,17 @@ QT_PATH="/opt/Qt"
 if [ ! -z $OSTYPE ] && [[ "$OSTYPE" == *darwin* ]]
 then
     QT_ABI="arm64-v8a"
+    QT_MAINTENANCE_TOOL="${QT_PATH}/MaintenanceTool.app/Contents/MacOS/MaintenanceTool"
 else
     QT_ABI="x86_64"
+    QT_MAINTENANCE_TOOL="${QT_PATH}/MaintenanceTool"
 fi
 # Type of host, the machine where the code is compiled.
 QT_HOST="gcc_64"
 
 QTBASE="${QT_PATH}/$QT_VERSION"
 QTDIR="${QTBASE}/android_${QT_ABI}"
+QT_MAINTENANCE_TOOL="/opt/Qt/MaintenanceTool.app/Contents/MacOS/MaintenanceTool"
 
 ANDROID_HOME="$HOME/Android/Sdk"
 ANDROID_NDK_PLATFORM="30"
@@ -44,7 +47,7 @@ fi
 # so use the apropriate path for it.
 if [ ! -z $OSTYPE ] && [[ "$OSTYPE" == *darwin* ]]
 then
-    JAVA_HOME="/Volumes/Extern/homebrew/Cellar/openjdk@17/17.0.16/libexec/openjdk.jdk/Contents/Home"
+    JAVA_HOME="/opt/homebrew/Cellar/openjdk@17/17.0.16/libexec/openjdk.jdk/Contents/Home"
 else
     JAVA_HOME="/usr/lib/jvm/java-17-openjdk-amd64"
 fi
@@ -75,6 +78,7 @@ then
     CMAKE="${QT_PATH}/Tools/CMake/CMake.app/Contents/bin/cmake"
     C_COMPILER_CLANG="${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang"
     CXX_COMPILER_CLANG="${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++"
+    export CMAKE_PREFIX_PATH="${QTDIR}/lib/cmake"
 else
     CMAKE="${QT_PATH}/Tools/CMake/bin/cmake"
 fi
@@ -86,6 +90,7 @@ SED="/usr/bin/sed"
 # DO NOT CHANGE ANYTHING BEYOND THIS LINE UNLESS YOU KNOW WHAT YOU'RE DOING!!
 #------------------------------------------------------------------------------
 
+export QT_DIR="${QTDIR}/lib/cmake/Qt6"
 # Getting the current directory
 CURDIR=`pwd`
 
@@ -234,7 +239,8 @@ then
         -DQT_HOST_PATH:PATH=${QTBASE}/${QT_HOST} \
         -DANDROID_SDK_ROOT:PATH=${ANDROID_HOME} \
         -DQT_ANDROID_BUILD_ALL_ABIS:BOOL=ON \
-        -DQT_ANDROID_ABIS:STRING="arm64-v8a;armeabi-v7a;x86;x86_64" \
+        -DQT_ANDROID_ABIS:STRING="arm64-v8a;armeabi-v7a" \
+        -DQT_MAINTENANCE_TOOL="$QT_MAINTENANCE_TOOL" \
         2>&1 | tee -a ${LOGFILE}
 
     if [ $? -ne 0 ]

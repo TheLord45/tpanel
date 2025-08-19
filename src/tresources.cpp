@@ -63,24 +63,24 @@ namespace fs = std::filesystem;
 #   define SK_FONTMGR_CORETEXT_AVAILABLE            1
 #endif
 
-#ifdef SKIA_20250812
-#ifdef SK_FONTMGR_FONTCONFIG_AVAILABLE
-#ifndef __ANDROID__
-#include <include/ports/SkFontMgr_fontconfig.h>
-#else
-#include <include/ports/SkFontMgr_android_ndk.h>
-#endif
-#include <include/ports/SkFontScanner_FreeType.h>
-#endif
+#if SKIAV >= 20250812
+#   ifdef SK_FONTMGR_FONTCONFIG_AVAILABLE
+#      ifdef __ANDROID__
+#         include <include/ports/SkFontMgr_android_ndk.h>
+#      else
+#         include <include/ports/SkFontMgr_fontconfig.h>
+#      endif
+       #include <include/ports/SkFontScanner_FreeType.h>
+#   endif
 
-#ifdef SK_FONTMGR_CORETEXT_AVAILABLE
-#include <include/ports/SkFontMgr_mac_ct.h>
-#endif
+#   ifdef SK_FONTMGR_CORETEXT_AVAILABLE
+#      include <include/ports/SkFontMgr_mac_ct.h>
+#   endif
 
-#ifdef SK_FONTMGR_FREETYPE_DIRECTORY_AVAILABLE
-#include <include/ports/SkFontMgr_directory.h>
-#endif
-#endif
+#   ifdef SK_FONTMGR_FREETYPE_DIRECTORY_AVAILABLE
+#      include <include/ports/SkFontMgr_directory.h>
+#   endif
+#endif  // SKIAV >= 20250812
 
 using std::string;
 using std::wstring;
@@ -315,7 +315,7 @@ sk_sp<SkData> GetResourceAsData(const char* resource, _RESOURCE_TYPE rs)
 
 sk_sp<SkTypeface> MakeResourceAsTypeface(const char* resource, int ttcIndex, _RESOURCE_TYPE rs)
 {
-#ifndef SKIA_20250812
+#if SKIAV < 20250812
     return SkTypeface::MakeFromStream(GetResourceAsStream(resource, rs), ttcIndex);
 #else
     sk_sp<SkFontMgr> fm = getFontManager();
@@ -390,7 +390,7 @@ SkColor reverseColor(const SkColor& col)
     return SkColorSetARGB(alpha, blue, green, red);
 }
 
-#ifdef SKIA_20250812
+#if SKIAV >= 20250812
 sk_sp<SkFontMgr> getFontManager()
 {
 #if defined(SK_FONTMGR_FONTCONFIG_AVAILABLE)
@@ -823,10 +823,9 @@ vector<string> splitLine(const string& str, int width, int height, SkFont& font,
 
     for (iter = words.begin(); iter != words.end(); ++iter)
     {
-        size_t pos;
         bool lineBreak = false;
 
-        if ((pos = iter->find("|")) != string::npos || (pos = iter->find("\n")) != string::npos)
+        if (iter->find("|") != string::npos || iter->find("\n") != string::npos)
         {
             *iter = iter->substr(1);
             lineBreak = true;

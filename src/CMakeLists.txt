@@ -28,6 +28,10 @@ else(IOS)
     find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning)
 endif(IOS)
 
+if(${QT_VERSION_MAJOR} LESS 6)
+    message(FATAL_ERROR "Qt with version ${QT_VERSION} is not supported!")
+endif()
+
 if(ANDROID)
     if(DEFINED $ENV{EXTRA_PATH})
         set(EXTRA_PATH $ENV{EXTRA_PATH})
@@ -47,6 +51,24 @@ if(ANDROID)
         set(SSL_PATH $ENV{HOME}/Android/android_openssl)
     endif()
 
+    if(IS_DIRECTORY ${EXTRA_PATH})
+        message(STATUS "Android extras at: ${EXTRA_PATH}")
+    else()
+        message(WARNING "No EXTRA_PATH defined!")
+    endif()
+
+    if(IS_DIRECTORY ${EXT_LIB_PATH})
+        message(STATUS "Android external libraries at: ${EXT_LIB_PATH}")
+    else()
+        message(SEND_ERROR "No EXT_LIB_PATH defined!")
+    endif()
+
+    if(IS_DIRECTORY ${SSL_PATH})
+        message(STATUS "Android SSL at: ${SSL_PATH}")
+    else()
+        message(SEND_ERROR "No SSL_PATH defined!")
+    endif()
+
     include_directories(${EXTRA_PATH}/expat/include)
 
     include_directories(${EXT_LIB_PATH}/skia/include)
@@ -55,9 +77,9 @@ if(ANDROID)
     include_directories(${EXT_LIB_PATH}/pjsip/include)
     include_directories(${SSL_PATH}/ssl_3/include)
     link_directories(${SSL_PATH}/ssl_3/${ANDROID_ABI})
-    find_library(LIBSKIA_LIBRARY NAMES skia HINTS ${EXT_LIB_PATH}/skia/${ANDROID_ABI})
+#    find_library(LIBSKIA_LIBRARY NAMES skia HINTS ${EXT_LIB_PATH}/skia/${ANDROID_ABI})
 
-    link_libraries(z ssl_3 crypto_3 mediandk expat skia)
+    link_libraries(z ssl_3 crypto_3 mediandk expat libskia.a)
 
     link_directories(${EXT_LIB_PATH}/pjsip/lib)
 
@@ -442,7 +464,7 @@ add_definitions(-D_REENTRANT)
 add_definitions(-D_GNU_SOURCE)
 add_definitions(-DPJ_AUTOCONF)
 add_definitions(-D_OPAQUE_SKIA_)
-add_definitions(-DSKIA_20250812)
+add_definitions(-DSKIAV=20250812)
 
 if(ANDROID)
     add_definitions(-pedantic -fexceptions -Wextra -Wno-attributes -Wno-nested-anon-types -Wno-gnu-anonymous-struct -Wno-gnu-zero-variadic-macro-arguments)
@@ -462,54 +484,37 @@ else()
     endif(USE_CLANG)
 endif()
 
-if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
-    if(IOS)
-        qt_add_executable(tpanel
-            MANUAL_FINALIZATION
-            ${PROJECT_SOURCES}
-            "${settings_bundle}"
-        )
-    else()
-        qt_add_executable(tpanel
-            MANUAL_FINALIZATION
-            ${PROJECT_SOURCES}
-        )
-    endif()
-
-    if(ANDROID)
-    # Define target properties for Android with Qt 6 as:
-        set_property(TARGET tpanel APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
-                     ${CMAKE_CURRENT_SOURCE_DIR}/android)
-    # For more information, see https://doc.qt.io/qt-6/qt-add-executable.html#target-creation
-    endif()
-else() # The following is deprecated! Qt5 is no longer supported.
-    if(ANDROID)
-        add_library(tpanel SHARED
-            ${PROJECT_SOURCES}
-        )
-# Define properties for Android with Qt 5 after find_package() calls as:
-        set(ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android")
-    else()
-        add_executable(tpanel
-            ${PROJECT_SOURCES}
-        )
-    endif()
+if(IOS)
+    qt_add_executable(tpanel
+        MANUAL_FINALIZATION
+        ${PROJECT_SOURCES}
+        "${settings_bundle}"
+    )
+else()
+    qt_add_executable(tpanel
+        MANUAL_FINALIZATION
+        ${PROJECT_SOURCES}
+    )
 endif()
 
 if(ANDROID)
-     if(DEFINED SSL_PATH)
+# Define target properties for Android with Qt 6 as:
+    set_property(TARGET tpanel APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
+                 ${CMAKE_CURRENT_SOURCE_DIR}/android)
+# For more information, see https://doc.qt.io/qt-6/qt-add-executable.html#target-creation
+    if(DEFINED SSL_PATH)
         set_property(TARGET tpanel PROPERTY QT_ANDROID_EXTRA_LIBS
             ${SSL_PATH}/ssl_3/${ANDROID_ABI}/libcrypto_3.so
             ${SSL_PATH}/ssl_3/${ANDROID_ABI}/libssl_3.so
-            ${EXT_LIB_PATH}/skia/${ANDROID_ABI}/libskia.so
+#            ${EXT_LIB_PATH}/skia/${ANDROID_ABI}/libskia.so
         )
         message("++ Added openSSL libraries from \"${SSL_PATH}/ssl_3/${ANDROID_ABI}.\"")
         message("++ Added skia library from \"${EXT_LIB_PATH}/skia/${ANDROID_ABI}.\"")
     else()
-        message("## ERROR: Missing SSL_PATH variable!")
-        set_property(TARGET tpanel PROPERTY QT_ANDROID_EXTRA_LIBS
-            ${EXT_LIB_PATH}/skia/${ANDROID_ABI}/libskia.so
-        )
+        message(SEND_ERROR "ERROR: Missing SSL_PATH variable!")
+ #       set_property(TARGET tpanel PROPERTY QT_ANDROID_EXTRA_LIBS
+ #           ${EXT_LIB_PATH}/skia/${ANDROID_ABI}/libskia.a
+ #       )
     message("++ Added skia library from \"${EXT_LIB_PATH}/skia/${ANDROID_ABI}.\"")
     endif()
 endif()

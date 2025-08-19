@@ -221,6 +221,8 @@ class MainWindow : public QMainWindow, public TObject
         void stopSound();
         void muteSound(bool state);
         void setVolume(int volume);
+        void onDurationChanged(qint64 duration);
+        void onMetaDataChanged();
         void onAppStateChanged(Qt::ApplicationState state);
         void onScreenOrientationChanged(Qt::ScreenOrientation ori);
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
