@@ -6742,13 +6742,13 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
         else
         {
             int count = 0;
-#ifndef SKIA_20250812
+#if SKIAV < 20250812
             SkGlyphID *glyphs = nullptr;
 #else
             bool haveGlyphs = false;
-#endif
             SkGlyphID glyphs[256];
             sk_bzero(glyphs, sizeof(glyphs));
+#endif
 
             if (sym == FT_SYM_MS)
             {
@@ -6759,21 +6759,21 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
 
                 if (num > 0)
                 {
-#ifndef SKIA_20250812
+#if SKIAV < 20250812
                     glyphs = new SkGlyphID[num];
                     size_t glyphSize = sizeof(SkGlyphID) * num;
                     sk_bzero(glyphs, glyphSize);
                     count = skFont.textToGlyphs(uni, num, SkTextEncoding::kUTF16, glyphs, (int)glyphSize);
 #else
                     count = skFont.textToGlyphs(uni, num, SkTextEncoding::kUTF16, glyphs);
-#endif
                     haveGlyphs = true;
+#endif
 
                     if (count <= 0)
                     {
-#ifndef SKIA_20250812
+#if SKIAV < 20250812
                         delete[] glyphs;
-                        glyph = TFont::textToGlyphs(text, typeFace, &num);
+                        glyphs = TFont::textToGlyphs(text, typeFace, &num);
 #else
                         SkGlyphID *gly = TFont::textToGlyphs(text, typeFace, &num);
 
@@ -6801,18 +6801,21 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
                 return true;
             else
             {
-#ifndef SKIA_20250812
+#if SKIAV < 20250812
                 glyphs = new SkGlyphID[text.size()];
                 size_t glyphSize = sizeof(SkGlyphID) * text.size();
                 sk_bzero(glyphs, glyphSize);
                 count = skFont.textToGlyphs(text.data(), text.size(), SkTextEncoding::kUTF8, glyphs, (int)glyphSize);
 #else
                 count = skFont.textToGlyphs(text.data(), text.size(), SkTextEncoding::kUTF8, glyphs);
-#endif
                 haveGlyphs = true;
+#endif
             }
-
+#if SKIAV >= 20250812
             if (haveGlyphs && count > 0)
+#else
+            if (glyphs && count > 0)
+#endif
             {
                 MSG_DEBUG("1st glyph: 0x" << std::hex << std::setw(8) << std::setfill('0') << glyphs[0] << ", # glyphs: " << std::dec << count);
                 canvas.drawSimpleText(glyphs, sizeof(SkGlyphID) * count, SkTextEncoding::kGlyphID, startX, startY, skFont, paint);
@@ -6822,7 +6825,7 @@ bool TButton::buttonText(SkBitmap* bm, int inst)
                 MSG_WARNING("Got no glyphs! Try to print: " << text);
                 canvas.drawString(text.data(), startX, startY, skFont, paint);
             }
-#ifndef SKIA_20250812
+#if SKIAV < 20250812
             if (glyphs)
                 delete[] glyphs;
 #endif
