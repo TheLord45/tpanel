@@ -43,6 +43,8 @@ class TSocket
         std::string& getMyNetmask() { return mMyNetmask; }
         int retrieveSSLerror(int rcode) { return SSL_get_error(mSsl, rcode); }
         int getSocket() { return mSockfd; }
+        std::string& getIfaceName() { return mIfaceName; }
+        std::string& getMacAddress() { return mMacAddress; }
 
         static const ssize_t npos = static_cast<ssize_t>(-1);
 
@@ -54,6 +56,7 @@ class TSocket
         bool isSockValid();
         bool getHost();
         bool determineNetmask(int socket);
+        bool getMac(int socket, const std::string& iface, std::string *mac);
 
     private:
         std::string mHost;
@@ -69,6 +72,8 @@ class TSocket
         std::string mMyIP;
         std::string mMyHostName;
         std::string mMyNetmask;
+        std::string mIfaceName;
+        std::string mMacAddress;
 };
 
 #endif

@@ -407,6 +407,7 @@ namespace amx
             void setWaitTime(int secs);
             int getWaitTime() { return mWaitTime; }
             int swapWaitTime();
+            std::string getMac();
 
         protected:
             void start();

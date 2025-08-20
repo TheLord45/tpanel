@@ -12,11 +12,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(QT_USE_QTMULTIMEDIA TRUE)
 set(QT_USE_QTMULTIMEDIAWIDGETS TRUE)
 
-if(LINUX)
-    option(USE_CLANG "Build application with clang" ON) # OFF is the default
-    message(STATUS "Build application with clang: ${USE_CLANG}")
-endif(LINUX)
-
 if(IOS)
     find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning Sensors)
     find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning Sensors)
@@ -31,6 +26,16 @@ endif(IOS)
 if(${QT_VERSION_MAJOR} LESS 6)
     message(FATAL_ERROR "Qt with version ${QT_VERSION} is not supported!")
 endif()
+
+if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    message(WARNING "Found compiler ${CMAKE_CXX_COMPILER_ID}. Please use Clang if possible!")
+    set(USE_CLANG OFF)
+else()
+    message(STATUS "Found compiler ${CMAKE_CXX_COMPILER_ID}")
+    set(USE_CLANG ON)
+endif()
+
+message(STATUS "Build application with clang: ${USE_CLANG}")
 
 if(ANDROID)
     if(DEFINED $ENV{EXTRA_PATH})
@@ -478,9 +483,9 @@ else()
     add_definitions(-DTESTMODE=1)
 
     if(USE_CLANG)
-        add_definitions(-pedantic -fexceptions -Wextra -Wno-attributes)
+        add_definitions(-pedantic -fexceptions -Wextra -Wno-gnu-zero-variadic-macro-arguments -Wno-attributes -Wno-nested-anon-types -Wno-gnu-anonymous-struct)
     else(USE_CLANG)
-        add_definitions(-pedantic -fexceptions -Wextra -Wno-gnu-zero-variadic-macro-arguments -Wno-attributes -Wno-nested-anon-types)
+        add_definitions(-pedantic -fexceptions -Wextra -Wno-attributes)
     endif(USE_CLANG)
 endif()
 

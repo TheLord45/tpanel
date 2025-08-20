@@ -77,7 +77,7 @@ string cmdList[] =
     "^PPG-", "^PPK-", "^PPM-", "^PPN-", "^PPT-", "^PPX", "^UTF-", "^LVC-",
     "^LVD-", "^LVE-", "^LVF-", "^LVL-", "^LVM-", "^LVN-", "^LVR-", "^LVS-",
     "^MUT-", "^PCL-", "^PCT-", "^POP-", "^PTC-", "^PTO-", "^SDL-", "^SDM-",
-    "^SHA-", "^SPD-", "\0"
+    "^SHA-", "^SPD-", "^ENC", "?ENC", "?MAC", "\0"
 };
 
 #define NUMBER_CMDS     144
@@ -2858,4 +2858,14 @@ int TAmxNet::swapWaitTime()
     mWaitTime = mOldWaitTime;
     mOldWaitTime = wt;
     return mWaitTime;
+}
+
+string TAmxNet::getMac()
+{
+    DECL_TRACER("TAmxNet::getMac()");
+
+    if (mSocket)
+        return mSocket->getMacAddress();
+
+    return string();
 }
