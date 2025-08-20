@@ -20,6 +20,7 @@
 #include <thread>
 #include <cstring>
 #include <sstream>
+#include <iomanip>
 
 #include "tsocket.h"
 #include "terror.h"
@@ -35,6 +36,8 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <netinet/tcp.h>
+#include <ifaddrs.h>
+#include <netpacket/packet.h>
 #include <openssl/err.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -646,6 +649,10 @@ bool TSocket::determineNetmask(int socket)
             struct ifreq ninfo;
 
             MSG_DEBUG("Device: " << ifa->ifa_name);
+            mIfaceName = ifa->ifa_name;
+            getMac(socket, mIfaceName, &mMacAddress);
+            MSG_DEBUG("Mac address: " << mMacAddress);
+
             memset(&ninfo, 0, sizeof(ninfo));
 #ifdef __POSIX__
             strncpy(ninfo.ifr_ifrn.ifrn_name, ifa->ifa_name, IFNAMSIZ);
@@ -687,6 +694,34 @@ bool TSocket::determineNetmask(int socket)
 
     freeifaddrs(ifaddr);
     return false;
+}
+
+bool TSocket::getMac(int socket, const string& iface, string *mac)
+{
+    DECL_TRACER("TSocket::getMac(int socket, const string& iface, string *mac)");
+
+    if (!mac || iface.empty() || socket < 0)
+    {
+        mac->clear();
+        return false;
+    }
+
+    struct ifreq ifr{};
+    strncpy(ifr.ifr_name, iface.c_str(), std::min(static_cast<size_t>(IFNAMSIZ-1), iface.length()));
+    ioctl(socket, SIOCGIFHWADDR, &ifr);
+
+    stringstream ss;
+
+    for (size_t i = 0; i < 6; i++)
+    {
+        ss << std::hex << std::setw(2) << std::setfill('0') << ifr.ifr_hwaddr.sa_data[i];
+
+        if ((i + 1) != 6)
+            ss << ':';
+    }
+
+    *mac = ss.str();
+    return true;
 }
 
 void TSocket::initSSL()

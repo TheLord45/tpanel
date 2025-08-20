@@ -1026,17 +1026,24 @@ TPageManager::TPageManager()
     REG_CMD(doABEEP, "ABEEP");  // Output a single beep even if beep is Off.
     REG_CMD(doADBEEP, "ADBEEP");// Output a double beep even if beep is Off.
     REG_CMD(doAKB, "@AKB");     // Pop up the keyboard icon and initialize the text string to that specified.
+    REG_CMD(doAKB, "^AKB");     // Pop up the keyboard icon and initialize the text string to that specified.
     REG_CMD(doAKEYB, "AKEYB");  // Pop up the keyboard icon and initialize the text string to that specified.
     REG_CMD(doAKP, "@AKP");     // Pop up the keypad icon and initialize the text string to that specified.
+    REG_CMD(doAKP, "^AKP");     // Pop up the keypad icon and initialize the text string to that specified.
     REG_CMD(doAKEYP, "AKEYP");  // Pop up the keypad icon and initialize the text string to that specified.
     REG_CMD(doAKEYR, "AKEYR");  // Remove the Keyboard/Keypad.
     REG_CMD(doAKR, "@AKR");     // Remove the Keyboard/Keypad.
+    REG_CMD(doAKR, "^AKR");     // Remove the Keyboard/Keypad.
     REG_CMD(doBEEP, "BEEP");    // Play a single beep.
     REG_CMD(doBEEP, "^ABP");    // G5: Play a single beep.
     REG_CMD(doDBEEP, "DBEEP");  // Play a double beep.
     REG_CMD(doDBEEP, "^ADB");   // G5: Play a double beep.
     REG_CMD(doEKP, "@EKP");     // Pop up the keypad icon and initialize the text string to that specified.
+    REG_CMD(doEKP, "^EKP");     // Pop up the keypad icon and initialize the text string to that specified.
     REG_CMD(doPKP, "@PKB");     // Present a private keyboard.
+    REG_CMD(doENC, "^ENC");     // G5: Set Text Ecoding Method
+    REG_CMD(getENC, "?ENC");    // G5: Get Text Ecoding Method
+    REG_CMD(getMAC, "?MAC");    // G5: Query Panel MAC Address
     REG_CMD(doPKP, "PKEYP");    // Present a private keypad.
     REG_CMD(doPKP, "@PKP");     // Present a private keypad.
     REG_CMD(doRPP, "^RPP");     // Reset protected password command
@@ -5084,7 +5091,12 @@ void TPageManager::sendKeyboard(const std::string& text)
     amx::ANET_SEND scmd;
     scmd.port = 1;
     scmd.channel = 0;
-    scmd.msg = UTF8ToCp1250(text);
+
+    if (TTPInit::isG5() && mEncoding == ENCODING_UTF8)
+        scmd.msg = text;
+    else
+        scmd.msg = UTF8ToCp1250(text);
+
     scmd.MC = 0x008b;
     MSG_DEBUG("Sending keyboard: " << text);
 
@@ -5116,7 +5128,12 @@ void TPageManager::sendString(uint handle, const std::string& text)
     amx::ANET_SEND scmd;
     scmd.port = bt->getAddressPort();
     scmd.channel = bt->getAddressChannel();
-    scmd.msg = UTF8ToCp1250(text);
+
+    if (TTPInit::isG5() && mEncoding == ENCODING_UTF8)
+        scmd.msg = text;
+    else
+        scmd.msg = UTF8ToCp1250(text);
+
     scmd.MC = 0x008b;
 
     if (gAmxNet)
@@ -5135,7 +5152,12 @@ void TPageManager::sendGlobalString(const string& text)
     amx::ANET_SEND scmd;
     scmd.port = 1;
     scmd.channel = 0;
-    scmd.msg = text;
+
+    if (TTPInit::isG5() && mEncoding == ENCODING_UTF8)
+        scmd.msg = text;
+    else
+        scmd.msg = UTF8ToCp1250(text);
+
     scmd.MC = 0x008b;
 
     if (gAmxNet)
@@ -5276,7 +5298,11 @@ bool TPageManager::sendCustomEvent(int value1, int value2, int value3, const str
     scmd.value1 = value1;   // instance
     scmd.value2 = value2;
     scmd.value3 = value3;
-    scmd.msg = msg;
+
+    if (TTPInit::isG5() && mEncoding == ENCODING_UTF8)
+        scmd.msg = msg;
+    else
+        scmd.msg = UTF8ToCp1250(msg);
 
     if (!msg.empty())
         scmd.dtype = 0x0001;// Char array
@@ -11910,6 +11936,64 @@ void TPageManager::doPKP(int, vector<int>&, vector<string>& pars)
 
     if (_callKeypad)
         _callKeypad(initText, promptText, true);
+}
+
+/**
+ * @brief Set Text Encoding Method
+ * Sets the text encoding method which is used for commands and strings sent
+ * from panel to controller (the default is UTF-8).
+ */
+void TPageManager::doENC(int, vector<int>&, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doENC(int, vector<int>&, vector<string>&)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Command ^ENC: Expectin 1 parameter but got none!");
+        return;
+    }
+
+    int encoding = atoi(pars[0].c_str());
+
+    if (encoding < 0 || encoding > 1)
+    {
+        MSG_ERROR("Command ^ENC: Invalid encoding " << encoding << " was set. Ignoring command!");
+        return;
+    }
+
+    mEncoding = encoding;
+}
+
+/**
+ * @brief TPageManager::getENC - Get Text Encoding Method
+ * Gets the current text encoding method which is used for commands and strings
+ * sent from panel to controller (the default is UTF-8).
+ *
+ * @param port  The port number the request was received on.
+ */
+void TPageManager::getENC(int port, vector<int>&, vector<string>&)
+{
+    DECL_TRACER("TPageManager::getENC(int, vector<int>&, vector<string>&)");
+
+    sendCustomEvent(mEncoding, 0, 0, (mEncoding == ENCODING_UTF8 ? "UTF-8" : "ISO-8859-1"), 1331, port, 0);
+}
+
+/**
+ * @brief Query Panel MAC Address
+ * Query the MAC Address of the panel.
+ */
+void TPageManager::getMAC(int port, vector<int>&, vector<string>&)
+{
+    DECL_TRACER("TPageManager::getMAC(int port, vector<int>&, vector<string>&)");
+
+    if (!mAmxNet)
+    {
+        MSG_ERROR("Command ?MAC: No network communication defined!");
+        return;
+    }
+
+    string mac = mAmxNet->getMac();
+    sendCustomEvent(0, 0, 0, mac, 1315, port, 0);
 }
 
 /**

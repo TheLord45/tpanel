@@ -263,6 +263,9 @@ CMD_DEFINATIONS cmdDefinations[] = {
     { "^POP", false, true, ';' },
     { "^PTC", false, true, ';' },
     { "^PTO", false, true, ';' },
+    { "^ENC", false, true, ',' },
+    { "?ENC", false, false, '\0' },
+    { "?MAC", false, false, '\0' },
     { "", false, false, '\0' }
 };
 

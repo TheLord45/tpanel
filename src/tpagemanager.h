@@ -59,6 +59,10 @@ extern TPageManager *gPageManager;
 #define NETSTATE_CELL   2
 #endif
 
+// The following definitions are for G5 only
+#define ENCODING_UTF8   0       // Text send to the controller is UTF8
+#define ENCODING_LATIN1 1       // Text send to the controller is LATIN1 (ISO-8859-1)
+
 /**
  * @brief PGSUBVIEWATOM_T
  * This struct contains the elements of an item inside a subview list.
@@ -976,6 +980,9 @@ class TPageManager : public TAmxCommands
         void doEKP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doPKB(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doPKP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doENC(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void getENC(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void getMAC(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doRPP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doSetup(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doShutdown(int port, std::vector<int>& channels, std::vector<std::string>& pars);
@@ -1068,6 +1075,7 @@ class TPageManager : public TAmxCommands
         bool mUpdateViewsRun{false};                    // TRUE = The thread for the queue mUpdateViews is running
         std::vector<TButtonStates *> mButtonStates;     // Holds the states for each button
         std::vector<SCE_EVENT_t> mSceEvents;            // SCE events. For details look at command ^SCE.
+        int mEncoding{ENCODING_UTF8};                   // G5: Encoding of text send to the controller.
         // SIP
 #ifndef _NOSIP_
         bool mPHNautoanswer{false};                     // The state of the SIP autoanswer
