@@ -360,7 +360,6 @@ std::string& TConfig::getFirmVersion()
  */
 std::string& TConfig::getLogFile()
 {
-    cerr << "TRACE: TConfig::getLogFile()"  << endl;
     return mTemporary ? localSettings_temp.logFile : localSettings.logFile;
 }
 
@@ -384,7 +383,6 @@ std::string& TConfig::getLogFile()
  */
 string& TConfig::getLogLevel()
 {
-    cerr << "TRACE: TConfig::getLogLevel()" << endl;
     return mTemporary ? localSettings_temp.logLevel : localSettings.logLevel;
 }
 

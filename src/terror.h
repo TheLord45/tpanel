@@ -125,6 +125,7 @@ class TStreamError
         static char *mBuffer;
 };
 
+#ifndef NDEBUG
 class TTracer
 {
     public:
@@ -142,6 +143,7 @@ class TTracer
         threadID_t mThreadID{0};
 #endif
 };
+#endif
 
 class TError : public std::ostream
 {
@@ -184,7 +186,6 @@ class TError : public std::ostream
         static threadID_t mThreadID;
         static int mLastLine;
         static std::string mLastFile;
-//        std::string mHeadMsg;
 };
 
 #define MSG_INFO(msg)       { if (TStreamError::checkFilter(HLOG_INFO)) { _lock(); *TError::Current(_getThreadID())->getStream() << TError::append(HLOG_INFO, __LINE__, __FILE__) << msg << std::endl; TStreamError::resetFlags(); _unlock(); }}
@@ -194,12 +195,16 @@ class TError : public std::ostream
 #define MSG_TRACE(msg)      { if (TStreamError::checkFilter(HLOG_TRACE)) { _lock(); *TError::Current(_getThreadID())->getStream() << TError::append(HLOG_TRACE, __LINE__, __FILE__) << msg << std::endl; TStreamError::resetFlags(); _unlock(); }}
 #define MSG_DEBUG(msg)      { if (TStreamError::checkFilter(HLOG_DEBUG)) { _lock(); *TError::Current(_getThreadID())->getStream() << TError::append(HLOG_DEBUG, __LINE__, __FILE__) << msg << std::endl; TStreamError::resetFlags(); _unlock(); }}
 #else
-#define MSG_TRACE(msg)
-#define MSG_DEBUG(msg)
+#define MSG_TRACE(msg)      { if (TStreamError::checkFilter(HLOG_TRACE)) std::cout << msg << std::endl; }
+#define MSG_DEBUG(msg)      { if (TStreamError::checkFilter(HLOG_DEBUG)) std::cout << msg << std::endl; }
 #endif
 #define MSG_PROTOCOL(msg)   { if (TStreamError::checkFilter(HLOG_PROTOCOL)) { _lock(); *TError::Current(_getThreadID())->getStream() << TError::append(HLOG_PROTOCOL, __LINE__, __FILE__) << msg << std::endl; TStreamError::resetFlags(); _unlock(); }}
 
+#ifndef NDEBUG
 #define DECL_TRACER(msg)    TTracer _hidden_tracer(msg, __LINE__, static_cast<const char *>(__FILE__), _getThreadID());
+#else
+#define DECL_TRACER(msg)
+#endif
 
 #define SET_ERROR()         TError::setError(__LINE__, __FILE__)
 #define SET_ERROR_MSG(msg)  TError::_setErrorMsg(msg, __LINE__, __FILE__)
@@ -221,10 +226,16 @@ class TError : public std::ostream
 #define IS_LOG_INFO()       TStreamError::checkFilter(HLOG_INFO)
 #define IS_LOG_WARNING()    TStreamError::checkFilter(HLOG_WARNING)
 #define IS_LOG_ERROR()      TStreamError::checkFilter(HLOG_ERROR)
+#define IS_LOG_PROTOCOL()   TStreamError::checkFilter(HLOG_PROTOCOL)
+#ifndef NDEBUG
 #define IS_LOG_TRACE()      TStreamError::checkFilter(HLOG_TRACE)
 #define IS_LOG_DEBUG()      TStreamError::checkFilter(HLOG_DEBUG)
-#define IS_LOG_PROTOCOL()   TStreamError::checkFilter(HLOG_PROTOCOL)
 #define IS_LOG_ALL()        TStreamError::checkFilter(HLOG_ALL)
+#else
+#define IS_LOG_TRACE()      false
+#define IS_LOG_DEBUG()      false
+#define IS_LOG_ALL()        false
+#endif
 
 #ifndef NDEBUG
 #define START_TEMPORARY_TRACE()     TStreamError::startTemporaryLogLevel(HLOG_TRACE)
