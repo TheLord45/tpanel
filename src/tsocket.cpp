@@ -37,7 +37,9 @@
 #include <netdb.h>
 #include <netinet/tcp.h>
 #include <ifaddrs.h>
+#if !defined(__IOS_AVAILABLE)
 #include <netpacket/packet.h>
+#endif
 #include <openssl/err.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -710,8 +712,9 @@ bool TSocket::getMac(int socket, const string& iface, string *mac)
     size_t len = std::min(static_cast<size_t>(IFNAMSIZ-1), iface.length());
     strncpy(ifr.ifr_name, iface.c_str(), len);
     ifr.ifr_name[len] = 0;
-    ioctl(socket, SIOCGIFHWADDR, &ifr);
 
+#ifdef SIOCGIFHWADDR
+    ioctl(socket, SIOCGIFHWADDR, &ifr);
     stringstream ss;
 
     for (size_t i = 0; i < 6; i++)
@@ -724,6 +727,10 @@ bool TSocket::getMac(int socket, const string& iface, string *mac)
 
     *mac = ss.str();
     return true;
+#else
+    mac->clear();
+    return false;
+#endif
 }
 
 void TSocket::initSSL()

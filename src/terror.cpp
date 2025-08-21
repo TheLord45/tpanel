@@ -263,12 +263,25 @@ void TStreamError::setLogLevel(const std::string& slv)
     {
         lv = slv.substr(start, pos - start);
         start = pos + 1;
+#ifndef NDEBUG
         mLogLevel |= _getLevel(lv);
+#else
+        unsigned int llv = _getLevel(lv);
+
+        if (llv != HLOG_DEBUG && llv != HLOG_TRACE)
+            mLogLevel |= llv;
+#endif
         pos = slv.find("|", start);
     }
 
-    mLogLevel |= _getLevel(slv.substr(start));
+#ifdef NDEBUG
+    unsigned int llv = _getLevel(lv);
 
+    if (llv != HLOG_DEBUG && llv != HLOG_TRACE)
+        mLogLevel |= llv;
+#else
+    mLogLevel |= _getLevel(slv.substr(start));
+#endif
 #ifdef __ANDROID__
     __android_log_print(ANDROID_LOG_INFO, "tpanel", "TStreamError::setLogLevel: New loglevel: %s", slv.c_str());
 #else
@@ -294,11 +307,12 @@ bool TStreamError::checkFilter(terrtype_t err)
         return true;
     else if (err == TERRERROR && (mLogLevel & HLOG_ERROR) != 0)
         return true;
+#ifndef NDEBUG
     else if (err == TERRTRACE && (mLogLevel & HLOG_TRACE) != 0)
         return true;
     else if (err == TERRDEBUG && (mLogLevel & HLOG_DEBUG) != 0)
         return true;
-
+#endif
     return false;
 }
 
@@ -314,7 +328,13 @@ bool TStreamError::checkFilter(unsigned int lv)
         return true;
 
     if ((mLogLevel & lv) != 0 && lv != HLOG_PROTOCOL)
+    {
+#ifdef NDEBUG
+        if (lv == HLOG_DEBUG || lv == HLOG_TRACE)
+            return false;
+#endif
         return true;
+    }
 
     return false;
 }
@@ -333,17 +353,18 @@ unsigned int TStreamError::_getLevel(const std::string& slv)
     if (slv.compare(SLOG_ERROR) == 0)
         return HLOG_ERROR;
 
+    if (slv.compare(SLOG_PROTOCOL) == 0)
+        return HLOG_PROTOCOL;
+#ifndef NDEBUG
     if (slv.compare(SLOG_TRACE) == 0)
         return HLOG_TRACE;
 
     if (slv.compare(SLOG_DEBUG) == 0)
         return HLOG_DEBUG;
 
-    if (slv.compare(SLOG_PROTOCOL) == 0)
-        return HLOG_PROTOCOL;
-
     if (slv.compare(SLOG_ALL) == 0)
         return HLOG_ALL;
+#endif
 
     return HLOG_NONE;
 }
@@ -677,7 +698,7 @@ void TStreamError::endTemporaryLogLevel()
 }
 
 /********************************************************************/
-
+#ifndef NDEBUG
 std::mutex tracer_mutex;
 
 TTracer::TTracer(const std::string& msg, int line, const char *file, threadID_t tid)
@@ -750,6 +771,7 @@ TTracer::~TTracer()
 
     mHeadMsg.clear();
 }
+#endif
 
 /********************************************************************/
 

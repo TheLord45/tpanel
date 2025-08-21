@@ -469,7 +469,12 @@ add_definitions(-D_REENTRANT)
 add_definitions(-D_GNU_SOURCE)
 add_definitions(-DPJ_AUTOCONF)
 add_definitions(-D_OPAQUE_SKIA_)
-add_definitions(-DSKIAV=20250812)
+
+if(IOS)
+    add_definitions(-DSKIAV=20230925)
+else()
+    add_definitions(-DSKIAV=20250812)
+endif()
 
 if(ANDROID)
     add_definitions(-pedantic -fexceptions -Wextra -Wno-attributes -Wno-nested-anon-types -Wno-gnu-anonymous-struct -Wno-gnu-zero-variadic-macro-arguments)
@@ -478,7 +483,7 @@ elseif(IOS)
         ${OBJECTIVE_HEADERS}
         ${OBJECTIVE_SOURCES}
     )
-    add_definitions(-Wno-gnu-zero-variadic-macro-arguments -Wshorten-64-to-32)
+    add_definitions(-Wno-gnu-zero-variadic-macro-arguments -Wno-shorten-64-to-32)
 else()
     add_definitions(-DTESTMODE=1)
 
@@ -511,15 +516,15 @@ if(ANDROID)
         set_property(TARGET tpanel PROPERTY QT_ANDROID_EXTRA_LIBS
             ${SSL_PATH}/ssl_3/${ANDROID_ABI}/libcrypto_3.so
             ${SSL_PATH}/ssl_3/${ANDROID_ABI}/libssl_3.so
-#            ${EXT_LIB_PATH}/skia/${ANDROID_ABI}/libskia.so
+            ${EXT_LIB_PATH}/skia/${ANDROID_ABI}/libskia.so
         )
         message("++ Added openSSL libraries from \"${SSL_PATH}/ssl_3/${ANDROID_ABI}.\"")
         message("++ Added skia library from \"${EXT_LIB_PATH}/skia/${ANDROID_ABI}.\"")
     else()
         message(SEND_ERROR "ERROR: Missing SSL_PATH variable!")
- #       set_property(TARGET tpanel PROPERTY QT_ANDROID_EXTRA_LIBS
- #           ${EXT_LIB_PATH}/skia/${ANDROID_ABI}/libskia.a
- #       )
+        set_property(TARGET tpanel PROPERTY QT_ANDROID_EXTRA_LIBS
+            ${EXT_LIB_PATH}/skia/${ANDROID_ABI}/libskia.so
+        )
     message("++ Added skia library from \"${EXT_LIB_PATH}/skia/${ANDROID_ABI}.\"")
     endif()
 endif()
