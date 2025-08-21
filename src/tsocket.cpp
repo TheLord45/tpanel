@@ -707,14 +707,16 @@ bool TSocket::getMac(int socket, const string& iface, string *mac)
     }
 
     struct ifreq ifr{};
-    strncpy(ifr.ifr_name, iface.c_str(), std::min(static_cast<size_t>(IFNAMSIZ-1), iface.length()));
+    size_t len = std::min(static_cast<size_t>(IFNAMSIZ-1), iface.length());
+    strncpy(ifr.ifr_name, iface.c_str(), len);
+    ifr.ifr_name[len] = 0;
     ioctl(socket, SIOCGIFHWADDR, &ifr);
 
     stringstream ss;
 
     for (size_t i = 0; i < 6; i++)
     {
-        ss << std::hex << std::setw(2) << std::setfill('0') << ifr.ifr_hwaddr.sa_data[i];
+        ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(ifr.ifr_hwaddr.sa_data[i]);
 
         if ((i + 1) != 6)
             ss << ':';
