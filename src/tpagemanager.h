@@ -275,6 +275,10 @@ class TPageManager : public TAmxCommands
         void informPhoneState(bool call, const std::string& pnumber);
         void initOrientation();
         void enterSetup();
+        void androidPlay(const std::string& file, float volume);
+        void androidStop();
+        void androidMute(bool mute);
+        void androidSetVolume(float volume);
 #endif
 #ifdef Q_OS_IOS
         void informBatteryStatus(int level, int state);
