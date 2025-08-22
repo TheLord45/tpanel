@@ -5911,7 +5911,12 @@ void MainWindow::playSound(const string& file)
 #endif
         return;
     }
+#ifdef Q_OS_ANDROID
+    if (!gPageManager)
+        return;
 
+    gPageManager->androidPlay(file, static_cast<float>(TConfig::getSystemVolume() / 100.0));
+#else
     if (!mMediaPlayer)
     {
         mMediaPlayer = new QMediaPlayer(this);
@@ -5974,22 +5979,33 @@ void MainWindow::playSound(const string& file)
 
     setAllDone();
 #endif
+#endif  // Q_OS_ANDROID
 }
 
 void MainWindow::stopSound()
 {
     DECL_TRACER("MainWindow::stopSound()");
 
+#ifdef Q_OS_ANDROID
+    if (gPageManager)
+        gPageManager->androidStop();
+#else
     if (mMediaPlayer)
         mMediaPlayer->stop();
+#endif  // Q_OS_ANDROID
 }
 
 void MainWindow::muteSound(bool state)
 {
     DECL_TRACER("MainWindow::muteSound(bool state)");
 
+#ifdef Q_OS_ANDROID
+    if (gPageManager)
+        gPageManager->androidMute(state);
+#else
     if (mAudioOutput)
         mAudioOutput->setMuted(state);
+#endif
 #if TESTMODE == 1
     __success = true;
     setAllDone();
@@ -5999,7 +6015,10 @@ void MainWindow::muteSound(bool state)
 void MainWindow::setVolume(int volume)
 {
     DECL_TRACER("MainWindow::setVolume(int volume)");
-
+#ifdef Q_OS_ANDROID
+    if (gPageManager)
+        gPageManager->androidSetVolume(static_cast<float>(volume / 100.0));
+#else
     if (!mMediaPlayer)
     {
 #if TESTMODE == 1
@@ -6017,6 +6036,7 @@ void MainWindow::setVolume(int volume)
     }
 
     mAudioOutput->setVolume(static_cast<float>(calcVolume(volume)));
+#endif
 #if TESTMODE == 1
     __success = true;
     setAllDone();
