@@ -30,6 +30,7 @@ public class PlaySound extends Logger
     static private String lastSource;
     static private boolean muted = false;
     static private float oldVolume = 0;
+    static private boolean doRelease = false;
 
     static public void play(String file, float volume)
     {
@@ -45,6 +46,12 @@ public class PlaySound extends Logger
         }
         else
             muted = false;
+
+        if (bBlocked)
+        {
+            log(HLOG_DEBUG, "Sound player is blocked!");
+            return;
+        }
 
         bBlocked = true;
 
@@ -62,10 +69,24 @@ public class PlaySound extends Logger
                         .build()
                 );
 
+                mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+                    public void onPrepared(MediaPlayer mp) {
+                        log(HLOG_INFO, "Source is prepared and ready for playing...");
+                    }
+                });
+
                 mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
                     public void onCompletion(MediaPlayer mp) {
-                        mediaPlayer.release();
-                        mediaPlayer = null;
+                        mediaPlayer.reset();
+
+                        if (doRelease)
+                        {
+                            mediaPlayer.release();
+                            mediaPlayer = null;
+                            doRelease = false;
+                        }
+
+                        bBlocked = false;
                         log(HLOG_INFO, "Sound file completed/stopped playing.");
                     }
                 });
@@ -82,6 +103,29 @@ public class PlaySound extends Logger
                             default:
                                 log(HLOG_WARNING, "Unknown information " + String.valueOf(what) + " found!");
                                 return false;
+                        }
+
+                        return true;
+                    }
+                });
+
+                mediaPlayer.setOnErrorListener(new MediaPlayer.OnErrorListener() {
+                    public boolean onError(MediaPlayer mp, int what, int extra) {
+                        switch(what)
+                        {
+                            case MediaPlayer.MEDIA_ERROR_SERVER_DIED: log(HLOG_ERROR, "Player server died!"); break;
+                            case MediaPlayer.MEDIA_ERROR_UNKNOWN:     log(HLOG_ERROR, "Unknown player error occured!"); break;
+                            default:
+                                log(HLOG_ERROR, "Unknown player error " + String.valueOf(what) + "!");
+                                return false;
+                        }
+
+                        switch(extra)
+                        {
+                            case MediaPlayer.MEDIA_ERROR_IO:            log(HLOG_ERROR, "Player detail error: I/O error!"); break;
+                            case MediaPlayer.MEDIA_ERROR_MALFORMED:     log(HLOG_ERROR, "Player detail error: Bitstream is not conforming to the related coding standard or file spec!"); break;
+                            case MediaPlayer.MEDIA_ERROR_UNSUPPORTED:   log(HLOG_ERROR, "Player detail error: The media framework does not support the feature!"); break;
+                            case MediaPlayer.MEDIA_ERROR_TIMED_OUT:     log(HLOG_ERROR, "Player detail error: Some operation takes too long to complete, usually more than 3-5 seconds!"); break;
                         }
 
                         return true;
@@ -105,7 +149,6 @@ public class PlaySound extends Logger
             else
                 log(HLOG_WARNING, "Invalid volume " + String.valueOf(volume) + ". Ignoring it!");
 
-            log(HLOG_DEBUG, "Preparing source ...");
             mediaPlayer.prepare();
             log(HLOG_INFO, "Start to play sound ...");
             mediaPlayer.start();
@@ -113,6 +156,7 @@ public class PlaySound extends Logger
         catch (Exception e)
         {
             log(HLOG_ERROR, "PlaySound->play: Exception: " + e);
+            mediaPlayer.reset();
         }
 
         bBlocked = false;
@@ -155,5 +199,26 @@ public class PlaySound extends Logger
             mediaPlayer.setVolume(volume, volume);
             oldVolume = volume;
         }
+    }
+
+    static public void release()
+    {
+        log(HLOG_TRACE, "PlaySound->release()");
+
+        if (mediaPlayer == null)
+            return;
+
+        if (mediaPlayer.isPlaying())
+        {
+            mediaPlayer.stop();
+            doRelease = true;
+            return;
+        }
+
+        mediaPlayer.release();
+        mediaPlayer = null;
+        bBlocked = false;
+        doRelease = false;
+        log(HLOG_DEBUG, "Android MediaPlayer was destroyed!");
     }
 }

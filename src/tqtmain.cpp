@@ -1112,7 +1112,10 @@ void MainWindow::closeEvent(QCloseEvent *event)
         MSG_INFO("Program will stop!");
 #ifdef __ANDROID__
         if (gPageManager)
+        {
             gPageManager->stopNetworkState();
+            gPageManager->androidPlayerRelease();
+        }
 #endif
         event->accept();
     }

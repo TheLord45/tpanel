@@ -279,6 +279,7 @@ class TPageManager : public TAmxCommands
         void androidStop();
         void androidMute(bool mute);
         void androidSetVolume(float volume);
+        void androidPlayerRelease();
 #endif
 #ifdef Q_OS_IOS
         void informBatteryStatus(int level, int state);
