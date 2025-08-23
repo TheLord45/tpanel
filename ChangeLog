@@ -3,6 +3,8 @@ ChangeLog
 
 Release: 2.0.0
 ===============================================================================
+2025-08-23 Fixed sound playing for Android.
+
 2025-08-20 Added commands ^ENC, ?ENC and ?MAC.
 
 2025-08-16 Fixed animations for G5.

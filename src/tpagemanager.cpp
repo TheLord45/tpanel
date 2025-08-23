@@ -4992,6 +4992,13 @@ void TPageManager::androidSetVolume(float volume)
 
     QJniObject::callStaticMethod<void>("org/qtproject/theosys/PlaySound", "setVolume", "(F)V", static_cast<jfloat>(volume));
 }
+
+void TPageManager::androidPlayerRelease()
+{
+    DECL_TRACER("TPageManager::androidPlayerRelease()");
+
+    QJniObject::callStaticMethod<void>("org/qtproject/theosys/PlaySound", "release", "()V");
+}
 #endif  // __ANDROID__
 #ifdef Q_OS_IOS
 void TPageManager::informBatteryStatus(int level, int state)
