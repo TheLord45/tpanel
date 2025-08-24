@@ -29,12 +29,12 @@ versions of Qt you need openssl 3!
 
 I made an archive file containing _Skia_ and _PjSIP_ as precompiled versions for
 all 4 possible Android architectures (arm64-v8a, armeabi-v7a, x86_64, x86) You
-can download it from my [server](https://www.theosys.at/download/android_dist.tar.bz2) (~ 1Gb!).
+can download it from my [server](https://www.theosys.at/download/android_dist.tar.gz) (~ 1Gb!).
 After you've downloaded this hugh file, unpack it into any directory. The file
 details are:
 
-- [`android_dist.tar.bz2`](https://www.theosys.at/download/android_dist.tar.bz2)
-- SHA256: `a79b313d03aa630f9574e5d9652fa1c28ef8d766a7cbb270d406838260c8c2b2`
+- [`android_dist.tar.gz`](https://www.theosys.at/download/android_dist.tar.gz)
+- SHA256: `3f4deeeb7db60b0864c57e068b4e8917d614ee1fa7e7694189cf7fdbfb0379b8`
 
 > The package does **not** include the Qt framework!
 
