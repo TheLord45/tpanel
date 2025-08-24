@@ -24,7 +24,6 @@ Look at the full documentation in this repository. You'll find the
 
 * [PDF](https://github.com/TheLord45/tpanel/blob/main/documentation/ReferenceGuide.pdf)
 * [ODT](https://github.com/TheLord45/tpanel/blob/main/documentation/ReferenceGuide.odt)
-* [HTML](https://github.com/TheLord45/tpanel/blob/main/documentation/ReferenceGuide.html)
 
 # How to compile
 ## Prerequisits
