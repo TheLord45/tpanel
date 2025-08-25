@@ -938,6 +938,8 @@ TPageManager::TPageManager()
     REG_CMD(doPAGE, "^PGE");    // G5: Flip to a specified page.
     REG_CMD(doPCL, "^PCL");     // G5: Collapse Collapsible Popup Command
     REG_CMD(doPCT, "^PCT");     // G5: Collapsible Popup Custom Toggle Command
+//    REG_CMD(doPCT, "^PDO");     // G5: Collapsed Popup Dynamic Offset Command
+    REG_CMD(doPOP, "^POP");     // G5: Open Collapsible Popup Command
     REG_CMD(doPTC, "^PTC");     // G5: Toggle Collapsible Popup Collapsed Command
     REG_CMD(doPTO, "^PTO");     // G5: Toggle Collapsed Popup Open Command
 
@@ -1069,7 +1071,6 @@ TPageManager::TPageManager()
 #endif
     // SubView commands
 //    REG_CMD(doEPR, "^EPR");     // Execute Push on Release.
-    REG_CMD(doPOP, "^POP");     // Open Collapsible Popup Command
     REG_CMD(doSCE, "^SCE");     // Configures subpage custom events.
 //    REG_CMD(doSDR, "^SDR");     // Enabling subpage dynamic reordering.
     REG_CMD(doSHA, "^SHA");     // Subpage Hide All Command
