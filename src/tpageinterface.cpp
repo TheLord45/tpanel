@@ -97,16 +97,6 @@ bool TPageInterface::drawText(PAGE_T& pinfo, SkBitmap *img)
 
     SkCanvas canvas(*img, SkSurfaceProps(1, kUnknown_SkPixelGeometry));
 
-<<<<<<< HEAD
-    if (!typeFace)
-    {
-        MSG_ERROR("Error creating type face " << font.fullName);
-        TError::SetError();
-        return false;
-    }
-
-=======
->>>>>>> 9d89bfc (Code cleanup)
     SkScalar fontSizePt = ((SkScalar)font.size * 1.322);    // Calculate points from pixels (close up)
     SkFont skFont(typeFace, fontSizePt);                    // Skia require the font size in points
 

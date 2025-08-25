@@ -151,6 +151,7 @@ class TError : public std::ostream
         static void setErrorMsg(const std::string& msg);
         static void _setErrorMsg(const std::string& msg, int line=0, const std::string& file="");
         static void setErrorMsg(terrtype_t t, const std::string& msg);
+        static void setErrorMsg(const std::string& msg, int line, const std::string& file);
         static void setError() { mHaveError = true; mErrType = TERRERROR; }
         static void setError(int line, const std::string& file) { mHaveError = true; mLastLine = line; mLastFile = file; }
         static std::string& getErrorMsg() { return msError; }
@@ -168,8 +169,6 @@ class TError : public std::ostream
         static void logHex(const char *str, size_t size);
         const TError& operator=(const TError& ref);
         static void displayMessage(const std::string& msg);
-        static int getLastLine() { return mLastLine; }
-        static std::string& getLastFile() { return mLastFile; }
 
     protected:
         static std::string strToHex(const char *str, size_t size, int width, bool format, int indent);

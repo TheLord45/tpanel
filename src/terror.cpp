@@ -903,7 +903,7 @@ void TError::_setErrorMsg(const std::string& msg, int line, const std::string& f
 {
     mLastLine = line;
     mLastFile = file;
-    setErrorMsg(msg);
+    setErrorMsg(msg, line, file);
 }
 
 void TError::setErrorMsg(terrtype_t t, const std::string& msg)
@@ -914,14 +914,8 @@ void TError::setErrorMsg(terrtype_t t, const std::string& msg)
     msError = msg;
     mHaveError = true;
     mErrType = t;
-    mLastLine = line;
-    string f = file;
-    size_t pos = f.find_last_of("/");
-
-    if (pos != string::npos)
-        f = f.substr(pos + 1);
-
-    mLastFile = f;
+    mLastLine = 0;
+    mLastFile.clear();
 }
 
 std::ostream & TError::append(int lv, int line, const std::string& file, std::ostream& os)

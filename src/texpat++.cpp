@@ -625,7 +625,7 @@ bool TExpat::setIndex(size_t index)
     if (index >= mElements.size())
     {
         MSG_ERROR("Error setting index: Invalid index " << index);
-        TError::setErrorMsg("Invalid index " + std::to_string(index) + "!");
+        SET_ERROR_MSG("Invalid index " + std::to_string(index) + "!");
         mLastIter = mElements.end();
         return false;
     }
