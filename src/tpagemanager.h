@@ -43,7 +43,9 @@
 #include "tbuttonstates.h"
 #include "tqintercom.h"
 #include "tapps.h"
-
+#if defined(__linux__) || defined(__OSX_AVAILABLE)
+#include "tbattery.h"
+#endif
 #define REG_CMD(func, name)     registerCommand(bind(&TPageManager::func, this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),name)
 
 class TIcons;
@@ -281,6 +283,9 @@ class TPageManager : public TAmxCommands
         void androidSetVolume(float volume);
         void androidPlayerRelease();
 #endif
+#if defined(__linux__) || defined(__OSX_AVAILABLE)
+        void informBatteryStatus(int level, bool charging);
+#endif
 #ifdef Q_OS_IOS
         void informBatteryStatus(int level, int state);
         void informTPanelNetwork(bool conn, int level, int type);
@@ -298,15 +303,13 @@ class TPageManager : public TAmxCommands
         void regCallShowSetup(std::function<void ()> callShowSetup) { _callShowSetup = callShowSetup; }
         void regCallbackNetState(std::function<void (int level)> callNetState, ulong handle);
         void unregCallbackNetState(ulong handle);
-#ifdef Q_OS_ANDROID
+#if defined(Q_OS_ANDROID) || defined(Q_OS_LINUX) || defined(Q_OS_MACOS)
         void regCallbackBatteryState(std::function<void (int level, bool charging, int chargeType)> callBatteryState, ulong handle);
 #endif
 #ifdef Q_OS_IOS
         void regCallbackBatteryState(std::function<void (int level, int state)> callBatteryState, ulong handle);
 #endif
-#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         void unregCallbackBatteryState(ulong handle);
-#endif
         void regCallbackResetSurface(std::function<void ()> resetSurface) { _resetSurface = resetSurface; }
         void regCallbackShutdown(std::function<void ()> shutdown) { _shutdown = shutdown; }
         void regCallbackPlaySound(std::function<void (const std::string& file)> playSound) { _playSound = playSound; }
@@ -1099,8 +1102,9 @@ class TPageManager : public TAmxCommands
         int mNetState{0};                               // On Android and IOS remembers the type of connection to the network (cell or wifi)
 #endif
         std::map<int, std::function<void (int level)> > mNetCalls;  // List of callbacks for the network state multistate bargraph
-#ifdef Q_OS_ANDROID
+#if defined(Q_OS_ANDROID) || defined(Q_OS_LINUX) || defined(Q_OS_MACOS)
         std::map<int, std::function<void (int level, bool charging, int chargeType)> > mBatteryCalls;
+        TBattery *mLinBattery{nullptr};
 #endif
 #ifdef Q_OS_IOS
         std::map<int, std::function<void (int level, int state)> > mBatteryCalls;
