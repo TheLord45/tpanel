@@ -4087,7 +4087,7 @@ void TButton::registerSystemButton()
     {
         if (gPageManager)
         {
-#ifdef Q_OS_ANDROID
+#if defined(Q_OS_ANDROID) || defined(Q_OS_LINUX) || defined(Q_OS_MACOS)
             gPageManager->regCallbackBatteryState(bind(&TButton::funcBattery, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), mHandle);
 #endif
 #ifdef Q_OS_IOS
@@ -5620,7 +5620,7 @@ void TButton::funcResource(const RESOURCE_T* resource, const std::string& url, B
         }
     }
 }
-#ifdef Q_OS_ANDROID
+#if defined(Q_OS_ANDROID) || defined(Q_OS_LINUX) || defined(Q_OS_MACOS)
 void TButton::funcBattery(int level, bool charging, int /* chargeType */)
 {
     DECL_TRACER("TButton::funcBattery(int level, bool charging, int chargeType)");

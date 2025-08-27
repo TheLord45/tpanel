@@ -458,6 +458,8 @@ set(PROJECT_SOURCES
         tapps.h
         tlauncher.cpp
         tlauncher.h
+        tbattery.cpp
+        tbattery.h
         tpanel.qrc
 )
 
@@ -504,6 +506,7 @@ else()
     qt_add_executable(tpanel
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
+        tbattery.h tbattery.cpp
     )
 endif()
 

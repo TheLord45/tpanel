@@ -1,26 +1,19 @@
-Download the Android binary
-===========================
-Because *github* doesn't allow files grater than 100 Mb. in size, I can not put the Android
-binary and binaries for other OSs (Linux, Mac, ...) into this repository. Instead you can
-download it from my server. Klick on the following link to get the latest binary for Android:
+Download binaries
+=================
+Because *github* doesn't allow files grater than 100 Mb. in size, I can not put installabel
+packages (Android, Linux, Mac, ...) into this repository. Instead you can
+download it from my server. Klick on one of the following links to get an installable
+package for the latest version:
 
-Latest **TPanel** Android version: [tpanel_android_v2.0.0b1](https://www.theosys.at/download/tpanel_android_v2.0.0b1.apk)
+* Latest **TPanel** _Android_ version: [tpanel_android_v2.0.0b1](https://www.theosys.at/download/tpanel_android_v2.0.0b1.apk)
+* Latest **TPanel** _MacOS_ v15.0 version: [tpanel-2.0.0b.pkg](https://www.theosys.at/download/tpanel-2.0.0b.pkg)
 
-Latest **TPanel** MacOS v15.0 version: [tpanel-2.0.0b.pkg](https://www.theosys.at/download/tpanel-2.0.0b.pkg)
-
->**HINT:**
->If you get an error report after starting the application on a Mac you may need to install 
->[brew](https://brew.sh). Then you must install the following libraries by typing `brew install <LIBRARY>`:
-> * freetype
-> * libuuid
-> * ssl
-> * crypto
-> * graphite2
-> * png
-> * gettext
-> * pcre2
-> * glib
-> * harfbuzz
+> **Hint!**
+> If you install the _MacOS_ version, you may get an error and it may want you to delete the
+> package. **Don't delete it!** Instead open the `System settings` and select `Data protection & security`. There you'll
+> find the app **TPanel** waiting. Click on it and then click on `Install it anyway`. You'll need
+> to enter your password and when the installation dialog is running, it will ask you again for
+> your password (security made by Apple).
 
 Older versions
 --------------

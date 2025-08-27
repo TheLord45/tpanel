@@ -82,6 +82,7 @@ namespace fs = std::filesystem;
 #ifdef Q_OS_IOS
 #include "ios/tiosbattery.h"
 #endif
+#include "tbattery.h"
 #if TESTMODE == 1
 #include "testmode.h"
 #endif
@@ -1118,6 +1119,10 @@ TPageManager::TPageManager()
         TConfig::setSIPstatus(false);
     }
 #endif
+#if defined(__linux__) || defined(__OSX_AVAILABLE)
+    mLinBattery = new TBattery;
+    mLinBattery->regCallback(bind(&TPageManager::informBatteryStatus, this, std::placeholders::_1, std::placeholders::_2));
+#endif
     TError::clear();
     runClickQueue();
     runUpdateSubViewItem();
@@ -1227,6 +1232,13 @@ TPageManager::~TPageManager()
 
             mButtonStates.clear();
         }
+#if defined(__linux__) || defined(__OSX_AVAILABLE)
+        if (mLinBattery)
+        {
+            delete mLinBattery;
+            mLinBattery = nullptr;
+        }
+#endif
     }
     catch (std::exception& e)
     {
@@ -1996,6 +2008,24 @@ void TPageManager::unregCallbackNetState(ulong handle)
     if (iter != mNetCalls.end())
         mNetCalls.erase(iter);
 }
+#if defined(__linux__) || defined(__OSX_AVAILABLE)
+void TPageManager::regCallbackBatteryState(std::function<void (int, bool, int)> callBatteryState, ulong handle)
+{
+    DECL_TRACER("TPageManager::regCallbackBatteryState(std::function<void (int, bool, int)> callBatteryState, ulong handle)");
+
+    if (handle == 0)
+        return;
+
+    mBatteryCalls.insert(std::pair<int, std::function<void (int, bool, int)> >(handle, callBatteryState));
+
+    if (mLinBattery)
+    {
+        int load = mLinBattery->getLoad();
+        bool charge = mLinBattery->isCharging();
+        callBatteryState(load, charge, 0);
+    }
+}
+#endif  // __linux__
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
 #ifdef Q_OS_ANDROID
 void TPageManager::regCallbackBatteryState(std::function<void (int, bool, int)> callBatteryState, ulong handle)
@@ -2042,6 +2072,21 @@ void TPageManager::unregCallbackBatteryState(ulong handle)
         mBatteryCalls.erase(iter);
 }
 #endif  // defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+#if defined(__linux__) || defined(__OSX_AVAILABLE)
+void TPageManager::unregCallbackBatteryState(ulong handle)
+{
+    DECL_TRACER("TPageManager::unregCallbackBatteryState(ulong handle)");
+
+    if (mBatteryCalls.size() == 0)
+        return;
+
+    std::map<int, std::function<void (int, bool, int)> >::iterator iter = mBatteryCalls.find(handle);
+
+    if (iter != mBatteryCalls.end())
+        mBatteryCalls.erase(iter);
+}
+#endif
+
 /*
  * The following function must be called to start the "panel".
  */
@@ -5057,6 +5102,22 @@ void TPageManager::informTPanelNetwork(bool conn, int level, int type)
     }
 }
 
+#endif
+#if defined(__linux__) || defined(__OSX_AVAILABLE)
+void TPageManager::informBatteryStatus(int level, bool charging)
+{
+    DECL_TRACER("TPageManager::informBatteryStatus(int level, bool charging)");
+
+    MSG_INFO("Battery status: level: " << level << ", " << (charging ? "Charging" : "not charging"));
+
+    if (mBatteryCalls.size() > 0)
+    {
+        std::map<int, std::function<void (int, bool, int)> >::iterator iter;
+
+        for (iter = mBatteryCalls.begin(); iter != mBatteryCalls.end(); ++iter)
+            iter->second(level, charging, 0);
+    }
+}
 #endif
 
 void TPageManager::setButtonCallbacks(Button::TButton *bt)
