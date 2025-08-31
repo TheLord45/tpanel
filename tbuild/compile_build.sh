@@ -5,10 +5,10 @@ set -o pipefail
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 ROOT_DIR="${SCRIPT_DIR}/.."
 LOG_FILE="${ROOT_DIR}/workflow.log"
-VERSION="1.4.2"
+VERSION="2.0.0"
 RELEASE="1"
-export QT_DIR="/opt/Qt/6.6.2/gcc_64"
-export CMAKE_PREFIX_PATH="${QT_DIR}/lib/cmake"
+#export QT_DIR="/opt/Qt/6.5.3/gcc_64"
+#export CMAKE_PREFIX_PATH="${QT_DIR}/lib/cmake"
 
 # the first parameter is the branch, that is currently being built
 BRANCH="$1"
@@ -96,7 +96,7 @@ echo "Architecture: amd64" >> "${BASE_PATH}/DEBIAN/control"
 echo "Depends: Qt6MultimediaWidgets,ssl,expat,uuid,Qt6Multimedia,Qt6Network,Qt6Widgets,Qt6Gui,Qt6Core,crypto,freetype,jpeg,png16,Qt6DBus,asound,FLAC,vorbis,ogg,mpg123" >> "${BASE_PATH}/DEBIAN/control"
 echo "Summary: Emulation of AMX touch panels" >> "${BASE_PATH}/DEBIAN/control"
 echo "License: GPLv3" >> "${BASE_PATH}/DEBIAN/control"
-echo "Homepage: https://https://github.com/TheLord45/tpanel" >> "${BASE_PATH}/DEBIAN/control"
+echo "Homepage: https://github.com/TheLord45/tpanel" >> "${BASE_PATH}/DEBIAN/control"
 echo "Maintainer: Andreas Theofilu <andreas@theosys.at>" >> "${BASE_PATH}/DEBIAN/control"
 echo "Description: TPanel is an emulation of some AMX G4/G5 touch panels." >> "${BASE_PATH}/DEBIAN/control"
 echo "  The software uses internally the Skia library for drawing all objects" >> "${BASE_PATH}/DEBIAN/control"
