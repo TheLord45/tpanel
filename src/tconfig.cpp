@@ -1888,6 +1888,7 @@ bool TConfig::findConfig()
         {
             sFileName = f;
             localSettings.path = *iter;
+            localSettings.name = "tpanel.conf";
             found = true;
             break;
         }
@@ -1897,15 +1898,13 @@ bool TConfig::findConfig()
     if (HOME)
     {
         string f = HOME;
-#ifndef __ANDROID__
         f += "/.tpanel.conf";
-#else
-        f += "/tpanel.conf";
-#endif
+
         if (!access(f.data(), R_OK))
         {
             sFileName = f;
             localSettings.path = HOME;
+            localSettings.name = ".tpanel.conf";
             found = true;
         }
     }
@@ -1919,7 +1918,8 @@ bool TConfig::findConfig()
         if (HOME)
         {
             localSettings.path = HOME;
-            sFileName = string(HOME) + "/.tpanel.conf";
+            localSettings.name = ".tpanel.conf";
+            sFileName = localSettings.path + "/" + localSettings.name;
 
             try
             {
