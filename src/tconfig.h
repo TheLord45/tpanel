@@ -24,11 +24,11 @@
 
 #define V_MAJOR     2
 #define V_MINOR     0
-#define V_PATCH     0
+#define V_PATCH     2
 #define V_ADD       "b1"
 
 #ifndef V_SERIAL
-#define V_SERIAL    "20250222TP200B"
+#define V_SERIAL    "20250913TP202M"
 #endif
 
 /**
@@ -39,8 +39,8 @@
 
 #define VERSION_STRING() _GET_X_VERSION(V_MAJOR, V_MINOR, V_PATCH)
 #define _GET_X_VERSION(a, b, c) _GET_VERSION(a, b, c)
-//#define _GET_VERSION(a, b, c) ( #a "." #b "." #c )          // Release version
-#define _GET_VERSION(a, b, c) ( #a "." #b "." #c V_ADD)     // Beta version
+#define _GET_VERSION(a, b, c) ( #a "." #b "." #c )          // Release version
+//#define _GET_VERSION(a, b, c) ( #a "." #b "." #c V_ADD)     // Beta version
 
 #if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
 typedef unsigned short          ushort;         /* Sys V compatibility */
