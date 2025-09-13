@@ -21,15 +21,11 @@
 #include <vector>
 #include <thread>
 #include <mutex>
+#include <functional>
 
 #ifdef __ANDROID__
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-#       include <QtAndroidExtras/QAndroidJniObject>
-#       include <QtAndroidExtras/QtAndroid>
-#   else
-#       include <QJniObject>
-#       include <QCoreApplication>
-#   endif
+#   include <QJniObject>
+#   include <QCoreApplication>
 #   include <android/log.h>
 #endif
 #include <unistd.h>
@@ -1119,7 +1115,7 @@ TPageManager::TPageManager()
         TConfig::setSIPstatus(false);
     }
 #endif
-#if defined(__linux__) || defined(__OSX_AVAILABLE)
+#if (defined(__linux__) || defined(__OSX_AVAILABLE)) && !defined(__ANDROID__)
     mLinBattery = new TBattery;
     mLinBattery->regCallback(bind(&TPageManager::informBatteryStatus, this, std::placeholders::_1, std::placeholders::_2));
 #endif
@@ -1232,7 +1228,7 @@ TPageManager::~TPageManager()
 
             mButtonStates.clear();
         }
-#if defined(__linux__) || defined(__OSX_AVAILABLE)
+#if (defined(__linux__) || defined(__OSX_AVAILABLE)) && !defined(__ANDROID__)
         if (mLinBattery)
         {
             delete mLinBattery;
@@ -2008,7 +2004,7 @@ void TPageManager::unregCallbackNetState(ulong handle)
     if (iter != mNetCalls.end())
         mNetCalls.erase(iter);
 }
-#if defined(__linux__) || defined(__OSX_AVAILABLE)
+#if (defined(__linux__) || defined(__OSX_AVAILABLE)) && !defined(__ANDROID__)
 void TPageManager::regCallbackBatteryState(std::function<void (int, bool, int)> callBatteryState, ulong handle)
 {
     DECL_TRACER("TPageManager::regCallbackBatteryState(std::function<void (int, bool, int)> callBatteryState, ulong handle)");
@@ -2072,7 +2068,7 @@ void TPageManager::unregCallbackBatteryState(ulong handle)
         mBatteryCalls.erase(iter);
 }
 #endif  // defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
-#if defined(__linux__) || defined(__OSX_AVAILABLE)
+#if (defined(__linux__) || defined(__OSX_AVAILABLE)) && !defined(__ANDROID__)
 void TPageManager::unregCallbackBatteryState(ulong handle)
 {
     DECL_TRACER("TPageManager::unregCallbackBatteryState(ulong handle)");
@@ -5103,7 +5099,7 @@ void TPageManager::informTPanelNetwork(bool conn, int level, int type)
 }
 
 #endif
-#if defined(__linux__) || defined(__OSX_AVAILABLE)
+#if (defined(__linux__) || defined(__OSX_AVAILABLE)) && !defined(__ANDROID__)
 void TPageManager::informBatteryStatus(int level, bool charging)
 {
     DECL_TRACER("TPageManager::informBatteryStatus(int level, bool charging)");

@@ -84,7 +84,7 @@ if(ANDROID)
     link_directories(${SSL_PATH}/ssl_3/${ANDROID_ABI})
 #    find_library(LIBSKIA_LIBRARY NAMES skia HINTS ${EXT_LIB_PATH}/skia/${ANDROID_ABI})
 
-    link_libraries(z ssl_3 crypto_3 mediandk expat libskia.a)
+    link_libraries(z ssl_3 crypto_3 mediandk expat skia)
 
     link_directories(${EXT_LIB_PATH}/pjsip/lib)
 
@@ -479,7 +479,7 @@ else()
 endif()
 
 if(ANDROID)
-    add_definitions(-pedantic -fexceptions -Wextra -Wno-attributes -Wno-nested-anon-types -Wno-gnu-anonymous-struct -Wno-gnu-zero-variadic-macro-arguments)
+    add_definitions(-pedantic -fexceptions -Wextra -Wno-attributes -Wno-nested-anon-types -Wno-gnu-anonymous-struct -Wno-gnu-zero-variadic-macro-arguments -Wno-invalid-utf8)
 elseif(IOS)
     set(PROJECT_SOURCES ${PROJECT_SOURCES}
         ${OBJECTIVE_HEADERS}
