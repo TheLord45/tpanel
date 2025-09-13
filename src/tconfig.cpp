@@ -1869,7 +1869,7 @@ bool TConfig::findConfig()
         {
             s << "Error: " << e.what();
             __android_log_print(ANDROID_LOG_ERROR, "tpanel" , "%s", s.str().c_str());
-            TError::setErrorMsg(TERRERROR, string("Error: ") + e.what(), __LINE__, __FILE__);
+            SET_ERROR_MSG(string("Error: ") + e.what());
             return false;
         }
     }
@@ -1936,7 +1936,7 @@ bool TConfig::findConfig()
             catch (std::exception& e)
             {
                 cerr << "Error: " << e.what();
-                TError::setErrorMsg(TERRERROR, string("Error: ") + e.what());
+                SET_ERROR_MSG(string("Error: ") + e.what());
                 return false;
             }
         }
