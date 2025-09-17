@@ -1115,7 +1115,7 @@ TPageManager::TPageManager()
         TConfig::setSIPstatus(false);
     }
 #endif
-#if (defined(__linux__) || defined(__OSX_AVAILABLE)) && !defined(__ANDROID__)
+#if (defined(__linux__) || defined(__OSX_AVAILABLE)) && !defined(__ANDROID__) && !defined(__IOS_AVAILABLE)
     mLinBattery = new TBattery;
     mLinBattery->regCallback(bind(&TPageManager::informBatteryStatus, this, std::placeholders::_1, std::placeholders::_2));
 #endif
@@ -1228,7 +1228,7 @@ TPageManager::~TPageManager()
 
             mButtonStates.clear();
         }
-#if (defined(__linux__) || defined(__OSX_AVAILABLE)) && !defined(__ANDROID__)
+#if (defined(__linux__) || defined(__OSX_AVAILABLE)) && !defined(__ANDROID__) && !defined(__IOS_AVAILABLE)
         if (mLinBattery)
         {
             delete mLinBattery;
@@ -2004,7 +2004,7 @@ void TPageManager::unregCallbackNetState(ulong handle)
     if (iter != mNetCalls.end())
         mNetCalls.erase(iter);
 }
-#if (defined(__linux__) || defined(__OSX_AVAILABLE)) && !defined(__ANDROID__)
+#if (defined(__linux__) || defined(__OSX_AVAILABLE)) && !defined(__ANDROID__) && !defined(__IOS_AVAILABLE)
 void TPageManager::regCallbackBatteryState(std::function<void (int, bool, int)> callBatteryState, ulong handle)
 {
     DECL_TRACER("TPageManager::regCallbackBatteryState(std::function<void (int, bool, int)> callBatteryState, ulong handle)");
@@ -2068,7 +2068,7 @@ void TPageManager::unregCallbackBatteryState(ulong handle)
         mBatteryCalls.erase(iter);
 }
 #endif  // defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
-#if (defined(__linux__) || defined(__OSX_AVAILABLE)) && !defined(__ANDROID__)
+#if (defined(__linux__) || defined(__OSX_AVAILABLE)) && !defined(__ANDROID__) && !defined(__IOS_AVAILABLE)
 void TPageManager::unregCallbackBatteryState(ulong handle)
 {
     DECL_TRACER("TPageManager::unregCallbackBatteryState(ulong handle)");
@@ -5099,7 +5099,7 @@ void TPageManager::informTPanelNetwork(bool conn, int level, int type)
 }
 
 #endif
-#if (defined(__linux__) || defined(__OSX_AVAILABLE)) && !defined(__ANDROID__)
+#if (defined(__linux__) || defined(__OSX_AVAILABLE)) && !defined(__ANDROID__) && !defined(__IOS_AVAILABLE)
 void TPageManager::informBatteryStatus(int level, bool charging)
 {
     DECL_TRACER("TPageManager::informBatteryStatus(int level, bool charging)");

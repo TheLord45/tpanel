@@ -1369,7 +1369,7 @@ namespace Button
             void funcTimer(const amx::ANET_BLINK& blink);
             void funcNetwork(int state);
             void funcResource(const RESOURCE_T *resource, const std::string& url, BITMAP_CACHE bc, int instance);
-#if defined(__ANDROID__) || defined(__linux__) || defined(__OSX_AVAILABLE)
+#if (defined(__ANDROID__) || defined(__linux__) || defined(__OSX_AVAILABLE)) && !defined(__IOS_AVAILABLE)
             void funcBattery(int level, bool charging, int chargeType);
 #endif
 #if TARGET_OS_SIMULATOR || TARGET_OS_IOS

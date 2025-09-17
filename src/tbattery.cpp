@@ -18,7 +18,7 @@
 #include <string>
 #include <fstream>
 #include <thread>
-#ifdef __OSX_AVAILABLE
+#if defined(__OSX_AVAILABLE) && !defined(__IOS_AVAILABLE)
 #include <cstring>
 #include <IOKit/IOKitLib.h>
 #include <IOKit/ps/IOPowerSources.h>
@@ -52,7 +52,7 @@ using std::pair;
 using std::ifstream;
 using std::thread;
 
-#ifdef __OSX_AVAILABLE
+#if defined(__OSX_AVAILABLE) && !defined(__IOS_AVAILABLE)
 #define BAT_CURRENT_CAPACITY        "CurrentCapacity"
 #define BAT_MAX_CAPACITY            "MaxCapacity"
 #define BAT_ISCHARGING              "IsCharging"
@@ -66,7 +66,7 @@ TBattery::TBattery()
     linuxBattery();
     runTimer();
 #endif
-#ifdef __OSX_AVAILABLE
+#if defined(__OSX_AVAILABLE) && !defined(__IOS_AVAILABLE)
     mTimerRun = true;
     macBattery();
     runTimer();
@@ -76,7 +76,7 @@ TBattery::TBattery()
 TBattery::~TBattery()
 {
     DECL_TRACER("TBattery::~TBattery()");
-#if defined(__linux__) || defined(__OSX_AVAILABLE)
+#if (defined(__linux__) || defined(__OSX_AVAILABLE)) && !defined(__IOS_AVAILABLE)
     mTimerRun = false;
 #endif
 }
@@ -87,7 +87,7 @@ int TBattery::batteryState()
 
 #ifdef __linux__
     return linuxBattery();
-#elif defined(__OSX_AVAILABLE)
+#elif defined(__OSX_AVAILABLE) && !defined(__IOS_AVAILABLE)
     return macBattery();
 #else
     return 0;
@@ -199,7 +199,7 @@ int TBattery::linuxBattery()
 }
 #endif  // __linux__
 
-#if defined(__linux__) || defined(__OSX_AVAILABLE)
+#if (defined(__linux__) || defined(__OSX_AVAILABLE)) && !defined(__IOS_AVAILABLE)
 void TBattery::runTimer()
 {
     DECL_TRACER("TBattery::runTimer()");
@@ -236,7 +236,7 @@ void TBattery::runTimer()
 }
 #endif
 
-#ifdef __OSX_AVAILABLE
+#if defined(__OSX_AVAILABLE) && !defined(__IOS_AVAILABLE)
 int TBattery::macBattery()
 {
     DECL_TRACER("TBattery::macBattery()");
