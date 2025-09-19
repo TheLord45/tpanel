@@ -2004,7 +2004,7 @@ void TPageManager::unregCallbackNetState(ulong handle)
     if (iter != mNetCalls.end())
         mNetCalls.erase(iter);
 }
-#if (defined(__linux__) || defined(__OSX_AVAILABLE)) && !defined(__ANDROID__) && !defined(__IOS_AVAILABLE)
+#if (defined(Q_OS_LINUX) || defined(Q_OS_MACOS)) && !defined(Q_OS_ANDROID) && !defined(Q_OS_IOS)
 void TPageManager::regCallbackBatteryState(std::function<void (int, bool, int)> callBatteryState, ulong handle)
 {
     DECL_TRACER("TPageManager::regCallbackBatteryState(std::function<void (int, bool, int)> callBatteryState, ulong handle)");
