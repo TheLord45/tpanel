@@ -27,7 +27,7 @@
         <item name="android:windowActionBar">false</item>
         <item name="android:windowNoTitle">true</item>
     </style>
-    <style name="Theme.Tpanel_settings" parent="Theme.AppCompat">
+    <style name="Tpanel_settings" parent="Theme.AppCompat">
         <!-- Customize your theme here. -->
     </style>
 </resources>

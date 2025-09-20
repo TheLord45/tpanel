@@ -57,7 +57,7 @@ public class Settings extends Logger
             return;
         }
 
-        act.setTheme(R.style.Theme_Tpanel_settings);
+        act.setTheme(R.style.Tpanel_settings);
         deploySurfaces();
         act.startActivity(m_intent);
     }
