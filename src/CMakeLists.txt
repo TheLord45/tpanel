@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.16)
 
 project(tpanel VERSION 2.0.0 LANGUAGES CXX)
 
@@ -13,14 +13,14 @@ set(QT_USE_QTMULTIMEDIA TRUE)
 set(QT_USE_QTMULTIMEDIAWIDGETS TRUE)
 
 if(IOS)
-    find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning Sensors)
-    find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning Sensors)
+    find_package(QT NAMES Qt6 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning Sensors)
+    find_package(Qt6 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning Sensors)
 elseif(ANDROID)
-    find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Quick Positioning)
-    find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Quick Positioning)
+    find_package(QT NAMES Qt6 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Quick Positioning)
+    find_package(Qt6 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Quick Positioning)
 else(IOS)
-    find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning)
-    find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning)
+    find_package(QT NAMES Qt6 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning)
+    find_package(Qt6 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning)
 endif(IOS)
 
 if(${QT_VERSION_MAJOR} LESS 6)
@@ -637,6 +637,11 @@ if(IOS)
         XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME TPanel
         QT_NO_SET_IOS_LAUNCH_SCREEN TRUE
 #        QT_IOS_LAUNCH_SCREEN "${CMAKE_CURRENT_SOURCE_DIR}/${launch_screen}"
+    )
+elseif(ANDROID)
+    set_target_properties(tpanel PROPERTIES
+        QT_ANDROID_PACKAGE_NAME "org.qtproject.theosys"
+        WIN32_EXECUTABLE FALSE
     )
 else()
     set_target_properties(tpanel PROPERTIES

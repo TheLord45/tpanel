@@ -6,8 +6,8 @@ buildscript {
 
     dependencies {
         //noinspection AndroidGradlePluginVersion
-        classpath 'com.android.tools.build:gradle:7.4.1'    // Qt 6.5.3
-        //classpath 'com.android.tools.build:gradle:8.6.0'  // Qt 6.8.x
+        //classpath 'com.android.tools.build:gradle:7.4.1'    // Qt 6.5.3
+        classpath 'com.android.tools.build:gradle:8.6.0'  // Qt 6.8.x
         //classpath 'com.android.tools.build:gradle:8.8.0'  // Qt 6.9.x
     }
 }
@@ -17,8 +17,8 @@ repositories {
     mavenCentral()
 }
 
-//apply plugin: qtGradlePluginType          // Qt >= 6.8.x
-apply plugin: 'com.android.application'     // Qt 6.5.3
+apply plugin: qtGradlePluginType          // Qt >= 6.8.x
+//apply plugin: 'com.android.application'     // Qt 6.5.3
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
@@ -43,8 +43,8 @@ android {
      * Changing them manually might break the compilation!
      *******************************************************/
 
-    // namespace androidPackageName                 // >= Qt 6.8.x
-    // namespace 'org.qtproject.theosys'
+    // namespace androidPackageName                 // >= Qt 6.8.x --> Doesn't work!
+    namespace 'org.qtproject.theosys'            // For individual setting
     compileSdkVersion androidCompileSdkVersion
     buildToolsVersion androidBuildToolsVersion
     ndkVersion androidNdkVersion
@@ -81,10 +81,13 @@ android {
     }
 
     defaultConfig {
+        applicationId "org.qtproject.theosys"
         resConfig "en"
         minSdkVersion qtMinSdkVersion
         targetSdkVersion qtTargetSdkVersion
         ndk.abiFilters = qtTargetAbiList.split(",")
+        versionCode 3
+        versionName "2.0.0"
     }
 
     packagingOptions {
