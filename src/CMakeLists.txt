@@ -594,18 +594,28 @@ endif()
 if(IOS)
     # Icons
     set(asset_catalog_path "Assets.xcassets")
-#    file(GLOB_RECURSE app_icon_files CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/images/AppIcon*.png")
+    # Asset catalog root
+    target_sources(tpanel PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/${asset_catalog_path}")
+    set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/${asset_catalog_path}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+
+    # Asset catalog app icon set
+    list(APPEND app_icon_set "${CMAKE_CURRENT_SOURCE_DIR}/${asset_catalog_path}/TPanel.appiconset")
+    list(APPEND app_icon_set "${CMAKE_CURRENT_SOURCE_DIR}/${asset_catalog_path}/Contents.json")
+    set_source_files_properties(${app_icon_set} PROPERTIES MACOSX_PACKAGE_LOCATION Resources/${asset_catalog_path})
+
+    # Asset catalog icon files
+    file(GLOB app_icon_files CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${asset_catalog_path}/TPanel.appiconset/*.png")
+    list(APPEND app_icon_files "${CMAKE_CURRENT_SOURCE_DIR}/${asset_catalog_path}/AppIcon.appiconset/Contents.json")
+    set_source_files_properties(${app_icon_set} PROPERTIES MACOSX_PACKAGE_LOCATION Resources/Assets.xcassets/TPanel.appiconset)
+
+    # -------------------------------
     file(GLOB_RECURSE bgimages_files CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/images/LaunchImage-*.png")
-#    list(APPEND app_icon_files "${CMAKE_CURRENT_SOURCE_DIR}/${asset_catalog_path}/AppIcon.appiconset/Contents.json")
+
     list(APPEND bgimages_portrait "${CMAKE_CURRENT_SOURCE_DIR}/${asset_catalog_path}/Images-portrait.imageset")
     list(APPEND bgimages_portrait "${CMAKE_CURRENT_SOURCE_DIR}/${asset_catalog_path}/Images-portrait.imageset/Contents.json")
     list(APPEND bgimages_landscape "${CMAKE_CURRENT_SOURCE_DIR}/${asset_catalog_path}/Images-landscape.imageset")
     list(APPEND bgimages_landscape "${CMAKE_CURRENT_SOURCE_DIR}/${asset_catalog_path}/Images-landscape.imageset/Contents.json")
-    target_sources(tpanel PRIVATE ${app_icon_files} "${asset_catalog_path}" "${bgimages_files}")
-#    list(APPEND app_icon_set "${CMAKE_CURRENT_SOURCE_DIR}/${asset_catalog_path}/AppIcon.appiconset")
-#    list(APPEND app_icon_set "${CMAKE_CURRENT_SOURCE_DIR}/${asset_catalog_path}/Contents.json")
-    set_source_files_properties(${app_icon_files} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
-    set_source_files_properties(${app_icon_set} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources/${asset_catalog_path}/AppIcon.appiconset")
+
     set_source_files_properties(${bgimages_files} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
     set_source_files_properties(${bgimages_portrait} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources/${asset_catalog_path}/Images-portrait.imageset")
     set_source_files_properties(${bgimages_landscape} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources/${asset_catalog_path}/Images-landscape.imageset")
@@ -618,13 +628,13 @@ if(IOS)
 #    set_source_files_properties(${launch_screen} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources/${launch_screen}")
 
     set_target_properties(tpanel PROPERTIES
-        MACOSX_BUNDLE_GUI_IDENTIFIER org.qtproject.theosys
+        MACOSX_BUNDLE_GUI_IDENTIFIER org.qtproject.tpanel
         MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
         MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
         MACOSX_BUNDLE TRUE
         MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/ios/Info.plist"
         WIN32_EXECUTABLE FALSE
-        XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME AppIcon
+        XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME TPanel
         QT_NO_SET_IOS_LAUNCH_SCREEN TRUE
 #        QT_IOS_LAUNCH_SCREEN "${CMAKE_CURRENT_SOURCE_DIR}/${launch_screen}"
     )
