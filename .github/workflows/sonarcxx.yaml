@@ -1,0 +1,20 @@
+name: Sonar CXX analyze
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  sonarcube:
+    runs-on: self-hosted
+    steps:
+      - uses: philips-software/sonar-scanner-action@v1.5.1
+        with:
+          url: ${{ secrets.SONAR_HOST_URL }}
+          token: ${{ secrets.SONAR_TOKEN }}
+          projectKey: TPanel-Sonar
+          projectName: TPanel
+          isCommunityEdition: true
+
