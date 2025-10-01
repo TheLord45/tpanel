@@ -9,12 +9,35 @@ on:
 jobs:
   sonarcube:
     runs-on: self-hosted
+    timeout-minutes: ${{ 360 }}
+    env:
+      BUILD_WRAPPER_OUT_DIR: bw
     steps:
-      - uses: philips-software/sonar-scanner-action@v1.5.1
-        with:
-          url: ${{ secrets.SONAR_HOST_URL }}
-          token: ${{ secrets.SONAR_TOKEN }}
-          projectKey: TPanel-Sonar
-          projectName: TPanel
-          isCommunityEdition: true
+    - uses: actions/checkout@v4
+      with:
+        # Disabling shallow clone is recommended for improving relevancy of reporting
+        fetch-depth: 0
+    - name: Install Build Wrapper
+      uses: SonarSource/sonarqube-scan-action/install-build-wrapper@master
+      env:
+        SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+    - name: Run Build Wrapper
+      run: |
+        # Here goes your compilation wrapped with Build Wrapper
+        # For more information, see https://docs.sonarsource.com/sonarqube-server/latest/analyzing-source-code/languages/c-family/prerequisites/#using-buildwrapper
+        # build-preparation steps
+        mkdir build
+        cmake -S . -B build
+        build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build build/ -j 16
+    - name: SonarQube Scan
+      uses: SonarSource/sonarqube-scan-action@master
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+#        SONAR_ROOT_CERT: ${{ secrets.SONAR_ROOT_CERT }}
+      with:
+        # Consult https://docs.sonarsource.com/sonarqube-server/latest/analyzing-source-code/scanners/sonarscanner/ for more information and options
+        args: >
+          --define sonar.cfamily.compile-commands="${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json"
+          --define sonar.host.url=http://localhost:9000/sonarqube
 
