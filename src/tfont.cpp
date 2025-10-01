@@ -41,7 +41,7 @@ namespace fs = std::filesystem;
 #include "texpat++.h"
 #include "tconfig.h"
 #include "terror.h"
-#include "tnameformat.h"
+//#include "tnameformat.h"
 #include "ttpinit.h"
 
 #include <include/core/SkFontStyle.h>

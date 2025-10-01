@@ -175,8 +175,8 @@ void TQIntercom::setIntercom(INTERCOM_t ic)
                 MSG_DEBUG("In Is default: " << (device.isDefault() ? "Yes" : "No"));
             }
         }
-#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
-#   if QT_VERSION_CHECK(6, 6, 0)
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS) || defined(Q_OS_MAC)
+#   if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
         QMicrophonePermission microphonePermission;
 
         switch (qApp->checkPermission(microphonePermission))
@@ -193,8 +193,8 @@ void TQIntercom::setIntercom(INTERCOM_t ic)
                 MSG_INFO("Microphone permission is granted.");
                 break;
         }
-#   endif  // QT_VERSION_CHECK(6, 6, 0)
-#endif  // defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+#   endif  // QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
+#endif  // defined(Q_OS_ANDROID) || defined(Q_OS_IOS) || defined(Q_OS_MAC)
     }
 
     if (mIntercom.mode == 1 || mIntercom.mode == 2)     // listen
