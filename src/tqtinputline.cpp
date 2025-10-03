@@ -22,10 +22,12 @@
 #include <QLineEdit>
 
 #include "tqtinputline.h"
+#include "tresize.h"
 #include "terror.h"
 #include "ui_tqtinputline.h"
 
 using std::string;
+using std::vector;
 
 TQtInputLine::TQtInputLine(QWidget* parent)
     : QDialog(parent),
@@ -74,7 +76,16 @@ void TQtInputLine::doResize()
 {
     DECL_TRACER("TQtInputLine::doResize()");
 
-    // The main dialog window
+    vector<TResize::ELEMENTS_t> elems = {
+        { "toolButton", TResize::QTOOLBUTTON },
+        { "pushButton", TResize::QPUSHBUTTON },
+        { "label", TResize::QLABEL },
+        { "lineEdit", TResize::QLINEEDIT },
+        { "line", TResize::QFRAME }
+    };
+
+    TResize::dlgResize(this, elems, mScaleFactor);
+/*    // The main dialog window
     QSize size = this->size();
     QRect rect = this->geometry();
     size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
@@ -108,7 +119,7 @@ void TQtInputLine::doResize()
             scaleObject(dynamic_cast<QFrame *>(obj));
         else if (name.startsWith("lineEdit"))
             scaleObject(dynamic_cast<QLineEdit *>(obj));
-    }
+    } */
 }
 
 void TQtInputLine::on_lineEdit_textChanged(const QString& arg1)

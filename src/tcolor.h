@@ -74,6 +74,9 @@ class TColor
         static ulong setAlphaTreshold(ulong color, int alpha);
         static SkColor setAlphaTreshold(SkColor color, int alpha);
 
+    protected:
+        static SkColor calcColorRange(int red, int green, int blue, int alpha, int colStep, std::vector<SkColor> *colRange, bool plus, int width);
+
     private:
         static TPalette *mPalette;
 };

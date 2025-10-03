@@ -460,6 +460,8 @@ set(PROJECT_SOURCES
         tlauncher.h
         tbattery.cpp
         tbattery.h
+        tresize.cpp
+        tresize.h
         tpanel.qrc
 )
 

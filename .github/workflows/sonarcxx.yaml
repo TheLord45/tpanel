@@ -31,7 +31,7 @@ jobs:
         build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build build/ -j 16
     - name: CppCheck scanner
       run: |
-        /usr/bin/cppcheck --xml --xml-version=2 --enable=performance --enable=unusedFunction --enable=missingInclude --std=c++17 -j 16 -I/usr/local/include/skia -i build/CMakeFiles src/* 2> report.xml
+        /usr/bin/cppcheck --xml --xml-version=2 --enable=performance --enable=unusedFunction --enable=missingInclude --std=c++17 -j 16 -I/usr/include -I/usr/local/include -I/usr/local/include/skia -i build/CMakeFiles src/* 2> report.xml
     - name: SonarQube Scan
       uses: SonarSource/sonarqube-scan-action@master
       env:

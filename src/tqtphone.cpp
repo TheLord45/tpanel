@@ -22,6 +22,7 @@
 
 #include "tqtphone.h"
 #include "tpagemanager.h"
+#include "tresize.h"
 #include "terror.h"
 #include "ui_tqtphone.h"
 
@@ -252,7 +253,15 @@ void TQtPhone::doResize()
 {
     DECL_TRACER("TQtPhone::doResize()");
 
-    // The main dialog window
+    vector<TResize::ELEMENTS_t> elems = {
+        { "toolButton", TResize::QTOOLBUTTON },
+        { "pushButton", TResize::QPUSHBUTTON },
+        { "label", TResize::QLABEL },
+        { "line", TResize::QLINE }
+    };
+
+    TResize::dlgResize(this, elems, mScaleFactor);
+/*    // The main dialog window
     QSize size = this->size();
     QRect rect = this->geometry();
     size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
@@ -284,7 +293,7 @@ void TQtPhone::doResize()
             scaleObject(dynamic_cast<QLabel *>(obj));
         else if (name.startsWith("line"))
             scaleObject(dynamic_cast<QFrame *>(obj));
-    }
+    } */
 }
 
 void TQtPhone::setPhoneNumber(const std::string& number)

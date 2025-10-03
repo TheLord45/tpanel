@@ -23,11 +23,13 @@
 #include "tqtwait.h"
 #include "terror.h"
 #include "tpagemanager.h"
+#include "tresize.h"
 #include "ui_wait.h"
 
 extern TPageManager *gPageManager;
 
 using std::string;
+using std::vector;
 
 TQtWait::TQtWait(QWidget *parent)
     : QDialog(parent),
@@ -122,8 +124,14 @@ void TQtWait::doResize()
 {
     DECL_TRACER("TQtWait::doResize()");
 
+    vector<TResize::ELEMENTS_t> elem = {
+        { "progressBar", TResize::QPROGRESSBAR },
+        { "label", TResize::QLABEL }
+    };
+
+    TResize::dlgResize(this, elem, mScaleFactor);
     // The main dialog window
-    QSize size = this->size();
+/*    QSize size = this->size();
     QRect rect = this->geometry();
     size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
     this->resize(size);
@@ -150,7 +158,7 @@ void TQtWait::doResize()
             scaleObject(dynamic_cast<QProgressBar *>(obj));
         else if (name.startsWith("label"))
             scaleObject(dynamic_cast<QLabel *>(obj));
-    }
+    } */
 }
 
 int TQtWait::scale(int value)

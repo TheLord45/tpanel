@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -219,99 +219,60 @@ std::vector<SkColor> TColor::colorRange(SkColor col, int width, int bandwidth, D
     switch(dir)
     {
         case DIR_LIGHT_DARK:
-            for (int i = 0; i < width; i++)
-            {
-                red -= colStep * i;
-                green -= colStep * i;
-                blue -= colStep * i;
-
-                if (red   < 0) red   = 0; else if (red   > 255) red   = 255;
-                if (green < 0) green = 0; else if (green > 255) green = 255;
-                if (blue  < 0) blue  = 0; else if (blue  > 255) blue  = 255;
-
-                color = SkColorSetARGB(alpha, red, green, blue);
-                colRange.push_back(color);
-            }
+            color = calcColorRange(red, green, blue, alpha, colStep, &colRange, false, width);
         break;
 
         case DIR_DARK_LIGHT:
-            for (int i = 0; i < width; i++)
-            {
-                red += colStep * i;
-                green += colStep * i;
-                blue += colStep * i;
-
-                if (red   < 0) red   = 0; else if (red   > 255) red   = 255;
-                if (green < 0) green = 0; else if (green > 255) green = 255;
-                if (blue  < 0) blue  = 0; else if (blue  > 255) blue  = 255;
-
-                color = SkColorSetARGB(alpha, red, green, blue);
-                colRange.push_back(color);
-            }
+            color = calcColorRange(red, green, blue, alpha, colStep, &colRange, true, width);
         break;
 
         case DIR_LIGHT_DARK_LIGHT:
-            for (int i = 0; i < (width / 2); i++)
-            {
-                red -= colStep * i;
-                green -= colStep * i;
-                blue -= colStep * i;
-
-                if (red   < 0) red   = 0; else if (red   > 255) red   = 255;
-                if (green < 0) green = 0; else if (green > 255) green = 255;
-                if (blue  < 0) blue  = 0; else if (blue  > 255) blue  = 255;
-
-                color = SkColorSetARGB(alpha, red, green, blue);
-                colRange.push_back(color);
-            }
-
-            for (int i = 0; i < (width / 2); i++)
-            {
-                red += colStep * i;
-                green += colStep * i;
-                blue += colStep * i;
-
-                if (red   < 0) red   = 0; else if (red   > 255) red   = 255;
-                if (green < 0) green = 0; else if (green > 255) green = 255;
-                if (blue  < 0) blue  = 0; else if (blue  > 255) blue  = 255;
-
-                color = SkColorSetARGB(alpha, red, green, blue);
-                colRange.push_back(color);
-            }
+            color = calcColorRange(red, green, blue, alpha, colStep, &colRange, false, width);
+            color = calcColorRange(SkColorGetR(color), SkColorGetG(color), SkColorGetB(color), alpha, colStep, &colRange, true, width / 2);
         break;
 
         case DIR_DARK_LIGHT_DARK:
-            for (int i = 0; i < (width / 2); i++)
-            {
-                red += colStep * i;
-                green += colStep * i;
-                blue += colStep * i;
-
-                if (red   < 0) red   = 0; else if (red   > 255) red   = 255;
-                if (green < 0) green = 0; else if (green > 255) green = 255;
-                if (blue  < 0) blue  = 0; else if (blue  > 255) blue  = 255;
-
-                color = SkColorSetARGB(alpha, red, green, blue);
-                colRange.push_back(color);
-            }
-
-            for (int i = 0; i < (width / 2); i++)
-            {
-                red -= colStep * i;
-                green -= colStep * i;
-                blue -= colStep * i;
-
-                if (red   < 0) red   = 0; else if (red   > 255) red   = 255;
-                if (green < 0) green = 0; else if (green > 255) green = 255;
-                if (blue  < 0) blue  = 0; else if (blue  > 255) blue  = 255;
-
-                color = SkColorSetARGB(alpha, red, green, blue);
-                colRange.push_back(color);
-            }
+            color = calcColorRange(red, green, blue, alpha, colStep, &colRange, true, width);
+            color = calcColorRange(SkColorGetR(color), SkColorGetG(color), SkColorGetB(color), alpha, colStep, &colRange, false, width / 2);
         break;
     }
 
     return colRange;
+}
+
+SkColor TColor::calcColorRange(int red, int green, int blue, int alpha, int colStep, vector<SkColor> *colRange, bool plus, int width)
+{
+    DECL_TRACER("TColor::calcColorRange(int red, int green, int blue, int alpha, int colStep, vector<SkColor> *colRange, bool plus, int width)");
+
+    if (!colRange)
+        return 0;
+
+    SkColor color = 0;
+    
+    for (int i = 0; i < width; i++)
+    {
+        if (plus)
+        {
+            red += colStep * i;
+            green += colStep * i;
+            blue += colStep * i;
+        }
+        else
+        {
+            red -= colStep * i;
+            green -= colStep * i;
+            blue -= colStep * i;
+        }
+
+        if (red   < 0) red   = 0; else if (red   > 255) red   = 255;
+        if (green < 0) green = 0; else if (green > 255) green = 255;
+        if (blue  < 0) blue  = 0; else if (blue  > 255) blue  = 255;
+
+        color = SkColorSetARGB(alpha, red, green, blue);
+        colRange->push_back(color);
+    }
+
+    return color;
 }
 
 bool TColor::isValidAMXcolor(const string& color)
