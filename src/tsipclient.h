@@ -130,7 +130,7 @@ class TSIPClient
             std::string scheme;         //!< The scheme (e.g. sip)
             std::string user;           //!< The user name / telephone number
             std::string server;         //!< The IP address or FQDN of the server
-            int port;                   //!< An optional port number
+            int port{0};                //!< An optional port number
         }_uri_t;
 
         static pjsip_module mod_default_handler;

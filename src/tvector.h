@@ -277,6 +277,7 @@ class TVector
             std::lock_guard<std::mutex> vectorLockGuard(mut);
 
             vec.swap(x);
+            return vec;
         }
 
         std::vector<T>& operator= (std::vector<T>&& x)
