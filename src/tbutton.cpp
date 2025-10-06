@@ -4097,6 +4097,22 @@ void TButton::registerSystemButton()
 
         mSystemReg = true;
     }
+    else if (TTPInit::isG5() && gPageManager && gPageManager->getSettings()->getBatteryLevelCode() > 0)
+    {
+        int batPort = gPageManager->getSettings()->getBatteryLevelPort();
+        int batCode = gPageManager->getSettings()->getBatteryLevelCode();
+
+        if (lp == batPort && lv == batCode)
+        {
+#if defined(Q_OS_ANDROID) || defined(Q_OS_LINUX) || defined(Q_OS_MACOS)
+            gPageManager->regCallbackBatteryState(bind(&TButton::funcBattery, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), mHandle);
+#endif
+#ifdef Q_OS_IOS
+            gPageManager->regCallbackBatteryState(bind(&TButton::funcBattery, this, std::placeholders::_1, std::placeholders::_2), mHandle);
+#endif
+            mSystemReg = true;
+        }
+    }
     else if (lp == 0 && lv == SYSTEM_ITEM_CONNSTRENGTH)       // Network connection strength
     {
         if (gPageManager)
@@ -11702,6 +11718,13 @@ bool TButton::isSystemButton()
         return true;
     else if (cp == 0 && TSystem::isSystemButton(ch))
         return true;
+
+    if (TTPInit::isG5() && gPageManager)
+    {
+        if (gPageManager->getSettings()->getBatteryLevelPort() == lp &&
+            gPageManager->getSettings()->getBatteryLevelCode() == lv)
+            return true;
+    }
 
     return false;
 }

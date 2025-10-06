@@ -155,6 +155,8 @@ class TSettings : public TValidateFile
         int getRotate() { return mSetup.screenRotate; }
         bool isPortrait();
         bool isLandscape();
+        int getBatteryLevelPort() { return mSetup.batteryLevelPort; }
+        int getBatteryLevelCode() { return mSetup.batteryLevelCode; }
         std::vector<RESOURCE_LIST_T>& getResourcesList() { return mResourceLists; }
         bool loadSettings(bool initial=false);
         std::string& getPowerUpPage() { return mSetup.powerUpPage; }

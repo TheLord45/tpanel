@@ -130,35 +130,6 @@ void TQtWait::doResize()
     };
 
     TResize::dlgResize(this, elem, mScaleFactor);
-    // The main dialog window
-/*    QSize size = this->size();
-    QRect rect = this->geometry();
-    size.scale(scale(size.width()), scale(size.height()), Qt::KeepAspectRatio);
-    this->resize(size);
-    this->move(scale(rect.left()), scale(rect.top()));
-    QWidget *parent = this->parentWidget();
-
-    if (parent)
-    {
-        rect = parent->geometry();
-        this->move(rect.center() - this->rect().center());
-    }
-
-    // Layout
-    // Iterate through childs and resize them
-    QObjectList childs = children();
-    QList<QObject *>::Iterator iter;
-
-    for (iter = childs.begin(); iter != childs.end(); ++iter)
-    {
-        QObject *obj = *iter;
-        QString name = obj->objectName();
-
-        if (name.startsWith("progressBar"))
-            scaleObject(dynamic_cast<QProgressBar *>(obj));
-        else if (name.startsWith("label"))
-            scaleObject(dynamic_cast<QLabel *>(obj));
-    } */
 }
 
 int TQtWait::scale(int value)
