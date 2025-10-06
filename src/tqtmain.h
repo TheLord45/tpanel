@@ -264,9 +264,7 @@ class MainWindow : public QMainWindow, public TObject
         void startWait(const std::string& text);
         void stopWait();
         void pageFinished(ulong handle);
-#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
         void onPlayingChanged(bool plying);
-#endif
         void onPlayerError(QMediaPlayer::Error error, const QString &errorString);
         void onMediaStatusChanged(QMediaPlayer::MediaStatus status);
         void initializeIntercom(INTERCOM_t ic);
@@ -347,9 +345,6 @@ class MainWindow : public QMainWindow, public TObject
         void _signalState(Qt::ApplicationState state);
         void _orientationChanged(int orientation);
         void _activateSettings(const std::string& oldNetlinx, int oldPort, int oldChannelID, const std::string& oldSurface, bool oldToolbarSuppress, bool oldToolbarForce);
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-        void _freezeWorkaround();
-#endif  // QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 #endif  // defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         void _repaintWindows();
         void _toFront(ulong handle);
@@ -369,11 +364,7 @@ class MainWindow : public QMainWindow, public TObject
         void refresh(ulong handle);
         void markDirty(ulong handle);
         QFont loadFont(int number, const FONT_T& f, const FONT_STYLE fs);
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-        int calcVolume(int value);
-#else
         double calcVolume(int value);
-#endif
         std::string convertMask(const std::string& mask);
 #ifdef Q_OS_ANDROID
         void hideAndroidBars();
@@ -419,10 +410,8 @@ class MainWindow : public QMainWindow, public TObject
         TQtWait *mWaitBox{nullptr};         // This is a wait dialog.
         TQGestureFilter *mGestureFilter{nullptr};   // This handles the pinch and swipe gestures
         std::atomic<bool>mRunRedraw{false};
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
         QGeoPositionInfoSource *mSource{nullptr};   // The geo location is used on IOS to keep app running in background
         QAudioOutput *mAudioOutput{nullptr};
-#endif
 #ifdef Q_OS_IOS
         TIOSBattery *mIosBattery{nullptr};  // Class to retrive the battery status on an iPhone or iPad
         TIOSRotate *mIosRotate{nullptr};    // Class to control rotation

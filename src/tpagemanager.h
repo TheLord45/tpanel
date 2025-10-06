@@ -43,7 +43,7 @@
 #include "tbuttonstates.h"
 #include "tqintercom.h"
 #include "tapps.h"
-#if defined(__linux__) || defined(__OSX_AVAILABLE)
+#if (defined(__linux__) || defined(__OSX_AVAILABLE)) && !defined(__ANDROID__) && !defined(__IOS_AVAILABLE)
 #include "tbattery.h"
 #endif
 #define REG_CMD(func, name)     registerCommand(bind(&TPageManager::func, this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),name)
@@ -180,6 +180,14 @@ typedef struct SCE_EVENT_t
     }
 }SCE_EVENT_t;
 
+/**
+ * @brief The TPageManager class
+ * This is the central class who manages all pages. The class has a method
+ * for every possible command.
+ * It is a singleton class which exists only once. There exists the global
+ * variable \variable gPageManager. It points to this class. Therefore it is
+ * accessable from every other class.
+ */
 class TPageManager : public TAmxCommands
 {
     public:
@@ -1097,20 +1105,22 @@ class TPageManager : public TAmxCommands
         double mScaleSystem{1.0};                       // The scale factor for the system setup pages
         double mScaleSystemWidth{1.0};                  // The width scale factor for the system setup pages
         double mScaleSystemHeight{1.0};                 // The height scale factor for the system setup pages
-#endif
+#endif  // _SCALE_SKIA_
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         int mNetState{0};                               // On Android and IOS remembers the type of connection to the network (cell or wifi)
-#endif
+#endif  // defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         std::map<int, std::function<void (int level)> > mNetCalls;  // List of callbacks for the network state multistate bargraph
 #if defined(Q_OS_ANDROID) || defined(Q_OS_LINUX) || defined(Q_OS_MACOS)
         std::map<int, std::function<void (int level, bool charging, int chargeType)> > mBatteryCalls;
+#if defined(Q_OS_LINUX) && !defined(Q_OS_ANDROID)
         TBattery *mLinBattery{nullptr};
-#endif
+#endif  // defined(Q_OS_LINUX) && !defined(Q_OS_ANDROID)
+#endif  //  defined(Q_OS_ANDROID) || defined(Q_OS_LINUX) || defined(Q_OS_MACOS)
 #ifdef Q_OS_IOS
         std::map<int, std::function<void (int level, int state)> > mBatteryCalls;
         int mLastBatteryLevel{0};
         int mLastBatteryState{0};
-#endif
+#endif  // Q_OS_IOS
 };
 
 #ifdef __ANDROID__

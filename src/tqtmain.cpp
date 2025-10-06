@@ -54,28 +54,16 @@
 #ifdef Q_OS_IOS
 #include <QtSensors/QOrientationSensor>
 #endif
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-#   include <QSound>
-#if defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
-#   include <QtSensors/QOrientationSensor>
-#   include <qpa/qplatformscreen.h>
-#endif
-#else
-#   include <QPlainTextEdit>
+#include <QPlainTextEdit>
 #if defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
 #   include <QGeoPositionInfoSource>
 #   include <QtSensors/QOrientationReading>
 #   include <QPermissions>
 #endif
-#endif
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0) && defined(Q_OS_ANDROID)
-#include <QtAndroidExtras/QAndroidJniObject>
-#include <QtAndroidExtras/QtAndroid>
-#endif
 #include <functional>
 //#include <mutex>
 #ifdef Q_OS_ANDROID
-#include <android/log.h>
+#   include <android/log.h>
 #endif
 #include "tpagemanager.h"
 #include "tqtmain.h"
@@ -248,7 +236,7 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
         mScaleFactorW = width / (double)minWidth;
         mScaleFactorH = height / (double)minHeight;
         scale = std::min(mScaleFactorW, mScaleFactorH);
-#ifdef __ANDROID__
+#ifdef Q_OS_ANDROID
         __android_log_print(ANDROID_LOG_DEBUG, "tpanel", "DBG,   ###, ??????????, scale: %f (Screen: %1.0fx%1.0f, Page: %dx%d)", scale, width, height, minWidth, minHeight);
 #endif
         gScale = scale;     // The calculated scale factor
@@ -1009,35 +997,6 @@ void MainWindow::activateSettings(const std::string& oldNetlinx, int oldPort, in
 #endif
 }
 
-/**
- * @brief MainWindow::_freezeWorkaround: A workaround for the screen freeze.
- * On Mobiles the screen sometimes stay frozen after the application state
- * changes to ACTIVE or some yet unidentified things happened.
- * The workaround produces a faked geometry change which makes the Qt framework
- * to reattach to the screen.
- * There may be situations where this workaround could trigger a repaint of all
- * objects on the screen but then the surface is still frozen. At the moment of
- * writing this comment I have no workaround or even an explanation for this.
- */
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-/**
- * @brief MainWindow::_freezeWorkaround
- * This hack was made from Thomas Andersen. You'll find it at:
- * https://bugreports.qt.io/browse/QTBUG-76142
- */
-void MainWindow::_freezeWorkaround()
-{
-    DECL_TRACER("MainWindow::_freezeWorkaround()");
-
-    QScreen* scr = QGuiApplication::screens().first();
-    QPlatformScreen* l_pScr = scr->handle(); /*QAndroidPlatformScreen*/
-    QRect l_geomHackAdjustedRect = l_pScr->availableGeometry();
-    QRect l_geomHackRect = l_geomHackAdjustedRect;
-    l_geomHackAdjustedRect.adjust(0, 0, 0, 5);
-    QMetaObject::invokeMethod(dynamic_cast<QObject*>(l_pScr), "setAvailableGeometry", Qt::DirectConnection, Q_ARG( const QRect &, l_geomHackAdjustedRect ));
-    QMetaObject::invokeMethod(dynamic_cast<QObject*>(l_pScr), "setAvailableGeometry", Qt::QueuedConnection, Q_ARG( const QRect &, l_geomHackRect ));
-}
-#endif  // QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 #endif  // Q_OS_ANDROID || Q_OS_IOS
 
 void MainWindow::_repaintWindows()
@@ -2377,16 +2336,6 @@ void MainWindow::fileDialog(ulong handle, const string &path, const std::string&
 
     if (fileName.contains("content://"))
     {
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-        QAndroidJniObject uri = QAndroidJniObject::callStaticObjectMethod(
-            "android/net/Uri", "parse", "(Ljava/lang/String;)Landroid/net/Uri;",
-            QAndroidJniObject::fromString(fileName).object<jstring>());
-
-        fileName = QAndroidJniObject::callStaticObjectMethod(
-            "org/qtproject/theosys/UriToPath", "getFileName",
-            "(Landroid/net/Uri;Landroid/content/Context;)Ljava/lang/String;",
-            uri.object(), QtAndroid::androidContext().object()).toString();
-#else   // QT5_LINUX
         // For QT6 the API has slightly changed. Especialy the class name to
         // call Java objects.
         QJniObject uri = QJniObject::callStaticObjectMethod(
@@ -2398,7 +2347,7 @@ void MainWindow::fileDialog(ulong handle, const string &path, const std::string&
             "org/qtproject/theosys/UriToPath", "getFileName",
             "(Landroid/net/Uri;Landroid/content/Context;)Ljava/lang/String;",
             uri.object(), &context).toString();
-#endif  // QT5_LINUX
+
         if (fileName.length() > 0)
             fname = fileName;
     }
@@ -2631,11 +2580,7 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
             MSG_INFO("Switched to mode SUSPEND");
             mHasFocus = false;
 #ifdef Q_OS_ANDROID
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-            QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
-#else
             QJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
-#endif
 #endif
         break;
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)      // On a normal desktop we can ignore this signals
@@ -2644,11 +2589,7 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
             mHasFocus = false;
             mWasInactive = true;
 #ifdef Q_OS_ANDROID
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-            QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
-#else
             QJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
-#endif
 #endif
         break;
 
@@ -2656,11 +2597,7 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
             MSG_INFO("Switched to mode HIDDEN");
             mHasFocus = false;
 #ifdef Q_OS_ANDROID
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-            QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
-#else
             QJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "pauseOrientationListener", "()V");
-#endif
 #endif
         break;
 #endif
@@ -2705,7 +2642,7 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
                             case O_LANDSCAPE:           mOrientation = Qt::LandscapeOrientation; break;
                         }
                     }
-#if defined(QT_DEBUG) && (defined(Q_OS_IOS) || defined(Q_OS_ANDROID))
+#if defined(QT_DEBUG)
                     MSG_DEBUG("Orientation after activate: " << orientationToString(mOrientation));
 #endif
                     if (gPageManager && mIosRotate)
@@ -2728,9 +2665,6 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
             }
             else
             {
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0) && defined(Q_OS_ANDROID)
-                _freezeWorkaround();
-#endif
                 if (mDoRepaint || mWasInactive)
                     repaintObjects();
 
@@ -2738,15 +2672,8 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
                 mWasInactive = false;
             }
 #ifdef Q_OS_ANDROID
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-            QAndroidJniObject activity = QtAndroid::androidActivity();
-            QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/HideToolbar", "hide", "(Landroid/app/Activity;Z)V", activity.object(), true);
-            QAndroidJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "resumeOrientationListener", "()V");
-#else
             QJniObject activity = QNativeInterface::QAndroidApplication::context();
-//            QJniObject::callStaticMethod<void>("org/qtproject/theosys/HideToolbar", "hide", "(Landroid/app/Activity;Z)V", activity.object(), true);
             QJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "resumeOrientationListener", "()V");
-#endif
 #endif
 #ifdef Q_OS_IOS
             // We do this to make sure the battery state is up to date after the
@@ -3205,11 +3132,9 @@ void MainWindow::_setOrientation(J_ORIENTATION ori)
 
     if (ori == O_FACE_UP || ori == O_FACE_DOWN)
         return;
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    QAndroidJniObject activity = QAndroidJniObject::callStaticObjectMethod("org/qtproject/qt5/android/QtNative", "activity", "()Landroid/app/Activity;");
-#else
+
     QJniObject activity = QJniObject::callStaticObjectMethod("org/qtproject/qt/android/QtNative", "activity", "()Landroid/app/Activity;");
-#endif
+
     if ( activity.isValid() )
     {
         activity.callMethod<void>
@@ -3523,11 +3448,7 @@ void MainWindow::markDirty(ulong handle)
     obj->dirty = true;
 }
 
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-int MainWindow::calcVolume(int value)
-#else
 double MainWindow::calcVolume(int value)
-#endif
 {
     DECL_TRACER("MainWindow::calcVolume(int value)");
 
@@ -3544,42 +3465,25 @@ QFont MainWindow::loadFont(int number, const FONT_T& f, const FONT_STYLE style)
 
     if (number < 32)    // System font?
     {
-#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
         path.append(prjPath).append("/__system/graphics/fonts/").append(f.file);
-#else
-        path.append(prjPath.c_str()).append("/__system/graphics/fonts/").append(f.file.c_str());
-#endif
 
         if (!fs::is_regular_file(path.toStdString()))
         {
             MSG_WARNING("Seem to miss system fonts ...");
             path.clear();
-#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
             path.append(prjPath).append("/fonts/").append(f.file);
-#else
-            path.append(prjPath.c_str()).append("/fonts/").append(f.file.c_str());
-#endif
         }
     }
     else
     {
-#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
         path.append(prjPath).append("/fonts/").append(f.file);
-#else
-        path.append(prjPath.c_str()).append("/fonts/").append(f.file.c_str());
-#endif
+
         if (!fs::exists(path.toStdString()))
         {
             string pth = prjPath + "/__system/fonts/" + f.file;
 
             if (fs::exists(pth))
-            {
-#if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
                 path.assign(pth);
-#else
-                path = pth.c_str();
-#endif
-            }
         }
     }
 
@@ -5427,9 +5331,6 @@ void MainWindow::playVideo(ulong handle, ulong parent, int left, int top, int wi
         MSG_DEBUG("Object " << handleToString(handle) << " of type " << objectToString(obj->type) << " found!");
     }
 
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    QMediaPlaylist *playlist = new QMediaPlaylist;
-#endif
     QUrl qurl(QString::fromStdString(url));
 
     if (!user.empty())
@@ -5439,17 +5340,11 @@ void MainWindow::playVideo(ulong handle, ulong parent, int left, int top, int wi
         qurl.setPassword(QString::fromStdString(pw));
 
     obj->videoUrl = qurl;
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    playlist->addMedia(qurl);
-#endif
+
     if (!obj->player)
     {
         obj->player = new QMediaPlayer;
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-        obj->player->setPlaylist(playlist);
-#else
         obj->player->setSource(qurl);
-#endif
         obj->player->setVideoOutput(obj->vwidget);
     }
 
