@@ -29,6 +29,7 @@
 #include "readtp4.h"
 #include "expand.h"
 #include "tscramble.h"
+#include "tresources.h"
 #include "terror.h"
 
 #if __cplusplus < 201402L
@@ -65,6 +66,8 @@ using namespace std;
  */
 string password = "8P0puxB5OVUFI6uX";
 string salt = "MarkRobs";
+string password_alt = "6Brzh63P3wlAkTtl";
+string salt_alt = "M0rPh3u5";
 
 ReadTP4::~ReadTP4()
 {
@@ -234,8 +237,8 @@ bool ReadTP4::doRead()
                         if (i == 0)
                         {
                             MSG_WARNING("Trying to decode with alternative password!");
-                            password = "6Brzh63P3wlAkTtl";
-                            salt = "M0rPh3u5";
+                            password = password_alt;
+                            salt = salt_alt;
                             continue;
                         }
 
@@ -243,14 +246,35 @@ bool ReadTP4::doRead()
                     }
                     else
                     {
+                        string decr = scramble.getDecrypted();
+
+                        if ((endsWith(ofile, ".xml") || endsWith(ofile, ".xma")) && !startsWith(decr, "<?xml") && i == 0)
+                        {
+                            MSG_WARNING("Trying to decode with alternative password!");
+                            password = password_alt;
+                            salt = salt_alt;
+                            continue;
+                        }
                         // Write buffer to file
                         ofstream outFile;
-                        outFile.open(ofile, ios::out | ios::binary | ios::trunc);
-                        string decr = scramble.getDecrypted();
-                        outFile.write(decr.c_str(), decr.length());
-                        outFile.close();
-                        mG5Type = true;
-                        break;
+
+                        try
+                        {
+                            outFile.open(ofile, ios::out | ios::binary | ios::trunc);
+                            outFile.write(decr.c_str(), decr.length());
+                            outFile.close();
+                            mG5Type = true;
+                            break;
+                        }
+                        catch (std::exception &e)
+                        {
+                            MSG_ERROR("Error writing file " << ofile << ": " << e.what());
+
+                            if (outFile.is_open())
+                                outFile.close();
+
+                            break;
+                        }
                     }
                 }
             }
