@@ -222,21 +222,36 @@ bool ReadTP4::doRead()
             {
                 MSG_DEBUG("Decrypting file " << ofile << " ...");
                 TScramble scramble;
-                scramble.aesInit(password, salt);
+                // The correct password depends on the version of TPDesign5.
+                // On most cases the default password works. But for some files
+                // the alternative password is needed.
+                for (int i = 0; i < 2; i++)
+                {
+                    scramble.aesInit(password, salt);
 
-                if (!scramble.aesDecodeFile(ofile))
-                {
-                    MSG_WARNING("Error decrypting file " << ofile << "!");
-                }
-                else
-                {
-                    // Write buffer to file
-                    ofstream outFile;
-                    outFile.open(ofile, ios::out | ios::binary | ios::trunc);
-                    string decr = scramble.getDecrypted();
-                    outFile.write(decr.c_str(), decr.length());
-                    outFile.close();
-                    mG5Type = true;
+                    if (!scramble.aesDecodeFile(ofile))
+                    {
+                        if (i == 0)
+                        {
+                            MSG_WARNING("Trying to decode with alternative password!");
+                            password = "6Brzh63P3wlAkTtl";
+                            salt = "M0rPh3u5";
+                            continue;
+                        }
+
+                        MSG_WARNING("Error decrypting file " << ofile << "!");
+                    }
+                    else
+                    {
+                        // Write buffer to file
+                        ofstream outFile;
+                        outFile.open(ofile, ios::out | ios::binary | ios::trunc);
+                        string decr = scramble.getDecrypted();
+                        outFile.write(decr.c_str(), decr.length());
+                        outFile.close();
+                        mG5Type = true;
+                        break;
+                    }
                 }
             }
 
