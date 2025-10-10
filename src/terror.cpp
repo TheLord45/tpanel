@@ -245,11 +245,11 @@ void TStreamError::setLogFile(const std::string &lf)
 #ifndef __ANDROID__
     if (mInitialized && mLogfile.compare(lf) == 0)
         return;
-#endif
+#endif  // __ANDROID__
     mLogfile = lf;
     mInitialized = false;
     _init();
-#endif
+#endif  // Q_OS_IOS
 }
 
 void TStreamError::setLogLevel(const std::string& slv)
@@ -270,7 +270,7 @@ void TStreamError::setLogLevel(const std::string& slv)
 
         if (llv != HLOG_DEBUG && llv != HLOG_TRACE)
             mLogLevel |= llv;
-#endif
+#endif  // NDEBUG
         pos = slv.find("|", start);
     }
 
@@ -281,19 +281,19 @@ void TStreamError::setLogLevel(const std::string& slv)
         mLogLevel |= llv;
 #else
     mLogLevel |= _getLevel(slv.substr(start));
-#endif
+#endif  // NDEBUG
 #ifdef __ANDROID__
     __android_log_print(ANDROID_LOG_INFO, "tpanel", "TStreamError::setLogLevel: New loglevel: %s", slv.c_str());
 #else
 #ifdef TARGET_OS_IOS
-    std::cout << TError::append(HLOG_INFO, __LINE__, __FILE__) << "New loglevel: " << slv << std::endl;
+    std::cout << TError::append(HLOG_INFO, __LINE__, __FILE__) << "New loglevel: " << slv << " (" << std::setw(4) << std::setfill('0') << std::hex << mLogLevel << ")" << std::endl;
 #else
     if (mInitialized && mStream)
         *mStream << TError::append(HLOG_INFO, 0, "") << "New loglevel: " << slv << std::endl;
     else
         std::cout << TError::append(HLOG_INFO, 0, "") << "New loglevel: " << slv << std::endl;
-#endif
-#endif
+#endif  // TARGET_OS_IOS
+#endif  // __ANDROID__
 }
 
 bool TStreamError::checkFilter(terrtype_t err)

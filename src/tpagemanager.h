@@ -43,7 +43,7 @@
 #include "tbuttonstates.h"
 #include "tqintercom.h"
 #include "tapps.h"
-#if (defined(__linux__) || defined(__OSX_AVAILABLE)) && !defined(__ANDROID__) && !defined(__IOS_AVAILABLE)
+#if defined(__linux__) || defined(__OSX_AVAILABLE)
 #include "tbattery.h"
 #endif
 #define REG_CMD(func, name)     registerCommand(bind(&TPageManager::func, this,std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),name)
@@ -1112,7 +1112,7 @@ class TPageManager : public TAmxCommands
         std::map<int, std::function<void (int level)> > mNetCalls;  // List of callbacks for the network state multistate bargraph
 #if defined(Q_OS_ANDROID) || defined(Q_OS_LINUX) || defined(Q_OS_MACOS)
         std::map<int, std::function<void (int level, bool charging, int chargeType)> > mBatteryCalls;
-#if defined(Q_OS_LINUX) && !defined(Q_OS_ANDROID)
+#if (defined(Q_OS_LINUX) && !defined(Q_OS_ANDROID)) || defined(Q_OS_MACOS)
         TBattery *mLinBattery{nullptr};
 #endif  // defined(Q_OS_LINUX) && !defined(Q_OS_ANDROID)
 #endif  //  defined(Q_OS_ANDROID) || defined(Q_OS_LINUX) || defined(Q_OS_MACOS)

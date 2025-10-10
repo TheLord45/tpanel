@@ -20,7 +20,7 @@
 #define TQINTERCOM_H
 
 #include <string>
-#include <QObject>
+//#include <QObject>
 #include <QAudioFormat>
 #include <QAbstractSocket>
 #include <QAudioSink>

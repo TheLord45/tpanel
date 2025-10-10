@@ -20,6 +20,7 @@
 
 #include <QUdpSocket>
 #include <QNetworkDatagram>
+#include <QAudio>
 #include <QAudioSink>
 #include <QAudioSource>
 #include <QMediaDevices>
@@ -27,11 +28,11 @@
 #include <QAudioInput>
 #include <QBuffer>
 #include <QTimer>
-#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
-#   if QT_VERSION_CHECK(6, 6, 0)
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS) || defined(Q_OS_MACOS)
+#   if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
 #       include <QApplication>
 #       include <QPermissions>
-#   endif   // QT_VERSION_CHECK(6, 6, 0)
+#   endif   // QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
 #endif  // defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
 
 #include "tqintercom.h"
@@ -175,7 +176,7 @@ void TQIntercom::setIntercom(INTERCOM_t ic)
                 MSG_DEBUG("In Is default: " << (device.isDefault() ? "Yes" : "No"));
             }
         }
-#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS) || defined(Q_OS_MAC)
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS) || defined(Q_OS_MACOS)
 #   if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
         QMicrophonePermission microphonePermission;
 
@@ -228,7 +229,7 @@ void TQIntercom::setSpeakerLevel(int level)
         return;
 
     mSpkLevel = level;
-    qreal volume = QAudio::convertVolume(level, QAudio::LinearVolumeScale, QAudio::LogarithmicVolumeScale);
+    qreal volume = QAudio::convertVolume(static_cast<float>(level), QAudio::LinearVolumeScale, QAudio::LogarithmicVolumeScale);
 
     if (mIntercom.mode == 0 || mIntercom.mode == 2)
     {
@@ -245,7 +246,7 @@ void TQIntercom::setMicrophoneLevel(int level)
         return;
 
     mMicLevel = level;
-    qreal gain = QAudio::convertVolume(level, QAudio::LinearVolumeScale, QAudio::LogarithmicVolumeScale);
+    qreal gain = QAudio::convertVolume(static_cast<float>(level), QAudio::LinearVolumeScale, QAudio::LogarithmicVolumeScale);
 
     if (mIntercom.mode == 1 || mIntercom.mode == 2)
     {
@@ -515,7 +516,7 @@ qreal TQIntercom::convertVolume(int volume)
 {
     DECL_TRACER("TQIntercom::converVolume(int volume)");
 
-    return QAudio::convertVolume(static_cast<qreal>(volume) / qreal(100), QAudio::LogarithmicVolumeScale, QAudio::LinearVolumeScale);
+    return QAudio::convertVolume(static_cast<float>(volume) / float(100), QAudio::LogarithmicVolumeScale, QAudio::LinearVolumeScale);
 }
 
 void TQIntercom::onRecordPermissionGranted()

@@ -41,6 +41,7 @@ class TTPInit
         }FILELIST_t;
 
         void setPath(const std::string& p);
+        void setPathOnly(const std::string& p) { mPath = p; }
         bool createDirectoryStructure();
         bool loadSurfaceFromController(bool force=false);
         std::vector<FILELIST_t>& getFileList(const std::string& filter);
@@ -48,6 +49,7 @@ class TTPInit
         bool isVirgin();
         bool makeSystemFiles();
         bool reinitialize();
+        bool createDemoPage(bool force=false);
 
         int progressCallback(off64_t xfer);
         void setFileSize(off64_t fs) { mFileSize = fs; }
@@ -69,7 +71,6 @@ class TTPInit
 
         bool createPanelConfigs();
         bool createSystemConfigs();
-        bool createDemoPage();
         bool _makeDir(const std::string& dir);
         bool copyFile(const std::string& fname);
         std::string getTmpFileName();

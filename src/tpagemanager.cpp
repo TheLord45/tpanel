@@ -783,8 +783,6 @@ TPageManager::TPageManager()
     else
         tinit->makeSystemFiles();
 
-    delete tinit;
-
     // Read the AMX panel settings.
     mTSettings = new TSettings(projectPath);
 
@@ -792,9 +790,13 @@ TPageManager::TPageManager()
     {
         PRINT_LAST_ERROR();
         MSG_ERROR("Settings were not read successfull!");
+        MSG_ERROR("Will try to reconfigure initial state ...");
+        tinit->createDemoPage(true);    // We force the creation of the demo page
+        delete tinit;
         return;
     }
 
+    delete tinit;
     // Read the application file if it is G5
     if (mTSettings->isG5())
     {

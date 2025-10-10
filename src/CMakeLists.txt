@@ -13,11 +13,13 @@ set(QT_USE_QTMULTIMEDIA TRUE)
 set(QT_USE_QTMULTIMEDIAWIDGETS TRUE)
 
 if(IOS)
+    # Enable this line only if you want to create a xcarchive for the app store!
+    # set(QT_USE_RISKY_DSYM_ARCHIVING_WORKAROUND ON)
     find_package(QT NAMES Qt6 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning Sensors)
     find_package(Qt6 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning Sensors)
 elseif(ANDROID)
-    find_package(QT NAMES Qt6 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Quick Positioning)
-    find_package(Qt6 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Quick Positioning)
+    find_package(QT NAMES Qt6 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Quick Positioning Sensors)
+    find_package(Qt6 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Quick Positioning Sensors)
 else(IOS)
     find_package(QT NAMES Qt6 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning)
     find_package(Qt6 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning)
@@ -568,6 +570,7 @@ elseif(ANDROID)
         Qt${QT_VERSION_MAJOR}::MultimediaWidgets
         Qt${QT_VERSION_MAJOR}::Positioning
         Qt${QT_VERSION_MAJOR}::Quick
+        Qt${QT_VERSION_MAJOR}::Sensors
         ftp ${LIBS}
     )
 elseif(APPLE)
@@ -651,6 +654,7 @@ else()
         MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
         MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
         MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist"
         WIN32_EXECUTABLE FALSE
     )
 endif()

@@ -636,7 +636,7 @@ void QASettings::openSettings()
 
 void QASettings::writeLog(int type, const std::string& msg)
 {
-    os_log_type_t dbType = OS_LOG_TYPE_DEBUG;
+/*    os_log_type_t dbType = OS_LOG_TYPE_DEBUG;
 
     switch (type)
     {
@@ -653,7 +653,7 @@ void QASettings::writeLog(int type, const std::string& msg)
 
     if (os_log_type_enabled(TPANEL_LOG, dbType))
         os_log_with_type(TPANEL_LOG, dbType, "%{public}s", msg.c_str());
-    else
+    else */
         NSLog(@"(tpanel) %s", msg.c_str());
 
 }

@@ -183,18 +183,33 @@ bool TTPInit::createPanelConfigs()
     return err;
 }
 
-bool TTPInit::createDemoPage()
+bool TTPInit::createDemoPage(bool force)
 {
-    DECL_TRACER("TTPInit::createDemoPage()");
+    DECL_TRACER("TTPInit::createDemoPage(bool force)");
 
-    if (fs::exists(mPath + "/prj.xma"))
+    if (!force && fs::exists(mPath + "/prj.xma"))
     {
         MSG_DEBUG("There exists already a page.");
         return false;
     }
 
-    if (mDemoPageCreated)
+    if (!force && mDemoPageCreated)
         return false;
+
+    if (force)
+    {
+        // To be sure the target directory tree is empty, we delete all files but
+        // keep the system directories and their content, if they exist.
+        dir::TDirectory dir;
+
+        if (dir.exists(mPath))
+        {
+            dir.dropDir(mPath);
+            dir.dropDir(mPath + "/fonts");
+            dir.dropDir(mPath + "/images");
+            dir.dropDir(mPath + "/sounds");
+        }
+    }
 
     vector<string> resFiles = {
         ":ressources/_Copyright.xml",

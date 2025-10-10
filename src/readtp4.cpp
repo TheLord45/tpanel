@@ -236,7 +236,7 @@ bool ReadTP4::doRead()
                     {
                         if (i == 0)
                         {
-                            MSG_WARNING("Trying to decode with alternative password!");
+                            MSG_DEBUG("Trying to decode with alternative password!");
                             password = password_alt;
                             salt = salt_alt;
                             continue;
@@ -250,7 +250,7 @@ bool ReadTP4::doRead()
 
                         if ((endsWith(ofile, ".xml") || endsWith(ofile, ".xma")) && !startsWith(decr, "<?xml") && i == 0)
                         {
-                            MSG_WARNING("Trying to decode with alternative password!");
+                            MSG_DEBUG("Trying to decode with alternative password!");
                             password = password_alt;
                             salt = salt_alt;
                             continue;

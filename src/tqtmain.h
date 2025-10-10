@@ -103,7 +103,7 @@ class MainWindow : public QMainWindow, public TObject
         void disconnectList(QListWidget *list);
         void reconnectArea(TQScrollArea *area);
         void reconnectList(QListWidget *list);
-#if defined(QT_DEBUG) && (defined(Q_OS_IOS) || defined(Q_OS_ANDROID))
+#if defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
         static std::string orientationToString(Qt::ScreenOrientation ori);
 #endif
     signals:
@@ -225,6 +225,7 @@ class MainWindow : public QMainWindow, public TObject
         void onMetaDataChanged();
         void onAppStateChanged(Qt::ApplicationState state);
         void onScreenOrientationChanged(Qt::ScreenOrientation ori);
+        void onScreenOrientation(int angle);
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         void activateSettings(const std::string& oldNetlinx, int oldPort, int oldChannelID, const std::string& oldSurface, bool oldToolbarSuppress, bool oldToolbarForce);
 #ifdef Q_OS_IOS

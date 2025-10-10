@@ -47,7 +47,10 @@ void TIOSRotate::rotate(int dir)
 {
     DECL_TRACER("TIOSRotate::rotate(int dir)");
 
-    float value = 0.0;
+    int value = 0;
+
+    if (getCurrentOrientation() == dir)
+        return;
 
     switch(dir)
     {
@@ -81,7 +84,13 @@ void TIOSRotate::rotate(int dir)
         return;
     }
 
+    if (dir == O_LANDSCAPE || dir == O_REVERSE_LANDSCAPE)
+        geometryPreferences.interfaceOrientations = UIInterfaceOrientationMaskLandscape;
+    else
+        geometryPreferences.interfaceOrientations = UIInterfaceOrientationMaskPortrait;
+
     [scene requestGeometryUpdateWithPreferences:geometryPreferences errorHandler:^(NSError * _Nonnull error) { NSLog(@"%@", error); }];
+    MSG_DEBUG("TIOSRotate: Set orientation: " << dir << ", value: " << value);
 }
 
 void TIOSRotate::automaticRotation(bool allow)
@@ -113,7 +122,7 @@ int TIOSRotate::getCurrentOrientation()
 
     int value = 0;
     value = [device orientation];
-    MSG_DEBUG("getCurrentOrientation: " << value)
+    MSG_DEBUG("TIOSRotate: Current orientation: " << value);
 
     switch(value)
     {

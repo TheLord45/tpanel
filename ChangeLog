@@ -3,6 +3,8 @@ ChangeLog
 
 Release: 2.0.0
 ===============================================================================
+2025-10-10 Fixed rotation for iOS
+
 2025-08-29 Created installable package for MacOS.
 
 2025-08-28 Added battery support for Linux and MacOS.

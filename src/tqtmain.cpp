@@ -57,11 +57,13 @@
 #include <QPlainTextEdit>
 #if defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
 #   include <QGeoPositionInfoSource>
+#   include <QSensor>
 #   include <QtSensors/QOrientationReading>
+#endif
+#ifndef Q_OS_LINUX  // Linux is the only OS which requires no explicit permissions
 #   include <QPermissions>
 #endif
 #include <functional>
-//#include <mutex>
 #ifdef Q_OS_ANDROID
 #   include <android/log.h>
 #endif
@@ -161,7 +163,7 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
     }
 
     gPageManager = pmanager;
-#ifdef __ANDROID__
+#ifdef Q_OS_ANDROID
     MSG_INFO("Android API version: " << __ANDROID_API__);
 
 #if __ANDROID_API__ < 30
@@ -169,13 +171,10 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
 #endif  // __ANDROID_API__
     QJniObject activity = QNativeInterface::QAndroidApplication::context();
     QJniObject::callStaticMethod<void>("org/qtproject/theosys/HideToolbar", "hide", "(Landroid/app/Activity;Z)V", activity.object(), true);
-#endif  // __ANDROID__
-
-#if defined(Q_OS_ANDROID)
     QApplication::setAttribute(Qt::AA_ForceRasterWidgets);
 //    QApplication::setAttribute(Qt::AA_Use96Dpi);
 //    QApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
-#endif
+#endif  // Q_OS_ANDROID
 
     QApplication app(argc, argv);
     app.setApplicationName(QString::fromStdString(TConfig::getProgName()));
@@ -328,9 +327,7 @@ MainWindow::MainWindow()
     grabGesture(Qt::SwipeGesture);                  // We support swiping also
 
 #ifdef Q_OS_IOS                                     // Block autorotate on IOS
-//    initGeoLocation();
-    mIosRotate = new TIOSRotate;
-//    mIosRotate->automaticRotation(false);           // FIXME: This doesn't work!
+    mIosRotate = new TIOSRotate;    // TODO: Remove this and use QSensor!
 
     if (!mSensor)
     {
@@ -338,12 +335,20 @@ MainWindow::MainWindow()
 
         if (mSensor)
         {
-            mSensor->setAxesOrientationMode(QSensor::AutomaticOrientation);
+            mSensor->setAxesOrientationMode(QSensor::FixedOrientation);
 
             if (gPageManager && gPageManager->getSettings()->isPortrait())
+            {
                 mSensor->setCurrentOrientation(Qt::PortraitOrientation);
+                mIosRotate->setAllowedOrientations(true);
+                mIosRotate->rotate(O_PORTRAIT);
+            }
             else
+            {
                 mSensor->setCurrentOrientation(Qt::LandscapeOrientation);
+                mIosRotate->setAllowedOrientations(false);
+                mIosRotate->rotate(O_LANDSCAPE);
+            }
         }
     }
 #endif  // Q_OS_IOS
@@ -394,13 +399,13 @@ MainWindow::MainWindow()
     {
         MSG_INFO("Orientation set to portrait mode.");
         _setOrientation(O_PORTRAIT);
-        mOrientation = Qt::PortraitOrientation;
+//        mOrientation = Qt::PortraitOrientation;
     }
     else
     {
         MSG_INFO("Orientation set to landscape mode.");
         _setOrientation(O_LANDSCAPE);
-        mOrientation = Qt::LandscapeOrientation;
+//        mOrientation = Qt::LandscapeOrientation;
     }
 #else
     QRect rectMain = geometry();
@@ -647,7 +652,13 @@ MainWindow::MainWindow()
         connect(qApp, &QGuiApplication::applicationStateChanged, this, &MainWindow::onAppStateChanged);
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         QScreen *screen = QGuiApplication::primaryScreen();
-        connect(screen, &QScreen::orientationChanged, this, &MainWindow::onScreenOrientationChanged);
+
+        if (screen)
+            connect(screen, &QScreen::orientationChanged, this, &MainWindow::onScreenOrientationChanged);
+
+        if (mSensor)
+            connect(mSensor, &QSensor::currentOrientationChanged, this, &MainWindow::onScreenOrientation);
+
         connect(this, &MainWindow::sigActivateSettings, this, &MainWindow::activateSettings);
 #endif
     }
@@ -779,7 +790,7 @@ MainWindow::~MainWindow()
     isRunning = false;
 #ifdef Q_OS_IOS
     if (mIosRotate)
-        mIosRotate->automaticRotation(true);
+        mIosRotate->automaticRotation(false);
 
     if (mIosBattery)
     {
@@ -922,14 +933,15 @@ void MainWindow::activateSettings(const std::string& oldNetlinx, int oldPort, in
             doDownload = true;
             TTPInit tpinit;
             std::vector<TTPInit::FILELIST_t> mFileList;
-            // Get the list of TP4 files from NetLinx, if there are any.
-            TQtWait waitBox(this, string("Please wait while I'm looking at the disc of Netlinx (") + TConfig::getController().c_str() + ") for TP4 files ...");
+            // Get the list of TP4/TP5 files from NetLinx, if there are any.
+/*            TQtWait waitBox(this, string("Please wait while I'm looking at the disc of Netlinx (") + TConfig::getController().c_str() + ") for TP4/TP5 files ...");
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
             waitBox.setScaleFactor(mScaleFactor);
             waitBox.doResize();
             waitBox.start();
 #endif
-            tpinit.setPath(TConfig::getProjectPath());
+*/
+            tpinit.setPathOnly(TConfig::getProjectPath());
             tpinit.regCallbackProcessEvents(bind(&MainWindow::runEvents, this));
             tpinit.regCallbackProgressBar(bind(&MainWindow::_onProgressChanged, this, std::placeholders::_1));
             mFileList = tpinit.getFileList(".tp4|.tp5");
@@ -941,6 +953,8 @@ void MainWindow::activateSettings(const std::string& oldNetlinx, int oldPort, in
 
                 for (iter = mFileList.begin(); iter != mFileList.end(); ++iter)
                 {
+                    MSG_DEBUG("Comparing file \"" << iter->fname << "\" with \"" << newSurface << "\" ...");
+
                     if (iter->fname == newSurface)
                     {
                         tpinit.setFileSize(iter->size);
@@ -950,7 +964,7 @@ void MainWindow::activateSettings(const std::string& oldNetlinx, int oldPort, in
                 }
             }
 
-            waitBox.end();
+//            waitBox.end();
 
             if (found)
             {
@@ -967,8 +981,9 @@ void MainWindow::activateSettings(const std::string& oldNetlinx, int oldPort, in
             }
             else
             {
-                MSG_PROTOCOL("The surface " << newSurface << " does not exist on NetLinx or the NetLinx " << TConfig::getController() << " was not found!");
-                displayMessage("The surface " + newSurface + " does not exist on NetLinx or the NetLinx " + TConfig::getController() + " was not found!", "Information");
+                MSG_WARNING("The surface \"" << newSurface << "\" does not exist on NetLinx or the device " << TConfig::getController() << " was not found!");
+                displayMessage("The surface \"" + newSurface + "\" does not exist on NetLinx or the device " + TConfig::getController() + " was not found!", "Information");
+                doDownload = false;
             }
         }
     }
@@ -1511,6 +1526,23 @@ void MainWindow::onScreenOrientationChanged(Qt::ScreenOrientation ori)
     setNotch();
 #endif
 }
+
+void MainWindow::onScreenOrientation(int angle)
+{
+    DECL_TRACER("MainWindow::onScreenOrientation(int angle)");
+
+    MSG_DEBUG("Screen orientation angle: " << angle);
+
+    if (angle == 0 || angle == Qt::PortraitOrientation)
+        onScreenOrientationChanged(Qt::PortraitOrientation);
+    else if (angle == 90 || angle == Qt::LandscapeOrientation)
+        onScreenOrientationChanged(Qt::LandscapeOrientation);
+    else if (angle == 180 || angle == Qt::InvertedPortraitOrientation)
+        onScreenOrientationChanged(Qt::InvertedPortraitOrientation);
+    else if (angle == 270 || angle == Qt::InvertedLandscapeOrientation)
+        onScreenOrientationChanged(Qt::InvertedLandscapeOrientation);
+}
+
 #ifdef Q_OS_IOS
 /**
  * @brief MainWindow::onPositionUpdated
@@ -2632,7 +2664,9 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
 
                 if (mSensor)
                 {
-                    if (mIosRotate && mOrientation == Qt::PrimaryOrientation) // Unknown?
+                    mOrientation = getRealOrientation();
+
+/*                    if (mIosRotate && mOrientation == Qt::PrimaryOrientation) // Unknown?
                     {
                         switch(mIosRotate->getCurrentOrientation())
                         {
@@ -2641,20 +2675,22 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
                             case O_REVERSE_LANDSCAPE:   mOrientation = Qt::InvertedLandscapeOrientation; break;
                             case O_LANDSCAPE:           mOrientation = Qt::LandscapeOrientation; break;
                         }
-                    }
+                    } */
 #if defined(QT_DEBUG)
                     MSG_DEBUG("Orientation after activate: " << orientationToString(mOrientation));
 #endif
                     if (gPageManager && mIosRotate)
                     {
-                        if (gPageManager->getSettings()->isPortrait() && mOrientation != Qt::PortraitOrientation)
+                        if (gPageManager->getSettings()->isPortrait() && mOrientation != Qt::PortraitOrientation && mOrientation != Qt::InvertedPortraitOrientation)
                         {
-                            mIosRotate->rotate(O_PORTRAIT);
+                            //mIosRotate->rotate(O_PORTRAIT);
+                            _setOrientation(O_PORTRAIT);
                             mOrientation = Qt::PortraitOrientation;
                         }
-                        else if (mOrientation != Qt::LandscapeOrientation)
+                        else if (mOrientation != Qt::LandscapeOrientation && mOrientation != Qt::InvertedLandscapeOrientation)
                         {
-                            mIosRotate->rotate(O_LANDSCAPE);
+                            // mIosRotate->rotate(O_LANDSCAPE);
+                            _setOrientation(O_LANDSCAPE);
                             mOrientation = Qt::LandscapeOrientation;
                         }
                     }
@@ -3155,8 +3191,32 @@ void MainWindow::_setOrientation(J_ORIENTATION ori)
     }
 #elif defined(Q_OS_IOS)
     if (mIosRotate)
-    {
         mIosRotate->rotate(ori);
+
+    if (mSensor)
+    {
+        switch(ori)
+        {
+            case O_PORTRAIT:
+                mSensor->setCurrentOrientation(0);
+                mOrientation = Qt::PortraitOrientation;
+            break;
+
+            case O_LANDSCAPE:
+                mSensor->setCurrentOrientation(90);
+                mOrientation = Qt::LandscapeOrientation;
+            break;
+
+            case O_REVERSE_PORTRAIT:
+                mSensor->setCurrentOrientation(180);
+                mOrientation = Qt::InvertedPortraitOrientation;
+            break;
+
+            case O_REVERSE_LANDSCAPE:
+                mSensor->setCurrentOrientation(270);
+                mOrientation = Qt::InvertedLandscapeOrientation;
+            break;
+        }
 #ifdef QT_DEBUG
         string msg;
 
@@ -3619,7 +3679,8 @@ void MainWindow::setNotch()
     else
     {
         margins = QASettings::getNotchSize();
-
+        MSG_DEBUG("Raw notch top: " << margins.top() << ", bottom: " << margins.bottom() << ", left: " << margins.left() << ", right: " << margins.right() << ", mOrientation: " << orientationToString(mOrientation));
+/*
         if (gPageManager && gPageManager->getSettings()->isPortrait())
         {
             if (so == Qt::LandscapeOrientation)
@@ -3661,7 +3722,7 @@ void MainWindow::setNotch()
                 margins.setRight(top);
                 margins.setBottom(left);
             }
-        }
+        } */
     }
 #if defined(QT_DEBUG) && (defined(Q_OS_IOS) || defined(Q_OS_ANDROID))
     MSG_DEBUG("Notch top: " << margins.top() << ", bottom: " << margins.bottom() << ", left: " << margins.left() << ", right: " << margins.right() << ", Orientation real: " << orientationToString(so) << ", estimated: " << orientationToString(mOrientation));
@@ -3776,7 +3837,7 @@ Qt::ScreenOrientation MainWindow::getRealOrientation()
     return Qt::PortraitOrientation;
 }
 #endif  // Q_OS_IOS
-#if defined(QT_DEBUG) && (defined(Q_OS_IOS) || defined(Q_OS_ANDROID))
+#if defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
 string MainWindow::orientationToString(Qt::ScreenOrientation ori)
 {
     string sori;

@@ -19,7 +19,7 @@
 #ifndef TQGESTUREFILTER_H
 #define TQGESTUREFILTER_H
 
-#include <QObject>
+//#include <QObject>
 #include <QGestureEvent>
 
 class TQGestureFilter : public QObject
