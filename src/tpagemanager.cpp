@@ -790,13 +790,24 @@ TPageManager::TPageManager()
     {
         PRINT_LAST_ERROR();
         MSG_ERROR("Settings were not read successfull!");
-        MSG_ERROR("Will try to reconfigure initial state ...");
-        tinit->createDemoPage(true);    // We force the creation of the demo page
-        delete tinit;
-        return;
+        MSG_INFO("Trying to restore demo page ...");
+
+        if (tinit->createDemoPage(true))
+        {
+            if (!mTSettings->loadSettings())
+            {
+                delete tinit;
+                return;
+            }
+        }
+        else
+            return;
+
+        TError::clear();
     }
 
     delete tinit;
+    tinit = nullptr;
     // Read the application file if it is G5
     if (mTSettings->isG5())
     {
@@ -810,6 +821,8 @@ TPageManager::TPageManager()
             MSG_WARNING("Apps list was not read successfully!");
         }
     }
+    else
+        TTPInit::setG5(false);
 
     // Set the panel type from the project information
     TConfig::savePanelType(mTSettings->getPanelType());

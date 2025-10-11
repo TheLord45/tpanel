@@ -67,7 +67,7 @@ bool TSettings::loadSettings(bool initial)
     if (!isValidFile())
     {
         MSG_ERROR("Error: File " << fname << " doesn't exist or can't be opened!");
-        TError::SetError();
+        SET_ERROR_MSG("Error opening file!");
         return false;
     }
 
@@ -77,7 +77,10 @@ bool TSettings::loadSettings(bool initial)
         xml.setEncoding(ENC_CP1250);
 
     if (!xml.parse())
+    {
+        SET_ERROR_MSG("Error parsing file " + fname);
         return false;
+    }
 
     int depth = 0;
     size_t index = 0;
@@ -85,8 +88,7 @@ bool TSettings::loadSettings(bool initial)
 
     if (xml.getElementIndex("versionInfo", &depth) == TExpat::npos)
     {
-        MSG_ERROR("Couldn't find the project version information! Broken surface?");
-        TError::SetError();
+        SET_ERROR_MSG("Couldn't find the project version information! Broken surface?");
         return false;
     }
 
@@ -112,15 +114,14 @@ bool TSettings::loadSettings(bool initial)
     {
         mSetup.versionInfo.g5appsVersion = 0;   // No G5 file
         mIsG5 = false;
-        MSG_INFO("Detected a TP4 file");
+        MSG_INFO("Detected a G4 file");
     }
 
     MSG_DEBUG("Reading project info ...");
 
     if (xml.getElementIndex("projectInfo", &depth) == TExpat::npos)
     {
-        MSG_ERROR("Couldn't find the project information! Broken surface?");
-        TError::SetError();
+        SET_ERROR_MSG("Couldn't find the project information! Broken surface?");
         return false;
     }
 
@@ -149,8 +150,7 @@ bool TSettings::loadSettings(bool initial)
 
     if (xml.getElementIndex("supportFileList", &depth) == TExpat::npos)
     {
-        MSG_ERROR("Couldn't find the support file list! Broken surface?");
-        TError::SetError();
+        SET_ERROR_MSG("Couldn't find the support file list! Broken surface?");
         return false;
     }
 
@@ -193,8 +193,7 @@ bool TSettings::loadSettings(bool initial)
 
     if ((index = xml.getElementIndex("panelSetup", &depth)) == TExpat::npos)
     {
-        MSG_ERROR("Couldn't find the section \"panelSetup\" in file!");
-        TError::SetError();
+        SET_ERROR_MSG("Couldn't find the section \"panelSetup\" in file!");
         return false;
     }
 

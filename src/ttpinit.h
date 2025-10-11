@@ -69,7 +69,7 @@ class TTPInit
         std::function<void ()> _processEvents{nullptr};
         std::function<void (int percent)> _progressBar{nullptr};
 
-        bool createPanelConfigs();
+//        bool createPanelConfigs();
         bool createSystemConfigs();
         bool _makeDir(const std::string& dir);
         bool copyFile(const std::string& fname);

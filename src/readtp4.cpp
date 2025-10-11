@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 to 2024 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2022 to 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -81,12 +81,18 @@ bool ReadTP4::isReady()
     DECL_TRACER("ReadTP4::isReady()");
 
     if (access(fname.c_str(), R_OK) != 0)
+    {
+        MSG_ERROR("File " << fname << " doesn't exist or is not readable!");
         return false;
+    }
 
     if (access(target.c_str(), F_OK) == 0)
     {
         if (access(target.c_str(), R_OK | W_OK | X_OK) != 0)
+        {
+            MSG_ERROR("Target file " << target << " has no permission to write into!");
             return false;
+        }
 
         return true;
     }
@@ -224,12 +230,12 @@ bool ReadTP4::doRead()
             else if (encrypted)
             {
                 MSG_DEBUG("Decrypting file " << ofile << " ...");
-                TScramble scramble;
                 // The correct password depends on the version of TPDesign5.
                 // On most cases the default password works. But for some files
                 // the alternative password is needed.
                 for (int i = 0; i < 2; i++)
                 {
+                    TScramble scramble;
                     scramble.aesInit(password, salt);
 
                     if (!scramble.aesDecodeFile(ofile))

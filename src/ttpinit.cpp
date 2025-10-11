@@ -83,6 +83,8 @@ bool TTPInit::mIsG5 = false;
 TTPInit::TTPInit()
 {
     DECL_TRACER("TTPInit::TTPInit()");
+
+    mIsG5 = testForTp5();
 }
 
 TTPInit::TTPInit(const string& path)
@@ -90,8 +92,9 @@ TTPInit::TTPInit(const string& path)
 {
     DECL_TRACER("TTPInit::TTPInit(const string& path)")
 
+    mIsG5 = testForTp5();
     createDirectoryStructure();
-    createPanelConfigs();
+//    createPanelConfigs();
 
     if (!loadSurfaceFromController())
         createDemoPage();
@@ -103,7 +106,7 @@ void TTPInit::setPath(const string& p)
 
     mPath = p;
     string dirs = "/__system";
-    string config = p + "/__system/prj.xma";
+//    string config = p + "/__system/prj.xma";
     string sysFiles = p + "/__system/graphics/version.xma";
     string regular = p + "/prj.xma";
 
@@ -113,8 +116,8 @@ void TTPInit::setPath(const string& p)
     if (!fs::exists(sysFiles))
         createSystemConfigs();
 
-    if (!fs::exists(config))
-        createPanelConfigs();
+//    if (!fs::exists(config))
+//        createPanelConfigs();
 
     if (!fs::exists(regular))
         createDemoPage();
@@ -129,7 +132,7 @@ bool TTPInit::testForTp5()
 
     return fs::exists(mPath + "/G5Apps.xma");
 }
-
+/*
 bool TTPInit::createPanelConfigs()
 {
     DECL_TRACER("TTPInit::createPanelConfigs()");
@@ -182,7 +185,7 @@ bool TTPInit::createPanelConfigs()
     mPanelConfigsCreated = !err;
     return err;
 }
-
+*/
 bool TTPInit::createDemoPage(bool force)
 {
     DECL_TRACER("TTPInit::createDemoPage(bool force)");
@@ -2406,7 +2409,7 @@ bool TTPInit::loadSurfaceFromController(bool force)
         {
             createDirectoryStructure();
             createSystemConfigs();
-            createPanelConfigs();
+//            createPanelConfigs();
         }
 
         mDemoPageCreated = false;
@@ -2421,7 +2424,7 @@ bool TTPInit::loadSurfaceFromController(bool force)
     {
         MSG_ERROR("Unpacking was not successfull.");
         mDemoPageCreated = false;
-        createDemoPage();
+        createDemoPage(true);
         return false;
     }
 
@@ -2431,7 +2434,7 @@ bool TTPInit::loadSurfaceFromController(bool force)
     {
         createDirectoryStructure();
         createSystemConfigs();
-        createPanelConfigs();
+//        createPanelConfigs();
     }
 
     if (_processEvents)
@@ -2695,11 +2698,11 @@ bool TTPInit::reinitialize()
         MSG_WARNING("Error creating system graphics!");
     }
 
-    if (!createPanelConfigs())
-    {
-        MSG_ERROR("Error creating the panel configuration!");
-        err = true;
-    }
+//    if (!createPanelConfigs())
+//    {
+//        MSG_ERROR("Error creating the panel configuration!");
+//        err = true;
+//    }
 
     if (!loadSurfaceFromController())
     {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 to 2024 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2022 to 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -161,7 +161,7 @@ bool TFsfReader::copyOverFTP(const string& fname, const string& target)
         return false;
     }
 
-    MSG_TRACE("File " << fname << " successfully downloaded to " << target << ".");
+    MSG_INFO("File " << fname << " successfully downloaded to " << target << ".");
     mFtpLib->Quit();
     return true;
 }

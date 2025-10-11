@@ -105,7 +105,7 @@ bool TExpat::parse(bool debug)
     catch (std::exception& e)
     {
         MSG_ERROR("File error: " << e.what());
-        TError::SetError();
+        SET_ERROR();
         return false;
     }
 
@@ -127,8 +127,9 @@ bool TExpat::parse(bool debug)
     if (XML_Parse(parser, buf.data(), size, done) == XML_STATUS_ERROR)
     {
         MSG_ERROR(XML_ErrorString(XML_GetErrorCode(parser)) << " at line " << XML_GetCurrentLineNumber(parser));
+        MSG_ERROR("Excerpt of file start: " << buf.substr(0, 40));
         XML_ParserFree(parser);
-        TError::SetError();
+        SET_ERROR();
         return false;
     }
 
