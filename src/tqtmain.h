@@ -265,7 +265,9 @@ class MainWindow : public QMainWindow, public TObject
         void startWait(const std::string& text);
         void stopWait();
         void pageFinished(ulong handle);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
         void onPlayingChanged(bool plying);
+#endif
         void onPlayerError(QMediaPlayer::Error error, const QString &errorString);
         void onMediaStatusChanged(QMediaPlayer::MediaStatus status);
         void initializeIntercom(INTERCOM_t ic);

@@ -3525,25 +3525,25 @@ QFont MainWindow::loadFont(int number, const FONT_T& f, const FONT_STYLE style)
 
     if (number < 32)    // System font?
     {
-        path.append(prjPath).append("/__system/graphics/fonts/").append(f.file);
+        path.append(QString::fromStdString(prjPath)).append("/__system/graphics/fonts/").append(QString::fromStdString(f.file));
 
         if (!fs::is_regular_file(path.toStdString()))
         {
             MSG_WARNING("Seem to miss system fonts ...");
             path.clear();
-            path.append(prjPath).append("/fonts/").append(f.file);
+            path.append(QString::fromStdString(prjPath)).append("/fonts/").append(QString::fromStdString(f.file));
         }
     }
     else
     {
-        path.append(prjPath).append("/fonts/").append(f.file);
+        path.append(QString::fromStdString(prjPath)).append("/fonts/").append(QString::fromStdString(f.file));
 
         if (!fs::exists(path.toStdString()))
         {
             string pth = prjPath + "/__system/fonts/" + f.file;
 
             if (fs::exists(pth))
-                path.assign(pth);
+                path = QString::fromStdString(pth);
         }
     }
 
