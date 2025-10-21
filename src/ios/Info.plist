@@ -19,6 +19,8 @@
 	<string>en</string>
 	<key>CFBundleAllowMixedLocalizations</key>
 	<true/>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2020 to 2024 by Andreas Theofilu &lt;andreas@theosys.at&gt;</string>
 	<key>LSApplicationCategoryType</key>
@@ -40,7 +42,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>2.0.0</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>2</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>MinimumOSVersion</key>
@@ -55,6 +57,8 @@
 	<string>The locations are only used to keep the application running in the background. The location information is never used nor send to any server.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Microphone access is needed for intercom and SIP. Intercom is the possibility to establish a connection to another instance of TPanel on another device. Then the microphone is redirected to the other device and also the other way around like a phone. SIP (Session Initiation Protocol) is a standard way for VOIP (Voice Over IP). TPanel supports this protocol and needs access to the microphone to let the user talk to another SIP device.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>TPanel is using the Qt framework and this framework has support for the camera. TPanel does not use the camera at all! Therefore you can safely deny access.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>external-accessory</string>

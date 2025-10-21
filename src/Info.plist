@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleName</key>
+	<string>tpanel</string>
+	<key>CFBundleIdentifier</key>
+	<string>TheoSys.tpanel</string>
+	<key>CFBundleExecutable</key>
+	<string>tpanel</string>
+	<key>CFBundleVersion</key>
+	<string>2.0.0</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>26</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>(C) 2020 to 2025 by Andreas Theofilu &lt;andreas@theosys.at&gt;</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon.icns</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>TPanel needs network access to connect to a controler (NetLinx). Also for intercom and SIP network connection is necessary.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Microphone access is needed for intercom and SIP. Intercom is the possibility to establish a connection to another instance of TPanel on another device. Then the microphone is redirected to the other device and also the other way around like a phone. SIP (Session Initiation Protocol) is a standard way for VOIP (Voice Over IP). TPanel supports this protocol and needs access to the microphone to let the user talk to another SIP device.</string>
+	<key>CFBundleAllowMixedLocalizations</key>
+	<true/>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	<key>NSSupportsAutomaticGraphicsSwitching</key>
+	<true/>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.utilities</string>
+	<key>ITMTSAppUsesNonExemptEncryption</key>
+	<string>NO</string>
+</dict>
+</plist>

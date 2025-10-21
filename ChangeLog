@@ -3,6 +3,10 @@ ChangeLog
 
 Release: 2.0.0
 ===============================================================================
+2025-10-21 Set minimum version for MacOS to 26, because AppStore requires it.
+
+2025-10-11 Fixed decrypting TP5 files if alternative password is needed.
+
 2025-10-10 Fixed rotation for iOS
 
 2025-08-29 Created installable package for MacOS.
