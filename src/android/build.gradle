@@ -86,7 +86,7 @@ android {
         minSdkVersion qtMinSdkVersion
         targetSdkVersion qtTargetSdkVersion
         ndk.abiFilters = qtTargetAbiList.split(",")
-        versionCode 3
+        versionCode 4
         versionName "2.0.0"
     }
 
