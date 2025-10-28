@@ -15,8 +15,8 @@ set(QT_USE_QTMULTIMEDIAWIDGETS TRUE)
 if(IOS)
     # Enable this line only if you want to create a xcarchive for the app store!
     # set(QT_USE_RISKY_DSYM_ARCHIVING_WORKAROUND ON)
-    find_package(QT NAMES Qt6 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning Sensors)
-    find_package(Qt6 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning Sensors)
+    find_package(QT NAMES Qt6 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning)
+    find_package(Qt6 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning)
 elseif(ANDROID)
     find_package(QT NAMES Qt6 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Quick Positioning Sensors)
     find_package(Qt6 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Quick Positioning Sensors)
@@ -176,10 +176,10 @@ elseif(IOS)
 
     if(${CMAKE_OSX_SYSROOT} MATCHES "iphonesimulator")
         link_directories(${EXT_LIB_PATH}/openssl/ssl_3/iossim/lib
-                ${EXT_LIB_PATH}/pjsip/lib
+                ${EXT_LIB_PATH}/pjsip/ios-simulator/lib
                 ${EXT_LIB_PATH}/skia/iossim-apple)
         include_directories(${EXT_LIB_PATH}/openssl/ssl_3/iossim/include
-                ${EXT_LIB_PATH}/pjsip/include
+                ${EXT_LIB_PATH}/pjsip/ios-simulator/include
                 ${EXT_LIB_PATH}/skia)
     else()
         link_directories(${EXT_LIB_PATH}/openssl/ssl_3/ios64/lib
@@ -197,7 +197,27 @@ elseif(IOS)
     link_libraries(z ssl crypto expat libskia.a)
     link_directories(${EXT_LIB_PATH}/pjsip/lib)
 
-    link_libraries(pj pjlib-util
+    if(${CMAKE_OSX_SYSROOT} MATCHES "iphonesimulator")
+        link_libraries(libpj-arm64-apple-darwin_ios.a
+            libpjlib-util-arm64-apple-darwin_ios.a
+            libpjmedia-arm64-apple-darwin_ios.a
+            libpjmedia-audiodev-arm64-apple-darwin_ios.a
+            libpjmedia-codec-arm64-apple-darwin_ios.a
+            libpjnath-arm64-apple-darwin_ios.a
+            libpjsip-arm64-apple-darwin_ios.a
+            libpjsip-simple-arm64-apple-darwin_ios.a
+            libpjsip-ua-arm64-apple-darwin_ios.a
+            libpjsua-arm64-apple-darwin_ios.a
+            libpjsua2-arm64-apple-darwin_ios.a
+            libresample-arm64-apple-darwin_ios.a
+            libspeex-arm64-apple-darwin_ios.a
+            libsrtp-arm64-apple-darwin_ios.a
+            libgsmcodec-arm64-apple-darwin_ios.a
+            libwebrtc-arm64-apple-darwin_ios.a
+            libilbccodec-arm64-apple-darwin_ios.a
+        )
+    else()
+        link_libraries(pj pjlib-util
                    pjmedia pjmedia-audiodev
                    pjmedia-codec pjnath
                    pjsip pjsip-simple
@@ -205,7 +225,8 @@ elseif(IOS)
                    resample speex
                    srtp gsmcodec
                    webrtc ilbccodec
-    )
+        )
+    endif()
 
     set(OBJECTIVE_HEADERS
         ios/QASettings.h
@@ -560,6 +581,14 @@ if(IOS)
         qt_add_ios_ffmpeg_libraries(tpanel)
     else()
         qt6_add_ios_ffmpeg_libraries(tpanel)
+    endif()
+    if(CMAKE_OSX_SYSROOT MATCHES "iphonesimulator")
+        message(STATUS "Excluding camera plugin.")
+        qt_import_plugins(tpanel
+                        EXCLUDE Qt6::QPdfPlugin
+                        EXCLUDE Qt6::QPdfPlugin_init
+                        EXCLUDE Qt6::QFFmpegMediaPlugin
+                        EXCLUDE Qt6::QFFmpegMediaPlugin_init)
     endif()
 elseif(ANDROID)
     target_link_libraries(tpanel PRIVATE

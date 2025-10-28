@@ -3,6 +3,8 @@ ChangeLog
 
 Release: 2.0.0
 ===============================================================================
+2025-10-28 Fixed the dialog to call setup or quit the app.
+
 2025-10-21 Set minimum version for MacOS to 26, because AppStore requires it.
 
 2025-10-11 Fixed decrypting TP5 files if alternative password is needed.

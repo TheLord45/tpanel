@@ -1423,18 +1423,18 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
     {
         QMessageBox msgBox(this);
         msgBox.setText("Select what to do next:");
-        msgBox.addButton("Quit", QMessageBox::AcceptRole);
-        msgBox.addButton("Setup", QMessageBox::RejectRole);
+        QAbstractButton *buttonQuit = msgBox.addButton("Quit", QMessageBox::AcceptRole);
+        QAbstractButton *buttonSetup = msgBox.addButton("Setup", QMessageBox::RejectRole);
         msgBox.addButton("Cancel", QMessageBox::ResetRole);
-        int ret = msgBox.exec();
+        msgBox.exec();
 
-        if (ret == QMessageBox::Accepted)   // This is correct! QT seems to change here the buttons.
+        if (msgBox.clickedButton() == buttonSetup)
         {
             showSetup();
             event->accept();
             return;
         }
-        else if (ret == QMessageBox::Rejected)  // This is correct! QT seems to change here the buttons.
+        else if (msgBox.clickedButton() == buttonQuit)
         {
             event->accept();
             close();
