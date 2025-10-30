@@ -161,7 +161,7 @@ class androidbuf : public std::streambuf
                     case TERRINFO:      eType = ANDROID_LOG_INFO; break;
                     case TERRWARNING:   eType = ANDROID_LOG_WARN; break;
                     case TERRERROR:     eType = ANDROID_LOG_ERROR; break;
-                    case TERRTRACE:     eType = ANDROID_LOG_VERBOSE; break;
+                    case TERRTRACE:     eType = ANDROID_LOG_INFO; break;
                     case TERRDEBUG:     eType = ANDROID_LOG_DEBUG; break;
                     case TERRNONE:      eType = ANDROID_LOG_INFO; break;
                 }
@@ -283,7 +283,7 @@ void TStreamError::setLogLevel(const std::string& slv)
     mLogLevel |= _getLevel(slv.substr(start));
 #endif  // NDEBUG
 #ifdef __ANDROID__
-    __android_log_print(ANDROID_LOG_INFO, "tpanel", "TStreamError::setLogLevel: New loglevel: %s", slv.c_str());
+    __android_log_print(ANDROID_LOG_INFO, "tpanel", "TStreamError::setLogLevel: New loglevel: %s (%02x)", slv.c_str(), mLogLevel);
 #else
 #ifdef TARGET_OS_IOS
     std::cout << TError::append(HLOG_INFO, __LINE__, __FILE__) << "New loglevel: " << slv << " (" << std::setw(4) << std::setfill('0') << std::hex << mLogLevel << ")" << std::endl;
@@ -726,6 +726,8 @@ TTracer::TTracer(const std::string& msg, int line, const char *file, threadID_t 
     TError::Current()->incIndent();
     mHeadMsg = msg;
     mLine = line;
+
+//    __android_log_print(ANDROID_LOG_INFO, "tpanel", "[TRACE] %s", msg.c_str());
 
     if (TConfig::getProfiling())
         mTimePoint = std::chrono::steady_clock::now();
