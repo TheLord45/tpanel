@@ -42,7 +42,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>2.0.0</string>
 	<key>CFBundleVersion</key>
-	<string>2</string>
+	<string>3</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>MinimumOSVersion</key>
@@ -61,7 +61,6 @@
 	<string>TPanel is using the Qt framework and this framework has support for the camera. TPanel does not use the camera at all! Therefore you can safely deny access.</string>
 	<key>UIBackgroundModes</key>
 	<array>
-		<string>external-accessory</string>
 		<string>processing</string>
 		<string>remote-notification</string>
 		<string>location</string>

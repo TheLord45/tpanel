@@ -7,8 +7,8 @@ buildscript {
     dependencies {
         //noinspection AndroidGradlePluginVersion
         //classpath 'com.android.tools.build:gradle:7.4.1'    // Qt 6.5.3
-        classpath 'com.android.tools.build:gradle:8.6.0'  // >= Qt 6.8.x
-        //classpath 'com.android.tools.build:gradle:8.8.0'  // Qt 6.10.x
+        //classpath 'com.android.tools.build:gradle:8.6.0'  // >= Qt 6.8.x
+        classpath 'com.android.tools.build:gradle:8.8.0'  // Qt 6.10.x
     }
 }
 
@@ -86,7 +86,7 @@ android {
         minSdkVersion qtMinSdkVersion
         targetSdkVersion qtTargetSdkVersion
         ndk.abiFilters = qtTargetAbiList.split(",")
-        versionCode 4
+        versionCode 5
         versionName "2.0.0"
     }
 
