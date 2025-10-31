@@ -26,6 +26,7 @@
 #include "tpagemanager.h"
 #include "tqtmain.h"
 #include "testmode.h"
+#include "build.h"
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
 #include <QStandardPaths>
 #endif
@@ -197,7 +198,7 @@ void banner(const string& pname)
     if (!TConfig::showBanner())
         return;
 
-    cout << pname << " v" << VERSION_STRING() << endl;
+    cout << pname << " v" << VERSION_STRING() << "-" << BUILD_ID << endl;
     cout << "(C) Andreas Theofilu <andreas@theosys.at>" << endl;
     cout << "This program is under the terms of GPL version 3" << endl << endl;
 }

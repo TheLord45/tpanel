@@ -38,6 +38,14 @@ else()
 endif()
 
 message(STATUS "Build application with clang: ${USE_CLANG}")
+# Create the file "src/build.h"
+execute_process(COMMAND ./make_revision.sh
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        RESULT_VARIABLE REVISION_ID_STATE)
+
+if(REVISION_ID_STATE MATCHES 1)
+    message(FATAL_ERROR "Couldn't create revision ID file \"src/build.h\"")
+endif()
 
 if(ANDROID)
     if(DEFINED $ENV{EXTRA_PATH})

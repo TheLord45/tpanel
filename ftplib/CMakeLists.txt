@@ -45,7 +45,7 @@ elseif(APPLE)
     find_package(OpenSSL REQUIRED)
 
     if(${OpenSSL_FOUND})
-        message(STATUS "OpenSSL: Version ${OPENSSL_VERSION}")
+        message(STATUS "OpenSSL: Version: ${OPENSSL_VERSION}")
         message(STATUS "OpenSSL: include dir at ${OPENSSL_INCLUDE_DIR}")
         message(STATUS "OpenSSL: libraries at ${OPENSSL_LIBRARIES} ${OPENSSL_SSL_LIBRARIES}")
     endif()

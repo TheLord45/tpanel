@@ -32,6 +32,7 @@
 
 #include "terror.h"
 #include "tconfig.h"
+#include "build.h"
 
 #if __cplusplus < 201402L
 #   error "This module requires at least C++ 14 standard!"
@@ -501,7 +502,7 @@ void TStreamError::_init(bool reinit)
     if (mLogLevel > 0)
         *mStream << "Logfile started at " << getTime() << std::endl;
 
-    *mStream << TConfig::getProgName() << " version " << VERSION_STRING() << std::endl;
+    *mStream << TConfig::getProgName() << " version " << VERSION_STRING() << "-" << BUILD_ID << std::endl;
     *mStream << "(C) Copyright by Andreas Theofilu <andreas@theosys.at>\n" << std::endl;
 
     if (mLogLevel > 0)
