@@ -6,7 +6,8 @@ download it from my server. Klick on one of the following links to get an instal
 package for the latest version:
 
 * Latest **TPanel** _Android_ version: [tpanel_android_v2.0.0b1](https://www.theosys.at/download/tpanel_android_v2.0.0b1.apk)
-* Latest **TPanel** _MacOS_ v15.0 version: [tpanel-2.0.0b.pkg](https://www.theosys.at/download/tpanel-2.0.0b.pkg)
+* Latest **TPanel** _MacOS_ v15.0 (Apple Silicon) version: [tpanel-2.0.0b.pkg](https://www.theosys.at/download/tpanel-2.0.0b.pkg)
+* Latest **TPanel** _Linux_ (Debian) version: [tpanel_2.0.0-1_amd64.deb](https://www.theosys.at/download/tpanel_2.0.0-1_amd64.deb)
 
 > **Hint!**
 > If you install the _MacOS_ version, you may get an error and it may want you to delete the

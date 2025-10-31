@@ -1,4 +1,6 @@
 # TPanel
+![Icon](documentation/icon.png)
+
 **TPanel** is an implementation of some AMX G4/G5 touch panels. The panels used
 to verify the communication protocol and the behavior were an *AMX MVP-5200i* an
 *AMX NXD-700Vi* and an *MST-701*.
@@ -20,10 +22,38 @@ commercial products the battery lasts up to 10 times longer.
 
 # Full documentation
 Look at the full documentation in this repository. You'll find the
-[reference manual](https://github.com/TheLord45/tpanel/tree/main/documentation) in three different formats:
+[reference manual](https://github.com/TheLord45/tpanel/tree/main/documentation) in two different formats:
 
 * [PDF](https://github.com/TheLord45/tpanel/blob/main/documentation/ReferenceGuide.pdf)
 * [ODT](https://github.com/TheLord45/tpanel/blob/main/documentation/ReferenceGuide.odt)
+
+# Ready distribution downloads
+For some operating systems I made packages which can be installed out of the box without compile.
+
+## MacOS 26 or newer
+Open the App Store and search for
+[TPanel](https://apps.apple.com/at/app/tpanel/id6751942139?mt=12TPanel). It looks like:
+
+![App Store](documentation/appstore.png "TPanel in Apple app store")
+
+Alternatively you can download it from my [download page](https://www.theosys.at/download)
+
+## Android
+Currently the app is available on my [download page](https://www.theosys.at/download) only.
+
+However: I try to get it into the Google play store. Until I get at least 12 testers you can become
+one and download it from Google PlayStore by clicking on this link:
+* [https://play.google.com/apps/internaltest/4701740636736075296](https://play.google.com/apps/internaltest/4701740636736075296)
+
+## Linux
+The app is available on my [download page](https://www.theosys.at/download).
+
+The package there is for Debian *Trixie*. 
+
+## iOS - iPhone and iPad
+I currently try to get it into the App Store. If you like to test it, write an email to `andreas @ theosys . at`
+with the request to become a beta tester and your eMail address. I will add you to the beta testers and you'll
+get an invitation by mail from Apple.
 
 # How to compile
 ## Prerequisits

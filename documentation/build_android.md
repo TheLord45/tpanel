@@ -10,7 +10,7 @@ because there is no way (not that I know) to create the program directly on the
 target platform. And even if it would be a nightmere to develop a complex
 program like **TPanel** directly on an Android phone.
 
-> This documentation assumes that you're creating **TPanel** on a Linux system.
+> This documentation assumes that you're creating **TPanel** on a Linux or Mac system.
 
 ## Prerequisites
 
@@ -20,7 +20,9 @@ directory. Usually this is installed in the directory `<home directory>/Android/
 Additionally you need the following libraries compiled for Android:
 
 - [Skia](https://skia.org)
-- [Qt 6.5.3](https://doc.qt.io/qt-6/) (newer libs may work but may need different configuration!)
+- [Qt 6.10.0](https://doc.qt.io/qt-6/) (newer libs may work but may need different configuration!)
+- - Older Qt versions are still supported, but you must adapt the file `src/android/build.cradle`
+    and the URL in `src/android/gradle/wrapper/gradle-wrapper.properties`!
 - openssl (can easily be installed out of QtCreator)
 - [pjsip](https://www.pjsip.org)
 
@@ -84,19 +86,19 @@ to participate in developing you should use this IDE also.
 
 After starting _QtCreator_ click on `Open project` and open the file
 `CMakeLists.txt` in the source folder of **TPanel**. When the project is open,
-click on `Projects` on left panel. Select `Android Qt 6.5.3 CLang x86_64` on
-Intel based machines and `arm64-v8a` on ARM based machines, from the list and
-click on `Build` (hammer symbol). Now you see the _Build Settings_. Under 
-`CMake` set in the _Initial Configuration_ the value of `ANDROID_PLATFORM`
-to `android-30`. Make sure the NDK version `25.1.8937393` is set. If not, hit
-`Manage Kits...` and make this version the default or install it and make it
-then the default. I will not explain how to install the Android SDK or an NDK,
-which is part of the Android SDK. This is subject to the Google documentation
-of Android Studio.
+click on `Projects` on left panel. Select `Android Qt 6.10.0 CLang x86_64` 
+(or a newer Qt version) on Intel based machines and `arm64-v8a` on ARM based
+machines, from the list and click on `Build` (hammer symbol). Now you see the
+_Build Settings_. Under `CMake` set in the _Initial Configuration_ the value
+of `ANDROID_PLATFORM` to `android-30`. Make sure the NDK version `27.2.12479018`
+is set (`ANDROID_NDK` and `CMAKE_C_COMPILER`). If not, hit `Manage Kits...`
+and make this version the default or install it and make it then the default.
+I will not explain how to install the Android SDK or an NDK, which is part of
+the Android SDK. This is subject to the Google documentation of Android Studio.
 
-However: *QtCreator* supports the installation of the Android SDK out of the box
-and this has the advantage that everything you need will be there, but nothing
-else.
+> **Note**: *QtCreator* supports the installation of the Android SDK out of the box
+> and this has the advantage that everything you need will be there, but nothing
+> else.
 
 Click now on `Re-configure with Initial Parameters` (on the bottom of the
 `Cmake` box.). If everything went well, the tab should jump to 
@@ -106,22 +108,14 @@ of your USB plugs.
 
 If you want to compile for an Android emulator it depends on the CPU of your
 developer machine. On all Intel based machines select the architecture `x86_64`
-and on the ARM base the architecture `arm64-v8a`.
+and on the ARM base the architecture `arm64-v8a`. Set this to the variable
+`QT_ANDROID_ABIS`. 
 
 > _Hint_: If you want to compile sources in parallel (much faster) you can add
 the parameter `-j<#cpus>` (replace `<#cpus>` with the number of CPUs your
 system offers) to `Additional CMake options:`.
 
-At the block called `Build Android APK` set under `Application` the
-`Android build platform SDK:` to `android-30`. This ist very important because
-with an SDK version less it may not even compile. You can, if you like, use any
-newer version as far as it is supported by the Qt version you use. For details
-about that look at the Qt documentation.
-
-Expand the block `Build Environment` and set the variable `ANDROID_NDK_PLATFORM`
-to `android-30`. _Do not check the `Clear system environment` check box!_
-
-Before you can start compiling, click on the Android symbol in the left bottom
+Before you can start compiling, click on the phone symbol in the left bottom
 corner and select `tpanel` under _Run_. Now you can compile the program by
 clicking on the hammer symbol.
 
@@ -131,10 +125,6 @@ very unlikely that there are real devices with an architecture other then
 create an APK file with the architecture the emulator supports.
 
 ### QtCreator settings for Qt 6.5.3
-
-**TPanel** was compiled and tested with Qt v6.5.3. Any other version may or may
-not work. If you use another version it is very likely that you need different
-settings!
 
 The following table shows the settings I used to create an APK file:
 
@@ -147,3 +137,45 @@ The following table shows the settings I used to create an APK file:
 |Gradle|Gradle 8.10 and AGP 8.5.2 --> Version: 7.4.1<br/><b>Hint:</b> Set the Gradle version in file `build.gradle`.|
 |Package|Multi-ABI APKs and AABs|
 |Configuration|In `QtCreator`: ANDROID_PLATFORM: android-30<br/>Android build-tools version: 34.0.0<br/>Android build platform SDK: android-34|
+
+### QtCreator settings for Qt 6.8.3
+
+The following table shows the settings I used to create an APK file:
+
+|Section|Description|
+|-------|-----------|
+|Distribution|Android 9.0 (API 28) to 15 (Api 35)|
+|Architecture|arm64-v8, x86_64, x86, and armeabi-v7a|
+|Compiler|Clang 17.0.2 (NDK r26b and r27c or 26.1.10909125 and 27.2.12479018)<br/><pre><b><i>Note</b>:</i> It's recommended that Qt apps use the same NDK version used for building the official Qt for Android libraries to avoid missing symbol errors. In releases supporting multiple NDKs, the newest supported NDK is used for building Qt.</pre>|
+|JDK|JDK 17|
+|Gradle|Gradle 8.10 and AGP 8.6.0 --> Version: 8.6.0<br/><b>Hint:</b> Set the Gradle version in file `build.gradle`.|
+|Package|Multi-ABI APKs and AABs|
+|Configuration|In `QtCreator`: ANDROID_PLATFORM: android-30<br/>Android build-tools version: 34.0.0<br/>Android build platform SDK: android-34|
+
+### QtCreator settings for Qt 6.9.3
+
+The following table shows the settings I used to create an APK file:
+
+|Section|Description|
+|-------|-----------|
+|Distribution|Android 9.0 (API 28) to 15 (Api 35)|
+|Architecture|arm64-v8, x86_64, x86, and armeabi-v7a|
+|Compiler|Clang 17.0.2 (NDK r26b and r27c or 26.1.10909125 and 27.2.12479018)<br/><pre><b><i>Note</b>:</i> It's recommended that Qt apps use the same NDK version used for building the official Qt for Android libraries to avoid missing symbol errors. In releases supporting multiple NDKs, the newest supported NDK is used for building Qt.</pre>|
+|JDK|JDK 17|
+|Gradle|Gradle 8.10 and AGP 8.6.0 --> Version: 8.6.0<br/><b>Hint:</b> Set the Gradle version in file `build.gradle`.|
+|Package|Multi-ABI APKs and AABs|
+|Configuration|In `QtCreator`: ANDROID_PLATFORM: android-30<br/>Android build-tools version: 34.0.0<br/>Android build platform SDK: android-34|
+
+### QtCreator settings for Qt 6.10.x
+
+The following table shows the settings I used to create an APK file:
+
+|Section|Description|
+|-------|-----------|
+|Distribution|Android 9.0 (API 28) to 15 (Api 35)|
+|Architecture|arm64-v8, x86_64, x86, and armeabi-v7a|
+|Compiler|Clang 17.0.2 (NDK r26b and r27c or 26.1.10909125 and 27.2.12479018)<br/><pre><b><i>Note</b>:</i> It's recommended that Qt apps use the same NDK version used for building the official Qt for Android libraries to avoid missing symbol errors. In releases supporting multiple NDKs, the newest supported NDK is used for building Qt.</pre>|
+|JDK|JDK 17|
+|Gradle|Gradle 8.14.2 and AGP 8.10.1 --> Version: 8.8.0<br/><b>Hint:</b> Set the Gradle version in file `build.gradle`.|
+|Package|Multi-ABI APKs and AABs|
+|Configuration|In `QtCreator`: ANDROID_PLATFORM: android-30<br/>Android build-tools version: 35.0.1<br/>Android build platform SDK: android-36|

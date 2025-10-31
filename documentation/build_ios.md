@@ -69,6 +69,10 @@ in the `cmake` file `CMakeLists.txt` is correct for you.
 
 Now you should be able to compile **TPanel** for IOS.
 
+> **Note**: if you want to compile **TPanel** for iOS-Simulator, you must first
+> recompile Qt for it. Then you must also recompile the SIP library `pjsip` for
+> iOS-Simulator!
+
 ## Using the script `build_ios.sh`
 
 The repository comes with a shell script called `build_ios.sh`. With it you can
