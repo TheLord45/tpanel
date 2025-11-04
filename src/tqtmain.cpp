@@ -1928,7 +1928,7 @@ void MainWindow::about()
     // we construct our own about dialog.
     std::string msg = "About TPanel\n\n";
     msg.append("Implementation of an\nAMX G4/G5 panel.\n");
-    msg.append("Version v").append(VERSION_STRING()).append("-").append(BUILD_ID).append("\n");
+    msg.append("Version v").append(VERSION_STRING()).append("-").append(BUILD_ID).append(" (").append(BUILD_DATE).append(")\n");
     msg.append("(C) Copyright 2020 to 2025 by\nAndreas Theofilu (andreas@theosys.at)\n");
 
     QMessageBox about(this);
@@ -1941,7 +1941,7 @@ void MainWindow::about()
     about.exec();
 #else
     std::string msg = "Implementation of an AMX G4/G5 panel\n";
-    msg.append("Version v").append(VERSION_STRING()).append("-").append(BUILD_ID).append("\n");
+    msg.append("Version v").append(VERSION_STRING()).append("-").append(BUILD_ID).append(" (").append(BUILD_DATE).append(")\n");
     msg.append("(C) Copyright 2020 to 2025 by Andreas Theofilu <andreas@theosys.at>\n");
     msg.append("This program is under the terms of GPL version 3!");
     QMessageBox::about(this, tr("About TPanel"), tr(msg.c_str()));

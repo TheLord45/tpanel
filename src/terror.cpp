@@ -502,7 +502,7 @@ void TStreamError::_init(bool reinit)
     if (mLogLevel > 0)
         *mStream << "Logfile started at " << getTime() << std::endl;
 
-    *mStream << TConfig::getProgName() << " version " << VERSION_STRING() << "-" << BUILD_ID << std::endl;
+    *mStream << TConfig::getProgName() << " version " << VERSION_STRING() << "-" << BUILD_ID << " (" << BUILD_DATE << ")" << std::endl;
     *mStream << "(C) Copyright by Andreas Theofilu <andreas@theosys.at>\n" << std::endl;
 
     if (mLogLevel > 0)
