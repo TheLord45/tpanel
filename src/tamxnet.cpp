@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 to 2024 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2018 to 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -88,6 +88,7 @@ amx::TAmxNet *gAmxNet = nullptr;
 static bool __CommValid = false;
 std::map<ulong, FUNC_NETWORK_t> mFuncsNetwork;
 std::map<ulong, FUNC_TIMER_t> mFuncsTimer;
+std::map<ulong, FUNC_COORD_t> mFuncsCoord;
 
 //std::vector<ANET_COMMAND> TAmxNet::comStack; // commands to answer
 extern TPageManager *gPageManager;
@@ -259,6 +260,21 @@ void TAmxNet::registerTimer(function<void (const ANET_BLINK &)> registerBlink, u
     }
 }
 
+void TAmxNet::registerCoordinates(function<void(double lat, double lon)> registerCoord, ulong handle)
+{
+    DECL_TRACER("TAmxNet::registerCoordinates(function<void(double lat, double lon)> registerCoord, ulong handle)");
+
+    map<ulong, FUNC_COORD_t>::iterator iter = mFuncsCoord.find(handle);
+
+    if (mFuncsCoord.size() == 0 || iter == mFuncsCoord.end())
+    {
+        FUNC_COORD_t fc;
+        fc.handle = handle;
+        fc.func = registerCoord;
+        mFuncsCoord.insert(pair<ulong, FUNC_COORD_t>(handle, fc));
+    }
+}
+
 void TAmxNet::deregNetworkState(ulong handle)
 {
     DECL_TRACER("TAmxNet::deregNetworkState(ulong handle)");
@@ -283,6 +299,32 @@ void TAmxNet::deregTimer(ulong handle)
 
     if (iter != mFuncsTimer.end())
         mFuncsTimer.erase(iter);
+}
+
+void TAmxNet::deregCoordinates(ulong handle)
+{
+    DECL_TRACER("TAmxNet::deregCoordinates(ulong handle)");
+
+    if (mFuncsCoord.size() == 0)
+        return;
+
+    map<ulong, FUNC_COORD_t>::iterator iter = mFuncsCoord.find(handle);
+
+    if (iter != mFuncsCoord.end())
+        mFuncsCoord.erase(iter);
+}
+
+void TAmxNet::showCoordinates(double lat, double lon)
+{
+    DECL_TRACER("TAmxNet::showCoordinates(double lat, double lon)");
+
+    if (mFuncsCoord.size() == 0)
+        return;
+
+    map<ulong, FUNC_COORD_t>::iterator iter;
+
+    for (iter = mFuncsCoord.begin(); iter != mFuncsCoord.end(); ++iter)
+        iter->second.func(lat, lon);
 }
 
 void TAmxNet::stop(bool soft)

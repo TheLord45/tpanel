@@ -233,6 +233,9 @@ class MainWindow : public QMainWindow, public TObject
         void onErrorOccurred(QGeoPositionInfoSource::Error positioningError);
 #endif  // Q_OS_IOS
 #endif  // defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+        void onPositionUpdated(const QGeoPositionInfo &update);
+        void onErrorOccurred(QGeoPositionInfoSource::Error positioningError);
+
         void onTListCallbackCurrentItemChanged(QListWidgetItem *current, QListWidgetItem *previous);
         void setSizeMainWindow(int width, int height);
         // Slots for the phone dialog
@@ -374,9 +377,9 @@ class MainWindow : public QMainWindow, public TObject
 #endif  // Q_OS_ANDROID
 #ifdef Q_OS_IOS
         void setNotch();
-        void initGeoLocation();
         Qt::ScreenOrientation getRealOrientation();
 #endif  // Q_OS_IOS
+        void initGeoLocation();
 
         std::mutex draw_mutex;              // We're using threads and need to block execution sometimes
         std::mutex click_mutex;
@@ -423,8 +426,8 @@ class MainWindow : public QMainWindow, public TObject
         QMargins mNotchLandscape;           // The margins (notch, if any) for landscape orientation
         bool mHaveNotchPortrait{false};     // TRUE = Notch was already fetched for portrait orientation
         bool mHaveNotchLandscape{false};    // TRUE = Notch was already fetched for landscape orientation
-        bool mGeoHavePermission{false};     // TRUE = The app has permission for geo location
 #endif
+        bool mGeoHavePermission{false};     // TRUE = The app has permission for geo location
         std::chrono::steady_clock::time_point mTouchStart;  // Time in micro seconds of the start of a touch event
         int mTouchX{0};                        // The X coordinate of the mouse pointer
         int mTouchY{0};                        // The Y coordinate of the mouse pointer

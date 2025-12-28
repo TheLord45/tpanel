@@ -4046,8 +4046,10 @@ void TButton::registerSystemButton()
     if (mSystemReg)
         return;
 
+    int setupPort = gPageManager->getSettings()->getSetupPort();
+
     // If this is a special system button, register it to receive the state
-    if (ap == 0 && ad == SYSTEM_ITEM_CONNSTATE)     // Connection status?
+    if (ap == setupPort && ad == SYSTEM_ITEM_CONNSTATE)     // Connection status?
     {
         MSG_TRACE("Try to register button " << na << " as connection status ...");
 
@@ -4061,7 +4063,7 @@ void TButton::registerSystemButton()
             MSG_WARNING("Network class not initialized!");
 
     }
-    else if (ap == 0 && ((ad >= SYSTEM_ITEM_STANDARDTIME && ad <= SYSTEM_ITEM_TIME24) || (ad >= SYSTEM_ITEM_DATEWEEKDAY && ad <= SYSTEM_ITEM_DATEYYYYMMDD))) // time or date
+    else if (ap == setupPort && ((ad >= SYSTEM_ITEM_STANDARDTIME && ad <= SYSTEM_ITEM_TIME24) || (ad >= SYSTEM_ITEM_DATEWEEKDAY && ad <= SYSTEM_ITEM_DATEYYYYMMDD))) // time or date
     {
         MSG_TRACE("Try to register button " << na << " as time/date ...");
 
@@ -4083,7 +4085,7 @@ void TButton::registerSystemButton()
             mTimer->run();
         }
     }
-    else if (ap == 0 && (ad == SYSTEM_ITEM_BATTERYLEVEL || ad == SYSTEM_ITEM_BATTERYCHARGING))   // Battery status
+    else if (ap == setupPort && (ad == SYSTEM_ITEM_BATTERYLEVEL || ad == SYSTEM_ITEM_BATTERYCHARGING))   // Battery status
     {
         if (gPageManager)
         {
@@ -4096,6 +4098,18 @@ void TButton::registerSystemButton()
         }
 
         mSystemReg = true;
+    }
+    else if (ap == setupPort && (ad == SYSTEM_ITEM_LATITUDE || ad == SYSTEM_ITEM_LONGITUDE))
+    {
+        if (gAmxNet)
+        {
+            gAmxNet->registerCoordinates(bind(&TButton::funcCoordinates, this, std::placeholders::_1, std::placeholders::_2), mHandle);
+            mSystemReg = true;
+        }
+        else
+        {
+            MSG_WARNING("Network class not initialized");
+        }
     }
     else if (TTPInit::isG5() && gPageManager && gPageManager->getSettings()->getBatteryLevelCode() > 0)
     {
@@ -5641,8 +5655,10 @@ void TButton::funcBattery(int level, bool charging, int /* chargeType */)
 {
     DECL_TRACER("TButton::funcBattery(int level, bool charging, int chargeType)");
 
+    int setupPort = gPageManager->getSettings()->getSetupPort();
+
     // Battery level is always a bargraph
-    if (ap == 0 && ad == SYSTEM_ITEM_BATTERYLEVEL)       // Not charging
+    if (ap == setupPort && ad == SYSTEM_ITEM_BATTERYLEVEL)       // Not charging
     {
         mEnabled = !charging;
         mChanged = true;
@@ -5655,7 +5671,7 @@ void TButton::funcBattery(int level, bool charging, int /* chargeType */)
             drawBargraph(mActInstance, level, visible);
         }
     }
-    else if (ap == 0 && ad == SYSTEM_ITEM_BATTERYCHARGING)  // Charging
+    else if (ap == setupPort && ad == SYSTEM_ITEM_BATTERYCHARGING)  // Charging
     {
         mEnabled = charging;
         mChanged = true;
@@ -5675,8 +5691,9 @@ void TButton::funcBattery(int level, int state)
 {
     DECL_TRACER("TButton::funcBattery(int level, bool charging, int chargeType)");
 
+    int setupPort = gPageManager->getSettings()->getSetupPort();
     // Battery level is always a bargraph
-    if (ap == 0 && ad == SYSTEM_ITEM_BATTERYLEVEL)       // Not charging
+    if (ap == setupPort && ad == SYSTEM_ITEM_BATTERYLEVEL)       // Not charging
     {
         mEnabled = (state == 1 || state == 3);
         mChanged = true;
@@ -5689,7 +5706,7 @@ void TButton::funcBattery(int level, int state)
             drawBargraph(mActInstance, level, visible);
         }
     }
-    else if (ap == 0 && ad == SYSTEM_ITEM_BATTERYCHARGING)  // Charging
+    else if (ap == setupPort && ad == SYSTEM_ITEM_BATTERYCHARGING)  // Charging
     {
         mEnabled = (state == 2);
         mChanged = true;
@@ -9862,6 +9879,34 @@ void TButton::funcTimer(const amx::ANET_BLINK& blink)
         makeElement(mActInstance);
 }
 
+void TButton::funcCoordinates(double latitude, double longitude)
+{
+    DECL_TRACER("TButton::funcCoordinates(double longitude, double latitude)");
+
+    vector<SR_T>::iterator iter;
+
+    for (iter = sr.begin(); iter != sr.end(); ++iter)
+    {
+        std::stringstream sstr;
+
+        if (ch == 161)
+        {
+            sstr << std::setprecision(8) << latitude;
+            iter->te = sstr.str();
+        }
+        else if (ch == 162)
+        {
+            sstr << std::setprecision(8) << longitude;
+            iter->te = sstr.str();
+        }
+    }
+
+    mChanged = true;
+
+    if (visible)
+        makeElement(mActInstance);
+}
+
 bool TButton::isPixelTransparent(int x, int y)
 {
     DECL_TRACER("TButton::isPixelTransparent(int x, int y)");
@@ -11708,15 +11753,17 @@ bool TButton::isSystemButton()
 {
     DECL_TRACER("TButton::isSystemButton()");
 
-    if (type == MULTISTATE_BARGRAPH && lp == 0 && TSystem::isSystemButton(lv))
+    int setupPort = gPageManager->getSettings()->getSetupPort();
+
+    if (type == MULTISTATE_BARGRAPH && lp == setupPort && TSystem::isSystemButton(lv))
         return true;
-    else if (type == BARGRAPH && lp == 0 && TSystem::isSystemButton(lv))
+    else if (type == BARGRAPH && lp == setupPort && TSystem::isSystemButton(lv))
         return true;
-    else if (type == LISTBOX && ap == 0 && ad > 0 && ti >= SYSTEM_PAGE_START)
+    else if (type == LISTBOX && ap == setupPort && ad > 0 && ti >= SYSTEM_PAGE_START)
         return true;
-    else if (ap == 0 && TSystem::isSystemButton(ad))
+    else if (ap == setupPort && TSystem::isSystemButton(ad))
         return true;
-    else if (cp == 0 && TSystem::isSystemButton(ch))
+    else if (cp == setupPort && TSystem::isSystemButton(ch))
         return true;
 
     if (TTPInit::isG5() && gPageManager)

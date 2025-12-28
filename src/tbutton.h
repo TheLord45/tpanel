@@ -1376,6 +1376,7 @@ namespace Button
             void funcBattery(int level, int state);
 #endif
             void funcNetworkState(int level);
+            void funcCoordinates(double latitude, double longitude);
 
         private:
             std::function<void (ulong handle, ulong parent, TBitmap buffer, int width, int height, int left, int top, bool passthrough, int marqtype, int marq)> _displayButton{nullptr};

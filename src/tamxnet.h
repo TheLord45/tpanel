@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 to 2024 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2018 to 2025 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -376,6 +376,12 @@ namespace amx
         std::function<void(const ANET_BLINK&)> func{nullptr};
     }FUNC_TIMER_t;
 
+    typedef struct FUNC_COORD_t
+    {
+        ulong handle{0};
+        std::function<void(double lat, double lon)> func{nullptr};
+    }FUNC_COORD_t;
+
     class TAmxNet
     {
         public:
@@ -391,8 +397,11 @@ namespace amx
             void setCallback(std::function<void(const ANET_COMMAND&)> func) { callback = func; }
             void registerNetworkState(std::function<void(int)> registerNetwork, ulong handle);
             void registerTimer(std::function<void(const ANET_BLINK&)> registerBlink, ulong handle);
+            void registerCoordinates(std::function<void(double lat, double lon)> registerCoord, ulong handle);
             void deregNetworkState(ulong handle);
             void deregTimer(ulong handle);
+            void deregCoordinates(ulong hanlde);
+            void showCoordinates(double lat, double lon);
 
             bool sendCommand(const ANET_SEND& s);
             bool isStopped() { return stopped_; }

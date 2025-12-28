@@ -1544,7 +1544,7 @@ void MainWindow::onScreenOrientation(int angle)
         onScreenOrientationChanged(Qt::InvertedLandscapeOrientation);
 }
 
-#ifdef Q_OS_IOS
+//#ifdef Q_OS_IOS
 /**
  * @brief MainWindow::onPositionUpdated
  * This method is a callback function for the Qt framework. It is called
@@ -1560,7 +1560,12 @@ void MainWindow::onPositionUpdated(const QGeoPositionInfo &update)
     DECL_TRACER("MainWindow::onPositionUpdated(const QGeoPositionInfo &update)");
 
     QGeoCoordinate coord = update.coordinate();
-    MSG_DEBUG("Geo location: " << coord.toString().toStdString());
+
+    if (gAmxNet)
+    {
+        gAmxNet->showCoordinates(coord.latitude(), coord.longitude());
+        MSG_DEBUG("Geo location: " << coord.toString().toStdString());
+    }
 }
 
 void MainWindow::onErrorOccurred(QGeoPositionInfoSource::Error positioningError)
@@ -1583,7 +1588,7 @@ void MainWindow::onErrorOccurred(QGeoPositionInfoSource::Error positioningError)
             return;
     }
 }
-#endif  // Q_OS_IOS
+//#endif  // Q_OS_IOS
 /**
  * @brief Displays or hides a phone dialog window.
  * This method creates and displays a phone dialog window containing everything
@@ -2637,9 +2642,9 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
         case Qt::ApplicationActive:
             MSG_INFO("Switched to mode ACTIVE");
             mHasFocus = true;
-#ifdef Q_OS_IOS
+//#ifdef Q_OS_IOS
             initGeoLocation();
-#endif
+//#endif
             if (!isRunning && gPageManager)
             {
                 // Start the core application
@@ -3857,6 +3862,77 @@ string MainWindow::orientationToString(Qt::ScreenOrientation ori)
     return sori;
 }
 #endif
+
+/**
+ * @brief MainWindow::initGeoLocation
+ * This method is only used on IOS to let the application run in the background.
+ * It is necessary because it is the only way to let an application run in
+ * the background.
+ * The method initializes the geo position module of Qt. If the app doesn't
+ * have the permissions to retrieve the geo positions, it will not run in the
+ * background. It stops at the moment the app is not in front or the display is
+ * closed. This makes it stop communicate with the NetLinx and looses the
+ * network connection. When the app gets the focus again, it must reconnect to
+ * the NetLinx.
+ */
+void MainWindow::initGeoLocation()
+{
+    DECL_TRACER("MainWindow::initGeoLocation()");
+
+    if (mSource && mGeoHavePermission)
+        return;
+
+    if (!mSource)
+    {
+        mGeoHavePermission = true;
+        mSource = QGeoPositionInfoSource::createDefaultSource(this);
+
+        if (!mSource)
+        {
+            MSG_WARNING("Error creating geo positioning source!");
+            mGeoHavePermission = false;
+            return;
+        }
+
+        mSource->setPreferredPositioningMethods(QGeoPositionInfoSource::AllPositioningMethods);
+        mSource->setUpdateInterval(800);    // milli seconds
+        // Connecting some callbacks to the class
+        connect(mSource, &QGeoPositionInfoSource::positionUpdated, this, &MainWindow::onPositionUpdated);
+        connect(mSource, &QGeoPositionInfoSource::errorOccurred, this, &MainWindow::onErrorOccurred);
+#ifdef Q_OS_IOS
+        QLocationPermission perm;
+        perm.setAccuracy(QLocationPermission::Approximate);
+        perm.setAvailability(QLocationPermission::Always);
+        mGeoHavePermission = false;
+
+        switch (qApp->checkPermission(perm))
+        {
+            case Qt::PermissionStatus::Undetermined:
+                qApp->requestPermission(perm, [this] (const QPermission& permission)
+                {
+                    if (permission.status() == Qt::PermissionStatus::Granted)
+                    {
+                        mGeoHavePermission = true;
+                        mSource->startUpdates();
+                    }
+                    else
+                        onErrorOccurred(QGeoPositionInfoSource::AccessError);
+                });
+            break;
+
+            case Qt::PermissionStatus::Denied:
+                MSG_WARNING("Location permission is denied");
+                onErrorOccurred(QGeoPositionInfoSource::AccessError);
+            break;
+
+            case Qt::PermissionStatus::Granted:
+                mSource->startUpdates();
+                mGeoHavePermission = true;
+            break;
+        }
+#endif
+    }
+}
 
 /******************* Draw elements *************************/
 
