@@ -19,6 +19,7 @@
 #include <string>
 #include <memory>
 #include <algorithm>
+#include <mutex>
 
 #include <unistd.h>
 
@@ -1317,6 +1318,7 @@ bool TButton::makeElement(int instance)
     if (prg_stopped)
         return false;
 
+    std::lock_guard<std::mutex> mkElementGuard(mkElementMutex);
     int inst = mActInstance;
 
     if (instance >= 0 && static_cast<size_t>(instance) < sr.size())
@@ -8580,6 +8582,7 @@ bool TButton::drawBargraph(int instance, int level, bool show)
     if (!_displayButton && gPageManager)
         _displayButton = gPageManager->getCallbackDB();
 
+    std::lock_guard<std::mutex> drawBargraphGuard(mkDrawBargraphMutex);
     TButtonStates *buttonStates = getButtonState();
 
     if (!buttonStates)

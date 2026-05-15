@@ -1822,8 +1822,18 @@ void TPageManager::commandLoop()
     {
         while (mCommands.size() > 0)
         {
-            amx::ANET_COMMAND bef = mCommands.at(0);
-            mCommands.erase(mCommands.begin());
+            amx::ANET_COMMAND bef;
+
+            try
+            {
+                bef = mCommands.at(0);
+                mCommands.erase(mCommands.begin());
+            }
+            catch(std::exception& e)
+            {
+                MSG_ERROR("Error getting/removing an entry in command table: " << e.what());
+                continue;
+            }
 
             switch (bef.MC)
             {

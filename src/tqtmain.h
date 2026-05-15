@@ -426,9 +426,10 @@ class MainWindow : public QMainWindow, public TObject
         bool mGeoHavePermission{false};     // TRUE = The app has permission for geo location
 #endif
         std::chrono::steady_clock::time_point mTouchStart;  // Time in micro seconds of the start of a touch event
-        int mTouchX{0};                        // The X coordinate of the mouse pointer
-        int mTouchY{0};                        // The Y coordinate of the mouse pointer
+        int mTouchX{0};                     // The X coordinate of the mouse pointer
+        int mTouchY{0};                     // The Y coordinate of the mouse pointer
         TQIntercom mIntercom;               // Class to handle intercom connections
+        bool mAnimationConnected{false};    // Indicates whether the animation connect() was established or not.
 };
 
 #endif

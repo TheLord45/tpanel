@@ -452,7 +452,7 @@ namespace amx
             void sendAllFuncNetwork(int state);
             void sendAllFuncTimer(const ANET_BLINK& blink);
 
-            std::function<void(const ANET_COMMAND&)> callback;
+            std::function<void(const ANET_COMMAND&)> callback{nullptr};
 
             TSocket *mSocket{nullptr};  // Pointer to socket class needed for communication
             FILE *rcvFile{nullptr};

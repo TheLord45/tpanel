@@ -2090,7 +2090,12 @@ void MainWindow::animationInFinished()
                 iter->second->object.widget->raise();
             }
 
-            disconnect(iter->second->animation, &QPropertyAnimation::finished, this, &MainWindow::animationInFinished);
+            if (mAnimationConnected)
+            {
+                disconnect(iter->second->animation, &QPropertyAnimation::finished, this, &MainWindow::animationInFinished);
+                mAnimationConnected = false;
+            }
+
             delete iter->second->animation;
             iter->second->animation = nullptr;
         }
@@ -2141,8 +2146,13 @@ void MainWindow::animationFinished()
 
         if (obj && obj->remove && obj->animation && obj->animation->state() == QAbstractAnimation::Stopped)
         {
-            MSG_DEBUG("Invalidating object " << handleToString(iter->first));
-            disconnect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationFinished);
+            if (mAnimationConnected)
+            {
+                MSG_DEBUG("Invalidating object " << handleToString(iter->first));
+                disconnect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationFinished);
+                mAnimationConnected = false;
+            }
+
             delete obj->animation;
             obj->animation = nullptr;
             invalidateAllSubObjects(iter->first);
@@ -6370,7 +6380,7 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
             {
                 obj->animation->setStartValue(QRect(scLeft, scTop + (scHeight * 2) - scGapH, scWidth, scHeight));
                 obj->animation->setEndValue(QRect(scLeft, scTop, scWidth, scHeight));
-                connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationInFinished);
+                mAnimationConnected = connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationInFinished);
                 obj->object.widget->show();
             }
             else
@@ -6381,7 +6391,7 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
                 if (!obj->collapsible)
                     obj->remove = true;
 
-                connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationFinished);
+                mAnimationConnected = connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationFinished);
             }
 
             mLastObject = obj;
@@ -6398,7 +6408,7 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
             {
                 obj->animation->setStartValue(QRect(scLeft - scWidth + scGapW, scTop, scWidth, scHeight));
                 obj->animation->setEndValue(QRect(scLeft, scTop, scWidth, scHeight));
-                connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationInFinished);
+                mAnimationConnected = connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationInFinished);
                 obj->object.widget->show();
             }
             else
@@ -6409,7 +6419,7 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
                 if (!obj->collapsible)
                     obj->remove = true;
 
-                connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationFinished);
+                mAnimationConnected = connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationFinished);
             }
 
             mLastObject = obj;
@@ -6426,7 +6436,7 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
             {
                 obj->animation->setStartValue(QRect(scLeft + scWidth - scGapW, scTop, scWidth, scHeight));
                 obj->animation->setEndValue(QRect(scLeft, scTop, scWidth, scHeight));
-                connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationInFinished);
+                mAnimationConnected = connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationInFinished);
                 obj->object.widget->show();
             }
             else
@@ -6437,7 +6447,7 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
                 if (!obj->collapsible)
                     obj->remove = true;
 
-                connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationFinished);
+                mAnimationConnected = connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationFinished);
             }
 
             mLastObject = obj;
@@ -6454,7 +6464,7 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
             {
                 obj->animation->setStartValue(QRect(scLeft, scTop - scHeight + scGapH, scWidth, scHeight));
                 obj->animation->setEndValue(QRect(scLeft, scTop, scWidth, scHeight));
-                connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationInFinished);
+                mAnimationConnected = connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationInFinished);
                 obj->object.widget->show();
             }
             else
@@ -6465,7 +6475,7 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
                 if (!obj->collapsible)
                     obj->remove = true;
 
-                connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationFinished);
+                mAnimationConnected = connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationFinished);
             }
 
             mLastObject = obj;
@@ -6485,7 +6495,7 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
 
                 obj->animation->setStartValue(0.0);
                 obj->animation->setEndValue(1.0);
-                connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationInFinished);
+                mAnimationConnected = connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationInFinished);
                 obj->object.widget->show();
             }
             else
@@ -6493,7 +6503,7 @@ bool MainWindow::startAnimation(TObject::OBJECT_t* obj, ANIMATION_t& ani, bool i
                 obj->animation->setStartValue(1.0);
                 obj->animation->setEndValue(0.0);
                 obj->remove = true;
-                connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationFinished);
+                mAnimationConnected = connect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationFinished);
             }
 
             mLastObject = obj;
