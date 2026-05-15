@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(tpanel VERSION 2.0.0 LANGUAGES CXX)
+project(tpanel VERSION 2.0.1 LANGUAGES CXX)
 
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
@@ -261,20 +261,22 @@ elseif(IOS)
     endif(APPLE)
 
     link_libraries(skia)
+    find_package(ZLIB REQUIRED)
+    find_package(EXPAT REQUIRED)
 
     if(APPLE)
         link_libraries(freetype)
-        find_package(ZLIB)
-        find_package(EXPAT)
+#        find_package(ZLIB)
+#        find_package(EXPAT)
     else(APPLE)
-        pkg_check_modules(ZLIB REQUIRED zlib)
-        include_directories(${ZLIB_INCLUDE_DIRS})
-        link_directories(${ZLIB_LIBRARY_DIRS})
+#        pkg_check_modules(ZLIB REQUIRED zlib)
+#        include_directories(${ZLIB_INCLUDE_DIRS})
+#        link_directories(${ZLIB_LIBRARY_DIRS})
         set(LIBS ${LIBS} ${ZLIB_LIBRARIES})
 
-        pkg_check_modules(EXPAT REQUIRED expat)
-        include_directories(${EXPAT_INCLUDE_DIRS})
-        link_directories(${EXPAT_LIBRARY_DIRS})
+#        pkg_check_modules(EXPAT REQUIRED expat)
+#        include_directories(${EXPAT_INCLUDE_DIRS})
+#        link_directories(${EXPAT_LIBRARY_DIRS})
         set(LIBS ${LIBS} ${EXPAT_LIBRARIES})
     endif(APPLE)
 

@@ -72,6 +72,8 @@ SYSBUTTONS_t sysButtons[] = {
     {  157, GENERAL,               2, 0,   0, BT_FUNCTION },    // Date dd month, yyyy
     {  158, GENERAL,               2, 0,   0, BT_FUNCTION },    // Date yyyy-mm-dd
     {  159, GENERAL,               2, 0,   0, BT_BUTTON },      // Sound: Play test sound
+    {  161, GENERAL,               2, 0,   0, BT_FUNCTION },    // GPS: Latitude --> TheoSys specific!
+    {  162, GENERAL,               2, 0,   0, BT_FUNCTION },    // GPS: Longitude --> TheoSys specific!
     {  171, GENERAL,               2, 0,   0, BT_FUNCTION },    // Sytem volume up
     {  172, GENERAL,               2, 0,   0, BT_FUNCTION },    // Sytem volume down
     {  173, GENERAL,               2, 0,   0, BT_FUNCTION },    // Sytem mute toggle

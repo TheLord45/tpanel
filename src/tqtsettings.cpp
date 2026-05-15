@@ -329,7 +329,13 @@ void TQtSettings::on_kiconbutton_logFile_clicked()
     else
     {
         char hv0[4096];
-        getcwd(hv0, sizeof(hv0));
+
+        if (!getcwd(hv0, sizeof(hv0)))
+        {
+            MSG_ERROR("Can't get current working directory!");
+            return;
+        }
+
         pt = hv0;
     }
 

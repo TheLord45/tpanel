@@ -27,7 +27,7 @@ jobs:
         # For more information, see https://docs.sonarsource.com/sonarqube-server/latest/analyzing-source-code/languages/c-family/prerequisites/#using-buildwrapper
         # build-preparation steps
         mkdir build
-        cmake -S . -B build
+        cmake -S . -B build -DCMAKE_CXX_COMPILER=/usr/bin/clang++ -DCMAKE_C_COMPILER=/usr/bin/clang
         build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build build/ -j 16
     - name: CppCheck scanner
       run: |

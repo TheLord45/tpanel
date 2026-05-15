@@ -198,7 +198,7 @@ void banner(const string& pname)
     if (!TConfig::showBanner())
         return;
 
-    cout << pname << " v" << VERSION_STRING() << "-" << BUILD_ID << endl;
+    cout << pname << " v" << VERSION_STRING() << "-" << BUILD_ID << "(" << BUILD_DATE << " " << BUILD_TIME << ")" << endl;
     cout << "(C) Andreas Theofilu <andreas@theosys.at>" << endl;
     cout << "This program is under the terms of GPL version 3" << endl << endl;
 }

@@ -141,6 +141,7 @@ class TSettings : public TValidateFile
         PANEL_SETUP_T& getSettings() { return mSetup; }
         PROJECT_INFO& getProjectInfo() { return mProject; }
         VERSION_INFO& getVersionInfo() { return mSetup.versionInfo; }
+        int getSetupPort() { return mSetup.setupPort; }
         SUPPORT_FILES& getSupportFiles() { return mSetup.supportFiles; }
         std::string& getMapFileName() { return mSetup.supportFiles.mapFile; }
         std::string& getColorFileName() { return mSetup.supportFiles.colorFile; }

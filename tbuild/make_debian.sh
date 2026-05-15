@@ -6,7 +6,7 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 ROOT_DIR="${SCRIPT_DIR}/.."
 VERSION_DIR="${ROOT_DIR}/../../../.."
 LOG_FILE="${ROOT_DIR}/workflow.log"
-VERSION="2.0.0"
+VERSION="2.0.1"
 RELEASE="1"
 
 # the first parameter is the branch, that is currently being built
