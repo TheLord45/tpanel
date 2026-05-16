@@ -732,7 +732,8 @@ public class SettingsActivity extends AppCompatActivity
                         m_intLogFile.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
                         m_intLogFile.setType("text/*");
                         m_intLogFile.putExtra(Intent.EXTRA_TITLE, path);
-                        startActivityForResult(m_intLogFile, CREATE_FILE);
+                        startActivity(m_intLogFile);
+                        //startActivityForResult(m_intLogFile, CREATE_FILE);
                         Logger.log(Logger.HLOG_DEBUG, "File dialog activity started ...");
                         return true;
                     }

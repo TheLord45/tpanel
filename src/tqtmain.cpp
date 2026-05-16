@@ -4129,7 +4129,7 @@ void MainWindow::displayButton(ulong handle, ulong parent, TBitmap buffer, int w
             if (buffer.getSize() > 0 && buffer.getPixline() > 0)
             {
                 MSG_DEBUG("Setting image for " << handleToString(handle) << " ...");
-                QPixmap pixmap = scaleImage(static_cast<unsigned char *>(buffer.getBitmap()), buffer.getWidth(), buffer.getHeight(), buffer.getPixline());
+                QPixmap pixmap = scaleImage(buffer.getBitmap(), buffer.getWidth(), buffer.getHeight(), buffer.getPixline());
 
                 if (obj->type == OBJ_MARQUEE && obj->object.marquee)
                 {
@@ -4332,7 +4332,7 @@ void MainWindow::displayViewButton(ulong handle, ulong parent, bool vertical, TB
         if (buffer.getSize() > 0 && buffer.getPixline() > 0)
         {
             MSG_DEBUG("Setting image for " << handleToString(handle) << " ...");
-            QPixmap pixmap = scaleImage(static_cast<unsigned char *>(buffer.getBitmap()), buffer.getWidth(), buffer.getHeight(), buffer.getPixline());
+            QPixmap pixmap = scaleImage(buffer.getBitmap(), buffer.getWidth(), buffer.getHeight(), buffer.getPixline());
 
             if (pixmap.isNull())
             {
@@ -6729,12 +6729,14 @@ QPixmap MainWindow::scaleImage(unsigned char* buffer, int width, int height, int
         return QPixmap();
     }
 
-    QSize size(scale(width), scale(height));
     QPixmap pixmap;
     bool ret = false;
 
     if (isScaled())
+    {
+        QSize size(scale(width), scale(height));
         ret = pixmap.convertFromImage(img.scaled(size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation)); // Scaled size
+    }
     else
         ret = pixmap.convertFromImage(img);
 

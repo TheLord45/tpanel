@@ -56,36 +56,31 @@ public class HideToolbar extends Logger
 
                     if (window != null)
                     {
-                        if (Build.VERSION.SDK_INT < 30)
-                            window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,WindowManager.LayoutParams.FLAG_FULLSCREEN);
-                        else
+                        WindowInsetsController wic = window.getInsetsController();
+
+                        if (!mInit)
                         {
-                            WindowInsetsController wic = window.getInsetsController();
+                            wic.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                            mInit = true;
+                        }
 
-                            if (!mInit)
+                        if (wic != null)
+                        {
+                            if (h)
                             {
-                                wic.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
-                                mInit = true;
-                            }
-
-                            if (wic != null)
-                            {
-                                if (h)
-                                {
-                                    wic.hide(WindowInsets.Type.statusBars());
-                                    wic.hide(WindowInsets.Type.systemBars());
-                                    log(HLOG_DEBUG, "HideToolbar.hide: Statusbars were hided.");
-                                }
-                                else
-                                {
-                                    wic.show(WindowInsets.Type.statusBars());
-                                    wic.show(WindowInsets.Type.systemBars());
-                                    log(HLOG_DEBUG, "HideToolbar.hide: Statusbars were shown.");
-                                }
+                                wic.hide(WindowInsets.Type.statusBars());
+                                wic.hide(WindowInsets.Type.systemBars());
+                                log(HLOG_DEBUG, "HideToolbar.hide: Statusbars were hided.");
                             }
                             else
-                                log(HLOG_WARNING, "HideToolbar.hide: Error retrieving window insets controller!");
+                            {
+                                wic.show(WindowInsets.Type.statusBars());
+                                wic.show(WindowInsets.Type.systemBars());
+                                log(HLOG_DEBUG, "HideToolbar.hide: Statusbars were shown.");
+                            }
                         }
+                        else
+                            log(HLOG_WARNING, "HideToolbar.hide: Error retrieving window insets controller!");
                     }
                     else
                         log(HLOG_WARNING, "HideToolbar.hide: Error retrieving window!");

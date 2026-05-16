@@ -1606,6 +1606,7 @@ namespace Button
             int mHeightOrig{0};     // The original height
             std::mutex mkElementMutex;
             std::mutex mkDrawBargraphMutex;
+            std::mutex mkDrawButtonMutex;
     };
 
     typedef struct BUTTONS_T

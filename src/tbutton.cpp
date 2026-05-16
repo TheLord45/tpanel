@@ -7281,6 +7281,8 @@ bool TButton::drawButton(int instance, bool show, bool subview)
     if (prg_stopped)
         return false;
 
+    std::lock_guard<std::mutex> drawButtonGuard(mkDrawButtonMutex);
+
     if (subview)
         mSubViewPart = subview;
 

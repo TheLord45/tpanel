@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2023 to 2026 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -92,7 +92,7 @@ void TBitmap::setPixline(int pl)
     int width = pl / mPixelSize;
     int height = static_cast<int>(mSize) / pl;
 
-    if ((size_t)(height * pl) > mSize)
+    if (static_cast<size_t>(height * pl) > mSize)
     {
         MSG_ERROR("TBitmap::setPixline: Number of pixels exceeds the allocated size of image!");
         return;
@@ -126,7 +126,7 @@ void TBitmap::setBitmap(const unsigned char* data, int width, int height, int pi
     if (!data || width <= 0 || height <= 0 || pixsize < 1)
         return;
 
-    mSize = ((size_t)width * (size_t)pixsize) * (size_t)height;
+    mSize = (static_cast<size_t>(width) * static_cast<size_t>(pixsize)) * static_cast<size_t>(height);
     mData = new unsigned char[mSize];
     memmove(mData, data, mSize);
     mPixelSize = pixsize;
@@ -152,7 +152,7 @@ void TBitmap::setWidth(int w)
     if (w < 1)
         return;
 
-    if ((size_t)(w * mPixelSize * mHeight) > mSize)
+    if (static_cast<size_t>(w * mPixelSize * mHeight) > mSize)
     {
         MSG_ERROR("New width would exceed allocated image size!");
         return;
@@ -170,7 +170,7 @@ void TBitmap::setHeight(int h)
     if (h < 1)
         return;
 
-    if ((mSize / mPixline) < (size_t)h)
+    if ((mSize / mPixline) < static_cast<size_t>(h))
     {
         MSG_ERROR("New height would exceed allocated image size!");
         return;
@@ -189,7 +189,7 @@ void TBitmap::setSize(int w, int h)
     int pixline = w * mPixelSize;
     int maxHeight = static_cast<int>(mSize) / pixline;
 
-    if (h > maxHeight || (size_t)(pixline * h) > mSize)
+    if (h > maxHeight || static_cast<size_t>(pixline * h) > mSize)
     {
         MSG_ERROR("Width and height exceeds allocated image size!");
         return;
@@ -209,7 +209,7 @@ void TBitmap::setPixelSize(int ps)
 
     int pixline = mWidth * ps;
 
-    if ((size_t)pixline > mSize)
+    if (static_cast<size_t>(pixline) > mSize)
     {
         MSG_ERROR("New pixel size would exceed allocated image size!");
         return;
@@ -232,7 +232,7 @@ bool TBitmap::isValid()
     if (mSize > 0 && mPixline > 0 && mPixelSize > 0)    // Content?
     {                                                   // Yes, then validate it ...
         int pxl = mWidth * mPixelSize;                  // Calculate the pixels per line
-        size_t s = (size_t)(pxl * mHeight);             // Calculate the minimum size of buffer
+        size_t s = static_cast<size_t>(pxl * mHeight);  // Calculate the minimum size of buffer
 
         if (pxl == mPixline && s <= mSize)              // Compare the pixels per line and the allocated buffer size
             return true;                                // Everything is plausible.

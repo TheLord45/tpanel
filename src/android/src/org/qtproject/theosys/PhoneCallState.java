@@ -95,7 +95,7 @@ public class PhoneCallState extends Logger
                 {
                     if (state.equalsIgnoreCase(TelephonyManager.EXTRA_STATE_RINGING))
                     {
-                        phoneNumber = bundle.getString(TelephonyManager.EXTRA_INCOMING_NUMBER);
+                        //phoneNumber = bundle.getString(TelephonyManager.EXTRA_INCOMING_NUMBER);
                         callInProgress = true;
                         log(HLOG_INFO, "PhoneCallState: RINGING --> " + phoneNumber);
                     }

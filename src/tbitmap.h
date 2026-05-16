@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2023 to 2026 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -51,6 +51,9 @@ class TBitmap
 
         TBitmap& operator=(const TBitmap& bm)
         {
+            if (&bm == this)
+                return *this;
+
             this->clear();
 
             if (bm.mSize > 0)

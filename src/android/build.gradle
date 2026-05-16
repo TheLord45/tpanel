@@ -7,8 +7,10 @@ buildscript {
     dependencies {
         //noinspection AndroidGradlePluginVersion
         //classpath 'com.android.tools.build:gradle:7.4.1'    // Qt 6.5.3
-        //classpath 'com.android.tools.build:gradle:8.6.0'  // >= Qt 6.8.x
-        classpath 'com.android.tools.build:gradle:8.8.0'  // Qt 6.10.x
+        //classpath 'com.android.tools.build:gradle:8.6.0'    // >= Qt 6.8.x
+        //classpath 'com.android.tools.build:gradle:8.8.0'    // Qt 6.10.x
+        classpath 'com.android.tools.build:gradle:9.0.0'    // Qt 6.11.x
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.0"
     }
 }
 
@@ -22,10 +24,14 @@ apply plugin: qtGradlePluginType          // Qt >= 6.8.x
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
-    implementation 'com.google.android.material:material:1.12.0'
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'androidx.core:core:1.13.1'
-    implementation 'androidx.preference:preference:1.1.0'
+//    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'com.google.android.material:material:1.14.0'
+//    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.appcompat:appcompat:1.7.1'
+//    implementation 'androidx.core:core:1.13.1'
+    implementation 'androidx.core:core:1.17.0'
+//    implementation 'androidx.preference:preference:1.1.0'
+    implementation 'androidx.preference:preference:1.2.1'
 }
 
 android {
@@ -64,11 +70,14 @@ android {
 
     tasks.withType(JavaCompile) {
         options.incremental = true
+        options.compilerArgs += ['-Xlint:all']
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+//        sourceCompatibility JavaVersion.VERSION_1_8     // <= Qt 6.10.x
+//        targetCompatibility JavaVersion.VERSION_1_8     // <= Qt 6.10.x
+        sourceCompatibility JavaVersion.VERSION_17      // >= Qt 6.11.x
+        targetCompatibility JavaVersion.VERSION_17      // >= Qt 6.11.x
     }
 
     lintOptions {
@@ -87,7 +96,7 @@ android {
         targetSdkVersion qtTargetSdkVersion
         ndk.abiFilters = qtTargetAbiList.split(",")
         versionCode 5
-        versionName "2.0.0"
+        versionName "2.0.2"
     }
 
     packagingOptions {

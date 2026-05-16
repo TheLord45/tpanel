@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2025 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2026 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -5498,7 +5498,7 @@ TButtonStates *TPageManager::addButtonState(BUTTONTYPE t, int rap, int rad, int 
         {
             TButtonStates *bs = *iter;
 
-            if (bs->isButton(t, id))
+            if (bs && bs->isButton(t, id))
             {
                 delete pbs;
                 return bs;
@@ -5525,7 +5525,7 @@ TButtonStates *TPageManager::addButtonState(const TButtonStates& rbs)
         {
             TButtonStates *pbs = *iter;
 
-            if (pbs->isButton(type, id))
+            if (pbs && pbs->isButton(type, id))
                 return pbs;
         }
     }
@@ -5549,7 +5549,7 @@ TButtonStates *TPageManager::getButtonState(BUTTONTYPE t, int rap, int rad, int 
     {
         TButtonStates *bs = *iter;
 
-        if (bs->isButton(t, rap, rad, rch, rcp, rlp, rlv))
+        if (bs && bs->isButton(t, rap, rad, rch, rcp, rlp, rlv))
             return bs;
     }
 
@@ -5570,7 +5570,7 @@ TButtonStates *TPageManager::getButtonState(uint32_t id)
     {
         TButtonStates *bs = *iter;
 
-        if (bs->isButton(id))
+        if (bs && bs->isButton(id))
             return bs;
     }
 
@@ -5591,7 +5591,7 @@ TButtonStates *TPageManager::getButtonState(BUTTONTYPE t, uint32_t id)
     {
         TButtonStates *bs = *iter;
 
-        if (bs->isButton(t, id))
+        if (bs && bs->isButton(t, id))
             return bs;
     }
 

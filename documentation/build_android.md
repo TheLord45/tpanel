@@ -179,3 +179,17 @@ The following table shows the settings I used to create an APK file:
 |Gradle|Gradle 8.14.2 and AGP 8.10.1 --> Version: 8.8.0<br/><b>Hint:</b> Set the Gradle version in file `build.gradle`.|
 |Package|Multi-ABI APKs and AABs|
 |Configuration|In `QtCreator`: ANDROID_PLATFORM: android-30<br/>Android build-tools version: 35.0.1<br/>Android build platform SDK: android-36|
+
+### QtCreator settings for Qt 6.11.x
+
+The following table shows the settings I used to create an APK file:
+
+|Section|Description|
+|-------|-----------|
+|Distribution|Android 9.0 (API 28) to 16 (Api 36)|
+|Architecture|arm64-v8, x86_64, x86, and armeabi-v7a|
+|Compiler|Clang 17.0.2 (NDK r27c or 27.2.12479018)<br/><pre><b><i>Note</b>:</i> It's recommended that Qt apps use the same NDK version used for building the official Qt for Android libraries to avoid missing symbol errors. In releases supporting multiple NDKs, the newest supported NDK is used for building Qt.</pre>|
+|JDK|JDK 21|
+|Gradle|Gradle 9.3.1 and AGP 9.0.0 --> Version: 9.0.0<br/><b>Hint:</b> Set the Gradle version in file `build.gradle`.|
+|Package|Multi-ABI APKs and AABs|
+|Configuration|In `QtCreator`: ANDROID_PLATFORM: android-34<br/>Android build-tools version: 36.0.0<br/>Android build platform SDK: android-36|
