@@ -46,7 +46,7 @@
 #if SKIAV < 20260517
 #include <effects/SkGradientShader.h>
 #else
-#include <include/effects/SkGradient.h>
+#include <effects/SkGradient.h>
 #endif
 //#ifdef __ANDROID__
 //#include <QtAndroidExtras/QAndroidJniObject>
@@ -63,6 +63,7 @@
 #include "tamxnet.h"
 #include "tpagemanager.h"
 #include "tsystemsound.h"
+#include "tlauncher.h"
 #include "timgcache.h"
 #include "turl.h"
 #include "tlock.h"
