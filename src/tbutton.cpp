@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2025 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2026 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,28 +23,31 @@
 
 #include <unistd.h>
 
-#include <include/core/SkSize.h>
-#include <include/core/SkColor.h>
-#include <include/core/SkFont.h>
-#include <include/core/SkTypeface.h>
-#include <include/core/SkFontMetrics.h>
-#include <include/core/SkTextBlob.h>
-#include <include/core/SkRegion.h>
-#include <include/core/SkPixmap.h>
-#include <include/core/SkImageFilter.h>
-#include <include/effects/SkImageFilters.h>
-#include <include/core/SkPath.h>
-#include <include/core/SkSurfaceProps.h>
+#include <core/SkSize.h>
+#include <core/SkColor.h>
+#include <core/SkFont.h>
+#include <core/SkTypeface.h>
+#include <core/SkFontMetrics.h>
+#include <core/SkTextBlob.h>
+#include <core/SkRegion.h>
+#include <core/SkPixmap.h>
+#include <core/SkImageFilter.h>
+#include <effects/SkImageFilters.h>
+#include <core/SkPath.h>
+#include <core/SkSurfaceProps.h>
 //#ifndef __MACH__
-//#include <include/core/SkFilterQuality.h>
+//#include <core/SkFilterQuality.h>
 //#endif
-#include <include/core/SkMaskFilter.h>
+#include <core/SkMaskFilter.h>
 //#include <include/core/SkImageEncoder.h>
-#include <include/core/SkRRect.h>
-#include <include/core/SkBlurTypes.h>
-#include <include/effects/SkRuntimeEffect.h>
-#include <include/effects/SkGradientShader.h>
-
+#include <core/SkRRect.h>
+#include <core/SkBlurTypes.h>
+#include <effects/SkRuntimeEffect.h>
+#if SKIAV < 20260517
+#include <effects/SkGradientShader.h>
+#else
+#include <include/effects/SkGradient.h>
+#endif
 //#ifdef __ANDROID__
 //#include <QtAndroidExtras/QAndroidJniObject>
 //#include <QtAndroid>
@@ -64,7 +67,6 @@
 #include "turl.h"
 #include "tlock.h"
 #include "ttpinit.h"
-#include "tlauncher.h"
 #if TESTMODE == 1
 #include "testmode.h"
 #endif
@@ -4999,13 +5001,21 @@ bool TButton::drawGradientImage(SkBitmap *bm, const SR_T& sr, int width, int hei
     SkPoint linearPoints[2];                                                    // Start and end point of linear gradient
 
     // Grab all colors and put them into an array
+#if SKIAV < 20260517
     SkColor *colors = new SkColor[sr.gradientColors.size()];                    // Allocate space for colors
+#else
+    SkColor4f *colors = new SkColor4f[sr.gradientColors.size()];
+#endif
     vector<string>::const_iterator iter;                                        // Define an iterator to loop through colors
     int idx = 0;                                                                // The counter used for color array
 
     for (iter = sr.gradientColors.begin(); iter != sr.gradientColors.end(); ++iter)
     {
+#if SKIAV < 20260517
         colors[idx] = TColor::getSkiaColor(*iter);
+#else
+        colors[idx] = SkColor4f::FromColor(TColor::getSkiaColor(*iter));
+#endif
         idx++;
     }
 
@@ -5081,25 +5091,36 @@ bool TButton::drawGradientImage(SkBitmap *bm, const SR_T& sr, int width, int hei
             lineWidth = static_cast<SkScalar>(sqrt(pow(static_cast<double>(width), 2.0) + pow(static_cast<double>(height), 2.0)));
         break;
     }
-
+#if SKIAV < 20260517
     sk_sp<SkShader> shader = SkGradientShader::MakeLinear(                      // Create the shader
         linearPoints, colors, NULL, sr.gradientColors.size(),
         SkTileMode::kMirror);
+#else
+    sk_sp<SkShader> shader = SkShaders::LinearGradient(linearPoints, {{SkSpan<const SkColor4f>(colors, sr.gradientColors.size()), {}, SkTileMode::kMirror}, {}});
+#endif
     SkPaint paint;                                                              // The painter
     paint.setAntiAlias(true);                                                   // Make it look better
 
     if (gradType == GRAD_SWEEP)                                                 // This is some kind of circle
     {
+#if SKIAV < 20260517
         paint.setShader(SkGradientShader::MakeSweep(linearPoints[0].x(),        // Create a sweeper shader
                                                     linearPoints[0].y(),
                                                     colors, nullptr,
                                                     sr.gradientColors.size(),
                                                     SkTileMode::kClamp,
                                                     0.0, 360.0, 0, nullptr));
+#else
+        paint.setShader(SkShaders::SweepGradient(linearPoints[0],
+                                                 0.0,
+                                                 360.0,
+                                                 {{SkSpan<const SkColor4f>(colors, sr.gradientColors.size()), {}, SkTileMode::kClamp}, {}}));
+#endif
         canvas.drawPaint(paint);                                                // Draw the painter
     }
     else if (gradType == GRAD_RADIAL)                                           // This is also a circle but with defined center and radius
     {
+#if SKIAV < 20260517
         paint.setShader(SkGradientShader::MakeRadial(linearPoints[0],           // Create a radial shader
                                                      sr.gr,
                                                      colors,
@@ -5107,11 +5128,16 @@ bool TButton::drawGradientImage(SkBitmap *bm, const SR_T& sr, int width, int hei
                                                      sr.gradientColors.size(),
                                                      SkTileMode::kClamp,
                                                      0, nullptr));
+#else
+        paint.setShader(SkShaders::RadialGradient(linearPoints[0],
+                                                  sr.gr,
+                                                  {{SkSpan<const SkColor4f>(colors, sr.gradientColors.size()), {}, SkTileMode::kClamp}, {}}));
+#endif
         canvas.drawPaint(paint);
     }
     else
     {
-        paint.setShader(shader);                                                    // Deploy the shader
+        paint.setShader(shader);                                                // Deploy the shader
         paint.setStrokeWidth(lineWidth);                                        // Set the line width
         canvas.drawLine(linearPoints[0], linearPoints[1], paint);               // Draw a simple line
     }
@@ -5802,6 +5828,13 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
 {
     DECL_TRACER("TButton::barLevel(SkBitmap* bm, int inst, int level)");
 
+    if (!bm || bm->isNull())
+    {
+        MSG_ERROR("No or invalid bitmap!");
+        SET_ERROR();
+        return false;
+    }
+
     if (sr.size() < 2)
     {
         MSG_ERROR("There are only " << sr.size() << " states. A bargraph need at least 2!");
@@ -5846,15 +5879,15 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
         else
             buttonBitmap5(&bmBm, 1);
 
-        SkBitmap imgRed(bmMi);
-        SkBitmap imgMask(bmBm);
+//        SkBitmap imgRed(bmMi);
+//        SkBitmap imgMask(bmBm);
 
         SkBitmap img;
-        SkPixmap pixmapRed = imgRed.pixmap();
+        SkPixmap pixmapRed = bmMi.pixmap();
         SkPixmap pixmapMask;
 
-        if (!imgMask.empty())
-            pixmapMask = imgMask.pixmap();
+        if (!bmBm.empty())
+            pixmapMask = bmBm.pixmap();
 
         int width = sr[0].mi_width;
         int height = sr[0].mi_height;
@@ -5879,6 +5912,20 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
         SkColor col2 = TColor::getSkiaColor(sr[1].cb);
         MSG_DEBUG("Have " << sr[0].mi_width << " x " << sr[0].mi_height << " pixels.");
 
+        if (pixmapRed.width() < sr[0].mi_width || pixmapRed.height() < sr[0].mi_height)
+        {
+            MSG_ERROR("Internal error: size of pixmapRed is less then expected!");
+            SET_ERROR();
+            return false;
+        }
+
+        if (pixmapMask.width() < sr[0].mi_width || pixmapMask.height() < sr[0].mi_height)
+        {
+            MSG_ERROR("Internal error: size of pixmapMask is less then expected!");
+            SET_ERROR();
+            return false;
+        }
+
         for (int ix = 0; ix < sr[0].mi_width; ix++)
         {
             for (int iy = 0; iy < sr[0].mi_height; iy++)
@@ -5891,7 +5938,7 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
                     SkColor pixelRed = pixmapRed.getColor(ix, iy);
                     SkColor pixelMask;
 
-                    if (!imgMask.empty())
+                    if (!bmBm.empty())
                         pixelMask = pixmapMask.getColor(ix, iy);
                     else
                         pixelMask = SK_ColorWHITE;
@@ -5917,7 +5964,7 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
         SkCanvas ctx(img, SkSurfaceProps());
         SkPaint paint;
         paint.setBlendMode(SkBlendMode::kSrcATop);
-        sk_sp<SkImage> _image = SkImages::RasterFromBitmap(imgMask);
+        sk_sp<SkImage> _image = SkImages::RasterFromBitmap(bmBm);
         ctx.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
 
         POSITION_t position = calcImagePosition(sr[0].mi_width, sr[0].mi_height, SC_BITMAP, 0);

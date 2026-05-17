@@ -2070,7 +2070,7 @@ void MainWindow::animationInFinished()
 {
     DECL_TRACER("MainWindow::animationInFinished()");
 
-    if (mAnimObjects.empty())
+    if (!mAnimationConnected || mAnimObjects.empty())
     {
 #if TESTMODE == 1
         setScreenDone();
@@ -2097,7 +2097,7 @@ void MainWindow::animationInFinished()
 
             if (mAnimationConnected)
             {
-                disconnect(iter->second->animation, &QPropertyAnimation::finished, this, &MainWindow::animationInFinished);
+//                disconnect(iter->second->animation, &QPropertyAnimation::finished, this, &MainWindow::animationInFinished);
                 mAnimationConnected = false;
             }
 
@@ -2134,7 +2134,7 @@ void MainWindow::animationFinished()
 {
     DECL_TRACER("MainWindow::animationFinished()");
 
-    if (mAnimObjects.empty())
+    if (!mAnimationConnected || mAnimObjects.empty())
     {
 #if TESTMODE == 1
         setScreenDone();
@@ -2154,7 +2154,7 @@ void MainWindow::animationFinished()
             if (mAnimationConnected)
             {
                 MSG_DEBUG("Invalidating object " << handleToString(iter->first));
-                disconnect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationFinished);
+//                disconnect(obj->animation, &QPropertyAnimation::finished, this, &MainWindow::animationFinished);
                 mAnimationConnected = false;
             }
 

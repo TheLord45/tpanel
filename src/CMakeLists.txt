@@ -507,11 +507,11 @@ add_definitions(-D_GNU_SOURCE)
 add_definitions(-DPJ_AUTOCONF)
 add_definitions(-D_OPAQUE_SKIA_)
 
-if(IOS)
-    add_definitions(-DSKIAV=20230925)
-else()
-    add_definitions(-DSKIAV=20250812)
-endif()
+# SKIAV versions:
+#    20230925
+#    20250812
+#    20260517
+add_definitions(-DSKIAV=20260517)
 
 if(ANDROID)
     add_definitions(-pedantic -fexceptions -Wextra -Wno-attributes -Wno-nested-anon-types -Wno-gnu-anonymous-struct -Wno-gnu-zero-variadic-macro-arguments -Wno-invalid-utf8)

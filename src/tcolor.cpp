@@ -37,6 +37,13 @@ TColor::COLOR_T TColor::getAMXColor(const string& color)
 {
     DECL_TRACER("TColor::getAMXColor(const string& color)");
 
+    if (!mPalette)
+    {
+        MSG_ERROR("No palette was set! First set a palette to be able to get any color!");
+        TError::SetError();
+        return TColor::COLOR_T();
+    }
+
     if (color.empty())
     {
         MSG_WARNING("Empty color name is ignored!");
@@ -61,13 +68,6 @@ TColor::COLOR_T TColor::getAMXColor(const string& color)
 
     if (pos == string::npos)    // No # found?
     {                           // No #, then try to find color in palette
-        if (!mPalette)
-        {
-            MSG_ERROR("No palette was set! First set a palette to be able to get any color!");
-            TError::SetError();
-            return TColor::COLOR_T();
-        }
-
         PDATA_T pd = mPalette->findColor(color);
 
         if (!pd.name.empty())

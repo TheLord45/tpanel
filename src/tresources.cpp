@@ -353,8 +353,12 @@ SkBitmap *allocPixels(int width, int height, SkBitmap *bm)
 {
     DECL_TRACER("TButton::allocPixels(int width, int height, SkBitmap *bm)");
 
-    if (!bm)
+    if (!bm || width < 1 || height < 1)
+    {
+        MSG_ERROR("Couldn't allocate pixels for dimension " << width << " x " << height << "!");
+        SET_ERROR();
         return nullptr;
+    }
 
     // Skia reads image files in the natural byte order of the CPU.
     // While on Intel CPUs the byte order is little endian it is
