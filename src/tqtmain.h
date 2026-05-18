@@ -432,7 +432,6 @@ class MainWindow : public QMainWindow, public TObject
         int mTouchX{0};                     // The X coordinate of the mouse pointer
         int mTouchY{0};                     // The Y coordinate of the mouse pointer
         TQIntercom mIntercom;               // Class to handle intercom connections
-        bool mAnimationConnected{false};    // Indicates whether the animation connect() was established or not.
 };
 
 #endif

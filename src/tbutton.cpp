@@ -5880,9 +5880,6 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
         else
             buttonBitmap5(&bmBm, 1);
 
-//        SkBitmap imgRed(bmMi);
-//        SkBitmap imgMask(bmBm);
-
         SkBitmap img;
         SkPixmap pixmapRed = bmMi.pixmap();
         SkPixmap pixmapMask;
@@ -5913,20 +5910,6 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
         SkColor col2 = TColor::getSkiaColor(sr[1].cb);
         MSG_DEBUG("Have " << sr[0].mi_width << " x " << sr[0].mi_height << " pixels.");
 
-        if (pixmapRed.width() < sr[0].mi_width || pixmapRed.height() < sr[0].mi_height)
-        {
-            MSG_ERROR("Internal error: size of pixmapRed is less then expected!");
-            SET_ERROR();
-            return false;
-        }
-
-        if (pixmapMask.width() < sr[0].mi_width || pixmapMask.height() < sr[0].mi_height)
-        {
-            MSG_ERROR("Internal error: size of pixmapMask is less then expected!");
-            SET_ERROR();
-            return false;
-        }
-
         for (int ix = 0; ix < sr[0].mi_width; ix++)
         {
             for (int iy = 0; iy < sr[0].mi_height; iy++)
@@ -5936,10 +5919,15 @@ bool TButton::barLevel(SkBitmap* bm, int, int level)
 
                 if (ix >= startX && ix < width && iy >= startY && iy < height)
                 {
-                    SkColor pixelRed = pixmapRed.getColor(ix, iy);
+                    SkColor pixelRed;
                     SkColor pixelMask;
 
-                    if (!bmBm.empty())
+                    if (ix < pixmapRed.width() && iy < pixmapRed.height())
+                        pixelRed = pixmapRed.getColor(ix, iy);
+                    else
+                        pixelRed = SK_ColorTRANSPARENT;
+
+                    if (!bmBm.empty() && ix < pixmapMask.width() && iy < pixmapMask.height())
                         pixelMask = pixmapMask.getColor(ix, iy);
                     else
                         pixelMask = SK_ColorWHITE;
