@@ -1466,7 +1466,7 @@ namespace Button
             bool haveSelfFeed();
             bool sendCommand(bool pressed);
 
-            BUTTONTYPE type;
+            BUTTONTYPE type{NONE};
             int bi{0};              // button ID
             std::string na;         // name
             std::string bd;         // Description --> ignored

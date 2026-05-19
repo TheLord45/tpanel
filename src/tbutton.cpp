@@ -63,7 +63,9 @@
 #include "tamxnet.h"
 #include "tpagemanager.h"
 #include "tsystemsound.h"
+#ifndef __ANDROID__
 #include "tlauncher.h"
+#endif
 #include "timgcache.h"
 #include "turl.h"
 #include "tlock.h"
