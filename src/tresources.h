@@ -33,20 +33,12 @@
 #include <sstream>
 #include <type_traits>
 
-#ifdef __MACH__
-#include <skia/core/SkImage.h>
-#include <skia/core/SkString.h>
-#include <skia/core/SkData.h>
-#include <skia/core/SkColor.h>
-#include <skia/core/SkFontMgr.h>
-#else
-#include <include/core/SkImage.h>
-#include <include/core/SkString.h>
-#include <include/core/SkData.h>
-#include <include/core/SkColor.h>
+#include <core/SkImage.h>
+#include <core/SkString.h>
+#include <core/SkData.h>
+#include <core/SkColor.h>
 #if !defined(__ANDROID__) || !defined(__IOS__)
-#include <include/core/SkFontMgr.h>
-#endif
+#include <core/SkFontMgr.h>
 #endif
 
 //#include "terror.h"

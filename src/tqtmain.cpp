@@ -762,6 +762,13 @@ MainWindow::~MainWindow()
     disconnect(this, &MainWindow::sigStartWait, this, &MainWindow::startWait);
     disconnect(this, &MainWindow::sigStopWait, this, &MainWindow::stopWait);
     disconnect(this, &MainWindow::sigPageFinished, this, &MainWindow::pageFinished);
+
+    if (mSource)
+    {
+        disconnect(mSource, &QGeoPositionInfoSource::positionUpdated, this, &MainWindow::onPositionUpdated);
+        disconnect(mSource, &QGeoPositionInfoSource::errorOccurred, this, &MainWindow::onErrorOccurred);
+    }
+
     disconnect(qApp, &QGuiApplication::applicationStateChanged, this, &MainWindow::onAppStateChanged);
 
 #ifdef Q_OS_IOS
@@ -773,9 +780,7 @@ MainWindow::~MainWindow()
 #endif
     if (mMediaPlayer)
     {
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
         delete mAudioOutput;
-#endif
         delete mMediaPlayer;
     }
 

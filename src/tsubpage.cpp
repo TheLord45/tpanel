@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2026 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,9 +18,9 @@
 
 #include <exception>
 
-#include <include/core/SkFont.h>
-#include <include/core/SkFontMetrics.h>
-#include <include/core/SkTextBlob.h>
+#include <core/SkFont.h>
+#include <core/SkFontMetrics.h>
+#include <core/SkTextBlob.h>
 
 #include "tresources.h"
 #include "texpat++.h"

@@ -23,9 +23,9 @@
 #include <android/log.h>
 #endif
 
-#include <include/core/SkFont.h>
-#include <include/core/SkFontMetrics.h>
-#include <include/core/SkTextBlob.h>
+#include <core/SkFont.h>
+#include <core/SkFontMetrics.h>
+#include <core/SkTextBlob.h>
 
 #include "tlock.h"
 #include "tresources.h"

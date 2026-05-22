@@ -24,8 +24,8 @@
 
 #include "tvalidatefile.h"
 
-#include <include/core/SkTypeface.h>
-#include <include/core/SkFontStyle.h>
+#include <core/SkTypeface.h>
+#include <core/SkFontStyle.h>
 
 typedef struct FONT_T
 {

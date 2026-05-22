@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 to 2025 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2022 to 2026 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,12 +18,12 @@
 
 #include <string>
 
-#include <include/core/SkFont.h>
-#include <include/core/SkFontMetrics.h>
-#include <include/core/SkTextBlob.h>
-#include <include/core/SkRegion.h>
-#include <include/core/SkImageFilter.h>
-#include <include/effects/SkImageFilters.h>
+#include <core/SkFont.h>
+#include <core/SkFontMetrics.h>
+#include <core/SkTextBlob.h>
+#include <core/SkRegion.h>
+#include <core/SkImageFilter.h>
+#include <effects/SkImageFilters.h>
 
 #include "tpageinterface.h"
 #include "tsystemsound.h"

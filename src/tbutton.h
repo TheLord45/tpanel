@@ -24,9 +24,9 @@
 #include <functional>
 #include <thread>
 
-#include <include/core/SkImage.h>
-#include <include/core/SkCanvas.h>
-#include <include/core/SkBitmap.h>
+#include <core/SkImage.h>
+#include <core/SkCanvas.h>
+#include <core/SkBitmap.h>
 
 #include "texpat++.h"
 #include "tpalette.h"
