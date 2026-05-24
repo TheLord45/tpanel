@@ -27,6 +27,7 @@ import android.os.Bundle;
 import android.view.OrientationEventListener;
 
 import org.qtproject.theosys.Logger;
+import org.qtproject.theosys.HideToolbar;
 
 public class Orientation extends Logger
 {
@@ -158,6 +159,7 @@ public class Orientation extends Logger
 
                 mOldOrientation = mOrientation;
                 informTPanelOrientation(mOrientation);
+                HideToolbar.notchInfo(m_ActivityInstance);
             }
 
             @Override

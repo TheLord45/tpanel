@@ -192,6 +192,17 @@ JNIEXPORT void JNICALL Java_org_qtproject_theosys_Orientation_informTPanelOrient
         gPageManager->sendOrientation();
 }
 
+JNIEXPORT void JNICALL Java_org_qtproject_theosys_HideToolbar_informTPanelNotch(JNIEnv */*env*/, jclass /*clazz*/, jint width, jint height, jint left, jint top, jint right, jint bottom)
+{
+    DECL_TRACER("Java_org_qtproject_theosys_HideToolbar_informTPanelNotch(JNIEnv */*env*/, jclass /*clazz*/, jint width, jint height, jint left, jint top, jint right, jint bottom)");
+
+    if (!gPageManager)
+        return;
+
+    if (gPageManager->onNotchInformation())
+        gPageManager->onNotchInformation()(width, height, left, top, right, bottom);
+}
+
 /* -------- Settings -------- */
 
 JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_saveSettings(JNIEnv *env, jclass clazz)

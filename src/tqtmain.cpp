@@ -191,6 +191,24 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
         return 1;
     }
 
+    QSize availableSize = screen->availableSize();
+    QSize screenSize = screen->size();
+
+    MSG_DEBUG("Available size: " << availableSize.width() << " x " << availableSize.height());
+    MSG_DEBUG("Screen size:    " << screenSize.width() << " x " << screenSize.height());
+
+    if (availableSize == screenSize)
+    {
+        gScreenWidth = std::max(screenSize.width(), screenSize.height());
+        gScreenHeight = std::min(screenSize.height(), screenSize.width());
+    }
+    else
+    {
+        gScreenWidth = std::max(availableSize.width(), availableSize.height());
+        gScreenHeight = std::min(availableSize.height(), availableSize.width());
+        screenSize = availableSize;
+    }
+
     double scale = 1.0;
     // Calculate the scale factor
     if (TConfig::getScale())
@@ -201,11 +219,8 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
         // resolution of the first (built in) screen.
         // TODO: Find a way to get the screen the application will start and
         // take this screen to calculate the scale factor.
-        QSize screenSize = screen->size();
         double width = 0.0;
         double height = 0.0;
-        gScreenWidth = std::max(screenSize.width(), screenSize.height());
-        gScreenHeight = std::min(screenSize.height(), screenSize.width());
 
         if (screenSize.width() > screenSize.height())
             isPortrait = false;
@@ -242,6 +257,7 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
         gScale = scale;     // The calculated scale factor
         gFullWidth = width;
         MSG_INFO("Calculated scale factor: " << scale);
+        MSG_DEBUG("Scaled size: " << static_cast<int>(width * scale) << " x " << static_cast<int>(height * scale));
         // This preprocessor variable allows the scaling to be done by the Skia
         // library, which is used to draw everything. In comparison to Qt this
         // library is a bit slower and sometimes does not honor the aspect ratio
@@ -287,9 +303,6 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
     mainWin.grabGesture(Qt::PinchGesture);
     mainWin.grabGesture(Qt::SwipeGesture);
     mainWin.setOrientation(Qt::PrimaryOrientation);
-//#ifdef Q_OS_IOS
- //   mainWin.setWindowFlag(Qt::MaximizeUsingFullscreenGeometryHint, true);
-//#endif
 
     mainWin.show();
     return app.exec();
@@ -326,7 +339,9 @@ MainWindow::MainWindow()
     setAttribute(Qt::WA_AcceptTouchEvents, true);   // We accept touch events
     grabGesture(Qt::PinchGesture);                  // We use a pinch gesture to open the settings dialog
     grabGesture(Qt::SwipeGesture);                  // We support swiping also
-
+#ifdef Q_OS_ANDROID
+    setAttribute(Qt::WA_LayoutOnEntireRect, true);
+#endif
 #ifdef Q_OS_IOS                                     // Block autorotate on IOS
     mIosRotate = new TIOSRotate;    // TODO: Remove this and use QSensor!
 
@@ -360,8 +375,8 @@ MainWindow::MainWindow()
     QWidget *central = new QWidget;
     central->setObjectName("centralWidget");
     central->setBackgroundRole(QPalette::Window);
+    central->setContentsMargins(0, 0, 0, 0);
 #if defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
-//    central->setAutoFillBackground(false);
     central->setFixedSize(gScreenWidth, gScreenHeight);
 #endif  // defined(Q_OS_IOS) || defined(Q_OSANDROID)
     setCentralWidget(central);      // Here we set the central widget
@@ -370,6 +385,7 @@ MainWindow::MainWindow()
     // simply manage the objects bound to a page.
     mCentralWidget = new QStackedWidget(central);
     mCentralWidget->setObjectName("stackedPageWidgets");
+    mCentralWidget->setContentsMargins(0, 0, 0, 0);
 #if defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
     MSG_DEBUG("Size will be set for " << (isPortrait ? "PORTRAIT" : "LANDSCAPE"));
 
@@ -400,13 +416,11 @@ MainWindow::MainWindow()
     {
         MSG_INFO("Orientation set to portrait mode.");
         _setOrientation(O_PORTRAIT);
-//        mOrientation = Qt::PortraitOrientation;
     }
     else
     {
         MSG_INFO("Orientation set to landscape mode.");
         _setOrientation(O_LANDSCAPE);
-//        mOrientation = Qt::LandscapeOrientation;
     }
 #else
     QRect rectMain = geometry();
@@ -547,7 +561,15 @@ MainWindow::MainWindow()
                                             std::placeholders::_4,
                                             std::placeholders::_5,
                                             std::placeholders::_6));
-#endif
+#ifdef Q_OS_ANDROID
+    gPageManager->regOnNotchInformation(bind(&MainWindow::_notchInformation, this, std::placeholders::_1,
+                                             std::placeholders::_2,
+                                             std::placeholders::_3,
+                                             std::placeholders::_4,
+                                             std::placeholders::_5,
+                                             std::placeholders::_6));
+#endif  // Q_OS_ANDROID
+#endif  // defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
     gPageManager->regRepaintWindows(bind(&MainWindow::_repaintWindows, this));
     gPageManager->regToFront(bind(&MainWindow::_toFront, this, std::placeholders::_1));
 #if !defined (Q_OS_ANDROID) && !defined(Q_OS_IOS)
@@ -863,6 +885,8 @@ void MainWindow::_orientationChanged(int orientation)
             mOrientation = Qt::LandscapeOrientation;
         }
     }
+
+    MSG_DEBUG("Orientation: " << orientationToString(mOrientation));
 }
 
 void MainWindow::_activateSettings(const std::string& oldNetlinx, int oldPort, int oldChannelID, const std::string& oldSurface, bool oldToolbarSuppress, bool oldToolbarForce)
@@ -875,8 +899,76 @@ void MainWindow::_activateSettings(const std::string& oldNetlinx, int oldPort, i
     emit sigActivateSettings(oldNetlinx, oldPort, oldChannelID, oldSurface, oldToolbarSuppress, oldToolbarForce);
 }
 
+#ifdef Q_OS_ANDROID
+/**
+ * @brief MainWindow::_notchInformation
+ *
+ * This method is called by the Android layer to inform about the notch. The
+ * notch is a part of the screen, which is not usable for display because of a
+ * camera or something similar. The method is called with the size and position
+ * of the notch. With this information we can calculate the margins for the
+ * display and set them to the page manager.
+ *
+ * The method also gets the margins calculated by the OS with the current
+ * orientation. But this information is behind the actual orientation and may
+ * not be correct. Therefore we calculate the margins by our own based on the
+ * orientation and the size of the notch.
+ *
+ * @param width     The width of the notch in pixel. This is always the width of
+ * the notch for portrait orientation.
+ * @param height    The height of the notch in pixel. This is always the height
+ * of the notch for portrait orientation.
+ * @param left      The left margin of the notch in pixel. This depends on the
+ * actual orientation.
+ * @param top       The top margin of the notch in pixel. This depends on the
+ * actual orientation.
+ * @param right     The right margin of the notch in pixel. This depends on the
+ * actual orientation.
+ * @param bottom    The bottom margin of the notch in pixel. This depends on the
+ * actual orientation.
+ */
+void MainWindow::_notchInformation(int width, int height, int left, int top, int right, int bottom)
+{
+    DECL_TRACER("MainWindow::_notchInformation(int width, int height, int left, int top, int right, int bottom)");
+
+    QMargins marginsOri(left, top, right, bottom);
+    QMargins margins;
+
+    switch(mOrientation)
+    {
+        case Qt::PortraitOrientation:           margins.setTop(height); break;
+        case Qt::LandscapeOrientation:          margins.setLeft(height); break;
+        case Qt::InvertedPortraitOrientation:   margins.setBottom(height); break;
+        case Qt::InvertedLandscapeOrientation:  margins.setRight(height); break;
+
+        default:
+            margins = marginsOri;
+    }
+#ifdef QT_DEBUG
+    MSG_DEBUG("Size of notch: " << width << " x " << height << ", notch top: " << margins.top() << ", bottom: " << margins.bottom() << ", left: " << margins.left() << ", right: " << margins.right() << ", estimated: " << orientationToString(mOrientation));
+#endif
+    if (gPageManager)
+    {
+        if (gPageManager->getSettings()->isPortrait() &&
+            (mOrientation == Qt::PortraitOrientation || mOrientation == Qt::InvertedPortraitOrientation))
+        {
+            mNotchPortrait = margins;
+            mHaveNotchPortrait = true;
+            mHaveNotchLandscape = false;
+        }
+        else if (gPageManager->getSettings()->isLandscape() &&
+            (mOrientation == Qt::LandscapeOrientation || mOrientation == Qt::InvertedLandscapeOrientation))
+        {
+            mNotchLandscape = margins;
+            mHaveNotchLandscape = true;
+            mHaveNotchPortrait = false;
+        }
+    }
+}
+#endif
 /**
  * @brief MainWindow::activateSettings
+ *
  * This method activates some urgent settings. It is called on Android and IOS
  * after the setup dialog was closed. The method expects some values taken
  * immediately before the setup dialog was started. If takes some actions like
@@ -1180,13 +1272,16 @@ bool MainWindow::gestureEvent(QGestureEvent* event)
 }
 
 /**
- * @brief MainWindow::mousePressEvent catches the event Qt::LeftButton.
+ * @brief MainWindow::mousePressEvent -- Catches the event Qt::LeftButton.
  *
  * If the user presses the left mouse button somewhere in the main window, this
  * method is triggered. It retrieves the position of the mouse pointer and
  * sends it to the page manager TPageManager.
  *
- * @param event The event
+ * On mobile devices the left mouse button is equal to a finger tab on the
+ * screen.
+ *
+ * @param event     The event
  */
 void MainWindow::mousePressEvent(QMouseEvent* event)
 {
@@ -1198,7 +1293,7 @@ void MainWindow::mousePressEvent(QMouseEvent* event)
     if(event->button() == Qt::LeftButton)
     {
         int nx = 0, ny = 0;
-#ifdef Q_OS_IOS
+#if defined(Q_OS_IOS) // || defined(Q_OS_ANDROID)
         if (mHaveNotchPortrait && gPageManager->getSettings()->isPortrait())
         {
             nx = mNotchPortrait.left();
@@ -1214,43 +1309,18 @@ void MainWindow::mousePressEvent(QMouseEvent* event)
             MSG_WARNING("Have no notch distances!");
         }
 #endif
+#ifdef Q_OS_ANDROID
+        int x = static_cast<int>(event->position().x()) + nx;
+        int y = static_cast<int>(event->position().y()) + ny;
+#else
         int x = static_cast<int>(event->position().x()) - nx;
         int y = static_cast<int>(event->position().y()) - ny;
+#endif
         MSG_DEBUG("Mouse press coordinates: x: " << event->position().x() << ", y: " << event->position().y() << " [new x: " << x << ", y: " << y << " -- \"notch\" nx: " << nx << ", ny: " << ny << "]");
 
         mLastPressX = x;
         mLastPressY = y;
-/*
-        QWidget *w = childAt(event->x(), event->y());
 
-        if (w)
-        {
-            MSG_DEBUG("Object " << w->objectName().toStdString() << " is under mouse cursor.");
-            QObject *par = w->parent();
-
-            if (par)
-            {
-                MSG_DEBUG("The parent is " << par->objectName().toStdString());
-
-                if (par->objectName().startsWith("Item_"))
-                {
-                    QObject *ppar = par->parent();
-
-                    if (ppar)
-                    {
-                        MSG_DEBUG("The pparent is " << ppar->objectName().toStdString());
-
-                        if (ppar->objectName().startsWith("View_"))
-                        {
-                            QMouseEvent *mev = new QMouseEvent(event->type(), event->localPos(), event->globalPos(), event->button(), event->buttons(), event->modifiers());
-                            QApplication::postEvent(ppar, mev);
-                            return;
-                        }
-                    }
-                }
-            }
-        }
-*/
         if (isScaled())
         {
             x = static_cast<int>(static_cast<double>(x) / mScaleFactor);
@@ -1291,7 +1361,7 @@ void MainWindow::mouseReleaseEvent(QMouseEvent* event)
     if(event->button() == Qt::LeftButton)
     {
         int nx = 0, ny = 0;
-#ifdef Q_OS_IOS
+#if defined(Q_OS_IOS) // || defined(Q_OS_ANDROID)
         if (mHaveNotchPortrait && gPageManager->getSettings()->isPortrait())
         {
             nx = mNotchPortrait.left();
@@ -1303,41 +1373,16 @@ void MainWindow::mouseReleaseEvent(QMouseEvent* event)
             ny = mNotchLandscape.top();
         }
 #endif
+#ifdef Q_OS_ANDROID
+        int x = ((mLastPressX >= 0) ? mLastPressX : (static_cast<int>(event->position().x()) + nx));
+        int y = ((mLastPressY >= 0) ? mLastPressY : (static_cast<int>(event->position().y()) + ny));
+#else
         int x = ((mLastPressX >= 0) ? mLastPressX : (static_cast<int>(event->position().x()) - nx));
         int y = ((mLastPressY >= 0) ? mLastPressY : (static_cast<int>(event->position().y()) - ny));
+#endif
         MSG_DEBUG("Mouse press coordinates: x: " << event->position().x() << ", y: " << event->position().y());
         mLastPressX = mLastPressY = -1;
-/*
-        QWidget *w = childAt(event->x(), event->y());
 
-        if (w)
-        {
-            MSG_DEBUG("Object " << w->objectName().toStdString() << " is under mouse cursor.");
-            QObject *par = w->parent();
-
-            if (par)
-            {
-                MSG_DEBUG("The parent is " << par->objectName().toStdString());
-
-                if (par->objectName().startsWith("Item_"))
-                {
-                    QObject *ppar = par->parent();
-
-                    if (ppar)
-                    {
-                        MSG_DEBUG("The pparent is " << ppar->objectName().toStdString());
-
-                        if (ppar->objectName().startsWith("View_"))
-                        {
-                            QMouseEvent *mev = new QMouseEvent(event->type(), event->localPos(), event->globalPos(), event->button(), event->buttons(), event->modifiers());
-                            QApplication::postEvent(ppar, mev);
-                            return;
-                        }
-                    }
-                }
-            }
-        }
-*/
         if (isScaled())
         {
             x = static_cast<int>(static_cast<double>(x) / mScaleFactor);
@@ -1394,41 +1439,28 @@ void MainWindow::mouseMoveEvent(QMouseEvent* event)
         mLastPressX = event->position().x();
         mLastPressY = event->position().y();
     }
-/*        QObject *par = w->parent();
-
-        if (par)
-        {
-            MSG_DEBUG("The parent is " << par->objectName().toStdString());
-
-            if (par->objectName().startsWith("Item_"))
-            {
-                QObject *ppar = par->parent();
-
-                if (ppar)
-                {
-                    MSG_DEBUG("The pparent is " << ppar->objectName().toStdString());
-
-                    if (ppar->objectName().startsWith("View_"))
-                    {
-                        QMouseEvent *mev = new QMouseEvent(event->type(), event->localPos(), event->globalPos(), event->button(), event->buttons(), event->modifiers());
-                        QApplication::postEvent(ppar, mev);
-                        return;
-                    }
-                }
-            }
-        }
-    }
-*/
 }
 
+/**
+ * @brief MainWindow::keyPressEvent
+ *
+ * This method is called when a key is pressed. It checks if the key is the back
+ * key and if the toolbar is not visible. If both conditions are true, a dialog
+ * is shown to the user to ask if he wants to quit the application or open the
+ * setup dialog. If the user clicks on setup, the setup dialog is opened. If the
+ * user clicks on quit, the application is closed. If the user clicks on cancel,
+ * the dialog is closed and the application continues running. If the key is not
+ * the back key or the toolbar is visible, the event is passed to the base class.
+ *
+ * @param event The key press event.
+ */
 void MainWindow::keyPressEvent(QKeyEvent *event)
 {
     DECL_TRACER("MainWindow::keyPressEvent(QKeyEvent *event)");
 
     if (event && event->key() == Qt::Key_Back && !mToolbar)
     {
-        QMessageBox msgBox(this);
-        msgBox.setText("Select what to do next:");
+        QMessageBox msgBox(QMessageBox::Question, "Question", "Select what to do next:", QMessageBox::NoButton, this);
         QAbstractButton *buttonQuit = msgBox.addButton("Quit", QMessageBox::AcceptRole);
         QAbstractButton *buttonSetup = msgBox.addButton("Setup", QMessageBox::RejectRole);
         msgBox.addButton("Cancel", QMessageBox::ResetRole);
@@ -1459,10 +1491,12 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
 
 /**
  * @brief MainWindow::onScreenOrientationChanged sets invers or normal orientation.
+ *
  * This method sets according to the actual set orientation the invers
  * orientations or switches back to normal orientation.
  * For example: When the orientation is set to portrait and the device is turned
  * to top down, then the orientation is set to invers portrait.
+ *
  * @param ori   The detected orientation
  */
 void MainWindow::onScreenOrientationChanged(Qt::ScreenOrientation ori)
@@ -1549,13 +1583,20 @@ void MainWindow::onScreenOrientation(int angle)
         onScreenOrientationChanged(Qt::InvertedLandscapeOrientation);
 }
 
-//#ifdef Q_OS_IOS
 /**
  * @brief MainWindow::onPositionUpdated
+ *
  * This method is a callback function for the Qt framework. It is called
- * whenever the geo position changes. The position information is never really
- * used and is implemented only to keep the application on IOS running in the
- * background.
+ * whenever the geo position changes. The geo location is transmitted to the
+ * NetLinx controller as a custom event.
+ *
+ * Beside this the coordinates are sent to any object defined as a geo object.
+ * Any geo object will show a map where the coordinates are shown as a free
+ * definable icon in the center.
+ *
+ * This will work only on systems supporting positioning. This is mostly on
+ * mobile devices and on some Macs. With Linux it depends on the machine it is
+ * running on.
  *
  * @param update    A structure containing the geo position information.
  */
@@ -1570,6 +1611,14 @@ void MainWindow::onPositionUpdated(const QGeoPositionInfo &update)
     {
         gAmxNet->showCoordinates(coord.latitude(), coord.longitude());
         MSG_DEBUG("Geo location: " << coord.toString().toStdString());
+    }
+
+    if (gPageManager)
+    {
+        gPageManager->sendCustomEvent(static_cast<int>(coord.latitude()),
+                                      static_cast<int>(coord.longitude()),
+                                      0, coord.toString().toStdString(),
+                                      2100, 1, 0);
     }
 }
 
@@ -1683,7 +1732,7 @@ void MainWindow::createActions()
     DECL_TRACER("MainWindow::createActions()");
 
     // If the toolbar should not be visible at all we return here immediately.
-    if (TConfig::getToolbarSuppress())
+    if (TConfig::getToolbarSuppress() || mToolbar)
         return;
 
     // Add a mToolbar (on the right side)
@@ -1695,26 +1744,7 @@ void MainWindow::createActions()
     mToolbar->setAllowedAreas(Qt::RightToolBarArea);
     mToolbar->setFloatable(false);
     mToolbar->setMovable(false);
-#if defined(Q_OS_ANDROID) && QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    if (isScaled())
-    {
-        int width = (int)((double)gPageManager->getSettings()->getWidth() * gScale);
-        int tbWidth = (int)(48.0 * gScale);
-        int icWidth = (int)(40.0 * gScale);
-
-        if ((gFullWidth - width) < tbWidth && !TConfig::getToolbarForce())
-        {
-            delete mToolbar;
-            mToolbar = nullptr;
-            return;
-        }
-
-        MSG_DEBUG("Icon size: " << icWidth << "x" << icWidth << ", Toolbar width: " << tbWidth);
-        QSize iSize(icWidth, icWidth);
-        mToolbar->setIconSize(iSize);
-    }
-#endif  // QT_VERSION
-#if (defined(Q_OS_ANDROID) || defined(Q_OS_IOS)) && QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#if (defined(Q_OS_ANDROID) || defined(Q_OS_IOS))
     if (isScaled())
     {
         int panwidth = (int)((double)gPageManager->getSettings()->getWidth() * gScale);
@@ -2706,6 +2736,9 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
                     setNotch();
                 }
 #endif
+#ifdef Q_OS_ANDROID
+                QJniObject::callStaticMethod<void>("org/qtproject/theosys/HideToolbar", "notchInfo", "(Landroid/app/Activity;)V", QNativeInterface::QAndroidApplication::context().object());
+#endif
             }
             else
             {
@@ -2718,6 +2751,7 @@ void MainWindow::onAppStateChanged(Qt::ApplicationState state)
 #ifdef Q_OS_ANDROID
             QJniObject activity = QNativeInterface::QAndroidApplication::context();
             QJniObject::callStaticMethod<void>("org/qtproject/theosys/Orientation", "resumeOrientationListener", "()V");
+            QJniObject::callStaticMethod<void>("org/qtproject/theosys/HideToolbar", "hide", "(Landroid/app/Activity;Z)V", activity.object(), true);
 #endif
 #ifdef Q_OS_IOS
             // We do this to make sure the battery state is up to date after the
@@ -3662,12 +3696,6 @@ string MainWindow::convertMask(const string& mask)
     return qMask;
 }
 
-#ifdef Q_OS_ANDROID
-void MainWindow::hideAndroidBars()
-{
-    DECL_TRACER("MainWindow::hideAndroidBars()");
-}
-#endif
 #ifdef Q_OS_IOS
 void MainWindow::setNotch()
 {
@@ -3688,51 +3716,8 @@ void MainWindow::setNotch()
     {
         margins = QASettings::getNotchSize();
         MSG_DEBUG("Raw notch top: " << margins.top() << ", bottom: " << margins.bottom() << ", left: " << margins.left() << ", right: " << margins.right() << ", mOrientation: " << orientationToString(mOrientation));
-/*
-        if (gPageManager && gPageManager->getSettings()->isPortrait())
-        {
-            if (so == Qt::LandscapeOrientation)
-            {
-                int left = margins.left();
-                int top = margins.top();
-                margins.setTop(margins.right());
-                margins.setLeft(top);
-                margins.setRight(margins.bottom());
-                margins.setBottom(left);
-            }
-            else if (so == Qt::InvertedLandscapeOrientation)
-            {
-                int right = margins.right();
-                int top = margins.top();
-                margins.setTop(margins.left());
-                margins.setLeft(top);
-                margins.setRight(margins.bottom());
-                margins.setBottom(right);
-            }
-        }
-        else if (gPageManager && gPageManager->getSettings()->isLandscape())
-        {
-            if (so == Qt::PortraitOrientation)
-            {
-                int top = margins.top();
-                int right = margins.right();
-                margins.setTop(margins.left());
-                margins.setLeft(top);
-                margins.setRight(margins.bottom());
-                margins.setBottom(right);
-            }
-            else if (so == Qt::InvertedPortraitOrientation)
-            {
-                int top = margins.top();
-                int left = margins.left();
-                margins.setTop(margins.right());
-                margins.setLeft(margins.bottom());
-                margins.setRight(top);
-                margins.setBottom(left);
-            }
-        } */
     }
-#if defined(QT_DEBUG) && (defined(Q_OS_IOS) || defined(Q_OS_ANDROID))
+#ifdef QT_DEBUG
     MSG_DEBUG("Notch top: " << margins.top() << ", bottom: " << margins.bottom() << ", left: " << margins.left() << ", right: " << margins.right() << ", Orientation real: " << orientationToString(so) << ", estimated: " << orientationToString(mOrientation));
 #endif
     if (gPageManager)
