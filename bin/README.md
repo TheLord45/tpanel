@@ -5,7 +5,7 @@ packages (Android, Linux, Mac, ...) into this repository. Instead you can
 download it from my server. Klick on one of the following links to get an installable
 package for the latest version:
 
-* Latest **TPanel** _Android_ version: [tpanel_android_v2.0.0b1](https://www.theosys.at/download/tpanel_android_v2.0.0b1.apk)
+* Latest **TPanel** _Android_ version: [tpanel_android_v2.0.1-2](https://www.theosys.at/download/tpanel_android_v2.0.1-2.apk)
 * Latest **TPanel** _MacOS_ v15.0 (Apple Silicon) version: [tpanel-2.0.0b.pkg](https://www.theosys.at/download/tpanel-2.0.0b.pkg)
 * Latest **TPanel** _Linux_ (Debian) version: [tpanel_2.0.0-1_amd64.deb](https://www.theosys.at/download/tpanel_2.0.0-1_amd64.deb)
 
@@ -18,6 +18,7 @@ package for the latest version:
 
 Older versions
 --------------
+* [tpanel_android_v2.0.1-1](https://www.theosys.at/download/tpanel_android_v2.0.1-1.apk)
 * [tpanel_android_v1.4.1b2](https://www.theosys.at/download/tpanel_android_v1.4.1b2.apk)
 * [tpanel_android_v1.4.1b1](https://www.theosys.at/download/tpanel_android_v1.4.1b1.apk)
 * [tpanel_android_v1.4.0](https://www.theosys.at/download/tpanel_android_v1.4.0.apk)

@@ -27,7 +27,6 @@
 
 #include "tpagemanager.h"
 #include "tobject.h"
-//#include "tqemitqueue.h"
 #include "tpagelist.h"
 #include "tqgesturefilter.h"
 #include "tqintercom.h"
@@ -351,6 +350,9 @@ class MainWindow : public QMainWindow, public TObject
         void _signalState(Qt::ApplicationState state);
         void _orientationChanged(int orientation);
         void _activateSettings(const std::string& oldNetlinx, int oldPort, int oldChannelID, const std::string& oldSurface, bool oldToolbarSuppress, bool oldToolbarForce);
+#ifdef Q_OS_ANDROID
+        void _notchInformation(int width, int height, int left, int top, int right, int bottom);
+#endif  // Q_OS_ANDROID
 #endif  // defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         void _repaintWindows();
         void _toFront(ulong handle);
@@ -372,9 +374,6 @@ class MainWindow : public QMainWindow, public TObject
         QFont loadFont(int number, const FONT_T& f, const FONT_STYLE fs);
         double calcVolume(int value);
         std::string convertMask(const std::string& mask);
-#ifdef Q_OS_ANDROID
-        void hideAndroidBars();
-#endif  // Q_OS_ANDROID
 #ifdef Q_OS_IOS
         void setNotch();
         Qt::ScreenOrientation getRealOrientation();
@@ -422,6 +421,8 @@ class MainWindow : public QMainWindow, public TObject
         TIOSBattery *mIosBattery{nullptr};  // Class to retrive the battery status on an iPhone or iPad
         TIOSRotate *mIosRotate{nullptr};    // Class to control rotation
         bool mIOSSettingsActive{false};     // TRUE: IOS settings are active.
+#endif
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         QMargins mNotchPortrait;            // The margins (notch, if any) for portrait orientation
         QMargins mNotchLandscape;           // The margins (notch, if any) for landscape orientation
         bool mHaveNotchPortrait{false};     // TRUE = Notch was already fetched for portrait orientation
