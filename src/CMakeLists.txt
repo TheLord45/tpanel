@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(tpanel VERSION 2.0.1 LANGUAGES CXX)
+project(tpanel VERSION 2.1.0 LANGUAGES CXX)
 
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
@@ -31,6 +31,7 @@ endif()
 
 if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     message(WARNING "Found compiler ${CMAKE_CXX_COMPILER_ID}. Please use Clang if possible!")
+    message(STATUS "Hint: Start cmake with parameter \"-DCMAKE_CXX_COMPILER=/path/to/clang++\"")
     set(USE_CLANG OFF)
 else()
     message(STATUS "Found compiler ${CMAKE_CXX_COMPILER_ID}")
