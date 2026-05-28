@@ -26,9 +26,13 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.text.InputType;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.WindowCompat;
 import androidx.preference.Preference;
 import androidx.preference.DropDownPreference;
 import androidx.preference.EditTextPreference;
@@ -76,15 +80,39 @@ public class SettingsActivity extends AppCompatActivity
         }
 
         m_intent = getIntent();
+
         ActionBar actionBar = getSupportActionBar();
 
         if (actionBar != null)
         {
-            actionBar.setDisplayHomeAsUpEnabled(true);
-            actionBar.setTitle(getString(R.string.title_activity_settings));
+            actionBar.hide();
+            // actionBar.setDisplayHomeAsUpEnabled(false);
+            // actionBar.setTitle(getString(R.string.title_activity_settings));
         }
 
-        Logger.log(Logger.HLOG_DEBUG, "SettingsActivity.onCreate: finished");
+        Window window = getWindow();
+
+        if (window != null)
+        {
+            WindowInsetsController wic = window.getInsetsController();
+/*
+            if (wic == null)
+            {
+                View decor = window.getDecorView();
+
+                if (decor != null)
+                    wic = decor.getWindowInsetsController();
+            }
+*/
+            if (wic != null)
+            {
+//                WindowCompat.setDecorFitsSystemWindows(window, false);
+
+//                    wic.hide(WindowInsets.Type.displayCutout());
+                    wic.hide(WindowInsets.Type.systemBars());   // All types of bars
+                    Logger.log(Logger.HLOG_DEBUG, "SettingsActivity: Statusbars were hidden.");
+            }
+        }
     }
 
     public static class SettingsFragment extends PreferenceFragmentCompat
@@ -92,7 +120,7 @@ public class SettingsActivity extends AppCompatActivity
         @Override
         public void onDestroyView()
         {
-            Logger.log(Logger.HLOG_DEBUG, "onDestroyView: Saving settings ...");
+            Logger.log(Logger.HLOG_DEBUG, "SettingsActivity.onDestroyView: Saving settings ...");
             saveSettings();
             super.onDestroyView();
         }
@@ -240,11 +268,14 @@ public class SettingsActivity extends AppCompatActivity
                 password4.setText(password4Text);
                 password4.setSummaryProvider(preference -> setAsterisks(password4Text.length()));
             }
+
+            Logger.log(Logger.HLOG_DEBUG, "SettingsActivity.SettingsFragment.onViewCreated(): finished");
         }
 
         @Override
         public void onCreatePreferences(Bundle savedInstanceState, String rootKey)
         {
+            Logger.log(Logger.HLOG_DEBUG, "SettingsActivity.onCreatePreferences()");
             setPreferencesFromResource(R.xml.root_preferences, rootKey);
 
             EditTextPreference netlinxIp = findPreference("netlinx_ip");
@@ -796,6 +827,8 @@ public class SettingsActivity extends AppCompatActivity
                     return true;
                 });
             }
+
+            Logger.log(Logger.HLOG_DEBUG, "SettingsActivity.onCreatePreferences(): finished");
         }
 
         //return the password in asterisks

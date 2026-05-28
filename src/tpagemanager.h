@@ -335,6 +335,9 @@ class TPageManager : public TAmxCommands
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         void regOnOrientationChange(std::function<void (int orientation)> orientationChange) { _onOrientationChange = orientationChange; }
         void regOnSettingsChanged(std::function<void (const std::string& oldNetlinx, int oldPort, int oldChannelID, const std::string& oldSurface, bool oldToolbarSuppress, bool oldToolbarForce)> settingsChanged) { _onSettingsChanged = settingsChanged; }
+#ifdef Q_OS_ANDROID
+        void regOnNotchInformation(std::function<void (int width, int height, int left, int top, int right, int bottom)> notchInformation) { _onNotchInformation = notchInformation; }
+#endif
 #endif
         void regRepaintWindows(std::function<void ()> repaintWindows) { _repaintWindows = repaintWindows; }
         void regToFront(std::function<void (ulong handle)> toFront) { _toFront = toFront; }
@@ -673,7 +676,10 @@ class TPageManager : public TAmxCommands
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         std::function<void (int orientation)> onOrientationChange() { return _onOrientationChange; }
         std::function<void (const std::string& oldNetlinx, int oldPort, int oldChannelID, const std::string& oldSurface, bool oldToolbarSuppress, bool oldToolbarForce)> onSettingsChanged() { return _onSettingsChanged; }
-#endif
+#ifdef Q_OS_ANDROID
+        std::function<void (int width, int height, int left, int top, int right, int bottom)> onNotchInformation() { return _onNotchInformation; }
+#endif  // Q_OS_ANDROID
+#endif  // defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         bool getLevelSendState() { return mLevelSend; }
         bool getRxSendState() { return mRxOn; }
         std::function<void ()> getRepaintWindows() { return _repaintWindows; }
@@ -795,7 +801,11 @@ class TPageManager : public TAmxCommands
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         std::function<void (int orientation)> _onOrientationChange{nullptr};
         std::function<void (const std::string& oldNetlinx, int oldPort, int oldChannelID, const std::string& oldSurface, bool oldToolbarSuppress, bool oldToolbarForce)> _onSettingsChanged{nullptr};
-#endif
+#ifdef Q_OS_ANDROID
+        std::function<void (int width, int height, int left, int top, int right, int bottom)> _onNotchInformation{nullptr};
+#endif  // Q_OS_ANDROID
+#endif  // defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+
         typedef struct _FTP_SURFACE_t
         {
             std::string file;
@@ -1130,6 +1140,7 @@ extern "C" {
     JNIEXPORT void JNICALL Java_org_qtproject_theosys_PhoneCallState_informPhoneState(JNIEnv *env, jclass cl, jboolean call, jstring pnumber);
     JNIEXPORT void JNICALL Java_org_qtproject_theosys_Logger_logger(JNIEnv *env, jclass cl, jint mode, jstring msg);
     JNIEXPORT void JNICALL Java_org_qtproject_theosys_Orientation_informTPanelOrientation(JNIEnv */*env*/, jclass /*clazz*/, jint orientation);
+    JNIEXPORT void JNICALL Java_org_qtproject_theosys_HideToolbar_informTPanelNotch(JNIEnv */*env*/, jclass /*clazz*/, jint width, jint height, jint left, jint top, jint right, jint bottom);
     // Settings
     JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setNetlinxIp(JNIEnv *env, jclass clazz, jstring ip);
     JNIEXPORT void JNICALL Java_org_qtproject_theosys_SettingsActivity_setNetlinxPort(JNIEnv *env, jclass clazz, jint port);

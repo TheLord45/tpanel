@@ -1,21 +1,24 @@
-Buttons
-=======
-* Add command ^BMF
-  - Set video on off
-
 Missing features
 ================
-* Add more commands (as always)
 * Crack the encryption of passwords in resources.
 * Implement panel to panel audio communication. --> Implemented but does not
   work with real AMX panels!
 * Implement commands to control a list
+* Implement a geo object showing a map. The center should be marked with an icon.
+  The icon should be one of a standard list or a custom icon. The size of the
+  map should be individually adjustable. The magnitute of the map should be
+  defineable by 5 or maybe 8 steps. There should be a command allowing to define
+  the actual magnitude. Another command should allow to define the source for
+  the map (Google, Open Street Map, etc.).
 
 Known errors
 ============
-* With version 2.0.0 the upload of surfaces from TPDesign is brocken.
-
-* With version 2.0.0 the animations don't work correct (at least on android)
+* On mobile devices with Android 16 or newer a black bar on top may be visible.
+  If this is the case, the toch point is moved up or left by the size of the
+  bar. On some devices a bar is visible on top and left for landscape orintation.
+  But the touch point behaves as there is no bar there.
+  This bars may be avoided if the application is targeted to API level 34 or
+  less. The latest version is targeted to API level 36.
 
 * While Views are working it is poosible that when another page is shown and
   switched back to the previous page the view doesn't react any more. Here the
@@ -38,4 +41,4 @@ Known errors
 Documentation
 =============
 * Add documentation for configuration files
-* Update documentation for 2.0.0
+* Update documentation for 2.0.2
