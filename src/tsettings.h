@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2025 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2026 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -160,6 +160,7 @@ class TSettings : public TValidateFile
         int getBatteryLevelCode() { return mSetup.batteryLevelCode; }
         std::vector<RESOURCE_LIST_T>& getResourcesList() { return mResourceLists; }
         bool loadSettings(bool initial=false);
+        bool loadSettingsJson(bool initial=false);
         std::string& getPowerUpPage() { return mSetup.powerUpPage; }
         int getVoipCmdPort() { return mSetup.voipCommandPort; }
         std::string& getPanelType() { return mProject.panelType; }

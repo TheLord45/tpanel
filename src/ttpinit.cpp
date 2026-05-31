@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021, 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2021, 2026 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -106,7 +106,6 @@ void TTPInit::setPath(const string& p)
 
     mPath = p;
     string dirs = "/__system";
-//    string config = p + "/__system/prj.xma";
     string sysFiles = p + "/__system/graphics/version.xma";
     string regular = p + "/prj.xma";
 
@@ -115,9 +114,6 @@ void TTPInit::setPath(const string& p)
 
     if (!fs::exists(sysFiles))
         createSystemConfigs();
-
-//    if (!fs::exists(config))
-//        createPanelConfigs();
 
     if (!fs::exists(regular))
         createDemoPage();
@@ -132,60 +128,7 @@ bool TTPInit::testForTp5()
 
     return fs::exists(mPath + "/G5Apps.xma");
 }
-/*
-bool TTPInit::createPanelConfigs()
-{
-    DECL_TRACER("TTPInit::createPanelConfigs()");
 
-    if (!fs::exists(mPath + "/__system/prj.xma"))
-        mPanelConfigsCreated = false;
-
-    if (mPanelConfigsCreated)
-        return false;
-
-    vector<string> resFiles = {
-        ":ressources/__system/Controller.xml",
-        ":ressources/__system/DoubleBeep.xml",
-        ":ressources/__system/external.xma",
-        ":ressources/__system/fnt.xma",
-        ":ressources/__system/fonts/arial.ttf",
-        ":ressources/__system/fonts/amxbold_.ttf",
-        ":ressources/__system/fonts/ariblk.ttf",
-        ":ressources/__system/fonts/webdings.ttf",
-        ":ressources/__system/icon.xma",
-        ":ressources/__system/Logging.xml",
-        ":ressources/__system/images/setup_download_green.png",
-        ":ressources/__system/images/setup_download_red.png",
-        ":ressources/__system/images/setup_fileopen.png",
-        ":ressources/__system/images/setup_note.png",
-        ":ressources/__system/images/setup_reset.png",
-        ":ressources/__system/images/theosys_logo.png",
-        ":ressources/__system/manifest.xma",
-        ":ressources/__system/map.xma",
-        ":ressources/__system/pal_001.xma",
-        ":ressources/__system/prj.xma",
-        ":ressources/__system/SingleBeep.xml",
-        ":ressources/__system/SIP.xml",
-        ":ressources/__system/Sound.xml",
-        ":ressources/__system/SystemSound.xml",
-        ":ressources/__system/table.xma",
-        ":ressources/__system/TP4FileName.xml",
-        ":ressources/__system/View.xml"
-    };
-
-    bool err = false;
-    vector<string>::iterator iter;
-
-    for (iter = resFiles.begin(); iter != resFiles.end(); ++iter)
-    {
-        if (!copyFile(*iter))
-            err = true;
-    }
-
-    mPanelConfigsCreated = !err;
-    return err;
-}
-*/
 bool TTPInit::createDemoPage(bool force)
 {
     DECL_TRACER("TTPInit::createDemoPage(bool force)");
@@ -2451,130 +2394,50 @@ vector<TTPInit::FILELIST_t>& TTPInit::getFileList(const string& filter)
 {
     DECL_TRACER("TTPInit::getFileList(const string& filter)");
 
+    Q_UNUSED(filter);
+
     string netlinx = TConfig::getController();
+    mDirList.clear();
 
     if (netlinx.empty() || netlinx == "0.0.0.0")
     {
         MSG_WARNING("Refusing to connect to " << netlinx << ":21!");
-        mDirList.clear();
         return mDirList;
     }
 
-    ftplib *ftp = new ftplib();
-    ftp->regLogging(bind(&TTPInit::logging, this, std::placeholders::_1, std::placeholders::_2));
+    TFtpClient *ftpclient = new TFtpClient();
 
-    if (TConfig::getFtpPassive())
-        ftp->SetConnmode(ftplib::pasv);
-    else
-        ftp->SetConnmode(ftplib::port);
-
-    string scon = TConfig::getController() + ":21";
-    MSG_DEBUG("Trying to connect to " << scon);
-
-    if (!ftp->Connect(scon.c_str()))
+    if (!ftpclient->connectAndLogin(QString::fromStdString(TConfig::getController()),
+                                    21,
+                                    QString::fromStdString(TConfig::getFtpUser()),
+                                    QString::fromStdString(TConfig::getFtpPassword())))
     {
-        delete ftp;
+        delete ftpclient;
         return mDirList;
     }
 
-    string sUser = TConfig::getFtpUser();
-    string sPass = TConfig::getFtpPassword();
-    MSG_DEBUG("Trying to login <" << sUser << ", ********>");
+    ftpclient->setMode(TFtpClient::Mode::Passive);
 
-    if (!ftp->Login(sUser.c_str(), sPass.c_str()))
+    QList<TFtpClient::FTPINDEX_t> index = ftpclient->listTop();
+
+    if (index.empty())
     {
-        delete ftp;
+        delete ftpclient;
         return mDirList;
     }
 
-    string tmpFile = getTmpFileName();
-    MSG_DEBUG("Reading remote directory / into file " << tmpFile);
-    ftp->Dir(tmpFile.c_str(), "/");
-    ftp->Quit();
-    delete ftp;
-    mDirList.clear();
-
-    try
+    for (TFtpClient::FTPINDEX_t idx : index)
     {
-        bool oldNetLinx = false;
-        char buffer[1024];
-        string uFilter = toUpper((std::string&)filter);
-        vector<string> extensions;
-
-        if (uFilter.find("|") != string::npos)
-            extensions = StrSplit(uFilter, "|", true);
-        else
-            extensions.push_back(uFilter);
-
-        std::ifstream ifile(tmpFile);
-
-        while (ifile.getline(buffer, sizeof(buffer)))
+        if (idx.name.endsWith(".tp4", Qt::CaseInsensitive) || idx.name.endsWith(".tp5", Qt::CaseInsensitive))
         {
-            string buf = buffer;
-            string fname, sSize;
-            size_t size = 0;
-            // We must detect whether we have a new NetLinx or an old one.
-            if (buf.at(42) != ' ')
-                oldNetLinx = true;
-
-            // Filter out the filename and it's size
-            if (oldNetLinx)
-            {
-                size = atoll(buf.substr(27, 12).c_str());
-                fname = buf.substr(53);
-            }
-            else
-            {
-                size = atoll(buf.substr(30, 12).c_str());
-                fname = buf.substr(56);
-            }
-
-            if (!extensions.empty())
-            {
-                vector<string>::iterator iter;
-
-                for (iter = extensions.begin(); iter != extensions.end(); ++iter)
-                {
-                    if (endsWith(toUpper(buf), *iter))
-                    {
-                        FILELIST_t fl;
-                        fl.size = size;
-                        fl.fname = fname;
-                        mDirList.push_back(fl);
-                    }
-                }
-            }
-            else
-            {
-                FILELIST_t fl;
-                fl.size = size;
-                fl.fname = fname;
-                mDirList.push_back(fl);
-            }
-        }
-
-        ifile.close();
-    }
-    catch (std::exception& e)
-    {
-        MSG_ERROR("Error opening file " << tmpFile << ": " << e.what());
-    }
-
-    fs::remove(tmpFile);
-
-    if (TStreamError::checkFilter(HLOG_DEBUG))
-    {
-        if (mDirList.size() > 0)
-        {
-            vector<FILELIST_t>::iterator iter;
-
-            for (iter = mDirList.begin(); iter != mDirList.end(); ++iter)
-            {
-                MSG_DEBUG("File: " << iter->size << " " << iter->fname);
-            }
+            FILELIST_t fl;
+            fl.fname = idx.name.toStdString();
+            fl.size = idx.size;
+            mDirList.push_back(fl);
         }
     }
 
+    delete ftpclient;
     return mDirList;
 }
 
@@ -2698,12 +2561,6 @@ bool TTPInit::reinitialize()
         MSG_WARNING("Error creating system graphics!");
     }
 
-//    if (!createPanelConfigs())
-//    {
-//        MSG_ERROR("Error creating the panel configuration!");
-//        err = true;
-//    }
-
     if (!loadSurfaceFromController())
     {
         string surface = TConfig::getFtpSurface();
@@ -2712,18 +2569,6 @@ bool TTPInit::reinitialize()
     }
 
     return !err;
-}
-
-void TTPInit::logging(int level, const std::string &msg)
-{
-    switch(level)
-    {
-        case LOG_INFO:      MSG_INFO(msg); break;
-        case LOG_WARNING:   MSG_WARNING(msg); break;
-        case LOG_ERROR:     MSG_ERROR(msg); break;
-        case LOG_TRACE:     MSG_TRACE(msg); break;
-        case LOG_DEBUG:     MSG_DEBUG(msg); break;
-    }
 }
 
 bool TTPInit::haveSystemMarker()
@@ -2758,14 +2603,6 @@ bool TTPInit::askPermissions()
         if (iter.value() == QtAndroid::PermissionResult::Denied)
             return false;
     }
-//#else
-//    for (auto iter = permissions.begin(); iter != permissions.end(); ++iter)
-//    {
-//        QFuture<QtAndroidPrivate::PermissionResult> result = QtAndroidPrivate::requestPermission(*iter);
-
-//        if (result.result() == QtAndroidPrivate::Denied)
-//            return false;
-//    }
 #endif
     return true;
 }

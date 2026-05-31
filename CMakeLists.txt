@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(tpanel VERSION 2.0.1 LANGUAGES CXX)
+project(tpanel VERSION 2.1.0 LANGUAGES CXX)
 
 if(ANDROID)
     message("** Current platform (${ANDROID_ABI}): ${ANDROID_PLATFORM}")
@@ -20,5 +20,4 @@ if(ANDROID)
     endif()
 endif(ANDROID)
 
-add_subdirectory(ftplib)
 add_subdirectory(src)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021, 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2021 to 2026 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -69,12 +69,10 @@ class TTPInit
         std::function<void ()> _processEvents{nullptr};
         std::function<void (int percent)> _progressBar{nullptr};
 
-//        bool createPanelConfigs();
         bool createSystemConfigs();
         bool _makeDir(const std::string& dir);
         bool copyFile(const std::string& fname);
         std::string getTmpFileName();
-        void logging(int level, const std::string& msg);
 #ifdef __ANDROID__
         bool askPermissions();
 #endif

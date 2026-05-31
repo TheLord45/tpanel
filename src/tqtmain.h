@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2026 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,9 +20,7 @@
 
 #include <QMainWindow>
 #include <QMetaType>
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 #include <QGeoPositionInfoSource>
-#endif
 #include "QMediaPlayer"
 
 #include "tpagemanager.h"

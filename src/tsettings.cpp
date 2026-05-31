@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2025 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2026 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,7 +16,11 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
+#include <fstream>
+#include <jsoncpp/json/json.h>
+
 #include <unistd.h>
+
 #include "tsettings.h"
 #include "texpat++.h"
 #include "terror.h"
@@ -41,6 +45,7 @@ namespace fs = std::filesystem;
 
 using std::string;
 using std::vector;
+using std::ifstream;
 using namespace Expat;
 
 TSettings::TSettings(const string& path)
@@ -403,6 +408,74 @@ bool TSettings::loadSettings(bool initial)
     }
 
     return true;
+}
+
+bool TSettings::loadSettingsJson(bool initial)
+{
+    DECL_TRACER("TSettings::loadSettingsJson(bool initial)");
+
+    if (!initial)
+    {
+        mResourceLists.clear();
+    }
+
+    TError::clear();
+    string fname = makeFileName(mPath, "prj_.json");
+
+    if (!isValidFile())
+    {
+        MSG_ERROR("Error: File " << fname << " doesn't exist or can't be opened!");
+        SET_ERROR_MSG("Error opening file!");
+        return false;
+    }
+
+    mIsG5 = true;       // .tsf files are always G5!
+    Json::Value root;
+    ifstream config_doc(fname, ifstream::binary);
+    config_doc >> root;
+
+    mSetup.versionInfo.formatVersion = root["versionInfo"].get("formatVersion", 0).asInt();
+    mSetup.versionInfo.graphicsVersion = root["versionInfo"].get("graphicsVersion", 0).asInt();
+    mSetup.versionInfo.fileVersion = root["versionInfo"].get("fileVersion", "").asString();
+    mSetup.versionInfo.designVersion = root["versionInfo"].get("designVersion", "").asString();
+    mSetup.versionInfo.g5appsVersion = root["versionInfo"].get("g5appsVersion", 0).asInt();
+
+    mProject.protection = root["projectInfo"].get("protection", "").asString();
+    mProject.password = root["projectInfo"].get("password", "").asString();
+    mProject.encrypted = true;  // This format encrypts password in any case!
+    mProject.panelType = root["projectInfo"].get("panelType", "").asString();
+    mProject.fileRevision = root["projectInfo"].get("fileRevision", "").asString();
+    mProject.dealerID = root["projectInfo"].get("dealerId", "").asString();
+    mProject.jobName = root["projectInfo"].get("jobName", "").asString();
+    mProject.salesOrder = root["projectInfo"].get("salesOrder", "").asString();
+    mProject.purchaseOrder = root["projectInfo"].get("purchaseOrder", "").asString();
+    mProject.jobComment = root["projectInfo"].get("jobComment", "").asString();
+    mProject.designerID = root["projectInfo"].get("designerId", "").asString();
+    mProject.creationDate = root["projectInfo"].get("creationDate", "").asString();
+    mProject.revisionDate = root["projectInfo"].get("revisionDate", "").asString();
+    mProject.lastSaveDate = root["projectInfo"].get("lastSaveDate", "").asString();
+    mProject.fileName = root["projectInfo"].get("fileName", "").asString();
+    mProject.colorChoice = root["projectInfo"].get("colorChoice", "").asString();
+    mProject.specifyPortCount = root["projectInfo"].get("specifyPortCount", 0).asInt();
+    mProject.specifyChanCount = root["projectInfo"].get("specifyChanCount", 0).asInt();
+
+    mSetup.supportFiles.mapFile = root["supportFileList"].get("mapFile", "").asString();
+    mSetup.supportFiles.colorFile = root["supportFileList"].get("colorFile", "").asString();
+    mSetup.supportFiles.fontFile = root["supportFileList"].get("fontFile", "").asString();
+    mSetup.supportFiles.themeFile = root["supportFileList"].get("themeFile", "").asString();
+    mSetup.supportFiles.externalButtonFile = root["supportFileList"].get("externalButtonFile", "").asString();
+    mSetup.supportFiles.appFile = root["supportFileList"].get("appFile", "").asString();
+    mSetup.supportFiles.logFile = root["supportFileList"].get("logFile", "").asString();
+
+    mSetup.portCount = root["panelSetup"].get("portCount", 0).asInt();
+    mSetup.setupPort = root["panelSetup"].get("setupPort", 0).asInt();
+    mSetup.addressCount = root["panelSetup"].get("addressCount", 0).asInt();
+    mSetup.channelCount = root["panelSetup"].get("channelCount", 0).asInt();
+    mSetup.levelCount = root["panelSetup"].get("levelCount", 0).asInt();
+    mSetup.powerUpPage = root["panelSetup"].get("powerUpPage", "").asString();
+
+//    const Json::Value powerUpPopups = root["panelSetup"].get("powerUpPopup");
+    return false;
 }
 
 RESOURCE_LIST_T TSettings::findResourceType(const string& type)

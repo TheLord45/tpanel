@@ -1257,6 +1257,7 @@ TPageManager::~TPageManager()
 #if (defined(__linux__) || defined(__OSX_AVAILABLE)) && !defined(__ANDROID__) && !defined(__IOS_AVAILABLE)
         if (mLinBattery)
         {
+            mBatteryCalls.clear();
             delete mLinBattery;
             mLinBattery = nullptr;
         }

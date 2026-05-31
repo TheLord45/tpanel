@@ -496,6 +496,8 @@ set(PROJECT_SOURCES
         tbattery.h
         tresize.cpp
         tresize.h
+        tftpclient.cpp
+        tftpclient.h
         tpanel.qrc
 )
 
@@ -552,6 +554,7 @@ else()
     qt_add_executable(tpanel
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
+        tfsfreader.h tfsfreader.cpp
     )
 endif()
 
@@ -586,7 +589,7 @@ if(IOS)
         Qt${QT_VERSION_MAJOR}::MultimediaWidgets
         Qt${QT_VERSION_MAJOR}::Positioning
         Qt${QT_VERSION_MAJOR}::Sensors
-        ftp ${LIBS}
+        jsoncpp ${LIBS}
     )
     if (${QT_VERSION_MAJOR} EQUAL 6 AND ${QT_VERSION_MINOR} GREATER_EQUAL 8)
         qt_add_ios_ffmpeg_libraries(tpanel)
@@ -611,7 +614,7 @@ elseif(ANDROID)
         Qt${QT_VERSION_MAJOR}::Positioning
         Qt${QT_VERSION_MAJOR}::Quick
         Qt${QT_VERSION_MAJOR}::Sensors
-        ftp ${LIBS}
+        jsoncpp ${LIBS}
     )
 elseif(APPLE)
     target_link_libraries(tpanel PRIVATE
@@ -621,7 +624,7 @@ elseif(APPLE)
         Qt${QT_VERSION_MAJOR}::Multimedia
         Qt${QT_VERSION_MAJOR}::MultimediaWidgets
         Qt${QT_VERSION_MAJOR}::Positioning
-        ftp ssl crypto ${LIBS}
+        jsoncpp ssl crypto ${LIBS}
     )
 else()
     target_link_libraries(tpanel PRIVATE
@@ -632,7 +635,7 @@ else()
         Qt${QT_VERSION_MAJOR}::MultimediaWidgets
         Qt${QT_VERSION_MAJOR}::Positioning
         OpenSSL::SSL
-        ftp ${LIBS}
+        jsoncpp ${LIBS}
     )
 endif()
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 to 2024 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2022 to 2026 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,8 @@
 #include <vector>
 #include <functional>
 
-#include "../ftplib/ftplib.h"
+//#include "../ftplib/ftplib.h"
+#include "tftpclient.h"
 
 #define _BUF_SIZE   1024
 
@@ -44,14 +45,13 @@ class TFsfReader
         bool isG5() { return mG5Type; }
         static void callbackLog(char *str, void* arg, bool out);
         static void callbackError(char *msg, void *arg, int err);
-        static int callbackXfer(off64_t xfered, void *arg);
+        static void callbackXfer(off64_t xfered, off64_t total);
 
         static void regCallbackProgress(std::function<int (off64_t xfered)> progress) { _progress = progress; }
 
     private:
-        ftplib *mFtpLib{nullptr};
+        TFtpClient *mFtpClient{nullptr};
         static std::function<int (off64_t xfered)> _progress;
-        void logging(int level, const std::string& msg);
 
         bool mG5Type{false};
 };
