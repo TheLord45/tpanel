@@ -32,6 +32,7 @@ typedef struct VERSION_INFO
     int g5appsVersion{0};           // Only in G5
     std::string fileVersion;
     std::string designVersion;
+    int fsfVersion{0};
 }VERSION_INFO;
 
 typedef struct SUPPORT_FILES
@@ -91,6 +92,7 @@ typedef struct PANEL_SETUP
     std::string sleepString;            //!< A string which put panel to sleep when received
     std::string standbyString;          //!< A string which put panel in standby mode
     std::string shutdownString;         //!< A string which shut off the panel
+    std::string inactivityPage;         //!< The name of a page to show when the panel is inactive
     std::string idlePage;               //!< A page called when the panel is idle
     int idleTimeout{0};                 //!< Time until enter idle mode when no touch occured
     int extButtonsKey{0};
@@ -128,6 +130,8 @@ typedef struct PANEL_SETUP
     int marqueeSpeed{0};
     int setupPagesProject{0};
     int voipCommandPort{0};
+    std::string fontName;
+    int fontSize{10};
     SUPPORT_FILES supportFiles;
     std::vector<PALETTE_SETUP> palettes;
 }PANEL_SETUP_T;

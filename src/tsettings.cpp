@@ -51,6 +51,8 @@ using std::vector;
 using std::ifstream;
 using namespace Expat;
 
+const int FILE_VERSION = 1;
+
 TSettings::TSettings(const string& path)
     : mPath(path)
 {
@@ -437,9 +439,19 @@ bool TSettings::loadSettingsJson(bool initial)
     ifstream config_doc(fname, ifstream::binary);
     config_doc >> root;
 
+
+    mSetup.versionInfo.fsfVersion = root["versionInfo"].get("fileVersion", "").asInt();
+
+    if (mSetup.versionInfo.fsfVersion != FILE_VERSION)
+    {
+        MSG_ERROR("Invalid file version " << mSetup.versionInfo.fileVersion << "!");
+        SET_ERROR();
+        return false;
+    }
+
+    mSetup.versionInfo.fileVersion = root["versionInfo"].get("fileVersion", "").asString();
     mSetup.versionInfo.formatVersion = root["versionInfo"].get("formatVersion", 0).asInt();
     mSetup.versionInfo.graphicsVersion = root["versionInfo"].get("graphicsVersion", 0).asInt();
-    mSetup.versionInfo.fileVersion = root["versionInfo"].get("fileVersion", "").asString();
     mSetup.versionInfo.designVersion = root["versionInfo"].get("designVersion", "").asString();
     mSetup.versionInfo.g5appsVersion = root["versionInfo"].get("g5appsVersion", 0).asInt();
 
@@ -470,14 +482,56 @@ bool TSettings::loadSettingsJson(bool initial)
     mSetup.supportFiles.appFile = root["supportFileList"].get("appFile", "").asString();
     mSetup.supportFiles.logFile = root["supportFileList"].get("logFile", "").asString();
 
-    mSetup.portCount = root["panelSetup"].get("portCount", 0).asInt();
-    mSetup.setupPort = root["panelSetup"].get("setupPort", 0).asInt();
-    mSetup.addressCount = root["panelSetup"].get("addressCount", 0).asInt();
-    mSetup.channelCount = root["panelSetup"].get("channelCount", 0).asInt();
-    mSetup.levelCount = root["panelSetup"].get("levelCount", 0).asInt();
-    mSetup.powerUpPage = root["panelSetup"].get("powerUpPage", "").asString();
+    mSetup.portCount = root["setup"].get("portCount", 0).asInt();
+    mSetup.setupPort = root["setup"].get("setupPort", 0).asInt();
+    mSetup.addressCount = root["setup"].get("addressCount", 0).asInt();
+    mSetup.channelCount = root["setup"].get("channelCount", 0).asInt();
+    mSetup.levelCount = root["setup"].get("levelCount", 0).asInt();
+    mSetup.powerUpPage = root["setup"].get("powerUpPage", "").asString();
 
-//    const Json::Value powerUpPopups = root["panelSetup"].get("powerUpPopup");
+    const Json::Value panelSetup = root["setup"];
+    const Json::Value powerUpPopups = panelSetup["powerUpPopups"];
+
+    if (powerUpPopups.isArray())
+    {
+        for (size_t i = 0; i < powerUpPopups.size(); ++i)
+            mSetup.powerUpPopup.push_back(powerUpPopups[(int)i].asString());
+    }
+
+    mSetup.startupString = panelSetup.get("startupString", "").asString();
+    mSetup.wakeupString = panelSetup.get("wakeupString", "").asString();
+    mSetup.sleepString = panelSetup.get("sleepString", "").asString();
+    mSetup.shutdownString = panelSetup.get("shutdownString", "").asString();
+    mSetup.idlePage = panelSetup.get("idlePage", "").asString();
+    mSetup.inactivityPage = panelSetup.get("inactivityPage", "").asString();
+    mSetup.idleTimeout = panelSetup.get("idleTimeout", 0).asInt();
+    mSetup.screenWidth = panelSetup.get("screenWidth", 0).asInt();
+    mSetup.screenHeight = panelSetup.get("screenWidth", 0).asInt();
+    mSetup.screenRotate = panelSetup.get("screenRotate", 0).asInt();
+    mSetup.batteryLevelPort = panelSetup.get("batteryLevelPort", 0).asInt();
+    mSetup.batteryLevelCode = panelSetup.get("batteryLevelCode", 0).asInt();
+    mSetup.marqueeSpeed = panelSetup.get("marqeeSpeed", 1).asInt();
+    mSetup.fontName = panelSetup.get("fontName", "Arial").asString();
+    mSetup.fontSize = panelSetup.get("fontSize", 10).asInt();
+
+    const Json::Value resourceList = root["resourceList"];
+
+    for (size_t i = 0; i < resourceList.size(); ++i)
+    {
+        int index = static_cast<int>(i);
+        RESOURCE_T res;
+        res.encrypted = true;
+        res.name = resourceList[index].get("name", "").asString();
+        res.protocol = resourceList[index].get("protocol", "").asString();
+        res.host = resourceList[index].get("host", "").asString();
+        res.path = resourceList[index].get("path", "").asString();
+        res.file = resourceList[index].get("file", "").asString();
+        res.password = resourceList[index].get("password", "").asString();
+        res.user = resourceList[index].get("user", "").asString();
+        res.refresh = resourceList[index].get("refresh", 0).asInt();
+        res.dynamo = resourceList[index].get("dynamo", false).asBool();
+    }
+
     return false;
 }
 
