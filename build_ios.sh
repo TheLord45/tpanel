@@ -5,7 +5,7 @@ SRCDIR="`pwd`"
 ###########################################################################
 # Adapt the below variables to your need                                  #
 ###########################################################################
-QT_VERSION="6.5.3"
+QT_VERSION="6.11.1"
 QT_VERSION_MAJOR=6
 QT_PATH="$HOME/Qt"
 QT_ARCHITECTURE="arm64"
@@ -16,8 +16,8 @@ QTDIR="${QTBASE}/ios"
 
 IOS_VERSION="18.0"
 BUILDPATH="tpanel-ios"
-OSX_SYSROOT="iphoneos"
-#OSX_SYSROOT="iphonesimulator"
+#OSX_SYSROOT="iphoneos"
+OSX_SYSROOT="iphonesimulator"
 SIGNING_IDENTITY="<YOUR_SIGNING_IDENTITY>"
 
 LOGFILE="${SRCDIR}/build.log"

@@ -1969,7 +1969,7 @@ void MainWindow::about()
     std::string msg = "About TPanel\n\n";
     msg.append("Implementation of an\nAMX G4/G5 panel.\n");
     msg.append("Version v").append(VERSION_STRING()).append("-").append(BUILD_ID).append(" (").append(BUILD_DATE).append(")\n");
-    msg.append("(C) Copyright 2020 to 2025 by\nAndreas Theofilu (andreas@theosys.at)\n");
+    msg.append("(C) Copyright 2020 to 2026 by\nAndreas Theofilu (andreas@theosys.at)\n");
 
     QMessageBox about(this);
     about.addButton(QMessageBox::Ok);
@@ -1982,7 +1982,7 @@ void MainWindow::about()
 #else
     std::string msg = "Implementation of an AMX G4/G5 panel\n";
     msg.append("Version v").append(VERSION_STRING()).append("-").append(BUILD_ID).append(" (").append(BUILD_DATE).append(")\n");
-    msg.append("(C) Copyright 2020 to 2025 by Andreas Theofilu <andreas@theosys.at>\n");
+    msg.append("(C) Copyright 2020 to 2026 by Andreas Theofilu <andreas@theosys.at>\n");
     msg.append("This program is under the terms of GPL version 3!");
     QMessageBox::about(this, tr("About TPanel"), tr(msg.c_str()));
 #endif
@@ -3751,64 +3751,64 @@ void MainWindow::setNotch()
  * network connection. When the app gets the focus again, it must reconnect to
  * the NetLinx.
  */
-void MainWindow::initGeoLocation()
-{
-    DECL_TRACER("MainWindow::initGeoLocation()");
+// void MainWindow::initGeoLocation()
+// {
+//     DECL_TRACER("MainWindow::initGeoLocation()");
 
-    if (mSource && mGeoHavePermission)
-        return;
+//     if (mSource && mGeoHavePermission)
+//         return;
 
-    if (!mSource)
-    {
-        mGeoHavePermission = true;
-        mSource = QGeoPositionInfoSource::createDefaultSource(this);
+//     if (!mSource)
+//     {
+//         mGeoHavePermission = true;
+//         mSource = QGeoPositionInfoSource::createDefaultSource(this);
 
-        if (!mSource)
-        {
-            MSG_WARNING("Error creating geo positioning source!");
-            mGeoHavePermission = false;
-            return;
-        }
+//         if (!mSource)
+//         {
+//             MSG_WARNING("Error creating geo positioning source!");
+//             mGeoHavePermission = false;
+//             return;
+//         }
 
-        mSource->setPreferredPositioningMethods(QGeoPositionInfoSource::AllPositioningMethods);
-        mSource->setUpdateInterval(800);    // milli seconds
-        // Connecting some callbacks to the class
-        connect(mSource, &QGeoPositionInfoSource::positionUpdated, this, &MainWindow::onPositionUpdated);
-        connect(mSource, &QGeoPositionInfoSource::errorOccurred, this, &MainWindow::onErrorOccurred);
-#ifdef Q_OS_IOS
-        QLocationPermission perm;
-        perm.setAccuracy(QLocationPermission::Approximate);
-        perm.setAvailability(QLocationPermission::Always);
-        mGeoHavePermission = false;
+//         mSource->setPreferredPositioningMethods(QGeoPositionInfoSource::AllPositioningMethods);
+//         mSource->setUpdateInterval(800);    // milli seconds
+//         // Connecting some callbacks to the class
+//         connect(mSource, &QGeoPositionInfoSource::positionUpdated, this, &MainWindow::onPositionUpdated);
+//         connect(mSource, &QGeoPositionInfoSource::errorOccurred, this, &MainWindow::onErrorOccurred);
+// #ifdef Q_OS_IOS
+//         QLocationPermission perm;
+//         perm.setAccuracy(QLocationPermission::Approximate);
+//         perm.setAvailability(QLocationPermission::Always);
+//         mGeoHavePermission = false;
 
-        switch (qApp->checkPermission(perm))
-        {
-            case Qt::PermissionStatus::Undetermined:
-                qApp->requestPermission(perm, [this] (const QPermission& permission)
-                {
-                    if (permission.status() == Qt::PermissionStatus::Granted)
-                    {
-                        mGeoHavePermission = true;
-                        mSource->startUpdates();
-                    }
-                    else
-                        onErrorOccurred(QGeoPositionInfoSource::AccessError);
-                });
-            break;
+//         switch (qApp->checkPermission(perm))
+//         {
+//             case Qt::PermissionStatus::Undetermined:
+//                 qApp->requestPermission(perm, [this] (const QPermission& permission)
+//                 {
+//                     if (permission.status() == Qt::PermissionStatus::Granted)
+//                     {
+//                         mGeoHavePermission = true;
+//                         mSource->startUpdates();
+//                     }
+//                     else
+//                         onErrorOccurred(QGeoPositionInfoSource::AccessError);
+//                 });
+//             break;
 
-            case Qt::PermissionStatus::Denied:
-                MSG_WARNING("Location permission is denied");
-                onErrorOccurred(QGeoPositionInfoSource::AccessError);
-            break;
+//             case Qt::PermissionStatus::Denied:
+//                 MSG_WARNING("Location permission is denied");
+//                 onErrorOccurred(QGeoPositionInfoSource::AccessError);
+//             break;
 
-            case Qt::PermissionStatus::Granted:
-                mSource->startUpdates();
-                mGeoHavePermission = true;
-            break;
-        }
-#endif
-    }
-}
+//             case Qt::PermissionStatus::Granted:
+//                 mSource->startUpdates();
+//                 mGeoHavePermission = true;
+//             break;
+//         }
+// #endif
+//     }
+// }
 
 Qt::ScreenOrientation MainWindow::getRealOrientation()
 {

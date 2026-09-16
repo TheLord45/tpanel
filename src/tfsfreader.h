@@ -23,8 +23,11 @@
 #include <vector>
 #include <functional>
 
-//#include "../ftplib/ftplib.h"
 #include "tftpclient.h"
+
+#ifdef __MACH__
+#define off64_t off_t
+#endif
 
 #define _BUF_SIZE   1024
 

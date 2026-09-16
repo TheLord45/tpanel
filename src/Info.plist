@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleInfoDictionaryVersion</key>
-	<string>6.0</string>
+	<string>7.0</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleName</key>
@@ -13,13 +13,13 @@
 	<key>CFBundleExecutable</key>
 	<string>tpanel</string>
 	<key>CFBundleVersion</key>
-	<string>2.0.0</string>
+	<string>2.1.0</string>
 	<key>CFBundleShortVersionString</key>
 	<string>1</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>26</string>
 	<key>NSHumanReadableCopyright</key>
-	<string>(C) 2020 to 2025 by Andreas Theofilu &lt;andreas@theosys.at&gt;</string>
+	<string>(C) 2020 to 2026 by Andreas Theofilu &lt;andreas@theosys.at&gt;</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon.icns</string>
 	<key>CFBundleDevelopmentRegion</key>

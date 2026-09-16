@@ -226,8 +226,8 @@ class MainWindow : public QMainWindow, public TObject
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         void activateSettings(const std::string& oldNetlinx, int oldPort, int oldChannelID, const std::string& oldSurface, bool oldToolbarSuppress, bool oldToolbarForce);
 #ifdef Q_OS_IOS
-        void onPositionUpdated(const QGeoPositionInfo &update);
-        void onErrorOccurred(QGeoPositionInfoSource::Error positioningError);
+//        void onPositionUpdated(const QGeoPositionInfo &update);
+//        void onErrorOccurred(QGeoPositionInfoSource::Error positioningError);
 #endif  // Q_OS_IOS
 #endif  // defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
         void onPositionUpdated(const QGeoPositionInfo &update);
