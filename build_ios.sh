@@ -5,7 +5,7 @@ SRCDIR="`pwd`"
 ###########################################################################
 # Adapt the below variables to your need                                  #
 ###########################################################################
-QT_VERSION="6.11.1"
+QT_VERSION="6.11.2"
 QT_VERSION_MAJOR=6
 QT_PATH="$HOME/Qt"
 QT_ARCHITECTURE="arm64"
@@ -16,16 +16,18 @@ QTDIR="${QTBASE}/ios"
 
 IOS_VERSION="18.0"
 BUILDPATH="tpanel-ios"
-#OSX_SYSROOT="iphoneos"
-OSX_SYSROOT="iphonesimulator"
+OSX_SYSROOT="iphoneos"
+#OSX_SYSROOT="iphonesimulator"
 SIGNING_IDENTITY="<YOUR_SIGNING_IDENTITY>"
-
+QT_HOST_PATH="${QT_PATH}/${QT_VERSION}"
 LOGFILE="${SRCDIR}/build.log"
 EXT_LIB_PATH="${SRCDIR}/SDKs"
 
 ###########################################################################
 # DO NOT EDIT ANYTHING BELOW THIS LINE UNLESS YOU KNOW WHAT YOU'RE DOING! #
 ###########################################################################
+
+export QT_HOST_PATH
 
 if [ -z "$OSTYPE" ]
 then
