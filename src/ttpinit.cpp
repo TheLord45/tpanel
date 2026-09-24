@@ -48,6 +48,7 @@
 #include "tconfig.h"
 #include "tfsfreader.h"
 #include "tdirectory.h"
+#include "tsurfacereader.h"
 #include "tresources.h"
 #ifdef Q_OS_IOS
 #include "ios/QASettings.h"
@@ -79,6 +80,7 @@ using std::ifstream;
 #define SYSTEM_DEFAULT      "/.system"
 
 bool TTPInit::mIsG5 = false;
+bool TTPInit::mIsStf = false;
 
 TTPInit::TTPInit()
 {
@@ -94,7 +96,6 @@ TTPInit::TTPInit(const string& path)
 
     mIsG5 = testForTp5();
     createDirectoryStructure();
-//    createPanelConfigs();
 
     if (!loadSurfaceFromController())
         createDemoPage();
@@ -115,7 +116,7 @@ void TTPInit::setPath(const string& p)
     if (!fs::exists(sysFiles))
         createSystemConfigs();
 
-    if (!fs::exists(regular))
+    if (!mIsStf && !fs::exists(regular))
         createDemoPage();
 }
 
@@ -126,7 +127,23 @@ bool TTPInit::testForTp5()
     if (mPath.empty())
         return false;
 
+    if (mIsStf || fs::exists(mPath + "/prj_.json"))
+        return true;
+
     return fs::exists(mPath + "/G5Apps.xma");
+}
+
+bool TTPInit::testForStf()
+{
+    DECL_TRACER("TTPInit::testForStf()");
+
+    if (mPath.empty())
+        return false;
+
+    if (mIsStf || fs::exists(mPath + "/prj_.json"))
+        return true;
+
+    return false;
 }
 
 bool TTPInit::createDemoPage(bool force)
@@ -2352,7 +2369,6 @@ bool TTPInit::loadSurfaceFromController(bool force)
         {
             createDirectoryStructure();
             createSystemConfigs();
-//            createPanelConfigs();
         }
 
         mDemoPageCreated = false;
@@ -2363,7 +2379,26 @@ bool TTPInit::loadSurfaceFromController(bool force)
     if (_processEvents)
         _processEvents();
 
-    if (!reader.unpack(target, mPath))
+    // If the file extension is ".stf" we have a file in our own format. It
+    // must be unpacked with another class.
+    mIsStf = false;
+
+    if (endsWith(surface, ".stf"))
+    {
+        TSurfaceReader r(mPath, target);
+
+        if (!r.lastState())
+        {
+            MSG_ERROR("Unpacking was not successfull.");
+            mDemoPageCreated = false;
+            createDemoPage(true);
+            return false;
+        }
+
+        mIsG5 = true;
+        mIsStf = true;
+    }
+    else if (!reader.unpack(target, mPath))
     {
         MSG_ERROR("Unpacking was not successfull.");
         mDemoPageCreated = false;
@@ -2371,13 +2406,13 @@ bool TTPInit::loadSurfaceFromController(bool force)
         return false;
     }
 
-    mIsG5 = reader.isG5();
+    if (!mIsStf)
+        mIsG5 = reader.isG5();
 
     if (!force || !dir.exists(mPath + "/__system"))
     {
         createDirectoryStructure();
         createSystemConfigs();
-//        createPanelConfigs();
     }
 
     if (_processEvents)
@@ -2523,7 +2558,8 @@ bool TTPInit::isVirgin()
         if (!fs::exists(mPath) || isSystemDefault())
             return true;
 
-        if (!fs::exists(mPath + "/prj.xma") || !fs::exists(mPath + "/manifest.xma"))
+        if (!fs::exists(mPath + "/prj.xma") || !fs::exists(mPath + "/manifest.xma") ||
+            !fs::exists(mPath + "/prj_.json"))
             return true;
     }
     catch (std::exception& e)

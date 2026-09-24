@@ -59,7 +59,11 @@ TSettings::TSettings(const string& path)
     DECL_TRACER("TSettings::TSettings(const string& path)");
 
     MSG_DEBUG("Loading from path: " << path);
-    loadSettings(true);
+
+    if (TTPInit::isStf())
+        loadSettingsJson(true);
+    else
+        loadSettings(true);
 }
 
 bool TSettings::loadSettings(bool initial)

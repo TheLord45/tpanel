@@ -11,6 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(QT_USE_QTMULTIMEDIA TRUE)
 set(QT_USE_QTMULTIMEDIAWIDGETS TRUE)
+set(HOMEBREW "/opt/homebrew")
 
 if(IOS)
     # Enable this line only if you want to create a xcarchive for the app store!
@@ -297,6 +298,8 @@ elseif(IOS)
     if(APPLE)
         link_libraries(freetype)
         link_libraries(jsoncpp)
+        link_directories("${HOMEBREW}/opt/libarchive/lib")
+        include_directories("${HOMEBREW}/opt/libarchive/include")
 #        find_package(ZLIB)
 #        find_package(EXPAT)
     else(APPLE)
@@ -311,6 +314,7 @@ elseif(IOS)
         set(LIBS ${LIBS} ${EXPAT_LIBRARIES})
     endif(APPLE)
 
+    find_package(LibArchive REQUIRED)
     # This is for telephone libraries PJSIP
     pkg_check_modules(PJSIP REQUIRED libpjproject)
     message(STATUS "PJSIP: Includes: ${PJSIP_INCLUDE_DIRS}")
@@ -352,14 +356,14 @@ elseif(IOS)
     endif(APPLE)
 
     find_library(UUID_LIBRARY NAMES uuid)
-    set(LIBS ${LIBS} ${UUID_LIBRARY})
+    set(LIBS ${LIBS} ${UUID_LIBRARY} archive)
     find_package(OpenSSL REQUIRED)
 
     if (APPLE)
         set(CMAKE_INSTALL_PREFIX /usr/local)
         # In case you've installed homebrew at another location adapt
-        # the following paths!
-        set(OSX_INCLUDE -I/opt/homebrew/include -I/usr/local/include)
+        # the variable HOMEBREW at the start of this file!
+        set(OSX_INCLUDE -I${HOMEBREW}/include -I/usr/local/include)
         add_definitions(${OSX_INCLUDE})
 
         # The mac requires some additional frameworks for audio.
@@ -368,7 +372,7 @@ elseif(IOS)
         find_library(AUDIOTOOLBOX_LIBRARY AudioToolbox)
         mark_as_advanced(COREAUDIO_LIBRARY AUDIOUNIT_LIBRARY AUDIOTOOLBOX_LIBRARY)
 
-        set(OSX_LIB -L/opt/homebrew/lib -L/usr/local/lib -liconv -lexpat -lz)
+        set(OSX_LIB -L${HOMEBREW}/lib -L/usr/local/lib -liconv -lexpat -lz)
         set(LIBS ${LIBS} ${OSX_LIB} ${COREAUDIO_LIBRARY} ${AUDIOUNIT_LIBRARY} ${AUDIOTOOLBOX_LIBRARY})
     else(APPLE)
         set(CMAKE_INSTALL_PREFIX /usr)
@@ -528,6 +532,10 @@ set(PROJECT_SOURCES
         tresize.h
         tftpclient.cpp
         tftpclient.h
+        tsurfacereader.cpp
+        tsurfacereader.h
+        tsurfacewriter.cpp
+        tsurfacewriter.h
         tpanel.qrc
 )
 
@@ -585,6 +593,7 @@ else()
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
         tfsfreader.h tfsfreader.cpp
+        tsurfacereader.h tsurfacewriter.h tsurfacereader.cpp tsurfacewriter.cpp
     )
 endif()
 
