@@ -59,8 +59,8 @@ class TTPInit
         void regCallbackProgressBar(std::function<void (int percent)> pb) { _progressBar = pb; }
         static void setG5(bool tp) { mIsG5 = tp; }
         static bool isG5() { return mIsG5; }
-        static void setStf(bool stf) { mIsTsf = stf; }
-        static bool isStf() { return mIsTsf; }
+        static void setTsf(bool stf) { mIsTsf = stf; }
+        static bool isTsf() { return mIsTsf; }
 
         static bool haveSystemMarker();
 

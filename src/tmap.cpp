@@ -18,8 +18,7 @@
 
 #include "tmap.h"
 #include "texpat++.h"
-#include "tresources.h"
-#include "tconfig.h"
+#include "tpagemanager.h"
 #include "terror.h"
 #include "ttpinit.h"
 
@@ -57,7 +56,13 @@ TMap::TMap(const std::string& file, bool tp)
         return;
     }
 
-    bool e = readMap();
+    bool e;
+
+    if (TTPInit::isTsf())
+        e = readMapJson();
+    else
+        e = readMap();
+
     mError = !e;
 }
 
@@ -65,7 +70,12 @@ bool TMap::readMap()
 {
     DECL_TRACER("TMap::readMap()");
 
-    string path = makeFileName(mFile, "map.xma");
+    string lfile = "map.xma";
+
+    if (TTPInit::isG5() && gPageManager)
+        lfile = gPageManager->getSettings()->getMapFileName();
+
+    string path = makeFileName(mFile, lfile);
     vector<string> elements = { "cm", "am", "lm", "bm" };
 
     if (mIsG5)
@@ -237,6 +247,14 @@ bool TMap::readMap()
     }
 
     return true;
+}
+
+bool TMap::readMapJson()
+{
+    DECL_TRACER("TMap::readMapJson()");
+
+    // TODO: Add code to read the mapping from JSON file.
+    return false;
 }
 
 vector<TMap::MAP_T> TMap::findButtons(int port, vector<int>& channels, MAP_TYPE mt)

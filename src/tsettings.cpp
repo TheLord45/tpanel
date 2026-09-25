@@ -60,7 +60,7 @@ TSettings::TSettings(const string& path)
 
     MSG_DEBUG("Loading from path: " << path);
 
-    if (TTPInit::isStf())
+    if (TTPInit::isTsf())
         loadSettingsJson(true);
     else
         loadSettings(true);
@@ -608,6 +608,7 @@ bool TSettings::loadSettingsJson(bool initial)
         }
     }
 
+    // TODO: Read palette file. Currently not available for TSF format.
     return false;
 }
 
