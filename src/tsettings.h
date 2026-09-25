@@ -19,7 +19,6 @@
 #ifndef AMXPANEL_SETTINGS_H
 #define AMXPANEL_SETTINGS_H
 
-#include <iostream>
 #include <string>
 #include <vector>
 #include "tvalidatefile.h"
