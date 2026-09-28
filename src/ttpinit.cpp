@@ -48,6 +48,7 @@
 #include "tconfig.h"
 #include "tfsfreader.h"
 #include "tdirectory.h"
+#include "tsurfacereader.h"
 #include "tresources.h"
 #ifdef Q_OS_IOS
 #include "ios/QASettings.h"
@@ -79,6 +80,7 @@ using std::ifstream;
 #define SYSTEM_DEFAULT      "/.system"
 
 bool TTPInit::mIsG5 = false;
+bool TTPInit::mIsTsf = false;
 
 TTPInit::TTPInit()
 {
@@ -94,7 +96,6 @@ TTPInit::TTPInit(const string& path)
 
     mIsG5 = testForTp5();
     createDirectoryStructure();
-//    createPanelConfigs();
 
     if (!loadSurfaceFromController())
         createDemoPage();
@@ -108,6 +109,7 @@ void TTPInit::setPath(const string& p)
     string dirs = "/__system";
     string sysFiles = p + "/__system/graphics/version.xma";
     string regular = p + "/prj.xma";
+    string regular_stf = p + "/prj_.json";
 
     if (!fs::exists(dirs))
         createDirectoryStructure();
@@ -115,8 +117,14 @@ void TTPInit::setPath(const string& p)
     if (!fs::exists(sysFiles))
         createSystemConfigs();
 
-    if (!fs::exists(regular))
+    if (!fs::exists(regular_stf) && !fs::exists(regular))
         createDemoPage();
+
+    if (fs::exists(regular_stf))
+    {
+        mIsG5 = true;
+        mIsTsf = true;
+    }
 }
 
 bool TTPInit::testForTp5()
@@ -126,7 +134,23 @@ bool TTPInit::testForTp5()
     if (mPath.empty())
         return false;
 
+    if (mIsTsf || fs::exists(mPath + "/prj_.json"))
+        return true;
+
     return fs::exists(mPath + "/G5Apps.xma");
+}
+
+bool TTPInit::testForStf()
+{
+    DECL_TRACER("TTPInit::testForStf()");
+
+    if (mPath.empty())
+        return false;
+
+    if (mIsTsf || fs::exists(mPath + "/prj_.json"))
+        return true;
+
+    return false;
 }
 
 bool TTPInit::createDemoPage(bool force)
@@ -2352,7 +2376,6 @@ bool TTPInit::loadSurfaceFromController(bool force)
         {
             createDirectoryStructure();
             createSystemConfigs();
-//            createPanelConfigs();
         }
 
         mDemoPageCreated = false;
@@ -2363,7 +2386,26 @@ bool TTPInit::loadSurfaceFromController(bool force)
     if (_processEvents)
         _processEvents();
 
-    if (!reader.unpack(target, mPath))
+    // If the file extension is ".stf" we have a file in our own format. It
+    // must be unpacked with another class.
+    mIsTsf = false;
+
+    if (endsWith(surface, ".tsf"))
+    {
+        TSurfaceReader r(mPath, target);
+
+        if (!r.lastState())
+        {
+            MSG_ERROR("Unpacking was not successfull.");
+            mDemoPageCreated = false;
+            createDemoPage(true);
+            return false;
+        }
+
+        mIsG5 = true;
+        mIsTsf = true;
+    }
+    else if (!reader.unpack(target, mPath))
     {
         MSG_ERROR("Unpacking was not successfull.");
         mDemoPageCreated = false;
@@ -2371,13 +2413,13 @@ bool TTPInit::loadSurfaceFromController(bool force)
         return false;
     }
 
-    mIsG5 = reader.isG5();
+    if (!mIsTsf)
+        mIsG5 = reader.isG5();
 
     if (!force || !dir.exists(mPath + "/__system"))
     {
         createDirectoryStructure();
         createSystemConfigs();
-//        createPanelConfigs();
     }
 
     if (_processEvents)
@@ -2428,7 +2470,9 @@ vector<TTPInit::FILELIST_t>& TTPInit::getFileList(const string& filter)
 
     for (TFtpClient::FTPINDEX_t idx : index)
     {
-        if (idx.name.endsWith(".tp4", Qt::CaseInsensitive) || idx.name.endsWith(".tp5", Qt::CaseInsensitive))
+        if (idx.name.endsWith(".tp4", Qt::CaseInsensitive) ||
+            idx.name.endsWith(".tp5", Qt::CaseInsensitive) ||
+            idx.name.endsWith(".tsf", Qt::CaseInsensitive))
         {
             FILELIST_t fl;
             fl.fname = idx.name.toStdString();
@@ -2480,7 +2524,7 @@ off64_t TTPInit::getFileSize(const string& file)
 
     // Here we know that we've no files in our cache. Therefor we'll read from
     // the NetLinx, if possible.
-    getFileList(".tp4|.tp5");
+    getFileList(".tp4|.tp5|.tsf");
 
     if (mDirList.empty())
         return 0;
@@ -2523,7 +2567,8 @@ bool TTPInit::isVirgin()
         if (!fs::exists(mPath) || isSystemDefault())
             return true;
 
-        if (!fs::exists(mPath + "/prj.xma") || !fs::exists(mPath + "/manifest.xma"))
+        if ((!fs::exists(mPath + "/prj.xma") && !fs::exists(mPath + "/prj_.json")) ||
+            (fs::exists(mPath + "/prj.xma") && !fs::exists(mPath + "/manifest.xma")))
             return true;
     }
     catch (std::exception& e)

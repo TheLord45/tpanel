@@ -22,6 +22,7 @@
 #include "tresources.h"
 #include "tconfig.h"
 #include "texpat++.h"
+#include "ttpinit.h"
 #if TESTMODE == 1
 #include "testmode.h"
 #endif
@@ -315,7 +316,8 @@ bool TAmxCommands::readMap(bool tp5)
     bool err = false;
     string projectPath = TConfig::getProjectPath();
 
-    if (fs::exists(projectPath + "/prj.xma"))
+    if ((!TTPInit::isTsf() && fs::exists(projectPath + "/prj.xma")) ||
+        (TTPInit::isTsf() && fs::exists(projectPath + "/prj_.json")))
     {
         mMap = new TMap(projectPath, tp5);
         err = mMap->haveError();

@@ -777,6 +777,7 @@ TPageManager::TPageManager()
     TTPInit *tinit = new TTPInit;
     string projectPath = TConfig::getProjectPath();
     string pp = projectPath + "/prj.xma";
+    string pp_stf = projectPath + "/prj_.json";
 
     tinit->setPath(projectPath);
     bool haveSurface = false;
@@ -788,7 +789,7 @@ TPageManager::TPageManager()
 
     if (!haveSurface)
     {
-        if (!isValidFile(pp))
+        if (!isValidFile(pp) && !isValidFile(pp_stf))
             tinit->reinitialize();
     }
     else

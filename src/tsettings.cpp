@@ -51,13 +51,19 @@ using std::vector;
 using std::ifstream;
 using namespace Expat;
 
+const int FILE_VERSION = 1;
+
 TSettings::TSettings(const string& path)
     : mPath(path)
 {
     DECL_TRACER("TSettings::TSettings(const string& path)");
 
     MSG_DEBUG("Loading from path: " << path);
-    loadSettings(true);
+
+    if (TTPInit::isTsf())
+        loadSettingsJson(true);
+    else
+        loadSettings(true);
 }
 
 bool TSettings::loadSettings(bool initial)
@@ -437,9 +443,19 @@ bool TSettings::loadSettingsJson(bool initial)
     ifstream config_doc(fname, ifstream::binary);
     config_doc >> root;
 
+
+    mSetup.versionInfo.fsfVersion = root["versionInfo"].get("fileVersion", "").asInt();
+
+    if (mSetup.versionInfo.fsfVersion != FILE_VERSION)
+    {
+        MSG_ERROR("Invalid file version " << mSetup.versionInfo.fileVersion << "!");
+        SET_ERROR();
+        return false;
+    }
+
+    mSetup.versionInfo.fileVersion = root["versionInfo"].get("fileVersion", "").asString();
     mSetup.versionInfo.formatVersion = root["versionInfo"].get("formatVersion", 0).asInt();
     mSetup.versionInfo.graphicsVersion = root["versionInfo"].get("graphicsVersion", 0).asInt();
-    mSetup.versionInfo.fileVersion = root["versionInfo"].get("fileVersion", "").asString();
     mSetup.versionInfo.designVersion = root["versionInfo"].get("designVersion", "").asString();
     mSetup.versionInfo.g5appsVersion = root["versionInfo"].get("g5appsVersion", 0).asInt();
 
@@ -447,37 +463,152 @@ bool TSettings::loadSettingsJson(bool initial)
     mProject.password = root["projectInfo"].get("password", "").asString();
     mProject.encrypted = true;  // This format encrypts password in any case!
     mProject.panelType = root["projectInfo"].get("panelType", "").asString();
-    mProject.fileRevision = root["projectInfo"].get("fileRevision", "").asString();
-    mProject.dealerID = root["projectInfo"].get("dealerId", "").asString();
+    mProject.fileRevision = root["projectInfo"].get("revision", "").asString();
+    mProject.dealerID = root["projectInfo"].get("dealer", "").asString();
     mProject.jobName = root["projectInfo"].get("jobName", "").asString();
     mProject.salesOrder = root["projectInfo"].get("salesOrder", "").asString();
     mProject.purchaseOrder = root["projectInfo"].get("purchaseOrder", "").asString();
-    mProject.jobComment = root["projectInfo"].get("jobComment", "").asString();
-    mProject.designerID = root["projectInfo"].get("designerId", "").asString();
-    mProject.creationDate = root["projectInfo"].get("creationDate", "").asString();
-    mProject.revisionDate = root["projectInfo"].get("revisionDate", "").asString();
-    mProject.lastSaveDate = root["projectInfo"].get("lastSaveDate", "").asString();
+    mProject.jobComment = root["projectInfo"].get("comment", "").asString();
+    mProject.designerID = root["projectInfo"].get("designer", "").asString();
+    mProject.creationDate = root["projectInfo"].get("date", "").asString();
+    mProject.revisionDate = mProject.creationDate; // root["projectInfo"].get("revisionDate", "").asString();
+    mProject.lastSaveDate = root["projectInfo"].get("lastDate", "").asString();
     mProject.fileName = root["projectInfo"].get("fileName", "").asString();
     mProject.colorChoice = root["projectInfo"].get("colorChoice", "").asString();
     mProject.specifyPortCount = root["projectInfo"].get("specifyPortCount", 0).asInt();
     mProject.specifyChanCount = root["projectInfo"].get("specifyChanCount", 0).asInt();
 
-    mSetup.supportFiles.mapFile = root["supportFileList"].get("mapFile", "").asString();
-    mSetup.supportFiles.colorFile = root["supportFileList"].get("colorFile", "").asString();
-    mSetup.supportFiles.fontFile = root["supportFileList"].get("fontFile", "").asString();
-    mSetup.supportFiles.themeFile = root["supportFileList"].get("themeFile", "").asString();
-    mSetup.supportFiles.externalButtonFile = root["supportFileList"].get("externalButtonFile", "").asString();
-    mSetup.supportFiles.appFile = root["supportFileList"].get("appFile", "").asString();
-    mSetup.supportFiles.logFile = root["supportFileList"].get("logFile", "").asString();
+    mSetup.supportFiles.mapFile = root["fileInfo"].get("mapFile", "").asString();
+    mSetup.supportFiles.colorFile = root["fileInfo"].get("colorFile", "").asString();
+    mSetup.supportFiles.fontFile = root["fileInfo"].get("fontFile", "").asString();
+    mSetup.supportFiles.themeFile = root["fileInfo"].get("themeFile", "").asString();
+    mSetup.supportFiles.externalButtonFile = root["fileInfo"].get("buttonFile", "").asString();
+    mSetup.supportFiles.appFile = root["fileInfo"].get("appFile", "").asString();
+    mSetup.supportFiles.logFile = root["fileInfo"].get("logFile", "").asString();
 
-    mSetup.portCount = root["panelSetup"].get("portCount", 0).asInt();
-    mSetup.setupPort = root["panelSetup"].get("setupPort", 0).asInt();
-    mSetup.addressCount = root["panelSetup"].get("addressCount", 0).asInt();
-    mSetup.channelCount = root["panelSetup"].get("channelCount", 0).asInt();
-    mSetup.levelCount = root["panelSetup"].get("levelCount", 0).asInt();
-    mSetup.powerUpPage = root["panelSetup"].get("powerUpPage", "").asString();
+    mSetup.portCount = root["setup"].get("portCount", 0).asInt();
+    mSetup.setupPort = root["setup"].get("setupPort", 0).asInt();
+    mSetup.addressCount = root["setup"].get("addressCount", 0).asInt();
+    mSetup.channelCount = root["setup"].get("channelCount", 0).asInt();
+    mSetup.levelCount = root["setup"].get("levelCount", 0).asInt();
+    mSetup.powerUpPage = root["setup"].get("powerUpPage", "").asString();
 
-//    const Json::Value powerUpPopups = root["panelSetup"].get("powerUpPopup");
+    const Json::Value panelSetup = root["setup"];
+    const Json::Value powerUpPopups = panelSetup["powerUpPopups"];
+
+    if (powerUpPopups.isArray())
+    {
+        for (size_t i = 0; i < powerUpPopups.size(); ++i)
+            mSetup.powerUpPopup.push_back(powerUpPopups[(int)i].asString());
+    }
+
+    mSetup.startupString = panelSetup.get("startupString", "").asString();
+    mSetup.wakeupString = panelSetup.get("wakeupString", "").asString();
+    mSetup.sleepString = panelSetup.get("sleepString", "").asString();
+    mSetup.shutdownString = panelSetup.get("shutdownString", "").asString();
+    mSetup.idlePage = panelSetup.get("idlePage", "").asString();
+    mSetup.inactivityPage = panelSetup.get("inactivityPage", "").asString();
+    mSetup.idleTimeout = panelSetup.get("idleTimeout", 0).asInt();
+    mSetup.screenWidth = panelSetup.get("screenWidth", 0).asInt();
+    mSetup.screenHeight = panelSetup.get("screenWidth", 0).asInt();
+    mSetup.screenRotate = panelSetup.get("screenRotate", 0).asInt();
+    mSetup.batteryLevelPort = panelSetup.get("batteryLevelPort", 0).asInt();
+    mSetup.batteryLevelCode = panelSetup.get("batteryLevelCode", 0).asInt();
+    mSetup.marqueeSpeed = panelSetup.get("marqeeSpeed", 1).asInt();
+    mSetup.fontName = panelSetup.get("fontName", "Arial").asString();
+    mSetup.fontSize = panelSetup.get("fontSize", 10).asInt();
+
+    const Json::Value resourceList = root["resourceList"];
+    RESOURCE_LIST_T list = findResourceType("image");
+
+    if (mResourceLists.size() == 0 || list.type.empty())
+    {
+        list.type = "image";
+        list.ressource.clear();
+        mResourceLists.push_back(list);
+    }
+
+    for (size_t i = 0; i < resourceList.size(); ++i)
+    {
+        int index = static_cast<int>(i);
+        RESOURCE_T res;
+        res.encrypted = true;
+        res.name = resourceList[index].get("name", "").asString();
+        res.protocol = resourceList[index].get("protocol", "").asString();
+        res.host = resourceList[index].get("host", "").asString();
+        res.path = resourceList[index].get("path", "").asString();
+        res.file = resourceList[index].get("file", "").asString();
+        res.password = resourceList[index].get("password", "").asString();
+        res.user = resourceList[index].get("user", "").asString();
+        res.refresh = resourceList[index].get("refresh", 0).asInt();
+        res.dynamo = resourceList[index].get("dynamo", false).asBool();
+        list.ressource.push_back(res);
+    }
+
+    vector<RESOURCE_LIST_T>::iterator itResList;
+
+    for (itResList = mResourceLists.begin(); itResList != mResourceLists.end(); ++itResList)
+    {
+        if (itResList->type.compare("image") == 0)
+        {
+            mResourceLists.erase(itResList);
+            mResourceLists.push_back(list);
+            break;
+        }
+    }
+
+    const Json::Value dataSource = root["dataSourceList"];
+    list = findResourceType("data");
+
+    if (mResourceLists.size() == 0 || list.type.empty())
+    {
+        list.type = "data";
+        list.ressource.clear();
+        mResourceLists.push_back(list);
+    }
+
+    for (size_t i = 0; i < dataSource.size(); ++i)
+    {
+        int index = static_cast<int>(i);
+        RESOURCE_T res;
+        res.encrypted = true;
+        res.name = dataSource[index].get("name", "").asString();
+        res.protocol = dataSource[index].get("protocol", "").asString();
+        res.host = dataSource[index].get("host", "").asString();
+        res.path = dataSource[index].get("path", "").asString();
+        res.file = dataSource[index].get("file", "").asString();
+        res.password = dataSource[index].get("password", "").asString();
+        res.user = dataSource[index].get("user", "").asString();
+        res.refresh = dataSource[index].get("refresh", 0).asInt();
+        res.delimiter = dataSource[index].get("delimiter", ";").asString();
+        res.force = dataSource[index].get("force", false).asBool();
+        res.format = dataSource[index].get("format", "").asString();
+        res.headlines = dataSource[index].get("headlines", 0).asInt();
+        res.mapIdI1 = dataSource[index].get("mapIdI1", "").asString();
+        res.mapIdT1 = dataSource[index].get("mapIdT1", "").asString();
+        res.mapIdT2 = dataSource[index].get("mapIdT2", "").asString();
+        res.quoted = dataSource[index].get("quoted", false).asBool();
+        res.sort = dataSource[index].get("sort", 0).asInt();
+        res.sortAdv = dataSource[index].get("sortAdv", "").asString();
+        const Json::Value sortList = dataSource[index]["sortList"];
+
+        for (size_t j = 0; j < sortList.size(); ++j)
+            res.sortList.push_back(sortList[static_cast<int>(j)].asString());
+
+        list.ressource.push_back(res);
+    }
+
+    for (itResList = mResourceLists.begin(); itResList != mResourceLists.end(); ++itResList)
+    {
+        if (itResList->type.compare("data") == 0)
+        {
+            mResourceLists.erase(itResList);
+            mResourceLists.push_back(list);
+            break;
+        }
+    }
+
+    // TODO: Read palette file. Currently not available for TSF format.
     return false;
 }
 
