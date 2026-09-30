@@ -3771,7 +3771,7 @@ bool TButton::startAnimation(int st, int end, int time)
     try
     {
         mAniStop = false;
-        mThrAni = thread([=] { runAnimationRange(start, end, stepTime); });
+        mThrAni = thread([=, this] { runAnimationRange(start, end, stepTime); });
         mThrAni.detach();
     }
     catch (exception& e)
@@ -5412,7 +5412,7 @@ bool TButton::buttonDynamic(SkBitmap* bm, int instance, bool show, bool *state, 
             *state = true;  // Prevent the calling method from displaying the button
 
         MSG_TRACE("Starting thread for loading a dynamic image ...");
-        mThrRes = std::thread([=] { this->funcResource(&resource, url, bc, instance); });
+        mThrRes = std::thread([=, this] { this->funcResource(&resource, url, bc, instance); });
         MSG_TRACE("Thread started. Detaching ...");
         mThrRes.detach();
         MSG_TRACE("Thread is running and detached.");
@@ -7300,7 +7300,7 @@ bool TButton::drawButtonMultistateAni()
     try
     {
         mAniStop = false;
-        mThrAni = thread([=] { runAnimation(); });
+        mThrAni = thread([=, this] { runAnimation(); });
         mThrAni.detach();
     }
     catch (exception& e)
@@ -10210,7 +10210,7 @@ bool TButton::doClick(int x, int y, bool pressed)
     {
         // Handling the keyboard buttons is very expensive. To not block too
         // long, we let it run in a separate thread.
-        std::thread thr = std::thread([=] { _buttonPress(ch, static_cast<uint>(mHandle), pressed); });
+        std::thread thr = std::thread([=, this] { _buttonPress(ch, static_cast<uint>(mHandle), pressed); });
         thr.detach();
     }
 
@@ -12127,7 +12127,7 @@ void TButton::runBargraphMove(int distance, bool moveUp)
 
     try
     {
-        mThrSlider = thread([=] { threadBargraphMove(distance, moveUp); });
+        mThrSlider = thread([=, this] { threadBargraphMove(distance, moveUp); });
         mThrSlider.detach();
     }
     catch (std::exception& e)

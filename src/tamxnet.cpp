@@ -372,7 +372,7 @@ void TAmxNet::Run()
 
     try
     {
-        mThread = std::thread([=] { this->start(); });
+        mThread = std::thread([=, this] { this->start(); });
         mThread.detach();
     }
     catch (std::exception& e)
@@ -2208,7 +2208,7 @@ void TAmxNet::runWrite()
 
     try
     {
-        mWriteThread = std::thread([=] { this->start_write(); });
+        mWriteThread = std::thread([=, this] { this->start_write(); });
         mWriteThread.detach();
     }
     catch (std::exception& e)

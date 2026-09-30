@@ -127,7 +127,7 @@ int TBattery::linuxBattery()
                 try
                 {
                     char charge[64];
-                    file = p.path().u8string() + "/online";
+                    file = p.path().string() + "/online";
 
                     memset(charge, 0, sizeof(charge));
                     in.open(file);
@@ -163,7 +163,7 @@ int TBattery::linuxBattery()
                 try
                 {
                     char ld[64];
-                    file = p.path().u8string() + "/capacity";
+                    file = p.path().string() + "/capacity";
 
                     memset(ld, 0, sizeof(ld));
                     in.open(file);
@@ -206,7 +206,7 @@ void TBattery::runTimer()
 
     try
     {
-        mTimerThread = thread([=] {
+        mTimerThread = thread([=, this] {
             MSG_PROTOCOL("Thread \"TBattery::runTimer()\" was started.");
 
             while (mTimerRun)

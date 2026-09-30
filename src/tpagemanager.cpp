@@ -1484,7 +1484,7 @@ void TPageManager::runCommands()
 
     try
     {
-        mThreadCommand = std::thread([=] { this->commandLoop(); });
+        mThreadCommand = std::thread([=, this] { this->commandLoop(); });
         mThreadCommand.detach();
     }
     catch (std::exception& e)
@@ -4161,9 +4161,13 @@ void TPageManager::showSubPage(const string& name)
         if (redraw && _toFront)
         {
             _toFront((uint)pg->getHandle());
-            pg->setZOrder(page->getNextZOrder());
+
+            if (page)
+            {
+                pg->setZOrder(page->getNextZOrder());
 //            page->sortSubpages();
-            MSG_DEBUG("Setting new Z-order " << page->getActZOrder() << " on subpage " << pg->getName());
+                MSG_DEBUG("Setting new Z-order " << page->getActZOrder() << " on subpage " << pg->getName());
+            }
         }
         else if (redraw && !_toFront)
             pg->drop();
@@ -4445,7 +4449,7 @@ void TPageManager::runClickQueue()
 
     try
     {
-        std::thread thr = std::thread([=] {
+        std::thread thr = std::thread([=, this] {
             MSG_PROTOCOL("Thread \"TPageManager::runClickQueue()\" was started.");
 
             while (mClickQueueRun && !prg_stopped)
@@ -4498,7 +4502,7 @@ void TPageManager::runUpdateSubViewItem()
 
     try
     {
-        std::thread thr = std::thread([=] {
+        std::thread thr = std::thread([=, this] {
             MSG_PROTOCOL("Thread \"TPageManager::runUpdateSubViewItem()\" was started.");
 
             while (mUpdateViewsRun && !prg_stopped)

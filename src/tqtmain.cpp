@@ -3467,7 +3467,7 @@ void MainWindow::repaintObjects()
     if (mRunRedraw)
         return;
 
-    std::thread thr = std::thread([=] {
+    std::thread thr = std::thread([=, this] {
         mRunRedraw = true;
         TObject::OBJECT_t *obj = getFirstDirty();
 

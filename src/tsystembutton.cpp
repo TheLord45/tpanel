@@ -379,7 +379,7 @@ void TSystemButton::setDistinctFocus(ulong handle)
     if (mButtons.empty())
         return;
 
-    std::thread thr = std::thread([=] {
+    std::thread thr = std::thread([=, this] {
         vector<TButton *>::iterator iter;
 
         for (iter = mButtons.begin(); iter != mButtons.end(); ++iter)
@@ -809,7 +809,7 @@ void TSystemButton::setKeysToBank(int bank, uint handle)
     if (mButtons.empty() || bank < BANK_1 || bank > BANK_3)
         return;
 
-    std::thread thr = std::thread([=] {
+    std::thread thr = std::thread([=, this] {
         vector<TButton *>::iterator iter;
         int inst = (bank - 1) * 2;
 

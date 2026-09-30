@@ -48,7 +48,7 @@ void TTimer::run()
     {
         mStopped = false;
         mOnce = false;
-        mThread = std::thread([=] { this->_run(); });
+        mThread = std::thread([=, this] { this->_run(); });
         mThread.detach();
     }
     catch (std::exception& e)
@@ -68,7 +68,7 @@ void TTimer::run_once()
     {
         mStopped = false;
         mOnce = true;
-        mThread = std::thread([=] { this->_run(); });
+        mThread = std::thread([=, this] { this->_run(); });
         mThread.detach();
     }
     catch (std::exception& e)
@@ -89,7 +89,7 @@ void TTimer::run_once(std::chrono::milliseconds ms)
         mStopped = false;
         mOnce = true;
         mMsec = ms;
-        mThread = std::thread([=] { this->_run(); });
+        mThread = std::thread([=, this] { this->_run(); });
         mThread.detach();
     }
     catch (std::exception& e)

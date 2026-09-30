@@ -1100,7 +1100,7 @@ void TSubPage::startTimer()
 
     try
     {
-        mThreadTimer = std::thread([=] { runTimer(); });
+        mThreadTimer = std::thread([=, this] { runTimer(); });
         mThreadTimer.detach();
     }
     catch (std::exception& e)
