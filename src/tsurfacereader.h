@@ -19,6 +19,7 @@
 #ifndef TSURFACEREADER_H
 #define TSURFACEREADER_H
 
+#if HAVE_ARCHIVE == 1
 #include <string>
 #include <archive.h>
 
@@ -53,4 +54,5 @@ class TSurfaceReader
         bool mState{false};
 };
 
-#endif // TSURFACEREADER_H
+#endif  // HAVE_ARCHIVE
+#endif  // TSURFACEREADER_H

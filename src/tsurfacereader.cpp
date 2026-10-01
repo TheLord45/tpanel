@@ -16,6 +16,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
+#if HAVE_ARCHIVE == 1
+
 #include <filesystem>
 #include <cstdio>
 #include <stdexcept>
@@ -198,3 +200,5 @@ void TSurfaceReader::handle_errors(archive *a, int r, const string& msg)
         throw std::runtime_error(msg);
     }
 }
+
+#endif

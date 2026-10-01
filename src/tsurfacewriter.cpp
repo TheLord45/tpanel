@@ -15,6 +15,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
  */
+#if HAVE_ARCHIVE == 1
+
 #include <filesystem>
 #include <archive.h>
 #include <archive_entry.h>
@@ -135,3 +137,5 @@ void TSurfaceWriter::archiveFile(const vector<string>& files, const string& targ
     archive_write_close(a);
     archive_write_free(a);
 }
+
+#endif

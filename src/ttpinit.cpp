@@ -48,7 +48,9 @@
 #include "tconfig.h"
 #include "tfsfreader.h"
 #include "tdirectory.h"
+#if HAVE_ARCHIVE == 1
 #include "tsurfacereader.h"
+#endif
 #include "tresources.h"
 #ifdef Q_OS_IOS
 #include "ios/QASettings.h"
@@ -2389,7 +2391,7 @@ bool TTPInit::loadSurfaceFromController(bool force)
     // If the file extension is ".stf" we have a file in our own format. It
     // must be unpacked with another class.
     mIsTsf = false;
-
+#if HAVE_ARCHIVE == 1
     if (endsWith(surface, ".tsf"))
     {
         TSurfaceReader r(mPath, target);
@@ -2406,13 +2408,15 @@ bool TTPInit::loadSurfaceFromController(bool force)
         mIsTsf = true;
     }
     else if (!reader.unpack(target, mPath))
+#else
+    if (!reader.unpack(target, mPath))
     {
         MSG_ERROR("Unpacking was not successfull.");
         mDemoPageCreated = false;
         createDemoPage(true);
         return false;
     }
-
+#endif
     if (!mIsTsf)
         mIsG5 = reader.isG5();
 

@@ -18,6 +18,8 @@
 #ifndef TSURFACEWRITER_H
 #define TSURFACEWRITER_H
 
+#if HAVE_ARCHIVE == 1
+
 #include <string>
 #include <vector>
 
@@ -37,4 +39,5 @@ class TSurfaceWriter
         std::string mPathTemporary;
 };
 
+#endif // HAVE_ARCHIVE
 #endif // TSURFACEWRITER_H
