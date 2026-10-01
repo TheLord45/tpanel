@@ -667,6 +667,13 @@ std::string intToString(int num)
     return ss.str();
 }
 
+std::string doubleToString(double num)
+{
+    std::stringstream ss;
+    ss << num;
+    return ss.str();
+}
+
 void *renew(char **mem, size_t old_size, size_t new_size)
 {
     if (old_size == new_size)

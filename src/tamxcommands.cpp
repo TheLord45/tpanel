@@ -267,6 +267,10 @@ CMD_DEFINATIONS cmdDefinations[] = {
     { "^ENC", false, true, ',' },
     { "?ENC", false, false, '\0' },
     { "?MAC", false, false, '\0' },
+    // TPanel commands
+    { "*GPS", false, false, '\0' },
+    { "+MAP", true, true, ',' },
+    { "+AMP", true, true, ',' },
     { "", false, false, '\0' }
 };
 

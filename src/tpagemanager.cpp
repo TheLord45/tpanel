@@ -1128,6 +1128,10 @@ TPageManager::TPageManager()
 #ifndef _NOSIP_
     REG_CMD(doTPCSIP, "TPCSIP");    // Show the built in SIP phone
 #endif
+    // TPanel commands
+    REG_CMD(doGPS, "*GPS");     // Returns the GPS coordinates of the panel
+    REG_CMD(doMAP, "+MAP");     // Sets the GPS coordinates on a map.
+    REG_CMD(doAMP, "+AMP");     // Creates a new map element at the given position and size
     // Virtual internal commands
     REG_CMD(doFTR, "#FTR");     // File transfer (virtual internal command)
 
@@ -1806,6 +1810,17 @@ void TPageManager::setSetupScaleFactor(double scale, double sw, double sh)
     mScaleSystemHeight = sh;
 }
 #endif
+
+void TPageManager::getCoordinates(double *latitude, double *longitude)
+{
+    DECL_TRACER("TPageManager::getCoordinates(double *latitude, double *longitude)");
+
+    if (latitude)
+        *latitude = mLatitude;
+
+    if (longitude)
+        *longitude = mLongitude;
+}
 
 /*
  * The following method is called by the class TAmxNet whenever an event from
@@ -13761,3 +13776,28 @@ void TPageManager::doTPCSIP(int, vector<int>&, vector<string>& pars)
     }
 }
 #endif
+
+void TPageManager::doGPS(int, vector<int>&, vector<string>&)
+{
+    DECL_TRACER("TPageManager::doGPS(int, vector<int>&, vector<string>&)");
+
+    string latitude = doubleToString(mLatitude);
+    string longitude = doubleToString(mLongitude);
+    sendCustomEvent(0, 0, 0, latitude + "," + longitude, 3000, 0, 0);
+}
+
+void TPageManager::doMAP(int, vector<int>&, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doMAP(int, vector<int>&, vector<string>& pars)");
+
+    // TODO: Add code to set the GPS coordinates to map widget.
+    //       Syntax: +MAP-<objects>,<longitude>,<latitude>
+}
+
+void TPageManager::doAMP(int, vector<int>&, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doAMP(int, vector<int>&, vector<string>& pars)");
+
+    // TODO: Add code to create a map object on the given coordinates and size.
+    //       Syntax: +AMP-<object>,<left>,<top>,<width>,<heigt>[,<source of map (Google, Openstreetmap, ...)>]
+}

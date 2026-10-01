@@ -77,7 +77,10 @@ string cmdList[] =
     "^PPG-", "^PPK-", "^PPM-", "^PPN-", "^PPT-", "^PPX", "^UTF-", "^LVC-",
     "^LVD-", "^LVE-", "^LVF-", "^LVL-", "^LVM-", "^LVN-", "^LVR-", "^LVS-",
     "^MUT-", "^PCL-", "^PCT-", "^POP-", "^PTC-", "^PTO-", "^SDL-", "^SDM-",
-    "^SHA-", "^SPD-", "^ENC", "?ENC", "?MAC", "\0"
+    "^SHA-", "^SPD-", "^ENC", "?ENC", "?MAC",
+    // TPanel commands
+    "*GPS", "+MAP-", "+AMP-",
+    "\0"
 };
 
 #define NUMBER_CMDS     144

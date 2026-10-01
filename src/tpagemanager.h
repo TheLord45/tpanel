@@ -606,6 +606,27 @@ class TPageManager : public TAmxCommands
          * @param handle    The handle of the object.
          */
         void redrawObject(ulong handle);
+        /**
+         * @brief setCoordinates - sets GPS coordinates
+         * The method sets the GPS coordinates of the device. This works mostly
+         * on mobile devices. On Desktop this may not work at all or contains
+         * faked coordinates.
+         *
+         * @param latitude      The latitude
+         * @param longitude     The longitude
+         */
+        void setCoordinates(double latitude, double longitude) { mLatitude = latitude; mLongitude = longitude; }
+        /**
+         * @brief getCoordinates - GPS coordinates
+         * The method returns the GPS coordinates in the variables. If a
+         * parameter is NULL, it is ignored.
+         * To get a valid value, the parameter must point to a variable of type
+         * double.
+         *
+         * @param latitude      Pointer to a variable of type double.
+         * @param longitude     Pointer to a variable of type double.
+         */
+        void getCoordinates(double *latitude, double *longitude);
 #ifdef Q_OS_IOS
         void setBattery(int level, int state) { mLastBatteryLevel = level; mLastBatteryState = state; }
 #endif
@@ -1056,6 +1077,11 @@ class TPageManager : public TAmxCommands
 #ifndef _NOSIP_
         void doTPCSIP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
 #endif
+        // TPanel commands
+        void doGPS(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doMAP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doAMP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+
         std::mutex surface_mutex;
         std::mutex click_mutex;
         std::mutex updview_mutex;
@@ -1102,6 +1128,8 @@ class TPageManager : public TAmxCommands
         std::vector<TButtonStates *> mButtonStates;     // Holds the states for each button
         std::vector<SCE_EVENT_t> mSceEvents;            // SCE events. For details look at command ^SCE.
         int mEncoding{ENCODING_UTF8};                   // G5: Encoding of text send to the controller.
+        double mLatitude{0.0};                          // TSF: Latitude of device
+        double mLongitude{0.0};                         // TSF: Longitude of device
         // SIP
 #ifndef _NOSIP_
         bool mPHNautoanswer{false};                     // The state of the SIP autoanswer

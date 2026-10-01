@@ -1588,7 +1588,8 @@ void MainWindow::onScreenOrientation(int angle)
  *
  * This method is a callback function for the Qt framework. It is called
  * whenever the geo position changes. The geo location is transmitted to the
- * NetLinx controller as a custom event.
+ * NetLinx controller as a custom event in case it is requested over the
+ * command "*GPS".
  *
  * Beside this the coordinates are sent to any object defined as a geo object.
  * Any geo object will show a map where the coordinates are shown as a free
@@ -1615,10 +1616,11 @@ void MainWindow::onPositionUpdated(const QGeoPositionInfo &update)
 
     if (gPageManager)
     {
-        gPageManager->sendCustomEvent(static_cast<int>(coord.latitude()),
-                                      static_cast<int>(coord.longitude()),
-                                      0, coord.toString().toStdString(),
-                                      2100, 1, 0);
+        gPageManager->setCoordinates(coord.latitude(), coord.longitude());
+//        gPageManager->sendCustomEvent(static_cast<int>(coord.latitude()),
+//                                      static_cast<int>(coord.longitude()),
+//                                      0, coord.toString().toStdString(),
+//                                      2100, 1, 0);
     }
 }
 

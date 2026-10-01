@@ -71,7 +71,7 @@ else()
     message(STATUS "Operating system: Other")
 endif()
 
-if(HAVE_ARCHIVE IS 0)
+if(HAVE_ARCHIVE EQUAL 0)
     message(STATUS "Have archive library: NO")
 else()
     message(STATUS "Have archive library: YES")
