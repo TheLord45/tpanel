@@ -271,6 +271,7 @@ CMD_DEFINATIONS cmdDefinations[] = {
     { "*GPS", false, false, '\0' },
     { "+MAP", true, true, ',' },
     { "+AMP", true, true, ',' },
+    { "+MSC", true, true, ',' },
     { "", false, false, '\0' }
 };
 

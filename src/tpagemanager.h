@@ -1081,6 +1081,7 @@ class TPageManager : public TAmxCommands
         void doGPS(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doMAP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
         void doAMP(int port, std::vector<int>& channels, std::vector<std::string>& pars);
+        void doMSC(int port, std::vector<int>& channels, std::vector<std::string>& pars);
 
         std::mutex surface_mutex;
         std::mutex click_mutex;

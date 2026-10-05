@@ -33,7 +33,8 @@ typedef enum BUTTONTYPE
     LISTBOX,
     COMPUTER_CONTROL,
     TAKE_NOTE,
-    SUBPAGE_VIEW
+    SUBPAGE_VIEW,
+    MAP
 } BUTTONTYPE;
 
 class TSystem

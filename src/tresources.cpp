@@ -86,6 +86,7 @@ using std::string;
 using std::wstring;
 using std::endl;
 using std::vector;
+using std::istringstream;
 
 extern TPageManager *gPageManager;
 
@@ -672,6 +673,22 @@ std::string doubleToString(double num)
     std::stringstream ss;
     ss << num;
     return ss.str();
+}
+
+int stringToInt(const string& str)
+{
+    int i;
+
+    istringstream(str) >> i;
+    return i;
+}
+
+double stringToDouble(const string& str)
+{
+    double d;
+
+    istringstream(str) >> d;
+    return d;
 }
 
 void *renew(char **mem, size_t old_size, size_t new_size)

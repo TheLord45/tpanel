@@ -237,6 +237,13 @@ namespace Button
         GRAD_BLTR                   // 10: Bottom-left to top-right
     }GRAD_TYPE_t;
 
+    typedef enum
+    {
+        MAP_NONE,                   // No map source
+        MAP_GOOGLE,                 // Google map source
+        MAP_OPENSTREETMAP           // Open Streetmap source
+    }MAP_SOURCE_t;
+
     /**
      * Justification values:
      *    0 = absolut
@@ -1359,6 +1366,11 @@ namespace Button
             bool haveImage(const SR_T& sr);
             bool showSubviewItems() { return sw >= 1; }
             bool isSubViewOrderingDynamic() { return dy >= 1; }
+            void setCoordinates(double longitude, double latitude) { mLongitude = longitude; mLatitude = latitude; mChanged = true; }
+            double getLongitude() { return mLongitude; }
+            double getLatitude() { return mLatitude; }
+            void setMapSource(MAP_SOURCE_t src) { mMapSource = src; mChanged = true; }
+            MAP_SOURCE_t getMapSource() { return mMapSource; }
 
         protected:
             BUTTONTYPE getButtonType(const std::string& bt);
@@ -1607,6 +1619,9 @@ namespace Button
             std::mutex mkElementMutex;
             std::mutex mkDrawBargraphMutex;
             std::mutex mkDrawButtonMutex;
+            double mLatitude{0.0};
+            double mLongitude{0.0};
+            MAP_SOURCE_t mMapSource{MAP_NONE};
     };
 
     typedef struct BUTTONS_T

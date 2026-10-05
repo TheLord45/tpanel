@@ -1132,6 +1132,7 @@ TPageManager::TPageManager()
     REG_CMD(doGPS, "*GPS");     // Returns the GPS coordinates of the panel
     REG_CMD(doMAP, "+MAP");     // Sets the GPS coordinates on a map.
     REG_CMD(doAMP, "+AMP");     // Creates a new map element at the given position and size
+    REG_CMD(doMSC, "+MSC");     // Set the source for the map (Google, Open Streemap, ...)
     // Virtual internal commands
     REG_CMD(doFTR, "#FTR");     // File transfer (virtual internal command)
 
@@ -13777,6 +13778,12 @@ void TPageManager::doTPCSIP(int, vector<int>&, vector<string>& pars)
 }
 #endif
 
+/**
+ * @brief TPageManager::doGPS
+ * Sends back the actual position of the device TPanel is running on. The
+ * coordinates are inside a string separated by a comma.
+ * The parameters are ignored.
+ */
 void TPageManager::doGPS(int, vector<int>&, vector<string>&)
 {
     DECL_TRACER("TPageManager::doGPS(int, vector<int>&, vector<string>&)");
@@ -13786,18 +13793,148 @@ void TPageManager::doGPS(int, vector<int>&, vector<string>&)
     sendCustomEvent(0, 0, 0, latitude + "," + longitude, 3000, 0, 0);
 }
 
-void TPageManager::doMAP(int, vector<int>&, vector<string>& pars)
+/**
+ * @brief TPageManager::doMAP
+ * This sets the GPS coordinates to a button. If the button is not a map, it
+ * becomes a map with this command.
+ *
+ * Example: +MAP-<buttons>,<longitude>,<latitude>[,<magnify>]
+ * Makes the button(s) <buttons> a map. Defines the center of it with the
+ * <longitude> and the <latitude>. Optional the parameter <magnify> defines
+ * the zoom level.
+ * @param pars
+ */
+void TPageManager::doMAP(int port, vector<int>& channels, vector<string>& pars)
 {
     DECL_TRACER("TPageManager::doMAP(int, vector<int>&, vector<string>& pars)");
 
-    // TODO: Add code to set the GPS coordinates to map widget.
-    //       Syntax: +MAP-<objects>,<longitude>,<latitude>
+    if (pars.size() < 2)
+    {
+        MSG_ERROR("Command +MAP: Expecting 2 parameters but got " << pars.size() << "! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    double longitude = stringToDouble(pars[0]);
+    double latitude = stringToDouble(pars[1]);
+
+    vector<TMap::MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+            bt->setCoordinates(longitude, latitude);
+            bt->show();
+        }
+    }
 }
 
-void TPageManager::doAMP(int, vector<int>&, vector<string>& pars)
+/**
+ * @brief TPageManager::doAMP
+ * This creates a new object of type map at the given posizion and size. The
+ * command allows to optionally define the source for the map. By default
+ * Google is the source.
+ *
+ * Example: +AMP-<buttons>,<left>,<top>,<width>,<height>[,<source>]
+ *
+ * @param pars
+ */
+void TPageManager::doAMP(int port, vector<int>& channels, vector<string>& pars)
 {
     DECL_TRACER("TPageManager::doAMP(int, vector<int>&, vector<string>& pars)");
 
-    // TODO: Add code to create a map object on the given coordinates and size.
-    //       Syntax: +AMP-<object>,<left>,<top>,<width>,<heigt>[,<source of map (Google, Openstreetmap, ...)>]
+    if (pars.size() < 4)
+    {
+        MSG_ERROR("Command +MAP: Expecting 4 parameters but got " << pars.size() << "! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    int left = stringToInt(pars[0]);
+    int top = stringToInt(pars[1]);
+    int width = stringToInt(pars[2]);
+    int height = stringToInt(pars[3]);
+    Button::MAP_SOURCE_t mapSource = Button::MAP_GOOGLE;
+
+    if (pars.size() >= 4)
+        mapSource = static_cast<Button::MAP_SOURCE_t>(stringToInt(pars[4]));
+
+    vector<TMap::MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+            bt->setRectangle(left, top, left + width, top + height);
+
+            if (bt->getMapSource() != mapSource)
+            {
+                bt->setMapSource(mapSource);
+                bt->show();
+            }
+        }
+    }
+    else
+    {
+        // Button::TButton *button = new Button::TButton;
+        // TODO: Add code to add a new button to the actual page.
+    }
+}
+
+/**
+ * @brief TPageManager::doMSC
+ * Sets the source for the map. This is ignored if the button is not of type
+ * map.
+ *
+ * Example: +MSC-<buttons>,<source of map (Google, Openstreetmap, ...)>
+ * @param pars
+ */
+void TPageManager::doMSC(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doAMP(int, vector<int>&, vector<string>& pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Command +MAP: Expecting 1 parameter but got none! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    Button::MAP_SOURCE_t mapSource = static_cast<Button::MAP_SOURCE_t>(stringToInt(pars[0]));
+
+    vector<TMap::MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+            bt->setMapSource(mapSource);
+            bt->show();
+        }
+    }
 }

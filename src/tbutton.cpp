@@ -468,6 +468,12 @@ size_t TButton::initialize(TExpat *xml, size_t index)
             hd = xml->convertElementToInt(content);
         else if (ename.compare("da") == 0)          // 1 = Disabled, 0 = Normal active
             da = xml->convertElementToInt(content);
+        else if (ename.compare("lat") == 0)         // latitude of map button
+            mLatitude = xml->convertElementToDouble(content);
+        else if (ename.compare("lon") == 0)         // longitude of map button
+            mLongitude = xml->convertElementToDouble(content);
+        else if (ename.compare("msrc") == 0)
+            mMapSource = static_cast<MAP_SOURCE_t>(xml->convertElementToInt(content));  // source of map
         else if (ename.compare("ac") == 0)          // Direction of text (guess)
         {
             ac_di = xml->getAttributeInt("di", attrs);  // 0 = left to right; 1 = right to left
@@ -1146,6 +1152,8 @@ BUTTONTYPE TButton::getButtonType(const string& bt)
         return SUBPAGE_VIEW;
     else if (strCaseCompare(bt, "listBox") == 0)
         return LISTBOX;
+    else if (strCaseCompare(bt, "map") == 0)
+        return MAP;
 
     return NONE;
 }

@@ -79,7 +79,7 @@ string cmdList[] =
     "^MUT-", "^PCL-", "^PCT-", "^POP-", "^PTC-", "^PTO-", "^SDL-", "^SDM-",
     "^SHA-", "^SPD-", "^ENC", "?ENC", "?MAC",
     // TPanel commands
-    "*GPS", "+MAP-", "+AMP-",
+    "*GPS", "+MAP-", "+AMP-", "+MSC-"
     "\0"
 };
 
