@@ -18,99 +18,55 @@
 #ifndef TGRMAP_H
 #define TGRMAP_H
 
-#include <functional>
-#include <mutex>
-#include <unordered_map>
-#include <cmath>
-
-#include <core/SkImage.h>
-#include <core/SkSurface.h>
 #include <core/SkPaint.h>
 
-namespace GMap
+#include "ttilescache.h"
+
+class SkImage;
+class SkBitmap;
+class SkSurface;
+
+class TGrMap
 {
-    enum MapSource
-    {
-        GOOGLE,
-        OSM
-    };
+    public:
+        TGrMap();
+        ~TGrMap();
 
-    struct TileKey
-    {
-        int x, y, z;
-        MapSource source;
-
-        bool operator==(const TileKey& o) const
-        {
-            return x == o.x && y == o.y && z == o.z && source == o.source;
-        }
-    };
-
-    namespace std
-    {
-        template <>
-        struct hash<TileKey>
-        {
-            size_t operator()(const TileKey& k) const
-            {
-                return ((std::hash<int>()(k.x) ^ (std::hash<int>()(k.y) << 1)) >> 1) ^ (std::hash<int>()(k.z) << 1) ^ (std::hash<int>()(k.source) << 2);
-            }
-        };
-    }
-
-    class TileCache
-    {
-        ::std::unordered_map<TileKey, sk_sp<SkImage>> cache;
-        ::std::mutex mtx;
-
-        public:
-            sk_sp<SkImage> getTile(int x, int y, int z, MapSource source);
-    };
-
-    class TGrMap
-    {
-        public:
-            TGrMap();
-
-            void createMap();
-            void setLatitute(double lat) { mMarkerLat = lat; }
-            void setLongitude(double lon) { mMarkerLon = lon; }
-            void setZoom(int z) { zoom = z; }
-            void setSource(MapSource src) { mMapSource = src; }
+        void createMap(SkBitmap& bmp);
+        void setLatitute(double lat) { mMarkerLat = lat; }
+        void setLongitude(double lon) { mMarkerLon = lon; }
+        void setZoom(int z) { mZoom = z; }
+        void setSource(MapSource src) { mMapSource = src; }
 
 
-        protected:
-            // Converts lat/lon to tile x,y at zoom z
-            void latLonToTileXY(double lat, double lon, int zoom, int& x, int& y);
-            // Converts lat/lon to pixel coordinates at zoom level
-            void latLonToPixelXY(double lat, double lon, int zoom, double& px, double& py);
-            // Converts pixel coordinates to lat/lon at zoom level
-            void pixelXYToLatLon(double px, double py, int zoom, double& lat, double& lon);
+    protected:
+        // Converts lat/lon to tile x,y at zoom z
+        void latLonToTileXY(double lat, double lon, int zoom, int& x, int& y);
+        // Converts lat/lon to pixel coordinates at zoom level
+        void latLonToPixelXY(double lat, double lon, int zoom, double& px, double& py);
+        // Converts pixel coordinates to lat/lon at zoom level
+        void pixelXYToLatLon(double px, double py, int zoom, double& lat, double& lon);
 
-            void centerOnMarker();
-            void draw();
+        void centerOnMarker();
+        SkBitmap draw();
 
-        private:
-            int TILE_SIZE{256};
-            int WINDOW_WIDTH{800};
-            int WINDOW_HEIGHT{600};
+    private:
+        int TILE_SIZE{256};
+        int WINDOW_WIDTH{800};
+        int WINDOW_HEIGHT{600};
 
-            sk_sp<SkSurface> mSurface;
-            TileCache mTileCache;
-            bool changed = true;
+        sk_sp<SkSurface> mSurface;
+        TTileCache mTileCache;
 
-            double mOffsetX{0}; // pixel offset for panning
-            double mOffsetY{0};
-            int zoom = 3;
+        double mOffsetX{0}; // pixel offset for panning
+        double mOffsetY{0};
+        int mZoom{10};
 
-            double mMarkerLat{0};
-            double mMarkerLon{0};
+        double mMarkerLat{0};
+        double mMarkerLon{0};
 
-            MapSource mMapSource = GOOGLE;
-            SkPaint mPaint;
-
-
-    };
-}
+        MapSource mMapSource{GOOGLE};
+        SkPaint mPaint;
+};
 
 #endif // TGRMAP_H

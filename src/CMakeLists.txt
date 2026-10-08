@@ -545,6 +545,8 @@ set(PROJECT_SOURCES
         tsurfacereader.h
         tsurfacewriter.cpp
         tsurfacewriter.h
+        ttilescache.cpp
+        ttilescache.h
         tgrmap.cpp
         tgrmap.h
         tpanel.qrc

@@ -20,93 +20,37 @@
 
 #include <core/SkBitmap.h>
 #include <core/SkCanvas.h>
+#include <core/SkSurface.h>
 #include <codec/SkCodec.h>
 
 #include "tgrmap.h"
+#include "tresources.h"
+#include "terror.h"
 
-using namespace GMap;
-using ::std::string;
-using ::std::to_string;
-using ::std::vector;
-using ::std::mutex;
-using ::std::lock_guard;
-using ::std::move;
-using ::std::unique_ptr;
+using std::string;
+using std::to_string;
+using std::vector;
+using std::mutex;
+using std::lock_guard;
+using std::move;
+using std::unique_ptr;
+using std::unordered_map;
 
-sk_sp<SkImage> TileCache::getTile(int x, int y, int z, MapSource source)
-{
-    TileKey key { x, y, z, source };
-    {
-        lock_guard<mutex> lock(mtx);
-        auto it = cache.find(key);
-
-        if (it != cache.end())
-            return it->second;
-    }
-    // Download tile
-    string url;
-    //        struct curl_slist* list = NULL;
-
-    if (source == GOOGLE)
-        url = "https://mt0.google.com/vt/lyrs=m&x=" + to_string(x) + "&y=" + to_string(y) + "&z=" + to_string(z);
-    else
-        url = "https://tile.openstreetmap.org/" + to_string(z) + "/" + to_string(x) + "/" + to_string(y) + ".png";
-
-    CURL* curl = curl_easy_init();
-
-    if (!curl)
-        return nullptr;
-
-    vector<unsigned char> buffer;
-    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buffer);
-    curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0");
-/*
-    if (source == OSM) {
-        list = curl_slist_append(list, "Referrer-Policy: origin");
-        list = curl_slist_append(list, "Referer: https://www.theosys.at");
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
-    }
-*/
-    CURLcode res = curl_easy_perform(curl);
-    curl_easy_cleanup(curl);
-
-    if (res != CURLE_OK || buffer.empty())
-        return nullptr;
-
-    auto data = SkData::MakeWithoutCopy(buffer.data(), buffer.size());
-    unique_ptr<SkCodec> codec = SkCodec::MakeFromData(move(data));
-
-    if (!codec)
-        return nullptr;
-
-    SkImageInfo info = codec->getInfo();
-    SkBitmap dst;
-
-    if (dst.tryAllocPixels(info)) {
-        if (codec->getPixels(info, dst.getPixels(), dst.rowBytes()) != SkCodec::kSuccess)
-            return nullptr;
-    }
-
-    auto img = dst.asImage();
-
-    if (!img)
-        return nullptr;
-
-    {
-        lock_guard<mutex> lock(mtx);
-        cache[key] = img;
-    }
-    return img;
-}
 
 TGrMap::TGrMap()
 {
+    DECL_TRACER("TGrMap::TGrMap()");
 }
 
-void TGrMap::createMap()
+TGrMap::~TGrMap()
 {
+    DECL_TRACER("TGrMap::~TGrMap()");
+}
+
+void TGrMap::createMap(SkBitmap& bmp)
+{
+    DECL_TRACER("TGrMap::createMap(const SkBitmap& bmp)");
+
     mSurface = SkSurfaces::Raster(SkImageInfo::MakeN32Premul(WINDOW_WIDTH, WINDOW_HEIGHT));
     // Initial marker position
     if (mMarkerLat == 0.0)
@@ -116,25 +60,29 @@ void TGrMap::createMap()
         mMarkerLon = 16.328604;
 
     centerOnMarker();
-    draw();
+    bmp = draw();
 }
 
 void TGrMap::centerOnMarker()
 {
+    DECL_TRACER("TGrMap::centerOnMarker()");
+
     double px, py;
 
-    latLonToPixelXY(mMarkerLat, mMarkerLon, zoom, px, py);
+    latLonToPixelXY(mMarkerLat, mMarkerLon, mZoom, px, py);
     mOffsetX = WINDOW_WIDTH / 2 - px;
     mOffsetY = WINDOW_HEIGHT / 2 - py;
 }
 
-void TGrMap::draw()
+SkBitmap TGrMap::draw()
 {
-    auto canvas = mSurface->getCanvas();
+    DECL_TRACER("TGrMap::draw()");
+
+    SkCanvas *canvas = mSurface->getCanvas();
     canvas->clear(SK_ColorWHITE);
 
     // Draw tiles
-    int tilesCount = 1 << zoom;
+    int tilesCount = 1 << mZoom;
     int startX = int(floor(-mOffsetX / TILE_SIZE));
     int startY = int(floor(-mOffsetY / TILE_SIZE));
     int endX = int(ceil((WINDOW_WIDTH - mOffsetX) / TILE_SIZE));
@@ -146,7 +94,7 @@ void TGrMap::draw()
         {
             int x = (tx % tilesCount + tilesCount) % tilesCount;
             int y = (ty % tilesCount + tilesCount) % tilesCount;
-            auto img = mTileCache.getTile(x, y, zoom, mMapSource);
+            sk_sp<SkImage> img = mTileCache.getTile(x, y, mZoom, mMapSource);
 
             if (img)
             {
@@ -164,22 +112,28 @@ void TGrMap::draw()
 
     // Draw marker
     double px, py;
-    latLonToPixelXY(mMarkerLat, mMarkerLon, zoom, px, py);
+    latLonToPixelXY(mMarkerLat, mMarkerLon, mZoom, px, py);
     float mx = (float)(mOffsetX + px);
     float my = (float)(mOffsetY + py);
     mPaint.setColor(SK_ColorGREEN);
     mPaint.setAntiAlias(true);
     canvas->drawCircle(mx, my, 10, mPaint);
-    mPaint.setColor(SK_ColorBLUE);
+
+    if (isBigEndian())
+        mPaint.setColor(SK_ColorRED);
+    else
+        mPaint.setColor(SK_ColorBLUE);
+
     mPaint.setStrokeWidth(2);
     canvas->drawLine(mx - 5, my, mx + 5, my, mPaint);
     canvas->drawLine(mx, my - 5, mx, my + 5, mPaint);
 
+    // The resulting map is upside down. Therefore we must turn it by 180°.
     SkPixmap pixmap;
 
     if (mSurface->peekPixels(&pixmap))
     {
-        int width = pixmap.width();
+        // int width = pixmap.width();
         int height = pixmap.height();
         int rowBytes = pixmap.rowBytes();
         const void* srcPixels = pixmap.addr();
@@ -195,7 +149,19 @@ void TGrMap::draw()
             memcpy(dstRow, srcRow, rowBytes);
         }
 
+        SkBitmap bmp;
+
+        if (!bmp.tryAllocPixels(pixmap.info()))
+        {
+            MSG_ERROR("Error allocating pixels!");
+            return SkBitmap();
+        }
+
+        bmp.setPixels(flippedPixels.data());
+        return bmp;
     }
+
+    return SkBitmap();
 }
 
 // Converts lat/lon to tile x,y at zoom z
