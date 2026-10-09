@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 to 2025 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2018 to 2026 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -79,7 +79,7 @@ string cmdList[] =
     "^MUT-", "^PCL-", "^PCT-", "^POP-", "^PTC-", "^PTO-", "^SDL-", "^SDM-",
     "^SHA-", "^SPD-", "^ENC", "?ENC", "?MAC",
     // TPanel commands
-    "*GPS", "+MAP-", "+AMP-", "+MSC-"
+    "*GPS", "+MAP-", "+AMP-", "+MSC-",
     "\0"
 };
 

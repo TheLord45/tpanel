@@ -63,6 +63,7 @@
 #include "tamxnet.h"
 #include "tpagemanager.h"
 #include "tsystemsound.h"
+#include "tgrmap.h"
 #ifndef __ANDROID__
 #include "tlauncher.h"
 #endif
@@ -899,13 +900,11 @@ void TButton::setBargraphLevel(int level)
 
     if (type == BARGRAPH)
     {
-        lastLevel = level;
         buttonStates->setLastLevel(level);
         drawBargraph(mActInstance, level);
     }
     else if (type == MULTISTATE_BARGRAPH)
     {
-        lastLevel = level;
         mActInstance = level;
         buttonStates->setLastLevel(level);
         drawMultistateBargraph(level);
@@ -1024,7 +1023,6 @@ void TButton::sendJoystickLevels()
         if (lastSendLevelX != scmd.value)
             gAmxNet->sendCommand(scmd);
 
-        lastSendLevelX = scmd.value;
         buttonStates->setLastSendLevelX(scmd.value);
 
         scmd.channel = lv + 1;
@@ -1178,6 +1176,7 @@ string TButton::buttonTypeToString(BUTTONTYPE t)
         case TAKE_NOTE:             return "TAKE NOTE";
         case SUBPAGE_VIEW:          return "SUBPAGE VIEW";
         case LISTBOX:               return "LISTBOX";
+        case MAP:                   return "MAP";
     }
 
     return "";
@@ -5038,6 +5037,9 @@ bool TButton::drawGradientImage(SkBitmap *bm, const SR_T& sr, int width, int hei
     switch(gradType)
     {
         case GRAD_SOLID:
+            if (colors)
+                delete[] colors;
+
             return true;
 
         case GRAD_SWEEP:
@@ -7424,19 +7426,29 @@ bool TButton::drawButton(int instance, bool show, bool subview)
             if (tp5)
                 dynIndex = getDynamicBmIndex(sr[instance]);
 
-            if (!sr[instance].dynamic && dynIndex < 0 && !buttonBitmap(&imgButton, instance))
+            if (tp5 && type == MAP && !drawMap(&imgButton))
             {
 #if TESTMODE == 1
                 setScreenDone();
 #endif
                 return false;
             }
-            else if ((sr[instance].dynamic || dynIndex >= 0) && !buttonDynamic(&imgButton, instance, show, &dynState, dynIndex, &video))
+            else
             {
+                if (!sr[instance].dynamic && dynIndex < 0 && !buttonBitmap(&imgButton, instance))
+                {
 #if TESTMODE == 1
-                setScreenDone();
+                    setScreenDone();
 #endif
-                return false;
+                    return false;
+                }
+                else if ((sr[instance].dynamic || dynIndex >= 0) && !buttonDynamic(&imgButton, instance, show, &dynState, dynIndex, &video))
+                {
+#if TESTMODE == 1
+                    setScreenDone();
+#endif
+                    return false;
+                }
             }
         }
         else if (mDOrder[i] == ORD_ELEM_ICON)
@@ -8021,6 +8033,47 @@ bool TButton::drawMultistateBargraph(int level, bool show)
 #endif
     }
 
+    return true;
+}
+
+bool TButton::drawMap(SkBitmap *bm)
+{
+    DECL_TRACER("TButton::drawMap(SkBitmap *bm)");
+
+    if (!bm)
+        return false;
+
+    if (mLatitude == 0.0 && mLongitude == 0.0)
+        return true;
+
+    MapSource ms;
+
+    switch (mMapSource)
+    {
+        case MAP_GOOGLE:        ms = GOOGLE; break;
+        case MAP_OPENSTREETMAP: ms = OSM; break;
+        default:
+            ms = GOOGLE;
+    }
+
+    string mpath = TConfig::getConfigPath() + "/.tiles";
+    TGrMap map(mpath);
+    map.setWindowSize(wt, ht);
+    map.setSource(ms);
+    map.setLatitute(mLatitude);
+    map.setLongitude(mLongitude);
+    map.setZoom(mZoom);
+
+    SkBitmap bmp;
+    allocPixels(wt, ht, &bmp);
+    map.createMap(bmp);
+
+    SkCanvas ctx(*bm, SkSurfaceProps());
+    SkImageInfo info = bm->info();
+    SkPaint paint;
+    paint.setBlendMode(SkBlendMode::kSrcOver);
+    sk_sp<SkImage> _image = SkImages::RasterFromBitmap(bmp);
+    ctx.drawImage(_image, 0, 0, SkSamplingOptions(), &paint);
     return true;
 }
 
@@ -10173,8 +10226,6 @@ bool TButton::doClick(int x, int y, bool pressed)
     int sx = x, sy = y;
     bool isSystem = isSystemButton();
     int lastLevel = 0;
-    int lastJoyX = 0;
-    int lastJoyY = 0;
     int lastSendLevelX = 0;
     int lastSendLevelY = 0;
     TButtonStates *buttonStates = getButtonState();
@@ -10182,8 +10233,6 @@ bool TButton::doClick(int x, int y, bool pressed)
     if (buttonStates)
     {
         lastLevel = buttonStates->getLastLevel();
-        lastJoyX = buttonStates->getLastJoyX();
-        lastJoyY = buttonStates->getLastJoyY();
         lastSendLevelX = buttonStates->getLastSendLevelX();
         lastSendLevelY = buttonStates->getLastSendLevelY();
     }
@@ -10473,7 +10522,7 @@ bool TButton::doClick(int x, int y, bool pressed)
                 uint ll = TConfig::getLogLevelBits();
                 bool st = (ll & HLOG_INFO) ? true : false;
                 mActInstance = instance = (st ? 0 : 1);
-                ll = (st ? (ll &= RLOG_INFO) : (ll |= HLOG_INFO));
+                st ? (ll &= RLOG_INFO) : (ll |= HLOG_INFO);
                 mChanged = true;
                 TConfig::saveLogLevel(ll);
                 drawButton(mActInstance, true);
@@ -10487,7 +10536,7 @@ bool TButton::doClick(int x, int y, bool pressed)
                 uint ll = TConfig::getLogLevelBits();
                 bool st = (ll & HLOG_WARNING) ? true : false;
                 mActInstance = instance = (st ? 0 : 1);
-                ll = (st ? (ll &= RLOG_WARNING) : (ll |= HLOG_WARNING));
+                st ? (ll &= RLOG_WARNING) : (ll |= HLOG_WARNING);
                 mChanged = true;
                 TConfig::saveLogLevel(ll);
                 drawButton(mActInstance, true);
@@ -10501,7 +10550,7 @@ bool TButton::doClick(int x, int y, bool pressed)
                 uint ll = TConfig::getLogLevelBits();
                 bool st = (ll & HLOG_ERROR) ? true : false;
                 mActInstance = instance = (st ? 0 : 1);
-                ll = (st ? (ll &= RLOG_ERROR) : (ll |= HLOG_ERROR));
+                st ? (ll &= RLOG_ERROR) : (ll |= HLOG_ERROR);
                 mChanged = true;
                 TConfig::saveLogLevel(ll);
                 drawButton(mActInstance, true);
@@ -10515,7 +10564,7 @@ bool TButton::doClick(int x, int y, bool pressed)
                 uint ll = TConfig::getLogLevelBits();
                 bool st = (ll & HLOG_TRACE) ? true : false;
                 mActInstance = instance = (st ? 0 : 1);
-                ll = (st ? (ll &= RLOG_TRACE) : (ll |= HLOG_TRACE));
+                st ? (ll &= RLOG_TRACE) : (ll |= HLOG_TRACE);
                 mChanged = true;
                 TConfig::saveLogLevel(ll);
                 drawButton(mActInstance, true);
@@ -10529,7 +10578,7 @@ bool TButton::doClick(int x, int y, bool pressed)
                 uint ll = TConfig::getLogLevelBits();
                 bool st = (ll & HLOG_DEBUG) ? true : false;
                 mActInstance = instance = (st ? 0 : 1);
-                ll = (st ? (ll &= RLOG_DEBUG) : (ll |= HLOG_DEBUG));
+                st ? (ll &= RLOG_DEBUG) : (ll |= HLOG_DEBUG);
                 mChanged = true;
                 TConfig::saveLogLevel(ll);
                 drawButton(mActInstance, true);
@@ -10543,7 +10592,7 @@ bool TButton::doClick(int x, int y, bool pressed)
                 uint ll = TConfig::getLogLevelBits();
                 bool st = (ll & HLOG_PROTOCOL) == HLOG_PROTOCOL ? true : false;
                 mActInstance = instance = (st ? 0 : 1);
-                ll = (st ? (ll &= RLOG_PROTOCOL) : (ll |= HLOG_PROTOCOL));
+                st ? (ll &= RLOG_PROTOCOL) : (ll |= HLOG_PROTOCOL);
                 mChanged = true;
                 TConfig::saveLogLevel(ll);
                 drawButton(mActInstance, true);
@@ -10560,7 +10609,7 @@ bool TButton::doClick(int x, int y, bool pressed)
                 uint ll = TConfig::getLogLevelBits();
                 bool st = (ll & HLOG_ALL) == HLOG_ALL ? true : false;
                 mActInstance = instance = (st ? 0 : 1);
-                ll = (st ? (ll &= RLOG_ALL) : (ll |= HLOG_ALL));
+                st ? (ll &= RLOG_ALL) : (ll |= HLOG_ALL);
                 mChanged = true;
                 TConfig::saveLogLevel(ll);
                 drawButton(mActInstance, true);
@@ -11317,7 +11366,6 @@ bool TButton::doClick(int x, int y, bool pressed)
                 if (lastSendLevelX != scmd.value)
                     gAmxNet->sendCommand(scmd);
 
-                lastJoyX = sx;
                 lastSendLevelX = scmd.value;
 
                 if (buttonStates)
@@ -11333,7 +11381,6 @@ bool TButton::doClick(int x, int y, bool pressed)
                 if (lastSendLevelY != scmd.value)
                     gAmxNet->sendCommand(scmd);
 
-                lastJoyY = sy;
                 lastSendLevelY = scmd.value;
 
                 if (buttonStates)

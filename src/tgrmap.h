@@ -30,6 +30,7 @@ class TGrMap
 {
     public:
         TGrMap();
+        TGrMap(const std::string& tilecache);
         ~TGrMap();
 
         void createMap(SkBitmap& bmp);
@@ -37,6 +38,8 @@ class TGrMap
         void setLongitude(double lon) { mMarkerLon = lon; }
         void setZoom(int z) { mZoom = z; }
         void setSource(MapSource src) { mMapSource = src; }
+        void setTileCachePath(const std::string& path);
+        void setWindowSize(int width, int height) { WINDOW_WIDTH = width; WINDOW_HEIGHT = height; }
 
 
     protected:
@@ -56,7 +59,7 @@ class TGrMap
         int WINDOW_HEIGHT{600};
 
         sk_sp<SkSurface> mSurface;
-        TTileCache mTileCache;
+        TTileCache *mTileCache{nullptr};
 
         double mOffsetX{0}; // pixel offset for panning
         double mOffsetY{0};

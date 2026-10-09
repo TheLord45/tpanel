@@ -1131,7 +1131,7 @@ TPageManager::TPageManager()
     // TPanel commands
     REG_CMD(doGPS, "*GPS");     // Returns the GPS coordinates of the panel
     REG_CMD(doMAP, "+MAP");     // Sets the GPS coordinates on a map.
-    REG_CMD(doAMP, "+AMP");     // Creates a new map element at the given position and size
+    REG_CMD(doAMP, "+AMP");     // Positions a map element at the given position and size
     REG_CMD(doMSC, "+MSC");     // Set the source for the map (Google, Open Streemap, ...)
     // Virtual internal commands
     REG_CMD(doFTR, "#FTR");     // File transfer (virtual internal command)
@@ -13840,9 +13840,8 @@ void TPageManager::doMAP(int port, vector<int>& channels, vector<string>& pars)
 
 /**
  * @brief TPageManager::doAMP
- * This creates a new object of type map at the given posizion and size. The
- * command allows to optionally define the source for the map. By default
- * Google is the source.
+ * Defines the size and position of a map button. The command allows to
+ * optionally define the source for the map. By default Google is the source.
  *
  * Example: +AMP-<buttons>,<left>,<top>,<width>,<height>[,<source>]
  *
@@ -13890,11 +13889,6 @@ void TPageManager::doAMP(int port, vector<int>& channels, vector<string>& pars)
                 bt->show();
             }
         }
-    }
-    else
-    {
-        // Button::TButton *button = new Button::TButton;
-        // TODO: Add code to add a new button to the actual page.
     }
 }
 

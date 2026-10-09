@@ -40,11 +40,26 @@ using std::unordered_map;
 TGrMap::TGrMap()
 {
     DECL_TRACER("TGrMap::TGrMap()");
+
+    mTileCache = new TTileCache;
+}
+
+TGrMap::TGrMap(const std::string& tilecache)
+{
+    DECL_TRACER("TGrMap::TGrMap(const std::string& tilecache)");
+
+    if (tilecache.empty())
+        mTileCache = new TTileCache;
+    else
+        mTileCache = new TTileCache(tilecache);
 }
 
 TGrMap::~TGrMap()
 {
     DECL_TRACER("TGrMap::~TGrMap()");
+
+    if (mTileCache)
+        delete mTileCache;
 }
 
 void TGrMap::createMap(SkBitmap& bmp)
@@ -94,7 +109,7 @@ SkBitmap TGrMap::draw()
         {
             int x = (tx % tilesCount + tilesCount) % tilesCount;
             int y = (ty % tilesCount + tilesCount) % tilesCount;
-            sk_sp<SkImage> img = mTileCache.getTile(x, y, mZoom, mMapSource);
+            sk_sp<SkImage> img = mTileCache->getTile(x, y, mZoom, mMapSource);
 
             if (img)
             {

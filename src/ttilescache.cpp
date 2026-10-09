@@ -126,7 +126,12 @@ sk_sp<SkImage> TTileCache::getTile(int x, int y, int z, MapSource source)
     sk_sp<SkImage> fimg;
 
     if ((fimg = getTileFromFile(x, y, z, source)) != nullptr)
+    {
+        lock_guard<mutex> lock(mtx);
+        // Put the tile into the memory cache
+        cache[key] = fimg;
         return fimg;
+    }
 
     // Download tile
     string url;

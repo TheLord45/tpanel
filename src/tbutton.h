@@ -1074,6 +1074,7 @@ namespace Button
             bool drawBargraph(int instance, int level, bool show=true);
             /**
              * @brief drawMultistateBargraph draws a bargraph comparable to a button.
+             *
              * This method draws a multistate bargraph. This is like many
              * buttons in one. But they behave like a bargraph. This means, that
              * it depends on the level how many buttons are ON and which are OFF.
@@ -1084,6 +1085,19 @@ namespace Button
              * occurred it returns FALSE.
              */
             bool drawMultistateBargraph(int level, bool show=true);
+            /**
+             * @brief drawMap draws a map
+             *
+             * Retrieves a map for rhe given point and size either from Google
+             * (default) or from Open Streetmap. The point is taken from the
+             * GPS sensor boilt into the device.
+             *
+             * @param bm    A pointer to a bitmap where the result should be
+             * drawn.
+             *
+             * @return TRUE on success.
+             */
+            bool drawMap(SkBitmap *bm);
             /**
              * @brief Invert bargraph/joystick
              * This method sets or unsets inverting bargraphs or the axis of a
@@ -1621,6 +1635,7 @@ namespace Button
             std::mutex mkDrawButtonMutex;
             double mLatitude{0.0};
             double mLongitude{0.0};
+            int mZoom{10};
             MAP_SOURCE_t mMapSource{MAP_NONE};
     };
 
