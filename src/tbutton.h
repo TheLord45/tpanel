@@ -1636,6 +1636,7 @@ namespace Button
             double mLatitude{0.0};
             double mLongitude{0.0};
             int mZoom{10};
+            bool mMapAuto{false};
             MAP_SOURCE_t mMapSource{MAP_NONE};
     };
 
