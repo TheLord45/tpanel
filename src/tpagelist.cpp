@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2025 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2026 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,6 +15,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
  */
+
+#include <fstream>
+#include <unistd.h>
 
 #include <string>
 #include "tpageinterface.h"
@@ -42,7 +45,16 @@ namespace fs = std::filesystem;
 
 using std::string;
 using std::vector;
+using std::ifstream;
 using namespace Expat;
+
+typedef enum
+{
+    PG_NONE,
+    PG_PAGE,
+    PG_POPUP,
+    PG_SUBPAGE
+}PAGETYPE_t;
 
 TPageList::TPageList()
 {
@@ -77,6 +89,13 @@ void TPageList::initialize(bool system)
     DECL_TRACER("TPageList::initialize(bool system)");
 
     TError::clear();
+
+    if (TTPInit::isTsf())
+    {
+        initTsf();
+        return;
+    }
+
     string sProject;
 
     if (!system)
@@ -206,6 +225,55 @@ void TPageList::initialize(bool system)
     loadSubPageSets(&xml);
 }
 
+void TPageList::initTsf()
+{
+    DECL_TRACER("TPageList::initTsf()");
+
+    if (mProject.empty() || !isValidFile(mProject))
+    {
+        SET_ERROR_MSG("No or invalid project file: " + mProject);
+        MSG_ERROR(TError::getErrorMsg());
+        return;
+    }
+
+    Json::Value root;
+    ifstream config_doc(mProject, ifstream::binary);
+    config_doc >> root;
+
+    PAGELIST_T pl;
+    SUBPAGELIST_T spl;
+    const Json::Value pageList = root["pageList"];
+
+    for (size_t i = 0; i < pageList.size(); ++i)
+    {
+        int index = static_cast<int>(i);
+        pl.clear();
+
+        pl.pageID = pageList[index].get("pageID", "0").asInt();
+        pl.name = pageList[index].get("name", "").asString();
+        pl.file = pageList[index].get("file", "").asString();
+        pl.isValid = pageList[index].get("isValid", "1").asInt();
+        mPageList.push_back(pl);
+    }
+
+    const Json::Value popupList = root["popupList"];
+
+    for (size_t i = 0; i < popupList.size(); ++i)
+    {
+        int index = static_cast<int>(i);
+        spl.clear();
+        spl.pageID = pageList[index].get("pageID", "0").asInt();
+        spl.name = pageList[index].get("name", "").asString();
+        spl.file = pageList[index].get("file", "").asString();
+        spl.isValid = pageList[index].get("isValid", "1").asInt();
+        spl.group = pageList[index].get("group", "").asString();
+        spl.popupType = pageList[index].get("popupType", "0").asInt();
+        mSubPageList.push_back(spl);
+    }
+
+    loadTsfSubPageSets(root);
+}
+
 void TPageList::loadSubPageSets(TExpat *xml)
 {
     DECL_TRACER("TPageList::loadSubPageSets(TExpat *xml)");
@@ -292,6 +360,38 @@ void TPageList::loadSubPageSets(TExpat *xml)
                 MSG_DEBUG("        Item:     " << iterItem->index << ", pageID: " << iterItem->pageID);
             }
         }
+    }
+}
+
+void TPageList::loadTsfSubPageSets(const Json::Value& root)
+{
+    DECL_TRACER("TPageList::loadTsfSubPageSets(const Json::Value& root)");
+
+    SUBVIEWLIST_T svl;
+    SUBVIEWITEM_T svi;
+    Json::Value pageSets = root["subPageSets"];
+
+    for (size_t i = 0; i < pageSets.size(); ++i)
+    {
+        int index = static_cast<int>(i);
+
+        svl.id = pageSets[index].get("id", "0").asInt();
+        svl.name = pageSets[index].get("name", "").asString();
+        svl.pgWidth = pageSets[index].get("pgWidth", "0").asInt();
+        svl.pgHeight = pageSets[index].get("pgHeight", "0").asInt();
+
+        Json::Value items = pageSets[index]["items"];
+
+        for (size_t j = 0; j < items.size(); ++j)
+        {
+            int idx = static_cast<int>(j);
+
+            svi.index = items[idx].get("index", "0").asInt();
+            svi.pageID = items[idx].get("pageID", "0").asInt();
+            svl.items.push_back(svi);
+        }
+
+        mSubViewList.push_back(svl);
     }
 }
 
@@ -505,6 +605,20 @@ int TPageList::findSubViewListPageID(int id, int index)
     }
 
     return -1;
+}
+
+string TPageList::getPageType(int type)
+{
+    DECL_TRACER("TPageList::getPageType(int type)");
+
+    switch(type)
+    {
+        case 1: return string("page");
+        case 2: return string("popup");
+        case 3: return string("subpage");
+    }
+
+    return string();
 }
 
 /**

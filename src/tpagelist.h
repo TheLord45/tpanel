@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2025 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2026 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,12 @@
  */
 #ifndef __TPAGELIST_H__
 #define __TPAGELIST_H__
+
+#ifdef __MACH__
+#include <json/json.h>
+#else
+#include <jsoncpp/json/json.h>
+#endif
 
 #include <string>
 #include <vector>
@@ -101,8 +107,11 @@ class TPageList : public TValidateFile
 
     private:
         void initialize(bool system=false);
+        void initTsf();
         void loadSubPageSets(Expat::TExpat *xml);
+        void loadTsfSubPageSets(const Json::Value& root);
         void cleanup();
+        std::string getPageType(int type);
 
         std::string mProject;
         std::string mSystemProject;

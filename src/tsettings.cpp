@@ -443,7 +443,6 @@ bool TSettings::loadSettingsJson(bool initial)
     ifstream config_doc(fname, ifstream::binary);
     config_doc >> root;
 
-
     mSetup.versionInfo.fsfVersion = root["versionInfo"].get("fileVersion", "").asInt();
 
     if (mSetup.versionInfo.fsfVersion != FILE_VERSION)
@@ -608,8 +607,17 @@ bool TSettings::loadSettingsJson(bool initial)
         }
     }
 
-    // TODO: Read palette file. Currently not available for TSF format.
-    return false;
+    // Here we're holding the name of the palette file. For G5 only one file
+    // exist. This file may contain more than one palette.
+    if (!mSetup.supportFiles.colorFile.empty())
+    {
+        PALETTE_SETUP ps;
+        ps.name = ps.file = mSetup.supportFiles.colorFile;
+        ps.paletteID = 1;
+        mSetup.palettes.push_back(ps);
+    }
+
+    return true;
 }
 
 RESOURCE_LIST_T TSettings::findResourceType(const string& type)

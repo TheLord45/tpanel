@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2026 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -50,9 +50,13 @@ class TPalette : public TValidateFile
         PDATA_T findColor(int pID);
         void reset();
 
+    protected:
+        void initTsf(const std::string& file);
+
     private:
         bool havePalette(const std::string& name);
         void addSystemColors();
+        long getColorValue(const std::string& color);
 
         std::string mPath;
         std::map<std::string, PDATA_T> mColors;
