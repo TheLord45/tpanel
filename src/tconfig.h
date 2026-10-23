@@ -23,11 +23,11 @@
 
 #define V_MAJOR     2
 #define V_MINOR     0
-#define V_PATCH     2
+#define V_PATCH     3
 #define V_ADD       "b1"
 
 #ifndef V_SERIAL
-#define V_SERIAL    "20260517TP202R"
+#define V_SERIAL    "20260517TP203R"
 #endif
 
 /**
