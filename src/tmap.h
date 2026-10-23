@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2022 to 2026 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -83,6 +83,15 @@ class TMap : public TValidateFile
             int ai{0};
         }MAP_EVPF_T;
 
+        typedef struct MAP_DDSM_T
+        {
+            int bt{0};          // button number
+            std::string ddmn;   // unique generated name
+            std::string ddmt;   //
+            std::string dds;    // Name of listview
+            int pg{0};          // Page number
+        }MAP_DDSM_T;
+
         typedef struct MAPS_T
         {
             std::vector<MAP_T> map_cm;
@@ -93,6 +102,7 @@ class TMap : public TValidateFile
             std::vector<MAP_T> map_strm;        // System resources
             std::vector<MAP_PM_T> map_pm;       // Button -> text
             std::vector<MAP_EVPF_T> map_evpf;   // Only G5
+            std::vector<MAP_DDSM_T> map_ddsm;   // G5: Listview
         }MAPS_T;
 
         std::vector<MAP_T> findButtons(int port, std::vector<int>& channels, MAP_TYPE mt = TYPE_AM);
@@ -103,7 +113,7 @@ class TMap : public TValidateFile
         std::vector<std::string> findSounds();
         bool soundExist(const std::string& sname);
 
-        bool haveError() { return mError; }
+        bool haveError() const { return mError; }
 
     protected:
         bool readMap();

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2022 to 2026 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,6 +15,14 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
  */
+
+#include <fstream>
+#ifdef __MACH__
+#include <json/json.h>
+#else
+#include <jsoncpp/json/json.h>
+#endif
+#include <unistd.h>
 
 #include "tmap.h"
 #include "texpat++.h"
@@ -41,6 +49,7 @@ namespace fs = std::filesystem;
 
 using std::string;
 using std::vector;
+using std::ifstream;
 using namespace Expat;
 
 TMap::TMap(const std::string& file, bool tp)
@@ -253,8 +262,118 @@ bool TMap::readMapJson()
 {
     DECL_TRACER("TMap::readMapJson()");
 
-    // TODO: Add code to read the mapping from JSON file.
-    return false;
+    string lfile;
+
+    if (gPageManager)
+        lfile = gPageManager->getSettings()->getMapFileName();
+    else
+        return false;
+
+    string path = makeFileName(mFile, lfile);
+
+    if (!isValidFile())
+    {
+        MSG_ERROR("File \"" << lfile << "\" doesn't exist or is not a regular file!");
+        return false;
+    }
+
+    MAP_T map;
+    MAP_BM_T mapBm;
+    MAP_PM_T mapPm;
+    MAP_EVPF_T mapEvpf;
+    MAP_DDSM_T mapDdsm;
+
+    const vector<string> elements = { "cm", "am", "lm", "bm", "evpf", "ddsm" };
+    vector<string>::const_iterator mapIter;
+
+    Json::Value root;
+    ifstream config_doc(path, ifstream::binary);
+    config_doc >> root;
+
+    const Json::Value pageList = root["pageList"];
+
+    for (mapIter = elements.cbegin(); mapIter != elements.cend(); ++mapIter)
+    {
+        const Json::Value array = root[mapIter->c_str()];
+
+        for (size_t i = 0; i < array.size(); ++i)
+        {
+            int index = static_cast<int>(i);
+
+            if (mapIter->compare("cm") == 0 || mapIter->compare("am") == 0 ||
+                mapIter->compare("lm") == 0 || mapIter->compare("strm") == 0)
+            {
+                map.p = array[index].get("p", "0").asInt();
+                map.c = array[index].get("c", "0").asInt();
+                map.ax = array[index].get("ax", "0").asInt();
+                map.pg = array[index].get("pg", "0").asInt();
+                map.bt = array[index].get("bt", "0").asInt();
+                map.pn = array[index].get("pn", "").asString();
+                map.bn = array[index].get("bn", "").asString();
+
+                if (mapIter->compare("cm") == 0)
+                    mMap.map_cm.push_back(map);
+                else if (mapIter->compare("am") == 0)
+                    mMap.map_am.push_back(map);
+                else if (mapIter->compare("lm") == 0)
+                    mMap.map_lm.push_back(map);
+                else if (mapIter->compare("strm") == 0)
+                    mMap.map_strm.push_back(map);
+            }
+            else if (mapIter->compare("bm") == 0)
+            {
+                mapBm.i = array[index].get("i", "").asString();
+                mapBm.id = array[index].get("id", "0").asInt();
+                mapBm.rt = array[index].get("rt", "0").asInt();
+                mapBm.pg = array[index].get("pg", "0").asInt();
+                mapBm.bt = array[index].get("bt", "0").asInt();
+                mapBm.st = array[index].get("st", "0").asInt();
+                mapBm.sl = array[index].get("sl", "0").asInt();
+                mapBm.pn = array[index].get("pn", "").asString();
+                mapBm.bn = array[index].get("bn", "").asString();
+                mapBm.rc = array[index].get("rc", "0").asInt();
+                mMap.map_bm.push_back(mapBm);
+            }
+            else if (mapIter->compare("sm") == 0)
+            {
+                Json::Value sm = array[index]["sm"];
+
+                for (int j = 0; j < static_cast<int>(sm.size()); ++j)
+                    mMap.map_sm.push_back(sm[j].asString());
+            }
+            else if (mapIter->compare("pm") == 0)
+            {
+                mapPm.a = array[index].get("a", "0").asInt();
+                mapPm.t = array[index].get("t", "").asString();
+                mapPm.pg = array[index].get("pg", "0").asInt();
+                mapPm.bt = array[index].get("bt", "0").asInt();
+                mapPm.pn = array[index].get("pn", "").asString();
+                mapPm.bn = array[index].get("bn", "").asString();
+                mMap.map_pm.push_back(mapPm);
+            }
+            else if (mapIter->compare("evpf") == 0)
+            {
+                mapEvpf.a = array[index].get("a", "0").asInt();
+                mapEvpf.t = array[index].get("t", "").asString();
+                mapEvpf.pg = array[index].get("pg", "0").asInt();
+                mapEvpf.bt = array[index].get("bt", "0").asInt();
+                mapEvpf.ev = array[index].get("ev", "").asString();
+                mapEvpf.ai = array[index].get("ai", "0").asInt();
+                mMap.map_evpf.push_back(mapEvpf);
+            }
+            else if (mapIter->compare("ddsm") == 0)
+            {
+                mapDdsm.bt = array[index].get("bt", "0").asInt();
+                mapDdsm.ddmn = array[index].get("ddmn", "").asString();
+                mapDdsm.ddmt = array[index].get("ddmt", "").asString();
+                mapDdsm.dds = array[index].get("dds", "").asString();
+                mapDdsm.pg = array[index].get("pg", "0").asInt();
+                mMap.map_ddsm.push_back(mapDdsm);
+            }
+        }
+    }
+
+    return true;
 }
 
 vector<TMap::MAP_T> TMap::findButtons(int port, vector<int>& channels, MAP_TYPE mt)
