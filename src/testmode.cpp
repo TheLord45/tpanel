@@ -105,7 +105,7 @@ void _TestMode::run()
 
     try
     {
-        mThread = std::thread([=] { this->start(); });
+        mThread = std::thread([=, this] { this->start(); });
         mThread.detach();
     }
     catch (std::exception& e)

@@ -102,6 +102,9 @@ std::string UTF8ToCp1250(const std::string& str);
 std::string cp1250ToUTF8(const std::string& str);
 std::string latin1ToUTF8(const std::string& str);
 std::string intToString(int num);
+std::string doubleToString(double num);
+int stringToInt(const std::string& str);
+double stringToDouble(const std::string& str);
 std::string ReplaceString(const std::string subject, const std::string& search, const std::string& replace);
 
 void *renew(char **mem, size_t old_size, size_t new_size);

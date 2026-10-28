@@ -19,6 +19,7 @@
 #ifndef __TOBJECT_H__
 #define __TOBJECT_H__
 
+#include <qurl.h>
 #include <string>
 
 #include "tpageinterface.h"
@@ -53,7 +54,8 @@ class TObject
             OBJ_INPUT,
             OBJ_LIST,
             OBJ_VIDEO,
-            OBJ_SUBVIEW
+            OBJ_SUBVIEW,
+            OBJ_MAP
         }OBJECT_TYPE;
 
         typedef union _OBJ
@@ -91,6 +93,9 @@ class TObject
             bool connected{false};          // TRUE = there is a connection.
             bool dirty{false};              // TRUE = Object was changed during surface was suspended.
             bool collapsible{false};        // TRUE = Object must be a "window" and it is collapsible.
+            double latitude{0.0};           // The latitude if this is a map. Marks the center
+            double longitude{0.0};          // The longitude if this is a map. Marks the center
+            double magnify{0.0};            // The zoom level
         }OBJECT_t;
 
         TObject();

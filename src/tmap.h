@@ -107,6 +107,7 @@ class TMap : public TValidateFile
 
     protected:
         bool readMap();
+        bool readMapJson();
 
     private:
         std::string mFile;

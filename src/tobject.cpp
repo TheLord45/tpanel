@@ -702,6 +702,7 @@ string TObject::objectToString(TObject::OBJECT_TYPE o)
         case OBJ_VIDEO:   return "VIDEO"; break;
         case OBJ_LIST:    return "LIST"; break;
         case OBJ_SUBVIEW: return "SUBVIEW"; break;
+        case OBJ_MAP:     return "MAP"; break;
     }
 
     return string();   // Should not happen but is needed to satisfy the compiler.

@@ -41,7 +41,7 @@ void TImageRefresh::run(const std::string& url)
     try
     {
         mStopped = false;
-        mThread = std::thread([=] { this->_run(url); });
+        mThread = std::thread([=, this] { this->_run(url); });
         mThread.detach();
     }
     catch (std::exception& e)

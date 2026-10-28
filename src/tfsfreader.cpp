@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 to 2025 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2022 to 2026 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -107,62 +107,45 @@ TFsfReader::~TFsfReader()
 {
     DECL_TRACER("TFsfReader::~TFsfReader()");
 
-    if (mFtpLib)
-        delete mFtpLib;
+    if (mFtpClient)
+        delete mFtpClient;
 }
 
 bool TFsfReader::copyOverFTP(const string& fname, const string& target)
 {
     DECL_TRACER("TFsfReader::copyOverFTP(const string& fname, const string& target)");
 
-    if (mFtpLib)
-        delete mFtpLib;
+    if (mFtpClient)
+        delete mFtpClient;
 
-    mFtpLib = new ftplib();
-    mFtpLib->regLogging(bind(&TFsfReader::logging, this, std::placeholders::_1, std::placeholders::_2));
-
-    if (TConfig::getFtpPassive())
-        mFtpLib->SetConnmode(ftplib::pasv);
-    else
-        mFtpLib->SetConnmode(ftplib::port);
-
-    mFtpLib->SetCallbackLogFunction(&TFsfReader::callbackLog);      // Print some debugging messages
-    mFtpLib->SetCallbackErrorFunction(&TFsfReader::callbackError);  // Print errors or info's
-    mFtpLib->SetCallbackXferFunction(&TFsfReader::callbackXfer);    // This is the progress
-    mFtpLib->SetCallbackBytes(10000L);                              // This tells the progress to be called every 10Kb
-    string scon = TConfig::getController() + ":21";
-    MSG_DEBUG("Trying to connect to " << scon);
-
-    if (!mFtpLib->Connect(scon.c_str()))
-    {
-        delete mFtpLib;
-        mFtpLib = nullptr;
-        return false;
-    }
-
+    mFtpClient = new TFtpClient();
     string sUser = TConfig::getFtpUser();
-    string sPass = TConfig::getFtpPassword();
     MSG_DEBUG("Trying to login <" << sUser << ", ********>");
 
-    if (!mFtpLib->Login(sUser.c_str(), sPass.c_str()))
+    if (!mFtpClient->connectAndLogin(QString::fromStdString(TConfig::getController()),
+                                     21,
+                                     QString::fromStdString(TConfig::getFtpUser()),
+                                     QString::fromStdString(TConfig::getFtpPassword())))
     {
-        delete mFtpLib;
-        mFtpLib = nullptr;
+        delete mFtpClient;
+        mFtpClient = nullptr;
         return false;
     }
 
+    mFtpClient->setMode(TFtpClient::Mode::Passive);
     MSG_DEBUG("Trying to download file " << fname << " to " << target);
 
-    if (!mFtpLib->Get(target.c_str(), fname.c_str(), ftplib::image))
+    if (!mFtpClient->downloadFile(QString::fromStdString(fname), QString::fromStdString(target), 60000, &TFsfReader::callbackXfer))
     {
-        MSG_ERROR("Error downloading file " << fname);
-        delete mFtpLib;
-        mFtpLib = nullptr;
+        MSG_ERROR("Error downloading file " << fname << ": " << mFtpClient->lastError().toStdString());
+        delete mFtpClient;
+        mFtpClient = nullptr;
         return false;
     }
 
+    delete mFtpClient;
+    mFtpClient = nullptr;
     MSG_INFO("File " << fname << " successfully downloaded to " << target << ".");
-    mFtpLib->Quit();
     return true;
 }
 
@@ -232,24 +215,10 @@ void TFsfReader::callbackError(char* msg, void*, int err)
     }
 }
 
-int TFsfReader::callbackXfer(off64_t xfered, void*)
+void TFsfReader::callbackXfer(off64_t xfered, off64_t)
 {
-    DECL_TRACER("TFsfReader::callbackXfer(off64_t xfered, void*)");
+    DECL_TRACER("TFsfReader::callbackXfer(off64_t xfered, off64_t)");
 
     if (_progress)
-        return _progress(xfered);
-
-    return 1;
-}
-
-void TFsfReader::logging(int level, const std::string &msg)
-{
-    switch(level)
-    {
-        case LOG_INFO:      MSG_INFO(msg); break;
-        case LOG_WARNING:   MSG_WARNING(msg); break;
-        case LOG_ERROR:     MSG_ERROR(msg); break;
-        case LOG_TRACE:     MSG_TRACE(msg); break;
-        case LOG_DEBUG:     MSG_DEBUG(msg); break;
-    }
+        _progress(xfered);
 }

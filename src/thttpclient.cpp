@@ -680,7 +680,7 @@ string THTTPClient::makeRequest(const string& url)
         request += "Authorization: Basic " + enc + "\r\n";
     }
 
-    request += "User-Agent: tpanel/" + std::to_string(V_MAJOR) + "." + std::to_string(V_MINOR) + "." + std::to_string(V_PATCH) + "\r\n";
+    request += "User-Agent: tpanel/" + std::to_string(V_MAJOR) + "." + std::to_string(V_MINOR) + "." + std::to_string(V_PATCH) + " (+https://github.com/TheLord45/tpanel; contact: andreas@theosys.at)\r\n";
     request += "Accept: image/*\r\n";
     request += "\r\n";
     MSG_DEBUG("Requesting: " << std::endl << request << "------------------------------------------");

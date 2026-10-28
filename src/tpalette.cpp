@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, 2021 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2026 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,11 +16,19 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
+#include <fstream>
+#ifdef __MACH__
+#include <json/json.h>
+#else
+#include <jsoncpp/json/json.h>
+#endif
+#include <unistd.h>
+
 #include "tpalette.h"
 #include "terror.h"
 #include "tconfig.h"
-#include "tresources.h"
 #include "texpat++.h"
+#include "ttpinit.h"
 
 #if __cplusplus < 201402L
 #   error "This module requires at least C++14 standard!"
@@ -43,6 +51,7 @@ using std::string;
 using std::vector;
 using std::map;
 using std::pair;
+using std::ifstream;
 using namespace Expat;
 
 TPalette::TPalette(bool tp)
@@ -70,6 +79,12 @@ TPalette::~TPalette()
 void TPalette::initialize(const std::string& file)
 {
     DECL_TRACER("TPalette::initialize(const std::string& file)");
+
+    if (mIsG5 && TTPInit::isTsf())
+    {
+        initTsf(file);
+        return;
+    }
 
     if (!fs::exists(mPath + "/prj.xma"))
         mPath += "/__system";
@@ -118,15 +133,7 @@ void TPalette::initialize(const std::string& file)
         pal.index = xml.getAttributeInt("index", attrs);
         pal.name = xml.getAttribute("name", attrs);
         string color = content;
-
-        if (color.at(0) == '#')     // Do we have a valid color value?
-        {
-            string sCol = "0x" + color.substr(1);
-            pal.color = strtoul(sCol.c_str(), 0, 16);
-
-            if (color.length() <= 7)
-                pal.color = (pal.color << 8) | 0x000000ff;
-        }
+        pal.color = getColorValue(color);
 
         if (pal.name.length() > 0)
         {
@@ -148,6 +155,87 @@ void TPalette::initialize(const std::string& file)
         addSystemColors();
 
     mPaletteNames.push_back(palName);
+}
+
+void TPalette::initTsf(const string& file)
+{
+    DECL_TRACER("TPalette::initTsf(const string& file)");
+
+    string palFile = makeFileName(mPath, file);
+
+    if (!fs::exists(palFile) || !fs::is_regular_file(palFile))
+    {
+        MSG_ERROR("File \"" << file << "\" does not exist or is not a regular file!");
+        TError::setError();
+        return;
+    }
+
+    mIsG5 = true;       // .tsf files are always G5!
+    Json::Value root;
+    ifstream config_doc(palFile, ifstream::binary);
+    config_doc >> root;
+
+    mPaletteNames.clear();
+    const Json::Value paletteData = root["paletteData"];
+
+    for (size_t i = 0; i < paletteData.size(); ++i)
+    {
+        int index = static_cast<int>(i);
+        string palName = paletteData[index].get("name", "").asString();
+
+        if (havePalette(palName))
+            continue;
+
+        mPaletteNames.push_back(palName);
+
+        const Json::Value data = paletteData[index]["palette"];
+
+        for (size_t j = 0; j < data.size(); ++j)
+        {
+            int idx = static_cast<int>(j);
+            PDATA_T pal;
+            pal.index = data[idx].get("index", "0").asInt();
+            pal.name = data[idx].get("name", "").asString();
+            string color = data[idx].get("color", "#00000000").asString();
+            pal.color = getColorValue(color);
+
+            if (pal.name.length() > 0)
+            {
+                if (mColors.find(pal.name) != mColors.end())    // Don't insert color if it's already in list
+                {
+                    MSG_TRACE("Ignoring color " << pal.name << " because it was read before!");
+                    pal.clear();
+                    continue;
+                }
+
+                // Insert color into list and get next child if there is one.
+                mColors.insert(pair<string, PDATA_T>(pal.name, pal));
+            }
+
+            pal.clear();
+        }
+    }
+
+    if (mColors.empty())
+        addSystemColors();
+}
+
+long TPalette::getColorValue(const string& color)
+{
+    DECL_TRACER("TPalette::getColorValue(const string& color)");
+
+    long col = 0;
+
+    if (color.at(0) == '#')     // Do we have a valid color value?
+    {
+        string sCol = "0x" + color.substr(1);
+        col = strtoul(sCol.c_str(), 0, 16);
+
+        if (color.length() <= 7)
+            col = (col << 8) | 0x000000ff;
+    }
+
+    return col;
 }
 
 void TPalette::reset()

@@ -22,8 +22,6 @@
 #include <string>
 #include <vector>
 
-#include "thttpclient.h"
-
 typedef struct RESOURCE_T
 {
     std::string name;           // Name of resource
@@ -38,6 +36,18 @@ typedef struct RESOURCE_T
     bool dynamo{false};         // If this is TRUE the source is a MJPEG
     bool preserve{false};       // If this is TRUE the source is read only once at startup.
 
+    std::string delimiter;
+    bool force{false};
+    std::string format;
+    int headlines{0};
+    std::string mapIdI1;
+    std::string mapIdT1;
+    std::string mapIdT2;
+    bool quoted{false};
+    int sort{0};
+    std::string sortAdv;
+    std::vector<std::string> sortList;
+
     void clear()
     {
         name.clear();
@@ -51,6 +61,18 @@ typedef struct RESOURCE_T
         refresh = 0;
         dynamo = false;
         preserve = false;
+
+        delimiter.clear();
+        force = false;
+        format.clear();
+        headlines = 0;
+        mapIdI1.clear();
+        mapIdT1.clear();
+        mapIdT2.clear();
+        quoted = false;
+        sort = 0;
+        sortAdv.clear();
+        sortList.clear();
     }
 }RESOURCE_T;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 to 2025 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2018 to 2026 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,6 @@
 //#include "asio.hpp"
 
 #include <vector>
-#include <map>
 #include <functional>
 #include <cstring>
 #include <cstdio>

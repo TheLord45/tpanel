@@ -68,7 +68,7 @@ class TQMarquee : public QLabel
         void setBackgroundColor(QColor& color);
         QPixmap background();
         void setBackground(QPixmap& bitmap);
-        void setDirection(MQ_TYPES type);
+        void setDirection(TQMarquee::MQ_TYPES type);
 
     protected:
         virtual void paintEvent(QPaintEvent *);

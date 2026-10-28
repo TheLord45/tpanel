@@ -237,6 +237,13 @@ namespace Button
         GRAD_BLTR                   // 10: Bottom-left to top-right
     }GRAD_TYPE_t;
 
+    typedef enum
+    {
+        MAP_NONE,                   // No map source
+        MAP_GOOGLE,                 // Google map source
+        MAP_OPENSTREETMAP           // Open Streetmap source
+    }MAP_SOURCE_t;
+
     /**
      * Justification values:
      *    0 = absolut
@@ -1067,6 +1074,7 @@ namespace Button
             bool drawBargraph(int instance, int level, bool show=true);
             /**
              * @brief drawMultistateBargraph draws a bargraph comparable to a button.
+             *
              * This method draws a multistate bargraph. This is like many
              * buttons in one. But they behave like a bargraph. This means, that
              * it depends on the level how many buttons are ON and which are OFF.
@@ -1077,6 +1085,19 @@ namespace Button
              * occurred it returns FALSE.
              */
             bool drawMultistateBargraph(int level, bool show=true);
+            /**
+             * @brief drawMap draws a map
+             *
+             * Retrieves a map for rhe given point and size either from Google
+             * (default) or from Open Streetmap. The point is taken from the
+             * GPS sensor boilt into the device.
+             *
+             * @param bm    A pointer to a bitmap where the result should be
+             * drawn.
+             *
+             * @return TRUE on success.
+             */
+            bool drawMap(SkBitmap *bm);
             /**
              * @brief Invert bargraph/joystick
              * This method sets or unsets inverting bargraphs or the axis of a
@@ -1359,6 +1380,11 @@ namespace Button
             bool haveImage(const SR_T& sr);
             bool showSubviewItems() { return sw >= 1; }
             bool isSubViewOrderingDynamic() { return dy >= 1; }
+            void setCoordinates(double longitude, double latitude) { mLongitude = longitude; mLatitude = latitude; mChanged = true; }
+            double getLongitude() { return mLongitude; }
+            double getLatitude() { return mLatitude; }
+            void setMapSource(MAP_SOURCE_t src) { mMapSource = src; mChanged = true; }
+            MAP_SOURCE_t getMapSource() { return mMapSource; }
 
         protected:
             BUTTONTYPE getButtonType(const std::string& bt);
@@ -1607,6 +1633,11 @@ namespace Button
             std::mutex mkElementMutex;
             std::mutex mkDrawBargraphMutex;
             std::mutex mkDrawButtonMutex;
+            double mLatitude{0.0};
+            double mLongitude{0.0};
+            int mZoom{10};
+            bool mMapAuto{false};
+            MAP_SOURCE_t mMapSource{MAP_NONE};
     };
 
     typedef struct BUTTONS_T

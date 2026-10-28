@@ -777,6 +777,7 @@ TPageManager::TPageManager()
     TTPInit *tinit = new TTPInit;
     string projectPath = TConfig::getProjectPath();
     string pp = projectPath + "/prj.xma";
+    string pp_stf = projectPath + "/prj_.json";
 
     tinit->setPath(projectPath);
     bool haveSurface = false;
@@ -788,7 +789,7 @@ TPageManager::TPageManager()
 
     if (!haveSurface)
     {
-        if (!isValidFile(pp))
+        if (!isValidFile(pp) && !isValidFile(pp_stf))
             tinit->reinitialize();
     }
     else
@@ -1127,6 +1128,11 @@ TPageManager::TPageManager()
 #ifndef _NOSIP_
     REG_CMD(doTPCSIP, "TPCSIP");    // Show the built in SIP phone
 #endif
+    // TPanel commands
+    REG_CMD(doGPS, "*GPS");     // Returns the GPS coordinates of the panel
+    REG_CMD(doMAP, "+MAP");     // Sets the GPS coordinates on a map.
+    REG_CMD(doAMP, "+AMP");     // Positions a map element at the given position and size
+    REG_CMD(doMSC, "+MSC");     // Set the source for the map (Google, Open Streemap, ...)
     // Virtual internal commands
     REG_CMD(doFTR, "#FTR");     // File transfer (virtual internal command)
 
@@ -1257,6 +1263,7 @@ TPageManager::~TPageManager()
 #if (defined(__linux__) || defined(__OSX_AVAILABLE)) && !defined(__ANDROID__) && !defined(__IOS_AVAILABLE)
         if (mLinBattery)
         {
+            mBatteryCalls.clear();
             delete mLinBattery;
             mLinBattery = nullptr;
         }
@@ -1482,7 +1489,7 @@ void TPageManager::runCommands()
 
     try
     {
-        mThreadCommand = std::thread([=] { this->commandLoop(); });
+        mThreadCommand = std::thread([=, this] { this->commandLoop(); });
         mThreadCommand.detach();
     }
     catch (std::exception& e)
@@ -1804,6 +1811,17 @@ void TPageManager::setSetupScaleFactor(double scale, double sw, double sh)
     mScaleSystemHeight = sh;
 }
 #endif
+
+void TPageManager::getCoordinates(double *latitude, double *longitude)
+{
+    DECL_TRACER("TPageManager::getCoordinates(double *latitude, double *longitude)");
+
+    if (latitude)
+        *latitude = mLatitude;
+
+    if (longitude)
+        *longitude = mLongitude;
+}
 
 /*
  * The following method is called by the class TAmxNet whenever an event from
@@ -4159,9 +4177,13 @@ void TPageManager::showSubPage(const string& name)
         if (redraw && _toFront)
         {
             _toFront((uint)pg->getHandle());
-            pg->setZOrder(page->getNextZOrder());
+
+            if (page)
+            {
+                pg->setZOrder(page->getNextZOrder());
 //            page->sortSubpages();
-            MSG_DEBUG("Setting new Z-order " << page->getActZOrder() << " on subpage " << pg->getName());
+                MSG_DEBUG("Setting new Z-order " << page->getActZOrder() << " on subpage " << pg->getName());
+            }
         }
         else if (redraw && !_toFront)
             pg->drop();
@@ -4443,7 +4465,7 @@ void TPageManager::runClickQueue()
 
     try
     {
-        std::thread thr = std::thread([=] {
+        std::thread thr = std::thread([=, this] {
             MSG_PROTOCOL("Thread \"TPageManager::runClickQueue()\" was started.");
 
             while (mClickQueueRun && !prg_stopped)
@@ -4496,7 +4518,7 @@ void TPageManager::runUpdateSubViewItem()
 
     try
     {
-        std::thread thr = std::thread([=] {
+        std::thread thr = std::thread([=, this] {
             MSG_PROTOCOL("Thread \"TPageManager::runUpdateSubViewItem()\" was started.");
 
             while (mUpdateViewsRun && !prg_stopped)
@@ -13755,3 +13777,158 @@ void TPageManager::doTPCSIP(int, vector<int>&, vector<string>& pars)
     }
 }
 #endif
+
+/**
+ * @brief TPageManager::doGPS
+ * Sends back the actual position of the device TPanel is running on. The
+ * coordinates are inside a string separated by a comma.
+ * The parameters are ignored.
+ */
+void TPageManager::doGPS(int, vector<int>&, vector<string>&)
+{
+    DECL_TRACER("TPageManager::doGPS(int, vector<int>&, vector<string>&)");
+
+    string latitude = doubleToString(mLatitude);
+    string longitude = doubleToString(mLongitude);
+    sendCustomEvent(0, 0, 0, latitude + "," + longitude, 3000, 0, 0);
+}
+
+/**
+ * @brief TPageManager::doMAP
+ * This sets the GPS coordinates to a button. If the button is not a map, it
+ * becomes a map with this command.
+ *
+ * Example: +MAP-<buttons>,<longitude>,<latitude>[,<magnify>]
+ * Makes the button(s) <buttons> a map. Defines the center of it with the
+ * <longitude> and the <latitude>. Optional the parameter <magnify> defines
+ * the zoom level.
+ * @param pars
+ */
+void TPageManager::doMAP(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doMAP(int, vector<int>&, vector<string>& pars)");
+
+    if (pars.size() < 2)
+    {
+        MSG_ERROR("Command +MAP: Expecting 2 parameters but got " << pars.size() << "! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    double longitude = stringToDouble(pars[0]);
+    double latitude = stringToDouble(pars[1]);
+
+    vector<TMap::MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+            bt->setCoordinates(longitude, latitude);
+            bt->show();
+        }
+    }
+}
+
+/**
+ * @brief TPageManager::doAMP
+ * Defines the size and position of a map button. The command allows to
+ * optionally define the source for the map. By default Google is the source.
+ *
+ * Example: +AMP-<buttons>,<left>,<top>,<width>,<height>[,<source>]
+ *
+ * @param pars
+ */
+void TPageManager::doAMP(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doAMP(int, vector<int>&, vector<string>& pars)");
+
+    if (pars.size() < 4)
+    {
+        MSG_ERROR("Command +MAP: Expecting 4 parameters but got " << pars.size() << "! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    int left = stringToInt(pars[0]);
+    int top = stringToInt(pars[1]);
+    int width = stringToInt(pars[2]);
+    int height = stringToInt(pars[3]);
+    Button::MAP_SOURCE_t mapSource = Button::MAP_GOOGLE;
+
+    if (pars.size() >= 4)
+        mapSource = static_cast<Button::MAP_SOURCE_t>(stringToInt(pars[4]));
+
+    vector<TMap::MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+            bt->setRectangle(left, top, left + width, top + height);
+
+            if (bt->getMapSource() != mapSource)
+            {
+                bt->setMapSource(mapSource);
+                bt->show();
+            }
+        }
+    }
+}
+
+/**
+ * @brief TPageManager::doMSC
+ * Sets the source for the map. This is ignored if the button is not of type
+ * map.
+ *
+ * Example: +MSC-<buttons>,<source of map (Google, Openstreetmap, ...)>
+ * @param pars
+ */
+void TPageManager::doMSC(int port, vector<int>& channels, vector<string>& pars)
+{
+    DECL_TRACER("TPageManager::doAMP(int, vector<int>&, vector<string>& pars)");
+
+    if (pars.size() < 1)
+    {
+        MSG_ERROR("Command +MAP: Expecting 1 parameter but got none! Ignoring command.");
+        return;
+    }
+
+    TError::clear();
+    Button::MAP_SOURCE_t mapSource = static_cast<Button::MAP_SOURCE_t>(stringToInt(pars[0]));
+
+    vector<TMap::MAP_T> map = findButtons(port, channels);
+
+    if (TError::isError() || map.empty())
+        return;
+
+    vector<Button::TButton *> buttons = collectButtons(map);
+
+    if (buttons.size() > 0)
+    {
+        vector<Button::TButton *>::iterator mapIter;
+
+        for (mapIter = buttons.begin(); mapIter != buttons.end(); mapIter++)
+        {
+            Button::TButton *bt = *mapIter;
+            bt->setMapSource(mapSource);
+            bt->show();
+        }
+    }
+}

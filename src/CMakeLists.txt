@@ -1,29 +1,38 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(tpanel VERSION 2.0.1 LANGUAGES CXX)
+set(TVERSION "2.1.0")
 
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(QT_USE_QTMULTIMEDIA TRUE)
 set(QT_USE_QTMULTIMEDIAWIDGETS TRUE)
+set(HOMEBREW "/opt/homebrew")
 
 if(IOS)
     # Enable this line only if you want to create a xcarchive for the app store!
     # set(QT_USE_RISKY_DSYM_ARCHIVING_WORKAROUND ON)
     find_package(QT NAMES Qt6 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning)
     find_package(Qt6 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning)
+    set(TPROJECT iTpanel)
+    set(HAVE_ARCHIVE 0)
 elseif(ANDROID)
     find_package(QT NAMES Qt6 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Quick Positioning Sensors)
     find_package(Qt6 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Quick Positioning Sensors)
+    set(TPROJECT tpanel)
+    set(HAVE_ARCHIVE 0)
 else(IOS)
     find_package(QT NAMES Qt6 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning)
     find_package(Qt6 REQUIRED COMPONENTS Widgets Core Gui Multimedia MultimediaWidgets Positioning)
+    set(TPROJECT tpanel)
+    set(HAVE_ARCHIVE 1)
 endif(IOS)
+
+project(${TPROJECT} VERSION ${TVERSION} LANGUAGES CXX)
 
 if(${QT_VERSION_MAJOR} LESS 6)
     message(FATAL_ERROR "Qt with version ${QT_VERSION} is not supported!")
@@ -31,6 +40,7 @@ endif()
 
 if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     message(WARNING "Found compiler ${CMAKE_CXX_COMPILER_ID}. Please use Clang if possible!")
+    message(STATUS "Hint: Start cmake with parameter \"-DCMAKE_CXX_COMPILER=/path/to/clang++\"")
     set(USE_CLANG OFF)
 else()
     message(STATUS "Found compiler ${CMAKE_CXX_COMPILER_ID}")
@@ -45,6 +55,26 @@ execute_process(COMMAND ./make_revision.sh
 
 if(REVISION_ID_STATE MATCHES 1)
     message(FATAL_ERROR "Couldn't create revision ID file \"src/build.h\"")
+endif()
+
+# Some infomation
+message(STATUS "Building for ${CMAKE_OSX_SYSROOT}")
+message(STATUS "Terget name: ${TPROJECT}")
+
+if(IOS)
+    message(STATUS "Operating system: iOS")
+elseif(ANDROID)
+    message(STATUS "Operating system: Android")
+elseif(APPLE)
+    message(STATUS "Operating system: OSx (Mac)")
+else()
+    message(STATUS "Operating system: Other")
+endif()
+
+if(HAVE_ARCHIVE EQUAL 0)
+    message(STATUS "Have archive library: NO")
+else()
+    message(STATUS "Have archive library: YES")
 endif()
 
 if(ANDROID)
@@ -182,24 +212,32 @@ elseif(IOS)
         set(EXT_LIB_PATH $ENV{HOME}/SDKs)
     endif()
 
+    message(STATUS "External library path: ${EXT_LIB_PATH}")
+
     if(${CMAKE_OSX_SYSROOT} MATCHES "iphonesimulator")
         link_directories(${EXT_LIB_PATH}/openssl/ssl_3/iossim/lib
                 ${EXT_LIB_PATH}/pjsip/ios-simulator/lib
-                ${EXT_LIB_PATH}/skia/iossim-apple)
+                ${EXT_LIB_PATH}/skia/iossim-apple
+                ${EXT_LIB_PATH}/jsoncpp/libsim)
         include_directories(${EXT_LIB_PATH}/openssl/ssl_3/iossim/include
                 ${EXT_LIB_PATH}/pjsip/ios-simulator/include
-                ${EXT_LIB_PATH}/skia)
+                ${EXT_LIB_PATH}/skia/skia
+                ${EXT_LIB_PATH}/jsoncpp)
+        set(LIBS ${LIBS} libjsoncpp.a)
     else()
         link_directories(${EXT_LIB_PATH}/openssl/ssl_3/ios64/lib
                 ${EXT_LIB_PATH}/pjsip/lib
-                ${EXT_LIB_PATH}/skia/ios64)
+                ${EXT_LIB_PATH}/skia/ios64
+                ${EXT_LIB_PATH}/jsoncpp/libios)
         include_directories(${EXT_LIB_PATH}/openssl/ssl_3/ios64/include
                 ${EXT_LIB_PATH}/pjsip/include
-                ${EXT_LIB_PATH}/skia)
+                ${EXT_LIB_PATH}/skia/skia
+                ${EXT_LIB_PATH}/jsoncpp)
+        set(LIBS ${LIBS} libjsoncpp.a)
     endif()
 
     if(NOT DEFINED IPHONEOS_DEPLOYMENT_TARGET)
-        set(IPHONEOS_DEPLOYMENT_TARGET "17.0")
+        set(IPHONEOS_DEPLOYMENT_TARGET "26.0")
     endif()
 
     link_libraries(z ssl crypto expat libskia.a)
@@ -255,7 +293,9 @@ elseif(IOS)
     include_directories("/usr/local/include/skia")
 
     if(APPLE)
+        include_directories("/usr/local/include")
         link_directories("/usr/local/lib")
+        find_package(jsoncpp REQUIRED)
     else(APPLE)
         link_directories("/usr/local/lib/skia")
     endif(APPLE)
@@ -266,6 +306,9 @@ elseif(IOS)
 
     if(APPLE)
         link_libraries(freetype)
+        link_libraries(jsoncpp)
+        link_directories("${HOMEBREW}/opt/libarchive/lib")
+        include_directories("${HOMEBREW}/opt/libarchive/include")
 #        find_package(ZLIB)
 #        find_package(EXPAT)
     else(APPLE)
@@ -278,6 +321,7 @@ elseif(IOS)
 #        include_directories(${EXPAT_INCLUDE_DIRS})
 #        link_directories(${EXPAT_LIBRARY_DIRS})
         set(LIBS ${LIBS} ${EXPAT_LIBRARIES})
+        find_package(LibArchive REQUIRED)
     endif(APPLE)
 
     # This is for telephone libraries PJSIP
@@ -321,14 +365,14 @@ elseif(IOS)
     endif(APPLE)
 
     find_library(UUID_LIBRARY NAMES uuid)
-    set(LIBS ${LIBS} ${UUID_LIBRARY})
+    set(LIBS ${LIBS} ${UUID_LIBRARY} archive)
     find_package(OpenSSL REQUIRED)
 
     if (APPLE)
         set(CMAKE_INSTALL_PREFIX /usr/local)
         # In case you've installed homebrew at another location adapt
-        # the following paths!
-        set(OSX_INCLUDE -I/opt/homebrew/include -I/usr/local/include)
+        # the variable HOMEBREW at the start of this file!
+        set(OSX_INCLUDE -I${HOMEBREW}/include -I/usr/local/include)
         add_definitions(${OSX_INCLUDE})
 
         # The mac requires some additional frameworks for audio.
@@ -337,7 +381,7 @@ elseif(IOS)
         find_library(AUDIOTOOLBOX_LIBRARY AudioToolbox)
         mark_as_advanced(COREAUDIO_LIBRARY AUDIOUNIT_LIBRARY AUDIOTOOLBOX_LIBRARY)
 
-        set(OSX_LIB -L/opt/homebrew/lib -L/usr/local/lib -liconv -lexpat -lz)
+        set(OSX_LIB -L${HOMEBREW}/lib -L/usr/local/lib -liconv -lexpat -lz)
         set(LIBS ${LIBS} ${OSX_LIB} ${COREAUDIO_LIBRARY} ${AUDIOUNIT_LIBRARY} ${AUDIOTOOLBOX_LIBRARY})
     else(APPLE)
         set(CMAKE_INSTALL_PREFIX /usr)
@@ -495,6 +539,16 @@ set(PROJECT_SOURCES
         tbattery.h
         tresize.cpp
         tresize.h
+        tftpclient.cpp
+        tftpclient.h
+        tsurfacereader.cpp
+        tsurfacereader.h
+        tsurfacewriter.cpp
+        tsurfacewriter.h
+        ttilescache.cpp
+        ttilescache.h
+        tgrmap.cpp
+        tgrmap.h
         tpanel.qrc
 )
 
@@ -512,6 +566,7 @@ add_definitions(-D_OPAQUE_SKIA_)
 #    20250812
 #    20260517
 add_definitions(-DSKIAV=20260517)
+add_definitions(-DHAVE_ARCHIVE=${HAVE_ARCHIVE})
 
 if(ANDROID)
     add_definitions(-pedantic -fexceptions -Wextra -Wno-attributes -Wno-nested-anon-types -Wno-gnu-anonymous-struct -Wno-gnu-zero-variadic-macro-arguments -Wno-invalid-utf8)
@@ -532,7 +587,7 @@ else()
 endif()
 
 if(IOS)
-    qt_add_executable(tpanel
+    qt_add_executable(${TPROJECT}
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
         "${settings_bundle}"
@@ -546,21 +601,23 @@ elseif(APPLE)
     # And the following tells CMake where to find and install the file itself.
     set(app_icon_macos "${CMAKE_CURRENT_SOURCE_DIR}/images/AppIcon.icns")
     set_source_files_properties(${app_icon_macos} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
-    qt_add_executable(tpanel MANUAL_FINALIZATION ${PROJECT_SOURCES} ${app_icon_macos})
+    qt_add_executable(${TPROJECT} MANUAL_FINALIZATION ${PROJECT_SOURCES} ${app_icon_macos})
 else()
-    qt_add_executable(tpanel
+    qt_add_executable(${TPROJECT}
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
+        tfsfreader.h tfsfreader.cpp
+        tsurfacereader.h tsurfacewriter.h tsurfacereader.cpp tsurfacewriter.cpp
     )
 endif()
 
 if(ANDROID)
 # Define target properties for Android with Qt 6 as:
-    set_property(TARGET tpanel APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
+    set_property(TARGET ${TPROJECT} APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
                  ${CMAKE_CURRENT_SOURCE_DIR}/android)
 # For more information, see https://doc.qt.io/qt-6/qt-add-executable.html#target-creation
     if(DEFINED SSL_PATH)
-        set_property(TARGET tpanel PROPERTY QT_ANDROID_EXTRA_LIBS
+        set_property(TARGET ${TPROJECT} PROPERTY QT_ANDROID_EXTRA_LIBS
             ${SSL_PATH}/ssl_3/${ANDROID_ABI}/libcrypto_3.so
             ${SSL_PATH}/ssl_3/${ANDROID_ABI}/libssl_3.so
             ${EXT_LIB_PATH}/skia/${ANDROID_ABI}/libskia.so
@@ -569,7 +626,7 @@ if(ANDROID)
         message("++ Added skia library from \"${EXT_LIB_PATH}/skia/${ANDROID_ABI}.\"")
     else()
         message(SEND_ERROR "ERROR: Missing SSL_PATH variable!")
-        set_property(TARGET tpanel PROPERTY QT_ANDROID_EXTRA_LIBS
+        set_property(TARGET ${TPROJECT} PROPERTY QT_ANDROID_EXTRA_LIBS
             ${EXT_LIB_PATH}/skia/${ANDROID_ABI}/libskia.so
         )
     message("++ Added skia library from \"${EXT_LIB_PATH}/skia/${ANDROID_ABI}.\"")
@@ -577,7 +634,7 @@ if(ANDROID)
 endif()
 
 if(IOS)
-    target_link_libraries(tpanel PRIVATE
+    target_link_libraries(${TPROJECT} PRIVATE
         Qt${QT_VERSION_MAJOR}::Widgets
         Qt${QT_VERSION_MAJOR}::Core
         Qt${QT_VERSION_MAJOR}::Gui
@@ -585,23 +642,23 @@ if(IOS)
         Qt${QT_VERSION_MAJOR}::MultimediaWidgets
         Qt${QT_VERSION_MAJOR}::Positioning
         Qt${QT_VERSION_MAJOR}::Sensors
-        ftp ${LIBS}
+        ${LIBS}
     )
     if (${QT_VERSION_MAJOR} EQUAL 6 AND ${QT_VERSION_MINOR} GREATER_EQUAL 8)
-        qt_add_ios_ffmpeg_libraries(tpanel)
+        qt_add_ios_ffmpeg_libraries(${TPROJECT})
     else()
-        qt6_add_ios_ffmpeg_libraries(tpanel)
+        qt6_add_ios_ffmpeg_libraries(${TPROJECT})
     endif()
     if(CMAKE_OSX_SYSROOT MATCHES "iphonesimulator")
         message(STATUS "Excluding camera plugin.")
-        qt_import_plugins(tpanel
+        qt_import_plugins(${TPROJECT}
                         EXCLUDE Qt6::QPdfPlugin
                         EXCLUDE Qt6::QPdfPlugin_init
                         EXCLUDE Qt6::QFFmpegMediaPlugin
                         EXCLUDE Qt6::QFFmpegMediaPlugin_init)
     endif()
 elseif(ANDROID)
-    target_link_libraries(tpanel PRIVATE
+    target_link_libraries(${TPROJECT} PRIVATE
         Qt${QT_VERSION_MAJOR}::Widgets
         Qt${QT_VERSION_MAJOR}::Core
         Qt${QT_VERSION_MAJOR}::Gui
@@ -610,20 +667,20 @@ elseif(ANDROID)
         Qt${QT_VERSION_MAJOR}::Positioning
         Qt${QT_VERSION_MAJOR}::Quick
         Qt${QT_VERSION_MAJOR}::Sensors
-        ftp ${LIBS}
+        jsoncpp ${LIBS}
     )
 elseif(APPLE)
-    target_link_libraries(tpanel PRIVATE
+    target_link_libraries(${TPROJECT} PRIVATE
         Qt${QT_VERSION_MAJOR}::Widgets
         Qt${QT_VERSION_MAJOR}::Core
         Qt${QT_VERSION_MAJOR}::Gui
         Qt${QT_VERSION_MAJOR}::Multimedia
         Qt${QT_VERSION_MAJOR}::MultimediaWidgets
         Qt${QT_VERSION_MAJOR}::Positioning
-        ftp ssl crypto ${LIBS}
+        jsoncpp ssl crypto ${LIBS}
     )
 else()
-    target_link_libraries(tpanel PRIVATE
+    target_link_libraries(${TPROJECT} PRIVATE
         Qt${QT_VERSION_MAJOR}::Widgets
         Qt${QT_VERSION_MAJOR}::Core
         Qt${QT_VERSION_MAJOR}::Gui
@@ -631,7 +688,7 @@ else()
         Qt${QT_VERSION_MAJOR}::MultimediaWidgets
         Qt${QT_VERSION_MAJOR}::Positioning
         OpenSSL::SSL
-        ftp ${LIBS}
+        jsoncpp ${LIBS}
     )
 endif()
 
@@ -639,7 +696,7 @@ if(IOS)
     # Icons
     set(asset_catalog_path "Assets.xcassets")
     # Asset catalog root
-    target_sources(tpanel PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/${asset_catalog_path}")
+    target_sources(${TPROJECT} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/${asset_catalog_path}")
     set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/${asset_catalog_path}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 
     # Asset catalog app icon set
@@ -664,14 +721,14 @@ if(IOS)
     set_source_files_properties(${bgimages_portrait} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources/${asset_catalog_path}/Images-portrait.imageset")
     set_source_files_properties(${bgimages_landscape} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources/${asset_catalog_path}/Images-landscape.imageset")
     # Settings bundle
-    target_sources(tpanel PRIVATE "${settings_bundle}")
+    target_sources(${TPROJECT} PRIVATE "${settings_bundle}")
     set_source_files_properties(${settings_bundle} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
     # Launch screen
 #    set(launch_screen "ios/LaunchScreen.storyboard")
-#    target_sources(tpanel PRIVATE ${launch_screen})
+#    target_sources(${TPROJECT} PRIVATE ${launch_screen})
 #    set_source_files_properties(${launch_screen} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources/${launch_screen}")
 
-    set_target_properties(tpanel PROPERTIES
+    set_target_properties(${TPROJECT} PROPERTIES
         MACOSX_BUNDLE_GUI_IDENTIFIER org.qtproject.tpanel
         MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
         MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
@@ -683,12 +740,12 @@ if(IOS)
 #        QT_IOS_LAUNCH_SCREEN "${CMAKE_CURRENT_SOURCE_DIR}/${launch_screen}"
     )
 elseif(ANDROID)
-    set_target_properties(tpanel PROPERTIES
+    set_target_properties(${TPROJECT} PROPERTIES
         QT_ANDROID_PACKAGE_NAME "org.qtproject.theosys"
         WIN32_EXECUTABLE FALSE
     )
 else()
-    set_target_properties(tpanel PROPERTIES
+    set_target_properties(${TPROJECT} PROPERTIES
         MACOSX_BUNDLE_GUI_IDENTIFIER org.qtproject.theosys
         MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
         MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
@@ -698,12 +755,12 @@ else()
     )
 endif()
 
-install(TARGETS tpanel
+install(TARGETS ${TPROJECT}
     BUNDLE DESTINATION .
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
 if(QT_VERSION_MAJOR EQUAL 6)
-    qt_finalize_executable(tpanel)
+    qt_finalize_executable(${TPROJECT})
 endif()

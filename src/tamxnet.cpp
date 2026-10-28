@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 to 2025 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2018 to 2026 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -77,7 +77,10 @@ string cmdList[] =
     "^PPG-", "^PPK-", "^PPM-", "^PPN-", "^PPT-", "^PPX", "^UTF-", "^LVC-",
     "^LVD-", "^LVE-", "^LVF-", "^LVL-", "^LVM-", "^LVN-", "^LVR-", "^LVS-",
     "^MUT-", "^PCL-", "^PCT-", "^POP-", "^PTC-", "^PTO-", "^SDL-", "^SDM-",
-    "^SHA-", "^SPD-", "^ENC", "?ENC", "?MAC", "\0"
+    "^SHA-", "^SPD-", "^ENC", "?ENC", "?MAC",
+    // TPanel commands
+    "*GPS", "+MAP-", "+AMP-", "+MSC-",
+    "\0"
 };
 
 #define NUMBER_CMDS     144
@@ -372,7 +375,7 @@ void TAmxNet::Run()
 
     try
     {
-        mThread = std::thread([=] { this->start(); });
+        mThread = std::thread([=, this] { this->start(); });
         mThread.detach();
     }
     catch (std::exception& e)
@@ -2208,7 +2211,7 @@ void TAmxNet::runWrite()
 
     try
     {
-        mWriteThread = std::thread([=] { this->start_write(); });
+        mWriteThread = std::thread([=, this] { this->start_write(); });
         mWriteThread.detach();
     }
     catch (std::exception& e)
