@@ -473,8 +473,8 @@ size_t TButton::initialize(TExpat *xml, size_t index)
             mLatitude = xml->convertElementToDouble(content);
         else if (ename.compare("lon") == 0)         // longitude of map button
             mLongitude = xml->convertElementToDouble(content);
-        else if (ename.compare("msrc") == 0)
-            mMapSource = static_cast<MAP_SOURCE_t>(xml->convertElementToInt(content));  // source of map
+        else if (ename.compare("msrc") == 0)        // source of map
+            mMapSource = static_cast<MAP_SOURCE_t>(xml->convertElementToInt(content));
         else if (ename.compare("ac") == 0)          // Direction of text (guess)
         {
             ac_di = xml->getAttributeInt("di", attrs);  // 0 = left to right; 1 = right to left
@@ -9993,12 +9993,12 @@ void TButton::funcCoordinates(double latitude, double longitude)
     {
         std::stringstream sstr;
 
-        if (ch == 161)
+        if (ch == SYSTEM_ITEM_LATITUDE)
         {
             sstr << std::setprecision(8) << latitude;
             iter->te = sstr.str();
         }
-        else if (ch == 162)
+        else if (ch == SYSTEM_ITEM_LONGITUDE)
         {
             sstr << std::setprecision(8) << longitude;
             iter->te = sstr.str();
