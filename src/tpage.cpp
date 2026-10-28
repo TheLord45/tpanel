@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2026 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,6 +16,12 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
+#include <fstream>
+#ifdef __MACH__
+#include <json/json.h>
+#else
+#include <jsoncpp/json/json.h>
+#endif
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -61,6 +67,7 @@ using std::string;
 using std::vector;
 using std::map;
 using std::pair;
+using std::ifstream;
 using namespace Button;
 using namespace Expat;
 
@@ -295,6 +302,106 @@ void TPage::initialize(const string& nm)
 
     MSG_DEBUG("Setting SR with " << sr.size() << " elements");
     setSR(sr);
+
+    if (TPageInterface::getButtons())
+        sortButtons();
+}
+
+void TPage::initTsf(const string& name)
+{
+    DECL_TRACER("TPage::initTsf(const string& name)");
+
+    string projectPath = TConfig::getProjectPath();
+
+    if (!fs::exists(projectPath + "/prj_.json"))
+    {
+        MSG_ERROR("Directory " << projectPath << " doesn't exist!");
+        return;
+    }
+
+    makeFileName(projectPath, name);
+
+    MSG_DEBUG("Using path: " << projectPath << " and file: " << name);
+
+    if (isValidFile())
+        mPath = getFileName();
+
+    Json::Value root;
+    ifstream config_doc(mPath, ifstream::binary);
+    config_doc >> root;
+
+    PAGETYPE_t type = static_cast<PAGETYPE_t>(root.get("type", "0").asInt());
+
+    if (type != PGT_PAGE)
+    {
+        SET_ERROR_MSG("Invalid page type \"" + std::to_string(type) + "\"!");
+        return;
+    }
+
+    TError::clear();
+    mPage.pageID = root.get("pageID", "0").asInt();
+    mPage.name = root.get("name", "").asString();
+    mPage.width = root.get("width", "0").asInt();
+    mPage.height = root.get("height", "0").asInt();
+
+    Json::Value objects = root["objects"];
+
+    for (int idx = 0; idx < static_cast<int>(objects.size()); ++idx)
+    {
+        TButton *button = new TButton();
+        TPageInterface::registerListCallback<TPage>(button, this);
+
+        button->setPalette(mPalette);
+        button->setFonts(getFonts());
+        button->registerCallback(_displayButton);
+        button->regCallPlayVideo(_playVideo);
+        // TODO: Add compatible function to class TButton and call it here.
+        //index = button->initialize(&xml, index);
+        button->setParentSize(mPage.width, mPage.height);
+
+        if (TError::isError())
+        {
+            PRINT_LAST_ERROR();
+            MSG_WARNING("Button \"" << button->getButtonName() << "\" deleted because of an error: " << TError::getErrorMsg());
+            delete button;
+            return;
+        }
+
+        button->setHandle(((mPage.pageID << 16) & 0xffff0000) | button->getButtonIndex());
+        button->createButtons();
+        addButton(button);
+    }
+
+    Json::Value srj = root["sr"];
+    SR_T bsr;
+    bsr.bs = srj["bs"].asString();
+    bsr.cb = srj["cb"].asString();
+    bsr.cf = srj["cf"].asString();
+    bsr.ct = srj["ct"].asString();
+    bsr.ec = srj["ec"].asString();
+    bsr.bm = srj["bm"].asString();
+    bsr.mi = srj["mi"].asString();
+    bsr.fi = srj["fi"].asInt();
+    bsr.te = srj["te"].asString();
+    bsr.tx = srj["tx"].asInt();
+    bsr.ty = srj["ty"].asInt();
+    bsr.et = srj["et"].asInt();
+    bsr.ww = srj["ww"].asInt();
+    bsr.jt = static_cast<Button::ORIENTATION>(srj["jt"].asInt());
+    bsr.jb = static_cast<Button::ORIENTATION>(srj["jb"].asInt());
+
+    Json::Value bitmaps = srj["bitmaps"];
+
+    for (int idx = 0; idx < static_cast<int>(bitmaps.size()); ++idx)
+    {
+        bsr.bitmaps[idx].fileName = bitmaps[idx].get("fileName", "").asString();
+        bsr.bitmaps[idx].justification = static_cast<ORIENTATION>(bitmaps[idx].get("justification", "0").asInt());
+        bsr.bitmaps[idx].offsetX = bitmaps[idx].get("offsetX", "0").asInt();
+        bsr.bitmaps[idx].offsetY = bitmaps[idx].get("offsetY", "0").asInt();
+        bsr.bitmaps[idx].dynamic = bitmaps[idx].get("dynamic", "0").asBool();
+    }
+
+    sr.push_back(bsr);
 
     if (TPageInterface::getButtons())
         sortButtons();

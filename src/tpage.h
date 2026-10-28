@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 to 2023 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2020 to 2026 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -47,7 +47,6 @@ class TPage : public TValidateFile, public TPageInterface
         TPage(const std::string& name);
         ~TPage();
 
-        void initialize(const std::string& name);
         void setPalette(TPalette *pal) { mPalette = pal; }
 
         int getWidth() { return mPage.width; }
@@ -89,6 +88,8 @@ class TPage : public TValidateFile, public TPageInterface
         std::map<int, TSubPage *>& getSortedSubpages(bool force=false);
 
     protected:
+        void initialize(const std::string& name);
+        void initTsf(const std::string& name);
 //        bool sortButtons();
 #ifdef _SCALE_SKIA_
         void calcPosition(int im_width, int im_height, int *left, int *top, bool scale=false);

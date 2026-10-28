@@ -201,6 +201,14 @@ typedef enum
     COLDIR_DOWN                     // Collapse down
 }COLDIR_t;
 
+typedef enum
+{
+    PGT_NONE,
+    PGT_PAGE,
+    PGT_POPUP,
+    PGT_SUBPAGE
+}PAGETYPE_t;
+
 typedef struct PAGE_T
 {
     std::string popupType;                  // The type of the popup (popup only)

@@ -48,14 +48,6 @@ using std::vector;
 using std::ifstream;
 using namespace Expat;
 
-typedef enum
-{
-    PG_NONE,
-    PG_PAGE,
-    PG_POPUP,
-    PG_SUBPAGE
-}PAGETYPE_t;
-
 TPageList::TPageList()
 {
     DECL_TRACER("TPageList::TPageList()");
@@ -392,6 +384,24 @@ void TPageList::loadTsfSubPageSets(const Json::Value& root)
         }
 
         mSubViewList.push_back(svl);
+    }
+
+    if (TStreamError::checkFilter(HLOG_DEBUG))
+    {
+        vector<SUBVIEWLIST_T>::iterator iterList;
+        vector<SUBVIEWITEM_T>::iterator iterItem;
+
+        for (iterList = mSubViewList.begin(); iterList != mSubViewList.end(); ++iterList)
+        {
+            MSG_DEBUG("Subview container " << iterList->id << ": " << iterList->name);
+            MSG_DEBUG("        pgWidth:  " << iterList->pgWidth);
+            MSG_DEBUG("        pgHeight: " << iterList->pgHeight);
+
+            for (iterItem = iterList->items.begin(); iterItem != iterList->items.end(); ++iterItem)
+            {
+                MSG_DEBUG("        Item:     " << iterItem->index << ", pageID: " << iterItem->pageID);
+            }
+        }
     }
 }
 
