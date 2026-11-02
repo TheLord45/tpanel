@@ -102,7 +102,10 @@ TPage::TPage(const string& name)
         return ;
     }
 
-    initialize(name);
+    if (TTPInit::isTsf())
+        initTsf(name);
+    else
+        initialize(name);
 }
 
 TPage::~TPage()
@@ -266,7 +269,6 @@ void TPage::initialize(const string& nm)
                 else if (ename.compare("bitmapEntry") == 0)
                 {
                     string fname;
-                    BITMAPS_t bitmapEntry;
                     MSG_DEBUG("Section: " << ename);
 
                     while ((index = xml.getNextElementFromIndex(index, &fname, &content, &attrs)) != TExpat::npos)
@@ -339,11 +341,11 @@ void TPage::initTsf(const string& name)
     }
 
     TError::clear();
-    mPage.pageID = root.get("pageID", "0").asInt();
+    mPage.pageID = root.get("pageID", 0).asInt();
     mPage.name = root.get("name", "").asString();
-    mPage.width = root.get("width", "0").asInt();
-    mPage.height = root.get("height", "0").asInt();
-
+    mPage.width = root.get("width", 0).asInt();
+    mPage.height = root.get("height", 0).asInt();
+MSG_DEBUG("Reading page " << mPage.name << " with ID " << mPage.pageID << " with size " << mPage.width << "x" << mPage.height);
     Json::Value objects = root["objects"];
 
     for (int idx = 0; idx < static_cast<int>(objects.size()); ++idx)
@@ -355,8 +357,10 @@ void TPage::initTsf(const string& name)
         button->setFonts(getFonts());
         button->registerCallback(_displayButton);
         button->regCallPlayVideo(_playVideo);
-        // TODO: Add compatible function to class TButton and call it here.
-        //index = button->initialize(&xml, index);
+
+        if (!button->initTsf(objects[idx]))
+            continue;
+
         button->setParentSize(mPage.width, mPage.height);
 
         if (TError::isError())
@@ -395,10 +399,10 @@ void TPage::initTsf(const string& name)
     for (int idx = 0; idx < static_cast<int>(bitmaps.size()); ++idx)
     {
         bsr.bitmaps[idx].fileName = bitmaps[idx].get("fileName", "").asString();
-        bsr.bitmaps[idx].justification = static_cast<ORIENTATION>(bitmaps[idx].get("justification", "0").asInt());
-        bsr.bitmaps[idx].offsetX = bitmaps[idx].get("offsetX", "0").asInt();
-        bsr.bitmaps[idx].offsetY = bitmaps[idx].get("offsetY", "0").asInt();
-        bsr.bitmaps[idx].dynamic = bitmaps[idx].get("dynamic", "0").asBool();
+        bsr.bitmaps[idx].justification = static_cast<ORIENTATION>(bitmaps[idx].get("justification", 0).asInt());
+        bsr.bitmaps[idx].offsetX = bitmaps[idx].get("offsetX", 0).asInt();
+        bsr.bitmaps[idx].offsetY = bitmaps[idx].get("offsetY", 0).asInt();
+        bsr.bitmaps[idx].dynamic = bitmaps[idx].get("dynamic", 0).asBool();
     }
 
     sr.push_back(bsr);

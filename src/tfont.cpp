@@ -18,6 +18,13 @@
 
 #include <codecvt>
 #include <mutex>
+#include <fstream>
+#ifdef __MACH__
+#include <json/json.h>
+#else
+#include <jsoncpp/json/json.h>
+#endif
+#include <unistd.h>
 
 #if __cplusplus < 201402L
 #   error "This module requires at least C++14 standard!"
@@ -148,6 +155,7 @@ using std::vector;
 using std::map;
 using std::pair;
 using std::mutex;
+using std::ifstream;
 using namespace Expat;
 
 mutex mutex_font;
@@ -173,10 +181,17 @@ void TFont::initialize()
     DECL_TRACER("TFont::initialize()");
 
     mutex_font.lock();
+    TError::clear();
 
     if (mFonts.size() > 0)
         mFonts.clear();
 
+    if (TTPInit::isTsf())
+    {
+        initTsf();
+        mutex_font.unlock();
+        return;     // There are no basic system fonts with TSF format!
+    }
     // System fonts first
     FONT_T font;
 
@@ -317,6 +332,7 @@ void TFont::initialize()
     if (mFontFile.empty())
     {
         MSG_ERROR("Got no font file name!");
+        mutex_font.unlock();
         return;
     }
 
@@ -524,6 +540,50 @@ bool TFont::systemFonts(bool setup)
     }
 
     return true;
+}
+
+void TFont::initTsf()
+{
+    DECL_TRACER("TFont::initTsf()");
+
+    string path = makeFileName(TConfig::getProjectPath(), mFontFile);
+
+    if (!isValidFile())
+    {
+        MSG_ERROR("File " << path << " doesn't exist or is not readable!");
+        TError::setError();
+        return;
+    }
+
+    Json::Value root;
+    ifstream config_doc(path, ifstream::binary);
+    config_doc >> root;
+
+    Json::Value fontList = root["fontList"];
+
+    for (int idx = 0; idx < static_cast<int>(fontList.size()); ++idx)
+    {
+        FONT_T ft;
+        ft.number = idx + 33;
+        ft.file = fontList[idx].get("file", "").asString();
+        Json::Value families = fontList[idx]["families"];
+
+        for (int i = 0; i < static_cast<int>(families.size()); ++i)
+        {
+            switch(i)
+            {
+                case 0:
+                    ft.name = ft.fullName = ft.subfamilyName = families[i].asString();
+                break;
+
+                case 1:
+                    ft.subfamilyName = families[i].asString();
+                break;
+            }
+        }
+
+        mFonts.insert(pair<int, FONT_T>(ft.number, ft));
+    }
 }
 
 FONT_T TFont::getFont(int number)

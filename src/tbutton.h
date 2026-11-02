@@ -23,6 +23,11 @@
 #include <map>
 #include <functional>
 #include <thread>
+#ifdef __MACH__
+#include <json/json.h>
+#else
+#include <jsoncpp/json/json.h>
+#endif
 
 #include <core/SkImage.h>
 #include <core/SkCanvas.h>
@@ -447,7 +452,14 @@ namespace Button
              * TExpat::npos is returned.
              */
             size_t initialize(Expat::TExpat *xml, size_t index);
-
+            /**
+             * @brief initTsf
+             * Parse the object part of a page or popup.
+             *
+             * @param object    The object to parse
+             * @return TRUE on success.
+             */
+            bool initTsf(Json::Value& object);
             /**
              * Returns the button index. This is a unique number inside a page
              * or subpage.

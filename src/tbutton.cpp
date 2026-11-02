@@ -20,6 +20,12 @@
 #include <memory>
 #include <algorithm>
 #include <mutex>
+#ifdef __MACH__
+#include <json/json.h>
+#else
+#include <jsoncpp/json/json.h>
+#endif
+#include <fstream>
 
 #include <unistd.h>
 
@@ -104,6 +110,7 @@ using std::thread;
 using std::atomic;
 using std::mutex;
 using std::bind;
+using std::ifstream;
 using namespace Button;
 using namespace Expat;
 
@@ -759,6 +766,216 @@ size_t TButton::initialize(TExpat *xml, size_t index)
 
     MSG_DEBUG("Returning index " << index);
     return index;
+}
+
+bool TButton::initTsf(Json::Value& object)
+{
+    DECL_TRACER("TButton::initTsf(Json::Value& root)");
+
+//    vector<string> guestures = { "ga", "gu", "gd", "gr", "gl", "gt", "tu", "td", "tr", "tl" };
+    mChanged = true;
+    int lastLevel = 0;
+    int lastJoyX = 0;
+    int lastJoyY = 0;
+    int bmIndex = 0;
+
+    type = static_cast<BUTTONTYPE>(object.get("type", "0").asInt());
+    bi = object.get("bi", 0).asInt();
+    na = object.get("na", "").asString();
+    bd = object.get("bd", "").asString();
+    lt = object.get("lt", 0).asInt();
+    tp = object.get("tp", 0).asInt();
+    wt = object.get("wt", 0).asInt();
+    ht = object.get("ht", 0).asInt();
+    zo = object.get("zo", 0).asInt();
+    hs = object.get("hs", "").asString();
+    bs = object.get("bs", "").asString();
+    fb = getButtonFeedback(object.get("fb", "").asString());
+    ap = object.get("ap", 0).asInt();
+    ad = object.get("ad", 0).asInt();
+    ch = object.get("ch", 0).asInt();
+    cp = object.get("cp", 0).asInt();
+    lp = object.get("lp", 0).asInt();
+    lv = object.get("lv", 0).asInt();
+    dr = object.get("dr", "").asString();
+    co = object.get("co", 0).asInt();
+
+    Json::Value jcm = object["cm"];
+
+    for (int idx = 0; idx < static_cast<int>(jcm.size()); ++idx)
+        cm.push_back(jcm[idx].asString());
+
+    va = object.get("va", 0).asInt();
+    rm = object.get("rm", 0).asInt();
+    nu = object.get("nu", 0).asInt();
+    nd = object.get("nd", 0).asInt();
+    ar = object.get("ar", 0).asInt();
+    ru = object.get("ru", 0).asInt();
+    rd = object.get("rd", 0).asInt();
+    lu = object.get("lu", 0).asInt();
+    ld = object.get("ld", 0).asInt();
+    rv = object.get("rv", 0).asInt();
+    rl = object.get("rl", 0).asInt();
+    rh = object.get("rh", 0).asInt();
+    lf = object.get("lf", "").asString();
+MSG_DEBUG("Block 1");
+    if (object.find("ri"))
+    {
+        ri = object.get("ri", 0).asInt();
+
+        if (ri > 0 && lf != "center" && lf != "dragCenter")
+        {
+            lastLevel = rh - rl;
+            lastJoyX = lastLevel;
+        }
+    }
+
+    if (object.find("ji"))
+    {
+        ji = object.get("ji", 0).asInt();
+
+        if (ji > 0 && lf != "center" && lf != "dragCenter")
+            lastJoyY = rh - rl;
+    }
+
+    rn = object.get("rn", 0).asInt();
+    sd = object.get("sd", "").asString();
+    vt = object.get("vt", "").asString();
+    cd = object.get("cd", "").asString();
+    sc = object.get("sc", "").asString();
+    cc = object.get("cc", "").asString();
+    mt = object.get("mt", 0).asInt();
+    dt = object.get("dt", "").asString();
+    im = object.get("im", "").asString();
+    so = object.get("so", 0).asInt();
+    op = object.get("op", 0).asInt();
+    pc = object.get("pc", "").asString();
+    pp = object.get("pp", 0).asInt();
+    ta = object.get("ta", 0).asInt();
+    ti = object.get("ti", 0).asInt();
+    tr = object.get("tr", 0).asInt();
+    tc = object.get("tc", 0).asInt();
+    tj = object.get("tj", 0).asInt();
+    tk = object.get("tk", 0).asInt();
+    of = object.get("of", 0).asInt();
+    tg = object.get("tg", 0).asInt();
+    st = object.get("st", 0).asInt();
+    ws = object.get("ws", 0).asInt();
+    sa = object.get("sa", 0).asInt();
+    dy = object.get("dy", 0).asInt();
+    rs = object.get("rs", 0).asInt();
+    on = object.get("on", "").asString();
+    ba = object.get("ba", 0).asInt();
+    bo = object.get("bo", 0).asInt();
+    we = object.get("we", "").asString();
+    sw = object.get("sw", 0).asInt();
+    hd = object.get("hd", 0).asInt();
+    da = object.get("da", 0).asInt();
+    mLatitude = object.get("map_lat", 0.0).asDouble();
+    mLongitude = object.get("map_lon", 0.0).asDouble();
+    mMapSource = static_cast<MAP_SOURCE_t>(object.get("map_prov", 0).asInt());
+    mZoom = object.get("map_zoom", 16).asInt();
+    mMapAuto = object.get("map_fix", 0).asBool();
+    ac_di = object.get("di", 0).asInt();
+    Json::Value jpf = object["pushFunc"];
+MSG_DEBUG("Block 2");
+    for (int idx = 0; idx < static_cast<int>(jpf.size()); ++idx)
+    {
+        PUSH_FUNC_T pf;
+        pf.pfType = jpf[idx].get("type", "").asString();
+        pf.pfName = jpf[idx].get("name", "").asString();
+        pf.pfAction = jpf[idx].get("pfAction", "").asString();
+
+        pf.item = jpf[idx].get("item", 0).asInt();
+        pf.action = static_cast<BUTTON_ACTION_t>(jpf[idx].get("action", 0).asInt());
+        pf.ID = jpf[idx].get("id", 0).asInt();
+        pf.event = static_cast<BUTTON_EVENT_t>(jpf[idx].get("event", 0).asInt());
+        pushFunc.push_back(pf);
+    }
+
+    Json::Value jsr = object["sr"];
+
+    for (int idx = 0; idx < static_cast<int>(jsr.size()); ++idx)
+    {
+        SR_T bsr;
+        bsr.number = jsr[idx].get("number", 0).asInt();
+        bsr._do = jsr[idx].get("do", "").asString();
+        bsr.bs = jsr[idx].get("bs", "").asString();
+        bsr.mi = jsr[idx].get("mi", "").asString();
+        bsr.cb = jsr[idx].get("cb", "").asString();
+        bsr.cf = jsr[idx].get("cf", "").asString();
+        bsr.ct = jsr[idx].get("ct", "").asString();
+        bsr.ec = jsr[idx].get("rc", "").asString();
+        bsr.bm = jsr[idx].get("bm", "").asString();
+        bsr.dynamic = jsr[idx].get("dynamic", false).asBool();
+        bsr.ft = jsr[idx].get("ft", "").asString();
+
+        Json::Value jbms = jsr[idx]["bitmapEntries"];
+
+        for (int i = 0; i < static_cast<int>(jbms.size()); ++i)
+        {
+            bsr.bitmaps[i].fileName = jbms[i].get("fileName", "").asString();
+            bsr.bitmaps[i].dynamic = jbms[i].get("dynamic", false).asBool();
+            bsr.bitmaps[i].justification = static_cast<ORIENTATION>(jbms[i].get("justification", 0).asInt());
+            bsr.bitmaps[i].offsetX = jbms[i].get("offsetX", 0).asInt();
+            bsr.bitmaps[i].offsetY = jbms[i].get("offsetY", 0).asInt();
+        }
+
+        Json::Value jgrc = jsr[idx]["gradientColors"];
+
+        for (int i = 0; i < static_cast<int>(jgrc.size()); ++i)
+            bsr.gradientColors.push_back(jgrc[i].asString());
+
+        bsr.gr = jsr[idx].get("gr", 0).asInt();
+        bsr.gx = jsr[idx].get("gx", 0).asInt();
+        bsr.gy = jsr[idx].get("gy", 0).asInt();
+        bsr.sd = jsr[idx].get("sd", "").asString();
+        bsr.sb = jsr[idx].get("sb", 0).asInt();
+        bsr.ii = jsr[idx].get("ii", 0).asInt();
+        bsr.ji = jsr[idx].get("ji", 0).asInt();
+        bsr.jb = jsr[idx].get("jb", 0).asInt();
+        bsr.bx = jsr[idx].get("bx", 0).asInt();
+        bsr.by = jsr[idx].get("by", 0).asInt();
+        bsr.ix = jsr[idx].get("ix", 0).asInt();
+        bsr.iy = jsr[idx].get("iy", 0).asInt();
+        bsr.fi = jsr[idx].get("fi", 0).asInt();
+        bsr.te = jsr[idx].get("te", "").asString();
+        bsr.ff = jsr[idx].get("ff", "").asString();
+        bsr.fs = jsr[idx].get("fs", 0).asInt();
+        bsr.jt = static_cast<ORIENTATION>(jsr[idx].get("jt", 0).asInt());
+        bsr.tx = jsr[idx].get("tx", 0).asInt();
+        bsr.ty = jsr[idx].get("ty", 0).asInt();
+        bsr.ww = jsr[idx].get("ww", 0).asInt();
+        bsr.et = jsr[idx].get("et", 0).asInt();
+        bsr.oo = jsr[idx].get("oo", 0).asInt();
+        bsr.md = jsr[idx].get("md", 0).asInt();
+        bsr.mr = jsr[idx].get("mr", 0).asInt();
+        bsr.vf = jsr[idx].get("vf", "").asString();
+        MSG_DEBUG("SR: " << bsr.number);
+        sr.push_back(bsr);
+    }
+
+    visible = !hd;  // set the initial visibility
+
+    if (gPageManager)
+    {
+        TButtonStates *pbs = gPageManager->addButtonState(type, ap, ad, ch, cp, lp, lv);
+
+        if (!pbs)
+        {
+            MSG_ERROR("States of actual button " << bi << " (" << na << ") are not found!");
+        }
+        else
+        {
+            mButtonID = pbs->getID();
+            MSG_DEBUG("Button ID: " << getButtonIDstr() << ", type: " << buttonTypeToString() << ", index: " << bi << ", name: " << na);
+            pbs->setLastLevel(lastLevel);
+            pbs->setLastJoyX(lastJoyX);
+            pbs->setLastJoyY(lastJoyY);
+        }
+    }
+
+    return true;
 }
 
 bool TButton::createSoftButton(const EXTBUTTON_t& bt)

@@ -194,7 +194,7 @@ void TPalette::initTsf(const string& file)
         {
             int idx = static_cast<int>(j);
             PDATA_T pal;
-            pal.index = data[idx].get("index", "0").asInt();
+            pal.index = data[idx].get("index", 0).asInt();
             pal.name = data[idx].get("name", "").asString();
             string color = data[idx].get("color", "#00000000").asString();
             pal.color = getColorValue(color);

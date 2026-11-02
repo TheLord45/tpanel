@@ -53,16 +53,27 @@ TPageList::TPageList()
     DECL_TRACER("TPageList::TPageList()");
 
     string projectPath = TConfig::getProjectPath();
-    mProject = makeFileName(projectPath, "prj.xma");
 
-    if (fs::exists(mProject))
-        initialize();
+    if (TTPInit::isTsf())
+    {
+        mProject = makeFileName(projectPath, "prj_.json");
 
-    projectPath += "/__system";
-    mSystemProject = makeFileName(projectPath, "prj.xma");
+        if (fs::exists(mProject))
+            initTsf();
+    }
+    else
+    {
+        mProject = makeFileName(projectPath, "prj.xma");
 
-    if (fs::exists(mSystemProject))
-        initialize(true);
+        if (fs::exists(mProject))
+            initialize();
+
+        projectPath += "/__system";
+        mSystemProject = makeFileName(projectPath, "prj.xma");
+
+        if (fs::exists(mSystemProject))
+            initialize(true);
+    }
 
     // Add the virtual progress page
     PAGELIST_T pl;
@@ -241,10 +252,11 @@ void TPageList::initTsf()
         int index = static_cast<int>(i);
         pl.clear();
 
-        pl.pageID = pageList[index].get("pageID", "0").asInt();
+        pl.pageID = pageList[index].get("pageID", 0).asInt();
         pl.name = pageList[index].get("name", "").asString();
         pl.file = pageList[index].get("file", "").asString();
-        pl.isValid = pageList[index].get("isValid", "1").asInt();
+        pl.isValid = pageList[index].get("isValid", 1).asInt();
+        MSG_DEBUG("Found page " << pl.name << " in file " << pl.file);
         mPageList.push_back(pl);
     }
 
@@ -254,12 +266,13 @@ void TPageList::initTsf()
     {
         int index = static_cast<int>(i);
         spl.clear();
-        spl.pageID = pageList[index].get("pageID", "0").asInt();
-        spl.name = pageList[index].get("name", "").asString();
-        spl.file = pageList[index].get("file", "").asString();
-        spl.isValid = pageList[index].get("isValid", "1").asInt();
-        spl.group = pageList[index].get("group", "").asString();
-        spl.popupType = pageList[index].get("popupType", "0").asInt();
+        spl.pageID = popupList[index].get("pageID", 0).asInt();
+        spl.name = popupList[index].get("name", "").asString();
+        spl.file = popupList[index].get("file", "").asString();
+        spl.isValid = popupList[index].get("isValid", 1).asInt();
+        spl.group = popupList[index].get("group", "").asString();
+        spl.popupType = popupList[index].get("popupType", 0).asInt();
+        MSG_DEBUG("Found popup " << spl.name << " in file " << spl.file);
         mSubPageList.push_back(spl);
     }
 
@@ -367,10 +380,10 @@ void TPageList::loadTsfSubPageSets(const Json::Value& root)
     {
         int index = static_cast<int>(i);
 
-        svl.id = pageSets[index].get("id", "0").asInt();
+        svl.id = pageSets[index].get("id", 0).asInt();
         svl.name = pageSets[index].get("name", "").asString();
-        svl.pgWidth = pageSets[index].get("pgWidth", "0").asInt();
-        svl.pgHeight = pageSets[index].get("pgHeight", "0").asInt();
+        svl.pgWidth = pageSets[index].get("pgWidth", 0).asInt();
+        svl.pgHeight = pageSets[index].get("pgHeight", 0).asInt();
 
         Json::Value items = pageSets[index]["items"];
 
@@ -378,8 +391,8 @@ void TPageList::loadTsfSubPageSets(const Json::Value& root)
         {
             int idx = static_cast<int>(j);
 
-            svi.index = items[idx].get("index", "0").asInt();
-            svi.pageID = items[idx].get("pageID", "0").asInt();
+            svi.index = items[idx].get("index", 0).asInt();
+            svi.pageID = items[idx].get("pageID", 0).asInt();
             svl.items.push_back(svi);
         }
 

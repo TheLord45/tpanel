@@ -64,6 +64,7 @@ class TFont : public TValidateFile
         ~TFont();
 
         void initialize();
+        void initTsf();
         bool systemFonts(bool setup=false);
         FONT_T getFont(int number);
         int getFontIDfromFile(const std::string& file);

@@ -443,7 +443,7 @@ bool TSettings::loadSettingsJson(bool initial)
     ifstream config_doc(fname, ifstream::binary);
     config_doc >> root;
 
-    mSetup.versionInfo.fsfVersion = root["versionInfo"].get("fileVersion", "").asInt();
+    mSetup.versionInfo.fsfVersion = root["versionInfo"].get("fileVersion", 0).asInt();
 
     if (mSetup.versionInfo.fsfVersion != FILE_VERSION)
     {

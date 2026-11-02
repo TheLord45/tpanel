@@ -856,6 +856,12 @@ TPageManager::TPageManager()
     if (!TError::isError())
         TColor::setPalette(mPalette);
 
+    if (TError::isError())
+    {
+        PRINT_LAST_ERROR();
+        MSG_ERROR("Initializing palettes was not successfull!");
+    }
+
     mFonts = new TFont(mTSettings->getFontFileName(), mTSettings->isG5());
 
     if (TError::isError())
@@ -2660,11 +2666,17 @@ bool TPageManager::readPage(const std::string& name)
     }
 
     TPage *pg;
+    string extension;
+
+    if (TTPInit::isTsf())
+        extension = ".json";
+    else
+        extension = ".xml";
 
     if (name.compare("_progress") == 0)
         pg = new TPage(name);
     else
-        pg = new TPage(page.name+".xml");
+        pg = new TPage(page.name + extension);
 
     if (TError::isError())
     {
