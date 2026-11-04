@@ -1055,7 +1055,7 @@ void TPageInterface::setGlobalSettings(Button::TButton* button)
 {
     DECL_TRACER("TPageInterface::setGlobalSettings(TButton* button)");
 
-    if (!button)
+    if (!button || sr.empty())
         return;
 
     button->setFontOnly(sr[0].fi, 0);

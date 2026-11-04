@@ -40,6 +40,7 @@
 #include "tsipclient.h"
 #include "tvector.h"
 #include "tbitmap.h"
+#include "tcolor.h"
 #include "tbuttonstates.h"
 #include "tqintercom.h"
 #include "tapps.h"

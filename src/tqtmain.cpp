@@ -181,6 +181,7 @@ int qtmain(int argc, char **argv, TPageManager *pmanager)
     app.setApplicationName(QString::fromStdString(TConfig::getProgName()));
     app.setApplicationDisplayName("TPanel");
     app.setApplicationVersion(VERSION_STRING());
+    app.setDesktopFileName(TConfig::getProgName().c_str());
     // Set the orientation
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
     QScreen *screen = QGuiApplication::primaryScreen();
@@ -4010,6 +4011,7 @@ void MainWindow::displayButton(ulong handle, ulong parent, TBitmap buffer, int w
         nobj.height = scale(height);
         nobj.left = scale(left);
         nobj.top = scale(top);
+        MSG_DEBUG("Dimensions of object (lt, tp, wt, ht): " << nobj.left << ", " << nobj.top << ", " << nobj.width << ", " << nobj.height);
 
         if (nobj.type == OBJ_MARQUEE)
         {

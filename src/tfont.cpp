@@ -1304,3 +1304,22 @@ double TFont::pixelToPoint(int dpi, int pixel)
     MSG_DEBUG("Size: " << size << ", dpi: " << dpi << ", pixels: " << pixel);
     return size;
 }
+
+string TFont::getFileName(const std::string& family)
+{
+    DECL_TRACER("TFont::getFileName(const std::string& family)");
+
+    map<int, FONT_T>::iterator iter;
+
+    for (iter = mFonts.begin(); iter != mFonts.end(); ++iter)
+    {
+        if (iter->second.fullName == family)
+        {
+            MSG_DEBUG("Found file " << iter->second.file << " for font family " << family << ".");
+            return iter->second.file;
+        }
+    }
+
+    MSG_WARNING("No file for font family " << family << " found!");
+    return string();
+}

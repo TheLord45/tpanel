@@ -83,6 +83,10 @@ void TPalette::initialize(const std::string& file)
     if (mIsG5 && TTPInit::isTsf())
     {
         initTsf(file);
+
+        if (mColors.empty())
+            addSystemColors();
+
         return;
     }
 
@@ -228,11 +232,32 @@ long TPalette::getColorValue(const string& color)
 
     if (color.at(0) == '#')     // Do we have a valid color value?
     {
-        string sCol = "0x" + color.substr(1);
-        col = strtoul(sCol.c_str(), 0, 16);
+        if (!TTPInit::isTsf())
+        {
+            string sCol = "0x" + color.substr(1);
+            col = strtoul(sCol.c_str(), 0, 16);
 
-        if (color.length() <= 7)
-            col = (col << 8) | 0x000000ff;
+            if (color.length() <= 7)
+                col = (col << 8) | 0x000000ff;
+        }
+        else
+        {
+            string scol, alpha;
+
+            if (color.length() > 7)
+            {
+                alpha = color.substr(1, 2);
+                scol = alpha + color.substr(3);
+            }
+            else
+            {
+                alpha = "FF";
+                scol = color.substr(1);
+            }
+
+            scol = "0x" + scol;
+            col = strtoul(scol.c_str(), 0, 16);
+        }
     }
 
     return col;
@@ -393,4 +418,14 @@ void TPalette::addSystemColors()
 
     for (iter = palArr.begin(); iter != palArr.end(); ++iter)
         mColors.insert(pair<string, PDATA_T>(iter->name, *iter));
+}
+
+string TPalette::qcolorToCol(const string& col)
+{
+    if (col[0] != '#' || col.length() <= 7)
+        return col;
+
+    string alpha = col.substr(1, 2);
+    string color = col.substr(3);
+    return "#" + color + alpha;
 }

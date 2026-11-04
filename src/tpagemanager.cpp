@@ -2600,7 +2600,14 @@ bool TPageManager::readPages()
 
         for (pgIter = pageList.begin(); pgIter != pageList.end(); ++pgIter)
         {
-            TPage *page = new TPage(pgIter->name+".xml");
+            string extension;
+
+            if (TTPInit::isTsf())
+                extension = ".json";
+            else
+                extension = ".xml";
+
+            TPage *page = new TPage(pgIter->name+extension);
 
             if (TError::isError())
             {
@@ -2625,10 +2632,16 @@ bool TPageManager::readPages()
     if (subPageList.size() > 0)
     {
         vector<SUBPAGELIST_T>::iterator spgIter;
+        string extension;
+
+        if (TTPInit::isTsf())
+            extension = ".json";
+        else
+            extension = ".xml";
 
         for (spgIter = subPageList.begin(); spgIter != subPageList.end(); ++spgIter)
         {
-            TSubPage *page = new TSubPage(spgIter->name+".xml");
+            TSubPage *page = new TSubPage(spgIter->name+extension);
 
             if (TError::isError())
             {
@@ -2715,7 +2728,12 @@ bool TPageManager::readPage(int ID)
     if (ID == 300)      // Progress page of system?
         pg = new TPage("_progress");
     else
-        pg = new TPage(page.name+".xml");
+    {
+        if (TTPInit::isTsf())
+            pg = new TPage(page.name+".json");
+        else
+            pg = new TPage(page.name+".xml");
+    }
 
     if (TError::isError())
     {
@@ -2760,6 +2778,7 @@ bool TPageManager::readSubPage(const std::string& name, TSubPage **sp)
         return false;
     }
 
+    string extension;
     TSubPage *pg = nullptr;
 
     if ((pg = getSubPage(name)) != nullptr) // Was the subpage already loaded?
@@ -2770,7 +2789,12 @@ bool TPageManager::readSubPage(const std::string& name, TSubPage **sp)
         return true;            // Yes, then return TRUE.
     }
 
-    pg = new TSubPage(page.name+".xml");  // Load the wanted subpage
+    if (TTPInit::isTsf())
+        extension = ".json";
+    else
+        extension = ".xml";
+
+    pg = new TSubPage(page.name+extension);  // Load the wanted subpage
 
     if (TError::isError())
     {
@@ -2813,7 +2837,14 @@ bool TPageManager::readSubPage(int ID)
         return false;
     }
 
-    TSubPage *pg = new TSubPage(page.name+".xml");
+    string extension;
+
+    if (TTPInit::isTsf())
+        extension = ".json";
+    else
+        extension = ".xml";
+
+    TSubPage *pg = new TSubPage(page.name+extension);
 
     if (TError::isError())
     {

@@ -294,11 +294,11 @@ bool TMap::readMapJson()
             if (elem.compare("cm") == 0|| elem.compare("am") == 0 ||
                 elem.compare("lm") == 0 || elem.compare("strm") == 0)
             {
-                map.p = item[index].get("p", "0").asInt();
-                map.c = item[index].get("c", "0").asInt();
-                map.ax = item[index].get("ax", "0").asInt();
-                map.pg = item[index].get("pg", "0").asInt();
-                map.bt = item[index].get("bt", "0").asInt();
+                map.p = item[index].get("p", 0).asInt();
+                map.c = item[index].get("c", 0).asInt();
+                map.ax = item[index].get("ax", 0).asInt();
+                map.pg = item[index].get("pg", 0).asInt();
+                map.bt = item[index].get("bt", 0).asInt();
                 map.pn = item[index].get("pn", "").asString();
                 map.bn = item[index].get("bn", "").asString();
 
@@ -314,15 +314,15 @@ bool TMap::readMapJson()
             else if (elem.compare("bm") == 0)
             {
                 mapBm.i = item[index].get("i", "").asString();
-                mapBm.id = item[index].get("id", "0").asInt();
-                mapBm.rt = item[index].get("rt", "0").asInt();
-                mapBm.pg = item[index].get("pg", "0").asInt();
-                mapBm.bt = item[index].get("bt", "0").asInt();
-                mapBm.st = item[index].get("st", "0").asInt();
-                mapBm.sl = item[index].get("sl", "0").asInt();
+                mapBm.id = item[index].get("id", 0).asInt();
+                mapBm.rt = item[index].get("rt", 0).asInt();
+                mapBm.pg = item[index].get("pg", 0).asInt();
+                mapBm.bt = item[index].get("bt", 0).asInt();
+                mapBm.st = item[index].get("st", 0).asInt();
+                mapBm.sl = item[index].get("sl", 0).asInt();
                 mapBm.pn = item[index].get("pn", "").asString();
                 mapBm.bn = item[index].get("bn", "").asString();
-                mapBm.rc = item[index].get("rc", "0").asInt();
+                mapBm.rc = item[index].get("rc", 0).asInt();
                 mMap.map_bm.push_back(mapBm);
             }
             else if (elem.compare("sm") == 0)
@@ -331,29 +331,29 @@ bool TMap::readMapJson()
             }
             else if (elem.compare("pm") == 0)
             {
-                mapPm.a = item[index].get("a", "0").asInt();
+                mapPm.a = item[index].get("a", 0).asInt();
                 mapPm.t = item[index].get("t", "").asString();
-                mapPm.pg = item[index].get("pg", "0").asInt();
-                mapPm.bt = item[index].get("bt", "0").asInt();
+                mapPm.pg = item[index].get("pg", 0).asInt();
+                mapPm.bt = item[index].get("bt", 0).asInt();
                 mapPm.pn = item[index].get("pn", "").asString();
                 mapPm.bn = item[index].get("bn", "").asString();
                 mMap.map_pm.push_back(mapPm);
             }
             else if (elem.compare("evpf") == 0)
             {
-                mapEvpf.a = item[index].get("a", "0").asInt();
+                mapEvpf.a = item[index].get("a", 0).asInt();
                 mapEvpf.t = item[index].get("t", "").asString();
-                mapEvpf.pg = item[index].get("pg", "0").asInt();
-                mapEvpf.bt = item[index].get("bt", "0").asInt();
+                mapEvpf.pg = item[index].get("pg", 0).asInt();
+                mapEvpf.bt = item[index].get("bt", 0).asInt();
                 mapEvpf.ev = item[index].get("ev", "").asString();
-                mapEvpf.ai = item[index].get("ai", "0").asInt();
+                mapEvpf.ai = item[index].get("ai", 0).asInt();
                 mMap.map_evpf.push_back(mapEvpf);
             }
             else if (elem.compare("ddsm") == 0)
             {
                 mapDdsm.ddmt = item[index].get("ddmt", "").asString();
-                mapDdsm.pg = item[index].get("pg", "0").asInt();
-                mapDdsm.bt = item[index].get("bt", "0").asInt();
+                mapDdsm.pg = item[index].get("pg", 0).asInt();
+                mapDdsm.bt = item[index].get("bt", 0).asInt();
                 mapDdsm.dds = item[index].get("dds", "").asString();
                 mapDdsm.ddmn = item[index].get("ddmn", "").asString();
                 mMap.map_ddsm.push_back(mapDdsm);

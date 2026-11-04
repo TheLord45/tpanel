@@ -768,23 +768,22 @@ size_t TButton::initialize(TExpat *xml, size_t index)
     return index;
 }
 
-bool TButton::initTsf(Json::Value& object)
+bool TButton::initTsf(const Json::Value& object)
 {
-    DECL_TRACER("TButton::initTsf(Json::Value& root)");
+    DECL_TRACER("TButton::initTsf(const Json::Value& root)");
 
 //    vector<string> guestures = { "ga", "gu", "gd", "gr", "gl", "gt", "tu", "td", "tr", "tl" };
     mChanged = true;
     int lastLevel = 0;
     int lastJoyX = 0;
     int lastJoyY = 0;
-    int bmIndex = 0;
 
-    type = static_cast<BUTTONTYPE>(object.get("type", "0").asInt());
+    type = static_cast<BUTTONTYPE>(object.get("type", NONE).asInt());
     bi = object.get("bi", 0).asInt();
     na = object.get("na", "").asString();
     bd = object.get("bd", "").asString();
-    lt = object.get("lt", 0).asInt();
-    tp = object.get("tp", 0).asInt();
+    lt = mPosLeft = object.get("lt", 0).asInt();
+    tp = mPosTop = object.get("tp", 0).asInt();
     wt = object.get("wt", 0).asInt();
     ht = object.get("ht", 0).asInt();
     zo = object.get("zo", 0).asInt();
@@ -818,7 +817,7 @@ bool TButton::initTsf(Json::Value& object)
     rl = object.get("rl", 0).asInt();
     rh = object.get("rh", 0).asInt();
     lf = object.get("lf", "").asString();
-MSG_DEBUG("Block 1");
+
     if (object.find("ri"))
     {
         ri = object.get("ri", 0).asInt();
@@ -842,8 +841,8 @@ MSG_DEBUG("Block 1");
     sd = object.get("sd", "").asString();
     vt = object.get("vt", "").asString();
     cd = object.get("cd", "").asString();
-    sc = object.get("sc", "").asString();
-    cc = object.get("cc", "").asString();
+    sc = TPalette::qcolorToCol(object.get("sc", "").asString());
+    cc = TPalette::qcolorToCol(object.get("cc", "").asString());
     mt = object.get("mt", 0).asInt();
     dt = object.get("dt", "").asString();
     im = object.get("im", "").asString();
@@ -873,12 +872,12 @@ MSG_DEBUG("Block 1");
     da = object.get("da", 0).asInt();
     mLatitude = object.get("map_lat", 0.0).asDouble();
     mLongitude = object.get("map_lon", 0.0).asDouble();
-    mMapSource = static_cast<MAP_SOURCE_t>(object.get("map_prov", 0).asInt());
+    mMapSource = static_cast<MAP_SOURCE_t>(object.get("map_prov", MAP_NONE).asInt());
     mZoom = object.get("map_zoom", 16).asInt();
     mMapAuto = object.get("map_fix", 0).asBool();
     ac_di = object.get("di", 0).asInt();
     Json::Value jpf = object["pushFunc"];
-MSG_DEBUG("Block 2");
+
     for (int idx = 0; idx < static_cast<int>(jpf.size()); ++idx)
     {
         PUSH_FUNC_T pf;
@@ -887,9 +886,9 @@ MSG_DEBUG("Block 2");
         pf.pfAction = jpf[idx].get("pfAction", "").asString();
 
         pf.item = jpf[idx].get("item", 0).asInt();
-        pf.action = static_cast<BUTTON_ACTION_t>(jpf[idx].get("action", 0).asInt());
+        pf.action = static_cast<BUTTON_ACTION_t>(jpf[idx].get("action", BT_ACTION_PGFLIP).asInt());
         pf.ID = jpf[idx].get("id", 0).asInt();
-        pf.event = static_cast<BUTTON_EVENT_t>(jpf[idx].get("event", 0).asInt());
+        pf.event = static_cast<BUTTON_EVENT_t>(jpf[idx].get("event", EVENT_NONE).asInt());
         pushFunc.push_back(pf);
     }
 
@@ -902,10 +901,10 @@ MSG_DEBUG("Block 2");
         bsr._do = jsr[idx].get("do", "").asString();
         bsr.bs = jsr[idx].get("bs", "").asString();
         bsr.mi = jsr[idx].get("mi", "").asString();
-        bsr.cb = jsr[idx].get("cb", "").asString();
-        bsr.cf = jsr[idx].get("cf", "").asString();
-        bsr.ct = jsr[idx].get("ct", "").asString();
-        bsr.ec = jsr[idx].get("rc", "").asString();
+        bsr.cb = TPalette::qcolorToCol(jsr[idx].get("cb", "").asString());
+        bsr.cf = TPalette::qcolorToCol(jsr[idx].get("cf", "").asString());
+        bsr.ct = TPalette::qcolorToCol(jsr[idx].get("ct", "").asString());
+        bsr.ec = TPalette::qcolorToCol(jsr[idx].get("rc", "").asString());
         bsr.bm = jsr[idx].get("bm", "").asString();
         bsr.dynamic = jsr[idx].get("dynamic", false).asBool();
         bsr.ft = jsr[idx].get("ft", "").asString();
@@ -924,11 +923,11 @@ MSG_DEBUG("Block 2");
         Json::Value jgrc = jsr[idx]["gradientColors"];
 
         for (int i = 0; i < static_cast<int>(jgrc.size()); ++i)
-            bsr.gradientColors.push_back(jgrc[i].asString());
+            bsr.gradientColors.push_back(TPalette::qcolorToCol(jgrc[i].asString()));
 
         bsr.gr = jsr[idx].get("gr", 0).asInt();
-        bsr.gx = jsr[idx].get("gx", 0).asInt();
-        bsr.gy = jsr[idx].get("gy", 0).asInt();
+        bsr.gx = jsr[idx].get("gx", 50).asInt();
+        bsr.gy = jsr[idx].get("gy", 50).asInt();
         bsr.sd = jsr[idx].get("sd", "").asString();
         bsr.sb = jsr[idx].get("sb", 0).asInt();
         bsr.ii = jsr[idx].get("ii", 0).asInt();
@@ -940,7 +939,14 @@ MSG_DEBUG("Block 2");
         bsr.iy = jsr[idx].get("iy", 0).asInt();
         bsr.fi = jsr[idx].get("fi", 0).asInt();
         bsr.te = jsr[idx].get("te", "").asString();
-        bsr.ff = jsr[idx].get("ff", "").asString();
+
+        if (mFonts)
+            bsr.ff = mFonts->getFileName(jsr[idx].get("ff", "").asString());
+        else if (gPageManager && gPageManager->getFonts())
+            bsr.ff = gPageManager->getFonts()->getFileName(jsr[idx].get("ff", "").asString());
+        else
+            bsr.ff = jsr[idx].get("ff", "").asString();
+
         bsr.fs = jsr[idx].get("fs", 0).asInt();
         bsr.jt = static_cast<ORIENTATION>(jsr[idx].get("jt", 0).asInt());
         bsr.tx = jsr[idx].get("tx", 0).asInt();
@@ -951,7 +957,6 @@ MSG_DEBUG("Block 2");
         bsr.md = jsr[idx].get("md", 0).asInt();
         bsr.mr = jsr[idx].get("mr", 0).asInt();
         bsr.vf = jsr[idx].get("vf", "").asString();
-        MSG_DEBUG("SR: " << bsr.number);
         sr.push_back(bsr);
     }
 
@@ -968,7 +973,7 @@ MSG_DEBUG("Block 2");
         else
         {
             mButtonID = pbs->getID();
-            MSG_DEBUG("Button ID: " << getButtonIDstr() << ", type: " << buttonTypeToString() << ", index: " << bi << ", name: " << na);
+            MSG_DEBUG("Button ID: 0x" << getButtonIDstr() << ", type: " << buttonTypeToString() << ", index: " << bi << ", name: " << na);
             pbs->setLastLevel(lastLevel);
             pbs->setLastJoyX(lastJoyX);
             pbs->setLastJoyY(lastJoyY);
@@ -9850,6 +9855,8 @@ void TButton::show()
 
         if (index >= 0)
             sr[inst].dynamic = true;
+
+        MSG_DEBUG("Drawing object at position left: " << lt << ", top: " << tp);
     }
     // If the dynamic flag is not set and we have already an image of the
     // button, we send just the saved image to the screen.

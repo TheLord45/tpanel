@@ -50,6 +50,8 @@ class TPalette : public TValidateFile
         PDATA_T findColor(int pID);
         void reset();
 
+        static std::string qcolorToCol(const std::string& col);
+
     protected:
         void initTsf(const std::string& file);
 

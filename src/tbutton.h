@@ -35,7 +35,6 @@
 
 #include "texpat++.h"
 #include "tpalette.h"
-#include "tcolor.h"
 #include "tfont.h"
 #include "tamxnet.h"
 #include "ttimer.h"
@@ -459,7 +458,7 @@ namespace Button
              * @param object    The object to parse
              * @return TRUE on success.
              */
-            bool initTsf(Json::Value& object);
+            bool initTsf(const Json::Value& object);
             /**
              * Returns the button index. This is a unique number inside a page
              * or subpage.

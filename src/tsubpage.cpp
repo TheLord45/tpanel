@@ -17,6 +17,13 @@
  */
 
 #include <exception>
+#include <fstream>
+#ifdef __MACH__
+#include <json/json.h>
+#else
+#include <jsoncpp/json/json.h>
+#endif
+#include <unistd.h>
 
 #include <core/SkFont.h>
 #include <core/SkFontMetrics.h>
@@ -54,6 +61,7 @@ namespace fs = std::filesystem;
 
 using std::string;
 using std::vector;
+using std::ifstream;
 using namespace Button;
 using namespace Expat;
 
@@ -67,9 +75,9 @@ TSubPage::TSubPage(const string& name)
 
     string projectPath = TConfig::getProjectPath();
 
-    if (!fs::exists(projectPath + "/prj.xma"))
+    if (!fs::exists(projectPath + "/prj.xma") && !fs::exists(projectPath + "/prj_.json"))
     {
-        MSG_ERROR("Directory " << projectPath << " doesn't exist!");
+        MSG_ERROR("No project configuration found at path " << projectPath << "!");
         return;
     }
 
@@ -99,7 +107,10 @@ TSubPage::TSubPage(const string& name)
             _callDropSubPage = gPageManager->getCallDropSubPage();
     }
 
-    initialize();
+    if (TTPInit::isTsf())
+        initTsf();
+    else
+        initialize();
 }
 
 TSubPage::~TSubPage()
@@ -489,6 +500,159 @@ void TSubPage::initialize()
     // the buttons are stored in ascending Z order. Therefor the following
     // method call is commented out.
     // sortButtons();
+}
+
+void TSubPage::initTsf()
+{
+    DECL_TRACER("TSubPage::initTsf()");
+
+    if (mFName.empty())
+        return;
+
+    TError::clear();
+    Json::Value root;
+    ifstream config_doc(mFName, ifstream::binary);
+    config_doc >> root;
+    int type = root["type"].asInt();
+
+    if (type != PGT_POPUP && type != PGT_SUBPAGE)
+    {
+        MSG_ERROR("The type " << type << " is invalid for a popup or a subpage!");
+        TError::SetError();
+        return;
+    }
+
+    if (type == PGT_POPUP)
+        mSubpage.popupType = "popup";
+    else
+        mSubpage.popupType = "subpage";
+
+    mSubpage.pageID = root["pageID"].asInt();
+    mSubpage.name = root["name"].asString();
+    mSubpage.left = mSubpage.leftOrig = root["left"].asInt();
+    mSubpage.top = mSubpage.topOrig = root["top"].asInt();
+    mSubpage.width = mSubpage.widthOrig = root["width"].asInt();
+    mSubpage.height = mSubpage.heightOrig = root["height"].asInt();
+    mSubpage.showLockX = root["showLocX"].asInt();
+    mSubpage.collapseDirection = static_cast<COLDIR_t>(root["collapseDirection"].asInt());
+    mSubpage.collapseOffset = root["collapseOffset"].asInt();
+
+    if (mSubpage.collapseOffset > 0)
+        mSubpage.collapsible = true;
+
+    mSubpage.group = root["group"].asString();
+    mSubpage.modal = root["modal"].asInt();
+    mSubpage.showEffect = static_cast<SHOWEFFECT>(root["showEffect"].asInt());
+    mSubpage.showTime = root["showTime"].asInt();
+    mSubpage.hideTime = root["hideTime"].asInt();
+    mSubpage.timeout = root["timeout"].asInt();
+    mSubpage.resetPos = root["resetPos"].asInt();
+    Json::Value objects = root["objects"];
+
+    for (int idx = 0; idx < static_cast<int>(objects.size()); ++idx)
+    {
+        try
+        {
+            TError::clear();
+            TButton *button = new TButton();
+            TPageInterface::registerListCallback<TSubPage>(button, this);
+            button->setPalette(mPalette);
+            button->setFonts(getFonts());
+            button->initTsf(objects[idx]);
+            button->setParentSize(mSubpage.width, mSubpage.height);
+            button->registerCallback(_displayButton);
+            button->regCallPlayVideo(_playVideo);
+
+            if (TError::isError())
+            {
+                PRINT_LAST_ERROR();
+                MSG_ERROR("Dropping button because of previous errors!");
+                delete button;
+                return;
+            }
+
+            button->setHandle(((mSubpage.pageID << 16) & 0xffff0000) | button->getButtonIndex());
+            button->createButtons();
+            addButton(button);
+        }
+        catch (std::exception& e)
+        {
+            MSG_ERROR("Memory exception: " << e.what());
+            TError::SetError();
+            return;
+        }
+    }
+
+    Json::Value bsr = root["sr"];
+    SR_T sr;
+    sr.bs = bsr.get("bs", "").asString();
+    sr.cb = TPalette::qcolorToCol(bsr.get("cb", "").asString());
+    sr.cf = TPalette::qcolorToCol(bsr.get("cf", "").asString());
+    sr.ct = TPalette::qcolorToCol(bsr.get("ct", "").asString());
+    sr.ec = TPalette::qcolorToCol(bsr.get("ec", "").asString());
+    sr.bm = bsr.get("bm", "").asString();
+    sr.mi = bsr.get("mi", "").asString();
+    sr.ji = bsr.get("ji", 0).asInt();
+    sr.jb = bsr.get("jb", 0).asInt();
+    sr.fi = bsr.get("fi", 0).asInt();
+    sr.ii = bsr.get("ii", 0).asInt();
+    sr.ix = bsr.get("ix", 0).asInt();
+    sr.iy = bsr.get("iy", 0).asInt();
+    sr.oo = bsr.get("oo", 0).asInt();
+    sr.te = bsr.get("te", "").asString();
+    sr.tx = bsr.get("tx", 0).asInt();
+    sr.ty = bsr.get("ty", 0).asInt();
+    sr.et = bsr.get("et", 0).asInt();
+    sr.ww = bsr.get("ww", 0).asInt();
+    sr.jt = static_cast<ORIENTATION>(bsr.get("jt", 5).asInt());
+
+    if (gPageManager && gPageManager->getFonts())
+        sr.ff = gPageManager->getFonts()->getFileName(bsr.get("ff", "").asString());
+    else
+        sr.ff = bsr.get("ff", "").asString();
+
+    sr.fs = bsr.get("fs", 10).asInt();
+    Json::Value bitmaps = bsr["bitmapEntry"];
+
+    for (int idx = 0; idx < static_cast<int>(bitmaps.size()); ++idx)
+    {
+        sr.bitmaps[idx].fileName = bitmaps[idx].get("fileName", "").asString();
+        sr.bitmaps[idx].justification = static_cast<ORIENTATION>(bitmaps[idx].get("justification", 5).asInt());
+        sr.bitmaps[idx].offsetX = bitmaps[idx].get("offsetX", 0).asInt();
+        sr.bitmaps[idx].offsetY = bitmaps[idx].get("offsetY", 0).asInt();
+        sr.bitmaps[idx].dynamic = bitmaps[idx].get("dynamic", false).asBool();
+        sr.bitmaps[idx].index = bitmaps[idx].get("index", 0).asInt();
+    }
+
+    Json::Value gc = bsr["gradientColors"];
+
+    for (int idx = 0; idx < static_cast<int>(gc.size()); ++idx)
+        sr.gradientColors.push_back(TPalette::qcolorToCol(gc[idx].asString()));
+
+    mSubpage.sr.push_back(sr);
+    const vector<string> sev = { "eventShow", "eventHide" };
+    vector<string>::const_iterator iter;
+
+    for (iter = sev.cbegin(); iter != sev.cend(); ++iter)
+    {
+        Json::Value ev = bsr[iter->c_str()];
+
+        for (int idx = 0; idx < static_cast<int>(ev.size()); ++idx)
+        {
+            EVENT_t event;
+            event.evType = static_cast<EVENT_TYPE_t>(ev[idx].get("evType", 0).asInt());
+            event.item = ev[idx].get("item", 0).asInt();
+            event.ID = ev[idx].get("id", 0).asInt();
+            event.evAction = ev[idx].get("evAction", "").asString();
+            event.name = ev[idx].get("name", "").asString();
+            event.port = ev[idx].get("port", 0).asInt();
+
+            if (iter->compare("eventShow") == 0)
+                mSubpage.eventShow.push_back(event);
+            else if (iter->compare("eventHide") == 0)
+                mSubpage.eventHide.push_back(event);
+        }
+    }
 }
 
 bool TSubPage::createPage(bool force)

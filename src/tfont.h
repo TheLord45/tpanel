@@ -21,6 +21,7 @@
 
 #include <string>
 #include <map>
+#include <vector>
 
 #include "tvalidatefile.h"
 
@@ -75,6 +76,7 @@ class TFont : public TValidateFile
         sk_sp<SkTypeface> getTypeFace(int number);
         sk_sp<SkTypeface> getTypeFace(const std::string& ff);
         void setG5(bool tp) { mIsG5 = tp; }
+        std::string getFileName(const std::string& family);
 
         static std::vector<std::string> getFontPathList();
         static SkGlyphID *textToGlyphs(const std::string& str, sk_sp<SkTypeface>& typeFace, size_t *size);

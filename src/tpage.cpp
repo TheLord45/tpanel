@@ -345,7 +345,7 @@ void TPage::initTsf(const string& name)
     mPage.name = root.get("name", "").asString();
     mPage.width = root.get("width", 0).asInt();
     mPage.height = root.get("height", 0).asInt();
-MSG_DEBUG("Reading page " << mPage.name << " with ID " << mPage.pageID << " with size " << mPage.width << "x" << mPage.height);
+
     Json::Value objects = root["objects"];
 
     for (int idx = 0; idx < static_cast<int>(objects.size()); ++idx)
@@ -379,10 +379,10 @@ MSG_DEBUG("Reading page " << mPage.name << " with ID " << mPage.pageID << " with
     Json::Value srj = root["sr"];
     SR_T bsr;
     bsr.bs = srj["bs"].asString();
-    bsr.cb = srj["cb"].asString();
-    bsr.cf = srj["cf"].asString();
-    bsr.ct = srj["ct"].asString();
-    bsr.ec = srj["ec"].asString();
+    bsr.cb = TPalette::qcolorToCol(srj["cb"].asString());
+    bsr.cf = TPalette::qcolorToCol(srj["cf"].asString());
+    bsr.ct = TPalette::qcolorToCol(srj["ct"].asString());
+    bsr.ec = TPalette::qcolorToCol(srj["ec"].asString());
     bsr.bm = srj["bm"].asString();
     bsr.mi = srj["mi"].asString();
     bsr.fi = srj["fi"].asInt();
@@ -393,6 +393,11 @@ MSG_DEBUG("Reading page " << mPage.name << " with ID " << mPage.pageID << " with
     bsr.ww = srj["ww"].asInt();
     bsr.jt = static_cast<Button::ORIENTATION>(srj["jt"].asInt());
     bsr.jb = static_cast<Button::ORIENTATION>(srj["jb"].asInt());
+
+    if (gPageManager && gPageManager->getFonts())
+        bsr.ff = gPageManager->getFonts()->getFileName(srj["ff"].asString());
+    else
+        bsr.ff = srj["ff"].asString();
 
     Json::Value bitmaps = srj["bitmaps"];
 

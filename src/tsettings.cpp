@@ -509,7 +509,7 @@ bool TSettings::loadSettingsJson(bool initial)
     mSetup.inactivityPage = panelSetup.get("inactivityPage", "").asString();
     mSetup.idleTimeout = panelSetup.get("idleTimeout", 0).asInt();
     mSetup.screenWidth = panelSetup.get("screenWidth", 0).asInt();
-    mSetup.screenHeight = panelSetup.get("screenWidth", 0).asInt();
+    mSetup.screenHeight = panelSetup.get("screenHeight", 0).asInt();
     mSetup.screenRotate = panelSetup.get("screenRotate", 0).asInt();
     mSetup.batteryLevelPort = panelSetup.get("batteryLevelPort", 0).asInt();
     mSetup.batteryLevelCode = panelSetup.get("batteryLevelCode", 0).asInt();

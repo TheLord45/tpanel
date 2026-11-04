@@ -110,6 +110,7 @@ class TSubPage : public TValidateFile, public TPageInterface, public Border::TIn
 
     protected:
         void initialize();
+        void initTsf();
         void runTimer();
         bool createPage(bool force=false);  // Create a page in case it doesn't, but don't display it.
 #ifdef  _SCALE_SKIA_

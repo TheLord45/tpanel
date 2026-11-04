@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 to 2025 by Andreas Theofilu <andreas@theosys.at>
+ * Copyright (C) 2021 to 2026 by Andreas Theofilu <andreas@theosys.at>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 #include "tbutton.h"
 #include "terror.h"
 #include "ttpinit.h"
-#include "timgcache.h"
+#include "tcolor.h"
 #include <qglobal.h>
 
 extern bool prg_stopped;
